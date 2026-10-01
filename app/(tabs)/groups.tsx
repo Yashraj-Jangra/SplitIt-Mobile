@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users, Plus, ChevronRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
 export default function GroupsScreen() {
+  const router = useRouter();
   const [filter, setFilter] = useState<'active' | 'archived'>('active');
 
   const groups = [
@@ -52,7 +54,10 @@ export default function GroupsScreen() {
           <TouchableOpacity
             key={group.id}
             style={styles.groupCard}
-            onPress={() => Haptics.selectionAsync()}
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.push(`/groups/${group.id}`);
+            }}
           >
             <View style={styles.groupAvatar}>
               <Users size={20} color={THEME.colors.primaryLight} />
