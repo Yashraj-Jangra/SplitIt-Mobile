@@ -1,9 +1,33 @@
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsType from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { isRunningInExpoGo } from 'expo';
 import { authService, API_BASE_URL } from './auth.service';
 
 const DEVICE_ID_KEY = 'splitit_device_id';
+
+let cachedNotificationsModule: typeof NotificationsType | null | undefined = undefined;
+
+function getNotificationsModule(): typeof NotificationsType | null {
+  if (cachedNotificationsModule !== undefined) {
+    return cachedNotificationsModule;
+  }
+  // Expo SDK 53+ removed Android remote notifications from Expo Go and throws a fatal error
+  // Development builds (npx expo run:android or EAS) have full native push support
+  if (isRunningInExpoGo() && Platform.OS === 'android') {
+    cachedNotificationsModule = null;
+    return null;
+  }
+  try {
+    const mod = require('expo-notifications') as typeof NotificationsType;
+    cachedNotificationsModule = mod;
+    return mod;
+  } catch (e) {
+    console.warn('expo-notifications module could not be loaded in this runtime:', e);
+    cachedNotificationsModule = null;
+    return null;
+  }
+}
 
 export interface InAppNotification {
   id: string;
@@ -70,6 +94,9 @@ export const notificationService = {
    * Configure notification handlers and default Android channel
    */
   async initNotifications(): Promise<void> {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) return;
+
     try {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
@@ -114,7 +141,16 @@ export const notificationService = {
    * Registers for Expo push notifications and uploads token to backend
    */
   async registerForPushNotifications(): Promise<string | null> {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) {
+      return null;
+    }
+
     try {
+      if (isRunningInExpoGo()) {
+        return null;
+      }
+
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
@@ -303,18 +339,28 @@ export const notificationService = {
   /**
    * Listen to push notification clicks and route deep links
    */
-  setupResponseListener(navigate: (route: string) => void): Notifications.Subscription {
-    return Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as any;
-      if (!data) return;
+  setupResponseListener(navigate: (route: string) => void): { remove: () => void } {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) {
+      return { remove: () => {} };
+    }
 
-      if (data.groupId) {
-        navigate(`/groups/${data.groupId}`);
-      } else if (data.ticketId) {
-        navigate(`/support/${data.ticketId}`);
-      } else if (data.url && typeof data.url === 'string') {
-        navigate(data.url);
-      }
-    });
+    try {
+      return Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data as any;
+        if (!data) return;
+
+        if (data.groupId) {
+          navigate(`/groups/${data.groupId}`);
+        } else if (data.ticketId) {
+          navigate(`/support/${data.ticketId}`);
+        } else if (data.url && typeof data.url === 'string') {
+          navigate(data.url);
+        }
+      });
+    } catch (e) {
+      console.warn('Failed to attach notification response listener:', e);
+      return { remove: () => {} };
+    }
   },
 };
