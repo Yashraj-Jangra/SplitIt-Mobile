@@ -2,9 +2,29 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// Points to existing Next.js backend (configured via environment or default local/staging)
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3231';
+function resolveApiBaseUrl(): string {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  // When running in Expo Go or dev mode, resolve the host PC's LAN IP from Metro debugger connection
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:3231`;
+    }
+  }
+  // Android emulator loopback fallback
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3231';
+  }
+  return 'http://localhost:3231';
+}
+
+// Points to existing Next.js backend (dynamically resolves PC LAN IP in Expo Go)
+export const API_BASE_URL = resolveApiBaseUrl();
 
 const TOKEN_KEY = 'splitit_session_token';
 const USER_KEY = 'splitit_user_data';
