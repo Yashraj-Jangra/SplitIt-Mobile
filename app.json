@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "SplitIt",
+    "slug": "splitit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "splitit",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#09090B"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.splitit.app",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "upi",
+          "gpay",
+          "phonepe",
+          "paytmmp",
+          "bhim",
+          "credpay",
+          "slice"
+        ],
+        "NSCameraUsageDescription": "SplitIt needs camera access to scan physical receipts and bills for automatic expense splitting."
+      }
+    },
+    "android": {
+      "package": "com.splitit.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#09090B",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "splitit"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ]
+  }
+}
