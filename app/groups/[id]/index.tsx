@@ -242,6 +242,18 @@ export default function GroupDetailScreen() {
                         style={styles.settleButton}
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          router.push({
+                            pathname: '/settle/new',
+                            params: {
+                              groupId: group.id,
+                              debtorId: debt.fromUserId,
+                              debtorName: debt.fromName,
+                              creditorId: debt.toUserId,
+                              creditorName: debt.toName,
+                              amount: debt.amount.toString(),
+                              upiId: group.members.find((m) => m.id === debt.toUserId)?.upiId || 'rohit@okhdfc',
+                            },
+                          });
                         }}
                       >
                         <Zap size={14} color="#09090B" />

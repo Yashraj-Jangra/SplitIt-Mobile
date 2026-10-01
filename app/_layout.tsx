@@ -51,6 +51,20 @@ function NavigationGate() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="settle/new"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="settle/qr"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
