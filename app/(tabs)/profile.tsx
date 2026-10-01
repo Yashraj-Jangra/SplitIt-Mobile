@@ -1,17 +1,69 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { User, QrCode, Bell, HelpCircle, Shield, LogOut, Trash2, ChevronRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { useAuth } from '../../src/contexts/auth.context';
 import * as Haptics from 'expo-haptics';
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+
+  const handleLogout = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert('Log Out', 'Are you sure you want to log out of SplitIt?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
+  };
+
   const profileItems = [
-    { icon: QrCode, title: 'UPI ID & QR Code', subtitle: 'yashraj@okaxis' },
-    { icon: Bell, title: 'Push Notifications', subtitle: 'Configured' },
-    { icon: HelpCircle, title: 'Customer Support', subtitle: 'Tickets & Help' },
-    { icon: Shield, title: 'Privacy & Terms', subtitle: 'Legal Information' },
+    {
+      icon: QrCode,
+      title: 'UPI ID & QR Code',
+      subtitle: user?.email ? `${user.email.split('@')[0]}@okaxis` : 'yashraj@okaxis',
+      onPress: () =>
+        router.push(
+          `/settle/qr?amount=0&name=${encodeURIComponent(user?.name || 'You')}&upiId=${user?.email ? `${user.email.split('@')[0]}@okaxis` : 'yashraj@okaxis'}`
+        ),
+    },
+    {
+      icon: Bell,
+      title: 'Push Notifications',
+      subtitle: 'Configured & Active',
+      onPress: () => router.push('/notifications/preferences'),
+    },
+    {
+      icon: HelpCircle,
+      title: 'Customer Support',
+      subtitle: 'Tickets & Live Help',
+      onPress: () => router.push('/support'),
+    },
+    {
+      icon: Shield,
+      title: 'Privacy & Terms',
+      subtitle: 'Legal Information',
+      onPress: () => router.push('/legal/privacy'),
+    },
   ];
+
+  const initials = user?.name
+    ? user.name
+        .split(' ')
+        .map((p) => p[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'YJ';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -23,11 +75,11 @@ export default function ProfileScreen() {
         {/* User Card */}
         <View style={styles.userCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>YJ</Text>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>Yashraj Jangra</Text>
-            <Text style={styles.userEmail}>jangrayash1505@gmail.com</Text>
+            <Text style={styles.userName}>{user?.name || 'Yashraj Jangra'}</Text>
+            <Text style={styles.userEmail}>{user?.email || 'jangrayash1505@gmail.com'}</Text>
           </View>
         </View>
 
@@ -39,7 +91,10 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 key={index}
                 style={[styles.itemRow, index > 0 && styles.itemRowBorder]}
-                onPress={() => Haptics.selectionAsync()}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  item.onPress();
+                }}
               >
                 <IconComponent size={18} color={THEME.colors.textSecondary} />
                 <View style={styles.itemContent}>
@@ -54,16 +109,16 @@ export default function ProfileScreen() {
 
         {/* Logout / Delete Account */}
         <View style={styles.dangerSection}>
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-          >
+          <TouchableOpacity style={styles.actionRow} onPress={handleLogout}>
             <LogOut size={16} color={THEME.colors.textSecondary} />
             <Text style={styles.actionText}>Log Out</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionRow, styles.deleteAccountRow]}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/legal/delete-account');
+            }}
           >
             <Trash2 size={16} color={THEME.colors.negative} />
             <Text style={[styles.actionText, { color: THEME.colors.negative }]}>

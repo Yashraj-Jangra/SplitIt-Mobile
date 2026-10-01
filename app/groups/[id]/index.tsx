@@ -193,7 +193,25 @@ export default function GroupDetailScreen() {
             {/* Expense Rows */}
             <View style={styles.expensesList}>
               {filteredExpenses.map((exp) => (
-                <View key={exp.id} style={styles.expenseCard}>
+                <TouchableOpacity
+                  key={exp.id}
+                  style={styles.expenseCard}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    router.push({
+                      pathname: '/expenses/[id]',
+                      params: {
+                        id: exp.id,
+                        title: exp.title,
+                        amount: String(exp.amount),
+                        paidByName: exp.paidByName,
+                        date: exp.date,
+                        category: exp.category.sub || exp.category.master,
+                      },
+                    });
+                  }}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.categoryIconBadge}>
                     <Utensils size={18} color={THEME.colors.primaryLight} />
                   </View>
@@ -220,7 +238,7 @@ export default function GroupDetailScreen() {
                       </View>
                     )}
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>

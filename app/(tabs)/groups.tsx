@@ -22,9 +22,12 @@ export default function GroupsScreen() {
         <Text style={styles.title}>Your Groups</Text>
         <TouchableOpacity
           style={styles.newGroupButton}
-          onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/groups/new');
+          }}
         >
-          <Plus size={16} color="#FFFFFF" />
+          <Plus size={16} color="#09090B" />
           <Text style={styles.newGroupText}>New</Text>
         </TouchableOpacity>
       </View>

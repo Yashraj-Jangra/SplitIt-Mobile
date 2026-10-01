@@ -5,12 +5,26 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { THEME } from '../src/constants/theme';
 import { AuthProvider, useAuth } from '../src/contexts/auth.context';
+import { notificationService } from '../src/services/notification.service';
 import { useEffect } from 'react';
 
 function NavigationGate() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  useEffect(() => {
+    notificationService.initNotifications();
+    if (user) {
+      notificationService.registerForPushNotifications();
+    }
+    const sub = notificationService.setupResponseListener((route) => {
+      router.push(route as any);
+    });
+    return () => {
+      sub.remove();
+    };
+  }, [user, router]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -52,6 +66,20 @@ function NavigationGate() {
         }}
       />
       <Stack.Screen
+        name="expenses/[id]"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="groups/new"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="settle/new"
         options={{
           presentation: 'modal',
@@ -74,6 +102,56 @@ function NavigationGate() {
       />
       <Stack.Screen
         name="ai/scanner"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="notifications/index"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="notifications/preferences"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="support/index"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="support/new"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="support/[id]"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="legal/privacy"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="legal/terms"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="legal/delete-account"
         options={{
           presentation: 'modal',
           headerShown: false,

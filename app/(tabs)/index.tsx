@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Plus, Sparkles, ArrowUpRight, ArrowDownLeft, ShieldCheck } from 'lucide-react-native';
+import { Plus, Sparkles, ArrowUpRight, ArrowDownLeft, ShieldCheck, Bell } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import * as Haptics from 'expo-haptics';
 
@@ -23,16 +23,29 @@ export default function HomeScreen() {
             <Text style={styles.headerSubtitle}>WELCOME BACK</Text>
             <Text style={styles.headerTitle}>SplitIt</Text>
           </View>
-          <TouchableOpacity
-            style={styles.aiButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/ai/chat');
-            }}
-          >
-            <Sparkles size={18} color={THEME.colors.aiLight} />
-            <Text style={styles.aiButtonText}>AI Insights</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.aiButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/ai/chat');
+              }}
+            >
+              <Sparkles size={16} color={THEME.colors.aiLight} />
+              <Text style={styles.aiButtonText}>AI Insights</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bellButton}
+              onPress={() => {
+                Haptics.selectionAsync();
+                router.push('/notifications');
+              }}
+            >
+              <Bell size={18} color={THEME.colors.text} />
+              <View style={styles.bellDot} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Hero Balance Card */}
@@ -129,6 +142,11 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
     letterSpacing: -0.5,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   aiButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -144,6 +162,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: THEME.colors.aiLight,
+  },
+  bellButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    position: 'relative',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 6,
+    right: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: THEME.colors.primary,
   },
   heroCard: {
     backgroundColor: THEME.colors.surface,
