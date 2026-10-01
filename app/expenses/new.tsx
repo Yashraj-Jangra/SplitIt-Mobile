@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { X, Check, Camera, Sparkles } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { calculateSplitAmounts, classifyExpense, defaultExpenseCategories } from '@splitit/core';
@@ -9,9 +9,16 @@ import * as Haptics from 'expo-haptics';
 
 export default function NewExpenseModal() {
   const router = useRouter();
-  const [amount, setAmount] = useState('1200');
-  const [description, setDescription] = useState('Dinner at Social');
+  const params = useLocalSearchParams<{ amount?: string; description?: string; category?: string }>();
+
+  const [amount, setAmount] = useState(params.amount || '1200');
+  const [description, setDescription] = useState(params.description || 'Dinner at Social');
   const [splitMode, setSplitMode] = useState<'equally' | 'unequally' | 'shares' | 'percentage'>('equally');
+
+  useEffect(() => {
+    if (params.amount) setAmount(params.amount);
+    if (params.description) setDescription(params.description);
+  }, [params.amount, params.description]);
 
   const participants = [
     { id: 'u1', name: 'You' },
@@ -48,15 +55,27 @@ export default function NewExpenseModal() {
           <X size={20} color={THEME.colors.textSecondary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Expense</Text>
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.back();
-          }}
-          style={styles.saveButton}
-        >
-          <Check size={20} color="#09090B" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/ai/scanner');
+            }}
+            style={styles.scanButton}
+          >
+            <Camera size={16} color={THEME.colors.primary} />
+            <Text style={styles.scanButtonText}>Scan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.back();
+            }}
+            style={styles.saveButton}
+          >
+            <Check size={20} color="#09090B" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -153,6 +172,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: THEME.colors.text,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  scanButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primary,
   },
   saveButton: {
     backgroundColor: THEME.colors.primary,

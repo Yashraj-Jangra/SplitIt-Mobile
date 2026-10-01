@@ -25,7 +25,10 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             style={styles.aiButton}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/ai/chat');
+            }}
           >
             <Sparkles size={18} color={THEME.colors.aiLight} />
             <Text style={styles.aiButtonText}>AI Insights</Text>
@@ -51,12 +54,19 @@ export default function HomeScreen() {
         </View>
 
         {/* AI Velocity Insight Capsule */}
-        <View style={styles.insightCapsule}>
+        <TouchableOpacity
+          style={styles.insightCapsule}
+          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/ai/chat');
+          }}
+        >
           <Sparkles size={16} color={THEME.colors.ai} />
           <Text style={styles.insightText}>
             Spend velocity is <Text style={styles.insightHighlight}>8% below</Text> your 6-month average.
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Minimalist Micro-Visualization: 6-Bar Velocity Sparkline */}
         <View style={styles.card}>

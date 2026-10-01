@@ -109,15 +109,30 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.selectionAsync();
-            router.push(`/groups/${id}/settings`);
-          }}
-          style={styles.iconButton}
-        >
-          <Settings size={20} color={THEME.colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: '/ai/chat',
+                params: { groupId: group.id, groupName: group.name },
+              });
+            }}
+            style={styles.iconButton}
+          >
+            <Sparkles size={18} color={THEME.colors.aiLight} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.push(`/groups/${id}/settings`);
+            }}
+            style={styles.iconButton}
+          >
+            <Settings size={20} color={THEME.colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Segmented Tab Navigation */}

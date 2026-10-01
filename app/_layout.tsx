@@ -65,6 +65,20 @@ function NavigationGate() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="ai/chat"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="ai/scanner"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
