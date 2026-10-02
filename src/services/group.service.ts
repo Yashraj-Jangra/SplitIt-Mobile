@@ -110,7 +110,7 @@ export const groupService = {
         });
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             const mapped: GroupListItem[] = data.map((g: any, index: number) => ({
               id: g.id || `g_${index}`,
               name: g.name,
@@ -122,7 +122,7 @@ export const groupService = {
                 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop',
               ][index % 4],
               categoryIcon: g.categoryIcon || 'Users',
-              membersCount: g.members?.length || 3,
+              membersCount: g.members?.length || 1,
               members: (g.members || []).map((m: any) => ({
                 id: m.uid || m.id,
                 name: m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.name || 'Member',

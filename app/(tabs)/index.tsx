@@ -6,12 +6,14 @@ import { Plus, Sparkles, Bell, Handshake, ChevronRight, ArrowUpRight, ArrowDownL
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
+import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,8 +21,12 @@ export default function HomeScreen() {
       try {
         const user = await authService.getCachedUser();
         setCurrentUser(user);
-        const groupList = await groupService.getUserGroups();
+        const [groupList, txList] = await Promise.all([
+          groupService.getUserGroups(),
+          expenseService.getUserExpenses(10),
+        ]);
         setGroups(groupList);
+        setRecentTransactions(txList);
       } catch {
         // Fallback gracefully
       } finally {
@@ -40,9 +46,9 @@ export default function HomeScreen() {
     router.push('/settle/new');
   };
 
-  // Compute aggregate numbers from real groups or curated demo fallback
-  const totalOwed = groups.reduce((acc, g) => acc + (g.userNetBalance > 0 ? g.userNetBalance : 0), 0) || 18500;
-  const totalOwe = Math.abs(groups.reduce((acc, g) => acc + (g.userNetBalance < 0 ? g.userNetBalance : 0), 0)) || 4250;
+  // Compute aggregate numbers from real groups
+  const totalOwed = groups.reduce((acc, g) => acc + (g.userNetBalance > 0 ? g.userNetBalance : 0), 0);
+  const totalOwe = Math.abs(groups.reduce((acc, g) => acc + (g.userNetBalance < 0 ? g.userNetBalance : 0), 0));
   const netBalance = totalOwed - totalOwe;
 
   // Time-aware greeting
@@ -232,69 +238,49 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.ledgerStream}>
-            {[
-              {
-                id: 'tx_1',
-                title: 'Dinner at Social',
-                group: 'Apartment Flatmates 🏠',
-                time: 'Today',
-                amount: 1400,
-                type: 'get',
-                icon: Utensils,
-              },
-              {
-                id: 'tx_2',
-                title: 'High-speed Fiber Internet',
-                group: 'Apartment Flatmates 🏠',
-                time: 'Yesterday',
-                amount: 800,
-                type: 'owe',
-                icon: Car,
-              },
-              {
-                id: 'tx_3',
-                title: 'Supermarket Groceries',
-                group: 'Apartment Flatmates 🏠',
-                time: '04 Oct',
-                amount: 600,
-                type: 'get',
-                icon: ShoppingBag,
-              },
-            ].map((tx, index, arr) => {
-              const IconComp = tx.icon;
-              const isLast = index === arr.length - 1;
+            {recentTransactions.length > 0 ? (
+              recentTransactions.map((tx, index) => {
+                const isLast = index === recentTransactions.length - 1;
+                const isGet = tx.yourImpact === 'get';
+                const isOwe = tx.yourImpact === 'owe';
 
-              return (
-                <View key={tx.id} style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}>
-                  <View style={styles.ledgerIconCircle}>
-                    <IconComp size={16} color={THEME.colors.textSecondary} />
-                  </View>
+                return (
+                  <View key={tx.id} style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}>
+                    <View style={styles.ledgerIconCircle}>
+                      <ShoppingBag size={16} color={THEME.colors.textSecondary} />
+                    </View>
 
-                  <View style={styles.ledgerInfo}>
-                    <Text style={styles.ledgerTitle} numberOfLines={1}>
-                      {tx.title}
-                    </Text>
-                    <Text style={styles.ledgerSubline}>
-                      {tx.group} • {tx.time}
-                    </Text>
-                  </View>
+                    <View style={styles.ledgerInfo}>
+                      <Text style={styles.ledgerTitle} numberOfLines={1}>
+                        {tx.title}
+                      </Text>
+                      <Text style={styles.ledgerSubline}>
+                        {tx.groupName} • {tx.date}
+                      </Text>
+                    </View>
 
-                  <View style={styles.ledgerAmountCol}>
-                    <Text
-                      style={[
-                        styles.ledgerAmount,
-                        tx.type === 'get' ? { color: THEME.colors.primary } : { color: THEME.colors.negative },
-                      ]}
-                    >
-                      {tx.type === 'get' ? `+₹${tx.amount}` : `-₹${tx.amount}`}
-                    </Text>
-                    <Text style={styles.ledgerImpactLabel}>
-                      {tx.type === 'get' ? 'you get' : 'you owe'}
-                    </Text>
+                    <View style={styles.ledgerAmountCol}>
+                      <Text
+                        style={[
+                          styles.ledgerAmount,
+                          isGet && { color: THEME.colors.primary },
+                          isOwe && { color: THEME.colors.negative },
+                        ]}
+                      >
+                        {isGet ? `+₹${tx.yourShare || tx.amount}` : isOwe ? `-₹${tx.yourShare || tx.amount}` : `₹${tx.amount}`}
+                      </Text>
+                      <Text style={styles.ledgerImpactLabel}>
+                        {isGet ? 'you get' : isOwe ? 'you owe' : tx.paidByName}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              );
-            })}
+                );
+              })
+            ) : (
+              <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                <Text style={{ color: THEME.colors.textMuted, fontSize: 13 }}>No recent transactions recorded yet</Text>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>

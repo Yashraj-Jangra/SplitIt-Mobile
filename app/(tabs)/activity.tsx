@@ -1,78 +1,65 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Receipt, Handshake, Bot, Sparkles } from 'lucide-react-native';
+import {
+  Receipt,
+  Utensils,
+  Car,
+  Home,
+  Zap,
+  Heart,
+  ShoppingBag,
+  Plane,
+  Wallet,
+} from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
+import * as Haptics from 'expo-haptics';
 
-interface ActivityItem {
-  id: string;
-  icon: any;
-  iconColor: string;
-  title: string;
-  subtitle: string;
-  time: string;
-  amount?: string;
-  type?: 'positive' | 'negative';
-  badge?: string;
-}
+const CATEGORY_ICONS: Record<string, any> = {
+  'Food and Drink': Utensils,
+  'Transportation': Car,
+  'Home': Home,
+  'Utilities': Zap,
+  'Personal Care': Heart,
+  'Shopping': ShoppingBag,
+  'Travel': Plane,
+  'Other': Wallet,
+};
 
 export default function ActivityScreen() {
-  const sections: Array<{ title: string; items: ActivityItem[] }> = [
-    {
-      title: 'Today',
-      items: [
-        {
-          id: '1',
-          icon: Receipt,
-          iconColor: THEME.colors.primary,
-          title: 'Dinner at Social',
-          subtitle: 'You paid ₹1,200 in Apartment Flatmates 🏠',
-          time: '2 hours ago',
-          amount: '+₹800',
-          type: 'positive',
-        },
-      ],
-    },
-    {
-      title: 'Yesterday',
-      items: [
-        {
-          id: '2',
-          icon: Bot,
-          iconColor: THEME.colors.aiLight,
-          title: 'AI Budget Optimized',
-          subtitle: 'Auto-balanced categories for October (₹25k cap)',
-          time: '18 hours ago',
-          badge: 'AI Smart',
-        },
-      ],
-    },
-    {
-      title: 'Earlier this week',
-      items: [
-        {
-          id: '3',
-          icon: Handshake,
-          iconColor: THEME.colors.primary,
-          title: 'Settled with Rohit Sharma',
-          subtitle: 'Received ₹450 via UPI in Apartment Flatmates',
-          time: '3 days ago',
-          amount: '+₹450',
-          type: 'positive',
-        },
-        {
-          id: '4',
-          icon: Receipt,
-          iconColor: THEME.colors.negative,
-          title: 'Camping Equipment Rental',
-          subtitle: 'Rohit paid ₹2,400 in Weekend Treks ⛰️',
-          time: '4 days ago',
-          amount: '-₹800',
-          type: 'negative',
-        },
-      ],
-    },
-  ];
+  const [transactions, setTransactions] = useState<UserTransactionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const data = await expenseService.getUserExpenses(30);
+      setTransactions(data);
+    } catch {
+      // Graceful fallback
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    loadData();
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -82,57 +69,91 @@ export default function ActivityScreen() {
         <Text style={styles.subtitle}>Recent transactions & group changes</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-        {sections.map((section) => (
-          <View key={section.title} style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-
+      <ScrollView
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.colors.primary}
+          />
+        }
+      >
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color={THEME.colors.primary} />
+          </View>
+        ) : transactions.length > 0 ? (
+          <View style={styles.sectionWrap}>
+            <Text style={styles.sectionTitle}>Recent Transactions</Text>
             <View style={styles.ledgerCard}>
-              {section.items.map((item, index) => {
-                const IconComponent = item.icon;
-                const isLast = index === section.items.length - 1;
+              {transactions.map((tx, index) => {
+                const IconComponent = CATEGORY_ICONS[tx.masterCategory] || Receipt;
+                const isLast = index === transactions.length - 1;
+                const isGet = tx.yourImpact === 'get';
+                const isOwe = tx.yourImpact === 'owe';
 
                 return (
-                  <View key={item.id} style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}>
+                  <View
+                    key={tx.id}
+                    style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                  >
                     <View style={styles.iconCircle}>
-                      <IconComponent size={16} color={item.iconColor} />
+                      <IconComponent
+                        size={16}
+                        color={
+                          isGet
+                            ? THEME.colors.primary
+                            : isOwe
+                            ? THEME.colors.negative
+                            : THEME.colors.textSecondary
+                        }
+                      />
                     </View>
 
                     <View style={styles.details}>
                       <Text style={styles.activityTitle} numberOfLines={1}>
-                        {item.title}
+                        {tx.title}
                       </Text>
                       <Text style={styles.activitySubtitle} numberOfLines={1}>
-                        {item.subtitle}
+                        {tx.paidByName} • {tx.groupName}
                       </Text>
-                      <Text style={styles.activityTime}>{item.time}</Text>
+                      <Text style={styles.activityTime}>{tx.date}</Text>
                     </View>
 
-                    {item.amount && (
-                      <View style={styles.amountCol}>
-                        <Text
-                          style={[
-                            styles.amountText,
-                            item.type === 'positive' && { color: THEME.colors.primary },
-                            item.type === 'negative' && { color: THEME.colors.negative },
-                          ]}
-                        >
-                          {item.amount}
-                        </Text>
-                      </View>
-                    )}
-
-                    {item.badge && (
-                      <View style={styles.badgePill}>
-                        <Text style={styles.badgeText}>{item.badge}</Text>
-                      </View>
-                    )}
+                    <View style={styles.amountCol}>
+                      <Text
+                        style={[
+                          styles.amountText,
+                          isGet && { color: THEME.colors.primary },
+                          isOwe && { color: THEME.colors.negative },
+                        ]}
+                      >
+                        {isGet
+                          ? `+₹${tx.yourShare || tx.amount}`
+                          : isOwe
+                          ? `-₹${tx.yourShare || tx.amount}`
+                          : `₹${tx.amount}`}
+                      </Text>
+                      <Text style={styles.impactSub}>
+                        {isGet ? 'you get' : isOwe ? 'you owe' : 'split'}
+                      </Text>
+                    </View>
                   </View>
                 );
               })}
             </View>
           </View>
-        ))}
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Receipt size={32} color={THEME.colors.textMuted} />
+            <Text style={styles.emptyTitle}>No activity yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Shared expenses and updates will appear here automatically.
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -149,92 +170,111 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 24,
+    fontWeight: '800',
     color: THEME.colors.text,
-    letterSpacing: -0.8,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
     marginTop: 2,
   },
   listContent: {
     paddingHorizontal: 12,
-    paddingBottom: 36,
-    gap: 20,
+    paddingBottom: 32,
+  },
+  loadingBox: {
+    paddingVertical: 48,
+    alignItems: 'center',
   },
   sectionWrap: {
-    gap: 8,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.8,
     color: THEME.colors.textMuted,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
+    marginBottom: 8,
+    paddingHorizontal: 4,
   },
   ledgerCard: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    paddingHorizontal: 12,
+    borderColor: THEME.colors.border,
+    overflow: 'hidden',
   },
   ledgerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
   ledgerRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.hairline,
   },
   iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   details: {
     flex: 1,
+    marginRight: 12,
   },
   activityTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: THEME.colors.text,
   },
   activitySubtitle: {
     fontSize: 12,
     color: THEME.colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
   activityTime: {
-    fontSize: 10,
+    fontSize: 11,
     color: THEME.colors.textMuted,
-    marginTop: 3,
+    marginTop: 2,
   },
   amountCol: {
     alignItems: 'flex-end',
   },
   amountText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
+    color: THEME.colors.text,
   },
-  badgePill: {
-    backgroundColor: THEME.colors.aiMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.25)',
-  },
-  badgeText: {
+  impactSub: {
     fontSize: 10,
-    fontWeight: '800',
-    color: THEME.colors.aiLight,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  emptyContainer: {
+    paddingVertical: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginTop: 12,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 18,
   },
 });

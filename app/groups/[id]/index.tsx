@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -39,17 +40,26 @@ export default function GroupDetailScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadGroup = async () => {
+    const targetId = Array.isArray(id) ? id[0] : (id || '1');
+    const data = await groupService.getGroupDetails(targetId);
+    setGroup(data);
+    setLoading(false);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
-    const loadGroup = async () => {
-      setLoading(true);
-      const targetId = Array.isArray(id) ? id[0] : (id || '1');
-      const data = await groupService.getGroupDetails(targetId);
-      setGroup(data);
-      setLoading(false);
-    };
+    setLoading(true);
     loadGroup();
   }, [id]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    loadGroup();
+  };
 
   const handleTabChange = (tab: 'expenses' | 'balances' | 'budget' | 'activity') => {
     Haptics.selectionAsync();
@@ -58,7 +68,8 @@ export default function GroupDetailScreen() {
 
   const handleAddExpense = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/expenses/new');
+    const targetId = Array.isArray(id) ? id[0] : (id || '');
+    router.push(`/expenses/new?groupId=${targetId}`);
   };
 
   if (loading || !group) {
@@ -261,7 +272,17 @@ export default function GroupDetailScreen() {
       </View>
 
       {/* Tab Content Stream */}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.colors.primary}
+          />
+        }
+      >
         {/* TAB 1: EXPENSES */}
         {activeTab === 'expenses' && (
           <View style={styles.tabSection}>

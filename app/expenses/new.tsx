@@ -42,6 +42,9 @@ import {
   classifyExpense,
   defaultExpenseCategories,
 } from '@splitit/core';
+import { groupService, GroupListItem } from '../../src/services/group.service';
+import { expenseService } from '../../src/services/expense.service';
+import { authService } from '../../src/services/auth.service';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -82,11 +85,15 @@ export default function NewExpenseModal() {
   const [description, setDescription] = useState(params.description || '');
   const [category, setCategory] = useState(params.category || 'Dining Out');
   const [masterCategory, setMasterCategory] = useState('Food and Drink');
-  const [date, setDate] = useState('Today, Oct 6');
+  const [date, setDate] = useState('Today');
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
   const [userOverriddenCategory, setUserOverriddenCategory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Group State
+  const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(params.groupId || '');
 
   // Payer & Split Mode State
   const [singlePayerId, setSinglePayerId] = useState('u1');
@@ -99,12 +106,42 @@ export default function NewExpenseModal() {
   const [categorySearch, setCategorySearch] = useState('');
 
   // Participants State
-  const [participants, setParticipants] = useState<Participant[]>([
-    { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop', selected: true, shares: 1 },
-    { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop', selected: true, shares: 1 },
-    { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop', selected: true, shares: 1 },
-    { id: 'u4', name: 'Aman Verma', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop', selected: true, shares: 1 },
-  ]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+
+  // Load user groups and participants dynamically
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const user = await authService.getCachedUser();
+        const currentUserId = user?.id || 'u1';
+        setSinglePayerId(currentUserId);
+
+        const allGroups = await groupService.getUserGroups();
+        setGroups(allGroups);
+
+        const targetGroupId = params.groupId || allGroups[0]?.id || '';
+        setSelectedGroupId(targetGroupId);
+
+        if (targetGroupId) {
+          const groupDetails = await groupService.getGroupDetails(targetGroupId);
+          if (groupDetails?.members?.length > 0) {
+            setParticipants(
+              groupDetails.members.map((m) => ({
+                id: m.id,
+                name: m.name,
+                avatarUrl: m.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
+                selected: true,
+                shares: 1,
+              }))
+            );
+          }
+        }
+      } catch {
+        // Keep default state
+      }
+    };
+    init();
+  }, [params.groupId]);
 
   // AI Classification on description change
   useEffect(() => {
@@ -164,17 +201,46 @@ export default function NewExpenseModal() {
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!description.trim() || numAmount <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
+    if (!selectedGroupId) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
     setIsSaving(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => {
+    try {
+      const res = await expenseService.createExpense({
+        groupId: selectedGroupId,
+        amount: numAmount,
+        description: description.trim(),
+        category,
+        masterCategory,
+        splitType: splitMode,
+        notes: notes.trim() || undefined,
+        date: new Date().toISOString(),
+        payers: [{ userId: singlePayerId, amount: numAmount }],
+        participants: selectedParticipants.map((p) => ({
+          userId: p.id,
+          amountOwed: splitBreakdown[p.id] || numAmount / selectedParticipants.length,
+          share: p.shares || 1,
+        })),
+      });
+
+      if (res.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.back();
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
       setIsSaving(false);
-      router.back();
-    }, 350);
+    }
   };
 
   const CategoryIconComponent = CATEGORY_ICONS[masterCategory] || Wallet;
