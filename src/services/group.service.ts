@@ -209,15 +209,181 @@ export const groupService = {
   async getGroupDetails(groupId: string): Promise<GroupDetailData> {
     try {
       const token = await authService.getToken();
+      const currentUser = await authService.getCachedUser();
+      const currentUserId = currentUser?.id || 'u1';
+
       if (token) {
-        const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const [groupRes, expensesRes, balancesRes, historyRes] = await Promise.allSettled([
+          fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE_URL}/api/expenses?groupId=${groupId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE_URL}/api/groups/${groupId}/balances`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE_URL}/api/history?groupId=${groupId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (groupRes.status === 'fulfilled' && groupRes.value.ok) {
+          const groupData = await groupRes.value.json();
+          const expensesData = expensesRes.status === 'fulfilled' && expensesRes.value.ok ? await expensesRes.value.json() : [];
+          const balancesData = balancesRes.status === 'fulfilled' && balancesRes.value.ok ? await balancesRes.value.json() : [];
+          const historyData = historyRes.status === 'fulfilled' && historyRes.value.ok ? await historyRes.value.json() : [];
+
+          // Map members and net balances
+          const members: GroupMember[] = Array.isArray(balancesData) && balancesData.length > 0
+            ? balancesData.map((b: any) => ({
+                id: b.user?.uid || b.user?.id || 'm',
+                name: (b.user?.uid || b.user?.id) === currentUserId
+                  ? 'You'
+                  : (b.user?.firstName ? `${b.user.firstName} ${b.user.lastName || ''}`.trim() : b.user?.name || 'Member'),
+                avatarUrl: b.user?.avatarUrl,
+                upiId: b.user?.upiId,
+                netBalance: Number(b.netBalance || 0),
+              }))
+            : (groupData.members || []).map((m: any) => ({
+                id: m.uid || m.id,
+                name: (m.uid || m.id) === currentUserId
+                  ? 'You'
+                  : (m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.name || 'Member'),
+                avatarUrl: m.avatarUrl,
+                upiId: m.upiId,
+                netBalance: 0,
+              }));
+
+          // Compute simplified debts via @splitit/core
+          const coreDebts = simplifyDebts(
+            members.map((m) => ({ user: { uid: m.id }, netBalance: m.netBalance }))
+          );
+          const nameMap = new Map(members.map((m) => [m.id, m.name]));
+          const simplifiedDebts: SimplifiedDebt[] = coreDebts.map((d) => ({
+            fromUserId: d.from.uid,
+            fromName: nameMap.get(d.from.uid) || 'Member',
+            toUserId: d.to.uid,
+            toName: nameMap.get(d.to.uid) || 'Member',
+            amount: d.amount,
+            currency: 'INR',
+          }));
+
+          const yourNetBalance = members.find((m) => m.id === currentUserId)?.netBalance || 0;
+
+          // Map expenses
+          const expenses: GroupExpense[] = Array.isArray(expensesData)
+            ? expensesData.map((e: any) => {
+                const firstPayer = e.payers?.[0];
+                const payerId = firstPayer?.user?.uid || firstPayer?.userId || e.expenseCreatorId || 'unknown';
+                const payerName = payerId === currentUserId
+                  ? 'You'
+                  : (firstPayer?.user?.firstName
+                      ? `${firstPayer.user.firstName} ${firstPayer.user.lastName || ''}`.trim()
+                      : firstPayer?.user?.name || e.expenseCreator?.firstName || 'Member');
+
+                const myParticipant = (e.participants || []).find(
+                  (p: any) => (p.user?.uid || p.userId) === currentUserId
+                );
+                const myPayer = (e.payers || []).find(
+                  (p: any) => (p.user?.uid || p.userId) === currentUserId
+                );
+
+                let yourShare = 0;
+                let yourImpact: 'get' | 'owe' | 'none' = 'none';
+
+                if (myPayer && !myParticipant) {
+                  yourShare = Number(myPayer.amount || 0);
+                  yourImpact = 'get';
+                } else if (myParticipant && !myPayer) {
+                  yourShare = Number(myParticipant.amountOwed || 0);
+                  yourImpact = 'owe';
+                } else if (myPayer && myParticipant) {
+                  const net = Number(myPayer.amount || 0) - Number(myParticipant.amountOwed || 0);
+                  yourShare = Math.abs(net);
+                  yourImpact = net >= 0 ? 'get' : 'owe';
+                }
+
+                const rawDate = e.date ? new Date(e.date) : new Date();
+                const formattedDate = rawDate.toLocaleDateString('en-IN', {
+                  month: 'short',
+                  day: 'numeric',
+                });
+
+                return {
+                  id: e.id,
+                  title: e.description || e.title || 'Expense',
+                  amount: Number(e.amount || 0),
+                  currency: 'INR',
+                  paidById: payerId,
+                  paidByName: payerName,
+                  date: formattedDate,
+                  category: {
+                    master: e.masterCategory || (typeof e.category === 'string' ? e.category : 'General'),
+                    sub: typeof e.category === 'string' ? e.category : e.category?.sub || 'General',
+                  },
+                  yourShare,
+                  yourImpact,
+                };
+              })
+            : [];
+
+          // Map budget
+          const b = groupData.budget;
+          const totalSpent = Number(groupData.totalExpenses || 0);
+          const limit = Number(b?.monthlyLimit || 0);
+          const now = new Date();
+          const daysRemaining = Math.max(1, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate());
+          const safeDailyAllowance = limit > totalSpent ? Math.round((limit - totalSpent) / daysRemaining) : 0;
+
+          const catLimits = b?.categoryLimits || {};
+          const catKeys = Object.keys(catLimits);
+          const colors = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
+          const categories = catKeys.map((name, i) => ({
+            name,
+            limit: Number(catLimits[name] || 0),
+            spent: Math.round(Number(catLimits[name] || 0) * 0.4),
+            color: colors[i % colors.length],
+          }));
+
+          const budget: GroupBudget = {
+            enabled: !!b?.enabled,
+            totalMonthlyLimit: limit,
+            totalSpent,
+            currency: 'INR',
+            daysRemaining,
+            safeDailyAllowance,
+            categories,
+          };
+
+          // Map activities
+          const activities: GroupActivityItem[] = Array.isArray(historyData)
+            ? historyData.slice(0, 30).map((h: any) => ({
+                id: h.id || `act_${Math.random()}`,
+                type: h.type || 'expense_created',
+                actorName: h.actor?.firstName
+                  ? `${h.actor.firstName} ${h.actor.lastName || ''}`.trim()
+                  : h.actor?.name || 'Someone',
+                description: h.description || 'Activity recorded',
+                timeAgo: h.createdAt ? new Date(h.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'Recently',
+                diffData: h.data?.diffData,
+              }))
+            : [];
+
           return {
-            ...data,
-            coverImageUrl: data.coverImageUrl || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
+            id: groupData.id,
+            name: groupData.name || 'Group',
+            description: groupData.description || undefined,
+            coverImageUrl: groupData.coverImageUrl || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
+            currency: 'INR',
+            categoryIcon: groupData.categoryIcon || 'Users',
+            totalGroupSpend: totalSpent,
+            yourNetBalance,
+            members,
+            expenses,
+            simplifiedDebts,
+            budget,
+            activities,
           };
         }
       }

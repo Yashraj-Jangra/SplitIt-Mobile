@@ -72,11 +72,31 @@ export default function GroupDetailScreen() {
     );
   }
 
+  const expenses = group.expenses || [];
+  const members = group.members || [];
+  const simplifiedDebts = group.simplifiedDebts || [];
+  const budget = group.budget || {
+    enabled: false,
+    totalMonthlyLimit: 0,
+    totalSpent: 0,
+    currency: 'INR',
+    daysRemaining: 10,
+    safeDailyAllowance: 0,
+    categories: [],
+  };
+  const activities = group.activities || [];
+  const totalGroupSpend = group.totalGroupSpend || 0;
+  const yourNetBalance = group.yourNetBalance || 0;
+
   // Filtered expenses
-  const filteredExpenses = group.expenses.filter((exp) => {
-    const matchesSearch = exp.title.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredExpenses = expenses.filter((exp) => {
+    const matchesSearch = (exp.title || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const masterCat = exp.category?.master || '';
+    const subCat = exp.category?.sub || '';
     const matchesCategory =
-      categoryFilter === 'all' || exp.category.master.toLowerCase().includes(categoryFilter.toLowerCase());
+      categoryFilter === 'all' ||
+      masterCat.toLowerCase().includes(categoryFilter.toLowerCase()) ||
+      subCat.toLowerCase().includes(categoryFilter.toLowerCase());
     return matchesSearch && matchesCategory;
   });
 
@@ -181,21 +201,21 @@ export default function GroupDetailScreen() {
       <View style={styles.statsRibbonBar}>
         <View style={styles.statRibbonCol}>
           <Text style={styles.statRibbonLabel}>TOTAL SPENT</Text>
-          <Text style={styles.statRibbonValue}>₹{group.totalGroupSpend.toLocaleString('en-IN')}</Text>
+          <Text style={styles.statRibbonValue}>₹{totalGroupSpend.toLocaleString('en-IN')}</Text>
         </View>
         <View style={styles.statRibbonCol}>
           <Text style={styles.statRibbonLabel}>MEMBERS</Text>
-          <Text style={styles.statRibbonValue}>{group.members.length}</Text>
+          <Text style={styles.statRibbonValue}>{members.length}</Text>
         </View>
         <View style={styles.statRibbonCol}>
           <Text style={styles.statRibbonLabel}>YOUR BALANCE</Text>
           <Text
             style={[
               styles.statRibbonValue,
-              { color: group.yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
+              { color: yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
             ]}
           >
-            {group.yourNetBalance >= 0 ? `+₹${group.yourNetBalance}` : `-₹${Math.abs(group.yourNetBalance)}`}
+            {yourNetBalance >= 0 ? `+₹${yourNetBalance}` : `-₹${Math.abs(yourNetBalance)}`}
           </Text>
         </View>
         <TouchableOpacity
@@ -207,11 +227,11 @@ export default function GroupDetailScreen() {
           <Text
             style={[
               styles.statRibbonValue,
-              { color: group.budget.enabled ? THEME.colors.primaryLight : THEME.colors.textSecondary },
+              { color: budget.enabled ? THEME.colors.primaryLight : THEME.colors.textSecondary },
             ]}
           >
-            {group.budget.enabled
-              ? `${Math.round((group.budget.totalSpent / group.budget.totalMonthlyLimit) * 100)}%`
+            {budget.enabled && budget.totalMonthlyLimit > 0
+              ? `${Math.round(((budget.totalSpent || 0) / budget.totalMonthlyLimit) * 100)}%`
               : '+ Set'}
           </Text>
         </TouchableOpacity>
@@ -274,54 +294,71 @@ export default function GroupDetailScreen() {
 
             {/* Expense Rows */}
             <View style={styles.expensesList}>
-              {filteredExpenses.map((exp) => (
-                <TouchableOpacity
-                  key={exp.id}
-                  style={styles.expenseCard}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    router.push({
-                      pathname: '/expenses/[id]',
-                      params: {
-                        id: exp.id,
-                        title: exp.title,
-                        amount: String(exp.amount),
-                        paidByName: exp.paidByName,
-                        date: exp.date,
-                        category: exp.category.sub || exp.category.master,
-                      },
-                    });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.categoryIconBadge}>
-                    <Utensils size={18} color={THEME.colors.primaryLight} />
-                  </View>
-                  <View style={styles.expenseDetails}>
-                    <Text style={styles.expenseTitle}>{exp.title}</Text>
-                    <Text style={styles.expenseSubtitle}>
-                      {exp.paidByName} paid ₹{exp.amount} • {exp.date}
-                    </Text>
-                  </View>
-                  <View style={styles.impactContainer}>
-                    {exp.yourImpact === 'get' ? (
-                      <View style={styles.impactRight}>
-                        <Text style={[styles.impactAmount, { color: THEME.colors.primary }]}>
-                          +₹{exp.yourShare}
-                        </Text>
-                        <Text style={styles.impactLabel}>you get</Text>
-                      </View>
-                    ) : (
-                      <View style={styles.impactRight}>
-                        <Text style={[styles.impactAmount, { color: THEME.colors.negative }]}>
-                          -₹{exp.yourShare}
-                        </Text>
-                        <Text style={styles.impactLabel}>you owe</Text>
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {filteredExpenses.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Receipt size={36} color={THEME.colors.textMuted} />
+                  <Text style={styles.emptyTitle}>No expenses found</Text>
+                  <Text style={styles.emptySubtitle}>
+                    {searchQuery ? 'Try adjusting your search or category filters.' : 'Tap "+ Add" to record the first expense!'}
+                  </Text>
+                </View>
+              ) : (
+                filteredExpenses.map((exp) => (
+                  <TouchableOpacity
+                    key={exp.id}
+                    style={styles.expenseCard}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      router.push({
+                        pathname: '/expenses/[id]',
+                        params: {
+                          id: exp.id,
+                          title: exp.title,
+                          amount: String(exp.amount),
+                          paidByName: exp.paidByName || 'Member',
+                          date: exp.date,
+                          category: exp.category?.sub || exp.category?.master || 'General',
+                        },
+                      });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.categoryIconBadge}>
+                      <Utensils size={18} color={THEME.colors.primaryLight} />
+                    </View>
+                    <View style={styles.expenseDetails}>
+                      <Text style={styles.expenseTitle}>{exp.title}</Text>
+                      <Text style={styles.expenseSubtitle}>
+                        {exp.paidByName || 'Member'} paid ₹{exp.amount} • {exp.date}
+                      </Text>
+                    </View>
+                    <View style={styles.impactContainer}>
+                      {exp.yourImpact === 'get' ? (
+                        <View style={styles.impactRight}>
+                          <Text style={[styles.impactAmount, { color: THEME.colors.primary }]}>
+                            +₹{exp.yourShare}
+                          </Text>
+                          <Text style={styles.impactLabel}>you get</Text>
+                        </View>
+                      ) : exp.yourImpact === 'owe' ? (
+                        <View style={styles.impactRight}>
+                          <Text style={[styles.impactAmount, { color: THEME.colors.negative }]}>
+                            -₹{exp.yourShare}
+                          </Text>
+                          <Text style={styles.impactLabel}>you owe</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.impactRight}>
+                          <Text style={[styles.impactAmount, { color: THEME.colors.textMuted }]}>
+                            ₹0
+                          </Text>
+                          <Text style={styles.impactLabel}>not involved</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           </View>
         )}
@@ -339,60 +376,68 @@ export default function GroupDetailScreen() {
 
             {/* Debt Cards */}
             <View style={styles.debtsList}>
-              {group.simplifiedDebts.map((debt, index) => (
-                <View key={index} style={styles.debtCard}>
-                  <View style={styles.debtInfoRow}>
-                    <View style={styles.debtAvatar}>
-                      <Text style={styles.avatarLetter}>{debt.fromName.charAt(0)}</Text>
-                    </View>
-                    <View style={styles.debtTextCol}>
-                      <Text style={styles.debtPrimaryText}>
-                        <Text style={{ fontWeight: '800' }}>{debt.fromName}</Text> owes{' '}
-                        <Text style={{ fontWeight: '800' }}>{debt.toName}</Text>
-                      </Text>
-                      <Text style={styles.debtAmount}>₹{debt.amount.toLocaleString()}</Text>
-                    </View>
-                    {debt.toName === 'You' && (
-                      <TouchableOpacity
-                        style={styles.settleButton}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          router.push({
-                            pathname: '/settle/new',
-                            params: {
-                              groupId: group.id,
-                              debtorId: debt.fromUserId,
-                              debtorName: debt.fromName,
-                              creditorId: debt.toUserId,
-                              creditorName: debt.toName,
-                              amount: debt.amount.toString(),
-                              upiId: group.members.find((m) => m.id === debt.toUserId)?.upiId || 'rohit@okhdfc',
-                            },
-                          });
-                        }}
-                      >
-                        <Zap size={14} color="#09090B" />
-                        <Text style={styles.settleButtonText}>Settle</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+              {simplifiedDebts.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Handshake size={36} color={THEME.colors.primary} />
+                  <Text style={styles.emptyTitle}>All settled up!</Text>
+                  <Text style={styles.emptySubtitle}>No pending debts between members in this group.</Text>
                 </View>
-              ))}
+              ) : (
+                simplifiedDebts.map((debt, index) => (
+                  <View key={index} style={styles.debtCard}>
+                    <View style={styles.debtInfoRow}>
+                      <View style={styles.debtAvatar}>
+                        <Text style={styles.avatarLetter}>{(debt.fromName || 'M').charAt(0)}</Text>
+                      </View>
+                      <View style={styles.debtTextCol}>
+                        <Text style={styles.debtPrimaryText}>
+                          <Text style={{ fontWeight: '800' }}>{debt.fromName}</Text> owes{' '}
+                          <Text style={{ fontWeight: '800' }}>{debt.toName}</Text>
+                        </Text>
+                        <Text style={styles.debtAmount}>₹{debt.amount.toLocaleString()}</Text>
+                      </View>
+                      {debt.toName === 'You' && (
+                        <TouchableOpacity
+                          style={styles.settleButton}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            router.push({
+                              pathname: '/settle/new',
+                              params: {
+                                groupId: group.id,
+                                debtorId: debt.fromUserId,
+                                debtorName: debt.fromName,
+                                creditorId: debt.toUserId,
+                                creditorName: debt.toName,
+                                amount: debt.amount.toString(),
+                                upiId: members.find((m) => m.id === debt.toUserId)?.upiId || 'rohit@okhdfc',
+                              },
+                            });
+                          }}
+                        >
+                          <Zap size={14} color="#09090B" />
+                          <Text style={styles.settleButtonText}>Settle</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                ))
+              )}
             </View>
 
             {/* Member Standings */}
             <View style={styles.standingsCard}>
               <Text style={styles.sectionHeaderTitle}>MEMBER STANDINGS</Text>
-              {group.members.map((m) => (
+              {members.map((m) => (
                 <View key={m.id} style={styles.standingRow}>
                   <Text style={styles.standingName}>{m.name}</Text>
                   <Text
                     style={[
                       styles.standingAmount,
-                      { color: m.netBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
+                      { color: (m.netBalance || 0) >= 0 ? THEME.colors.primary : THEME.colors.negative },
                     ]}
                   >
-                    {m.netBalance >= 0 ? `+₹${m.netBalance}` : `-₹${Math.abs(m.netBalance)}`}
+                    {(m.netBalance || 0) >= 0 ? `+₹${m.netBalance || 0}` : `-₹${Math.abs(m.netBalance || 0)}`}
                   </Text>
                 </View>
               ))}
@@ -405,32 +450,40 @@ export default function GroupDetailScreen() {
           <View style={styles.tabSection}>
             <View style={styles.budgetCard}>
               <BudgetPacingRing
-                totalSpent={group.budget.totalSpent}
-                totalLimit={group.budget.totalMonthlyLimit}
-                daysRemaining={group.budget.daysRemaining}
-                safeDailyAllowance={group.budget.safeDailyAllowance}
+                totalSpent={budget.totalSpent || 0}
+                totalLimit={budget.totalMonthlyLimit || 0}
+                daysRemaining={budget.daysRemaining || 0}
+                safeDailyAllowance={budget.safeDailyAllowance || 0}
               />
             </View>
 
             {/* Category Allocations */}
             <View style={styles.categoryAllocationsCard}>
               <Text style={styles.sectionHeaderTitle}>CATEGORY BREAKDOWN</Text>
-              {group.budget.categories.map((cat, idx) => {
-                const percent = Math.min(100, Math.round((cat.spent / cat.limit) * 100));
-                return (
-                  <View key={idx} style={styles.catRow}>
-                    <View style={styles.catLabelRow}>
-                      <Text style={styles.catName}>{cat.name}</Text>
-                      <Text style={styles.catNumbers}>
-                        ₹{cat.spent.toLocaleString()} / ₹{cat.limit.toLocaleString()} ({percent}%)
-                      </Text>
+              {(budget.categories || []).length === 0 ? (
+                <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, color: THEME.colors.textMuted }}>No category limits configured</Text>
+                </View>
+              ) : (
+                budget.categories.map((cat, idx) => {
+                  const limit = cat.limit || 1;
+                  const spent = cat.spent || 0;
+                  const percent = Math.min(100, Math.round((spent / limit) * 100));
+                  return (
+                    <View key={idx} style={styles.catRow}>
+                      <View style={styles.catLabelRow}>
+                        <Text style={styles.catName}>{cat.name}</Text>
+                        <Text style={styles.catNumbers}>
+                          ₹{spent.toLocaleString()} / ₹{limit.toLocaleString()} ({percent}%)
+                        </Text>
+                      </View>
+                      <View style={styles.catBarBackground}>
+                        <View style={[styles.catBarFill, { width: `${percent}%`, backgroundColor: cat.color || THEME.colors.primary }]} />
+                      </View>
                     </View>
-                    <View style={styles.catBarBackground}>
-                      <View style={[styles.catBarFill, { width: `${percent}%`, backgroundColor: cat.color }]} />
-                    </View>
-                  </View>
-                );
-              })}
+                  );
+                })
+              )}
             </View>
           </View>
         )}
@@ -438,26 +491,33 @@ export default function GroupDetailScreen() {
         {/* TAB 4: ACTIVITY AUDIT FEED */}
         {activeTab === 'activity' && (
           <View style={styles.tabSection}>
-            {group.activities.map((act) => (
-              <View key={act.id} style={styles.activityCard}>
-                <View style={styles.activityIconBadge}>
-                  {act.type === 'budget_updated' ? (
-                    <Bot size={18} color={THEME.colors.aiLight} />
-                  ) : act.type === 'settlement' ? (
-                    <Handshake size={18} color={THEME.colors.primary} />
-                  ) : (
-                    <Receipt size={18} color={THEME.colors.textSecondary} />
-                  )}
-                </View>
-                <View style={styles.activityDetails}>
-                  <Text style={styles.activityDescription}>
-                    <Text style={{ fontWeight: '800' }}>{act.actorName}</Text> {act.description}
-                  </Text>
-                  <Text style={styles.activityTime}>{act.timeAgo}</Text>
+            {activities.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Receipt size={36} color={THEME.colors.textMuted} />
+                <Text style={styles.emptyTitle}>No activity yet</Text>
+                <Text style={styles.emptySubtitle}>Recent expenses, settlements, and updates will appear here.</Text>
+              </View>
+            ) : (
+              activities.map((act) => (
+                <View key={act.id} style={styles.activityCard}>
+                  <View style={styles.activityIconBadge}>
+                    {act.type === 'budget_updated' ? (
+                      <Bot size={18} color={THEME.colors.aiLight} />
+                    ) : act.type === 'settlement' ? (
+                      <Handshake size={18} color={THEME.colors.primary} />
+                    ) : (
+                      <Receipt size={18} color={THEME.colors.textSecondary} />
+                    )}
+                  </View>
+                  <View style={styles.activityDetails}>
+                    <Text style={styles.activityDescription}>
+                      <Text style={{ fontWeight: '800' }}>{act.actorName}</Text> {act.description}
+                    </Text>
+                    <Text style={styles.activityTime}>{act.timeAgo}</Text>
 
-                  {/* Granular Budget Diff Box */}
-                  {act.diffData && (
-                    <View style={styles.diffBox}>
+                    {/* Granular Budget Diff Box */}
+                    {act.diffData && (
+                      <View style={styles.diffBox}>
                       {act.diffData.monthlyBudgetUnchanged && (
                         <View style={styles.diffUnchangedRow}>
                           <CheckCircle2 size={13} color={THEME.colors.primary} />
@@ -482,9 +542,10 @@ export default function GroupDetailScreen() {
                   )}
                 </View>
               </View>
-            ))}
-          </View>
-        )}
+            ))
+          )}
+        </View>
+      )}
       </ScrollView>
 
       {/* Floating Add Expense Action Button */}
@@ -941,6 +1002,28 @@ const styles = StyleSheet.create({
   diffChangeText: {
     fontSize: 11,
     color: THEME.colors.textSecondary,
+  },
+  emptyContainer: {
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginTop: 6,
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
   },
   fab: {
     position: 'absolute',
