@@ -16,6 +16,8 @@ import { useRouter } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
+import { GoogleLogo } from '../../src/components/brand/GoogleLogo';
 import * as Haptics from 'expo-haptics';
 
 export default function LoginScreen() {
@@ -80,21 +82,28 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero Illustration */}
+          {/* Official Website Hero Banner */}
           <View style={styles.heroImageContainer}>
             <Image
-              source={require('../../assets/illustrations/login-hero.jpg')}
+              source={{
+                uri: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80',
+              }}
               style={styles.heroImage}
               resizeMode="cover"
             />
             <View style={styles.imageOverlay} />
+            <View style={styles.heroBrandOverlay}>
+              <View style={styles.logoBadge}>
+                <BrandLogoImage size={56} />
+              </View>
+            </View>
           </View>
 
           {/* Brand Header */}
           <View style={styles.header}>
-            <Text style={styles.brandTitle}>SplitIt</Text>
+            <Text style={styles.brandTitle}>Welcome</Text>
             <Text style={styles.brandSubtitle}>
-              Shared expenses, settled simply.
+              Sign in to access your expenses & balances
             </Text>
           </View>
 
@@ -117,9 +126,7 @@ export default function LoginScreen() {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <View style={styles.googleIconBadge}>
-                    <Text style={styles.googleIconText}>G</Text>
-                  </View>
+                  <GoogleLogo size={20} />
                   <Text style={styles.googleButtonText}>Continue with Google</Text>
                 </>
               )}
@@ -131,7 +138,7 @@ export default function LoginScreen() {
                 onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.appleButtonText}> Sign in with Apple</Text>
+                <Text style={styles.appleButtonText}> Continue with Apple</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -256,7 +263,27 @@ const styles = StyleSheet.create({
   },
   imageOverlay: {
     ...(StyleSheet.absoluteFill as object),
-    backgroundColor: 'rgba(9, 9, 11, 0.25)',
+    backgroundColor: 'rgba(0, 0, 0, 0.60)',
+  },
+  heroBrandOverlay: {
+    ...(StyleSheet.absoluteFill as object),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBadge: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   header: {
     alignItems: 'center',

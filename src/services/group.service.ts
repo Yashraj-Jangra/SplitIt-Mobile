@@ -387,7 +387,7 @@ export const groupService = {
             id: groupData.id,
             name: groupData.name || 'Group',
             description: groupData.description || undefined,
-            coverImageUrl: groupData.coverImageUrl || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
+            coverImageUrl: groupData.coverImageUrl || 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200&auto=format&fit=crop',
             currency: 'INR',
             categoryIcon: groupData.categoryIcon || 'Users',
             totalGroupSpend: totalSpent,

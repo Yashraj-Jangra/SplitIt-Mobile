@@ -207,7 +207,7 @@ export default function GroupsScreen() {
                     source={{
                       uri:
                         group.coverImageUrl ||
-                        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
+                        'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200&auto=format&fit=crop',
                     }}
                     style={StyleSheet.absoluteFill}
                     resizeMode="cover"

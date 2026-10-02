@@ -9,12 +9,15 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
+import { GoogleLogo } from '../../src/components/brand/GoogleLogo';
 import * as Haptics from 'expo-haptics';
 
 export default function SignupScreen() {
@@ -93,11 +96,28 @@ export default function SignupScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Official Website Hero Banner */}
+          <View style={styles.heroImageContainer}>
+            <Image
+              source={{
+                uri: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80',
+              }}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+            <View style={styles.imageOverlay} />
+            <View style={styles.heroBrandOverlay}>
+              <View style={styles.logoBadge}>
+                <BrandLogoImage size={56} />
+              </View>
+            </View>
+          </View>
+
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Start splitting and settling expenses seamlessly.
+              Join SplitIt to split bills effortlessly
             </Text>
           </View>
 
@@ -109,28 +129,38 @@ export default function SignupScreen() {
           )}
 
           {/* Google Quick Sign-up */}
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleGoogleSignup}
-            disabled={googleLoading}
-            activeOpacity={0.8}
-          >
-            {googleLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <View style={styles.googleIconBadge}>
-                  <Text style={styles.googleIconText}>G</Text>
-                </View>
-                <Text style={styles.googleButtonText}>Sign up with Google</Text>
-              </>
+          <View style={styles.socialSection}>
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleSignup}
+              disabled={googleLoading}
+              activeOpacity={0.8}
+            >
+              {googleLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <GoogleLogo size={20} />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={styles.appleButton}
+                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.appleButtonText}> Continue with Apple</Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
 
           {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or register with email</Text>
+            <Text style={styles.dividerText}>or continue with email</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -261,8 +291,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 20,
   },
+  heroImageContainer: {
+    width: '100%',
+    height: 180,
+    borderRadius: THEME.radius.lg,
+    overflow: 'hidden',
+    marginTop: 6,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageOverlay: {
+    ...(StyleSheet.absoluteFill as object),
+    backgroundColor: 'rgba(0, 0, 0, 0.60)',
+  },
+  heroBrandOverlay: {
+    ...(StyleSheet.absoluteFill as object),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   header: {
-    marginBottom: 24,
+    alignItems: 'center',
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
@@ -273,7 +342,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     color: THEME.colors.textSecondary,
-    marginTop: 6,
+    marginTop: 4,
+    textAlign: 'center',
   },
   errorBanner: {
     backgroundColor: 'rgba(244, 63, 94, 0.12)',
@@ -289,6 +359,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+  socialSection: {
+    gap: 10,
+    marginBottom: 20,
+  },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -299,7 +373,19 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: THEME.radius.md,
     gap: 10,
-    marginBottom: 20,
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 13,
+    borderRadius: THEME.radius.md,
+  },
+  appleButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
   },
   googleIconBadge: {
     width: 22,

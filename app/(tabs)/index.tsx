@@ -7,6 +7,7 @@ import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
+import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
@@ -62,11 +63,16 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Minimalist Header */}
+        {/* Minimalist Header with Official Branding */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greetingText}>{getGreeting()}</Text>
-            <Text style={styles.userNameText}>{currentUser?.name || 'Yashraj'}</Text>
+          <View style={styles.brandHeaderLeft}>
+            <BrandLogoImage size={34} />
+            <View style={{ marginLeft: 10 }}>
+              <Text style={styles.brandTitleText}>SplitIt</Text>
+              <Text style={styles.greetingText}>
+                {getGreeting()}, {currentUser?.name?.split(' ')[0] || 'Friend'}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.headerRight}>
@@ -305,17 +311,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  greetingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
-    letterSpacing: 0.2,
+  brandHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  userNameText: {
-    fontSize: 22,
-    fontWeight: '800',
+  brandTitleText: {
+    fontSize: 20,
+    fontWeight: '900',
     color: THEME.colors.text,
     letterSpacing: -0.4,
+  },
+  greetingText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.1,
     marginTop: 1,
   },
   headerRight: {

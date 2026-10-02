@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { QrCode, Bell, HelpCircle, Shield, LogOut, Trash2, ChevronRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import * as Haptics from 'expo-haptics';
 
 export default function ProfileScreen() {
@@ -130,6 +131,14 @@ export default function ProfileScreen() {
             <Trash2 size={15} color={THEME.colors.negative} />
             <Text style={styles.deleteText}>Delete Account</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Brand Identity Footer */}
+        <View style={styles.brandFooter}>
+          <BrandLogoImage size={28} />
+          <Text style={styles.brandFooterTitle}>SplitIt</Text>
+          <Text style={styles.brandFooterTagline}>Shared expenses, settled simply.</Text>
+          <Text style={styles.brandFooterVersion}>v1.0.0 • Mobile & Web Synchronized</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -258,5 +267,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: THEME.colors.negative,
+  },
+  brandFooter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 4,
+    marginTop: 8,
+  },
+  brandFooterTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    letterSpacing: -0.2,
+    marginTop: 4,
+  },
+  brandFooterTagline: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+  },
+  brandFooterVersion: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+    marginTop: 2,
   },
 });
