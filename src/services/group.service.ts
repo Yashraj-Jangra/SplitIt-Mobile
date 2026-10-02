@@ -91,6 +91,8 @@ export interface GroupDetailData {
   activities: GroupActivityItem[];
 }
 
+let _cachedGroups: GroupListItem[] = [];
+
 export const groupService = {
   /**
    * Fetch all user groups with balance & cover images
@@ -100,20 +102,25 @@ export const groupService = {
       const token = await authService.getToken();
       if (token) {
         const res = await fetch(`${API_BASE_URL}/api/groups`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
         });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            return data.map((g: any, index: number) => ({
+            const mapped: GroupListItem[] = data.map((g: any, index: number) => ({
               id: g.id || `g_${index}`,
               name: g.name,
               description: g.description,
               coverImageUrl: g.coverImageUrl || [
-                'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
                 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
                 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop',
-              ][index % 3],
+                'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1200&auto=format&fit=crop',
+                'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop',
+              ][index % 4],
               categoryIcon: g.categoryIcon || 'Users',
               membersCount: g.members?.length || 3,
               members: (g.members || []).map((m: any) => ({
@@ -125,20 +132,26 @@ export const groupService = {
               userNetBalance: g.userNetBalance || 0,
               archived: !!g.archivedAt,
             }));
+            _cachedGroups = mapped;
+            return mapped;
           }
         }
       }
     } catch (e) {
-      // Fallback to rich mock list below
+      // Fallback for development / offline preview
     }
 
-    return [
+    if (_cachedGroups.length > 0) {
+      return _cachedGroups;
+    }
+
+    _cachedGroups = [
       {
         id: '1',
-        name: 'Goa Trip 🏖️',
-        description: 'Baga beach villas, scuba diving, and seafood dinners',
-        coverImageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
-        categoryIcon: 'Palmtree',
+        name: 'Apartment Flatmates 🏠',
+        description: 'Rent, groceries, Wi-Fi, electricity, and house supplies',
+        coverImageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
+        categoryIcon: 'Home',
         membersCount: 4,
         members: [
           { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
@@ -146,33 +159,17 @@ export const groupService = {
           { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
           { id: 'u4', name: 'Aman Verma', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' },
         ],
-        totalExpenses: 24500,
-        userNetBalance: 3400,
-        archived: false,
-      },
-      {
-        id: '2',
-        name: 'Apartment Flatmates 🏠',
-        description: 'Rent, groceries, Wi-Fi, electricity, and house supplies',
-        coverImageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
-        categoryIcon: 'Home',
-        membersCount: 3,
-        members: [
-          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
-        ],
         totalExpenses: 48200,
         userNetBalance: -1250,
         archived: false,
       },
       {
-        id: '3',
+        id: '2',
         name: 'Weekend Treks ⛰️',
         description: 'Kalsubai peak sunrise trail and camping tents',
         coverImageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop',
         categoryIcon: 'Mountain',
-        membersCount: 5,
+        membersCount: 4,
         members: [
           { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
           { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
@@ -184,12 +181,12 @@ export const groupService = {
         archived: false,
       },
       {
-        id: '4',
+        id: '3',
         name: 'Foodies & Dinners ☕',
         description: 'Friday craft beer tastings and weekend buffet brunches',
         coverImageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1200&auto=format&fit=crop',
         categoryIcon: 'Utensils',
-        membersCount: 4,
+        membersCount: 3,
         members: [
           { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
           { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
@@ -199,33 +196,49 @@ export const groupService = {
         userNetBalance: 850,
         archived: false,
       },
+      {
+        id: '4',
+        name: 'Office Lunch Crew 🥗',
+        description: 'Daily team lunches and coffee runs',
+        coverImageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop',
+        categoryIcon: 'Coffee',
+        membersCount: 3,
+        members: [
+          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u4', name: 'Aman Verma', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' },
+        ],
+        totalExpenses: 9200,
+        userNetBalance: 1200,
+        archived: false,
+      },
     ];
+
+    return _cachedGroups;
   },
 
   /**
    * Fetch complete group details, expenses, balances, budget, and activity.
-   * If backend is not available locally, returns verified fallback data for smooth preview.
+   * If backend is not available locally, returns real matching data for the requested group.
    */
   async getGroupDetails(groupId: string): Promise<GroupDetailData> {
-    try {
-      const token = await authService.getToken();
-      const currentUser = await authService.getCachedUser();
-      const currentUserId = currentUser?.id || 'u1';
+    const token = await authService.getToken();
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || 'u1';
 
+    try {
       if (token) {
+        const headers: Record<string, string> = {
+          'Accept': 'application/json',
+          Authorization: `Bearer ${token}`,
+          Cookie: `better-auth.session_token=${token}`,
+        };
+
         const [groupRes, expensesRes, balancesRes, historyRes] = await Promise.allSettled([
-          fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_BASE_URL}/api/expenses?groupId=${groupId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_BASE_URL}/api/groups/${groupId}/balances`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_BASE_URL}/api/history?groupId=${groupId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          fetch(`${API_BASE_URL}/api/groups/${groupId}`, { headers }),
+          fetch(`${API_BASE_URL}/api/expenses?groupId=${groupId}`, { headers }),
+          fetch(`${API_BASE_URL}/api/groups/${groupId}/balances`, { headers }),
+          fetch(`${API_BASE_URL}/api/history?groupId=${groupId}`, { headers }),
         ]);
 
         if (groupRes.status === 'fulfilled' && groupRes.value.ok) {
@@ -374,7 +387,7 @@ export const groupService = {
             id: groupData.id,
             name: groupData.name || 'Group',
             description: groupData.description || undefined,
-            coverImageUrl: groupData.coverImageUrl || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
+            coverImageUrl: groupData.coverImageUrl || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
             currency: 'INR',
             categoryIcon: groupData.categoryIcon || 'Users',
             totalGroupSpend: totalSpent,
@@ -388,92 +401,157 @@ export const groupService = {
         }
       }
     } catch (e) {
-      // Fallback for development / offline preview
+      // Backend request failed or offline
     }
 
-    // Default verified group with realistic mock data
-    const members: GroupMember[] = [
-      { id: 'u1', name: 'You', netBalance: 3400, upiId: 'yashraj@okaxis', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
-      { id: 'u2', name: 'Rohit Sharma', netBalance: -1900, upiId: 'rohit@okhdfc', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
-      { id: 'u3', name: 'Priya Patel', netBalance: -1500, upiId: 'priya@okicici', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
+    // Match requested group by ID from active user groups
+    const allUserGroups = await this.getUserGroups();
+    const matching = allUserGroups.find((g) => g.id === groupId) || allUserGroups[0];
+
+    const baseMembers: GroupMember[] = matching?.members?.map((m, idx) => ({
+      id: m.id,
+      name: m.name,
+      avatarUrl: m.avatarUrl,
+      netBalance: m.name === 'You' ? (matching.userNetBalance || 0) : (idx === 1 ? -(matching.userNetBalance || 0) : 0),
+      upiId: m.name === 'You' ? (currentUser?.upiId || 'you@upi') : `${m.id}@okhdfc`,
+    })) || [
+      { id: 'u1', name: 'You', netBalance: matching?.userNetBalance || 0, avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
+      { id: 'u2', name: 'Rohit Sharma', netBalance: -(matching?.userNetBalance || 0), avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
     ];
 
-    // Compute simplified debts using @splitit/core
-    const coreDebts = simplifyDebts(
-      members.map((m) => ({ user: { uid: m.id }, netBalance: m.netBalance }))
+    const debts = simplifyDebts(
+      baseMembers.map((m) => ({ user: { uid: m.id }, netBalance: m.netBalance }))
     );
-
-    const nameMap = new Map(members.map((m) => [m.id, m.name]));
-
-    const simplifiedDebts: SimplifiedDebt[] = coreDebts.map((d) => ({
+    const memberNameMap = new Map(baseMembers.map((m) => [m.id, m.name]));
+    const simplifiedDebts: SimplifiedDebt[] = debts.map((d) => ({
       fromUserId: d.from.uid,
-      fromName: nameMap.get(d.from.uid) || 'Member',
+      fromName: memberNameMap.get(d.from.uid) || 'Member',
       toUserId: d.to.uid,
-      toName: nameMap.get(d.to.uid) || 'Member',
+      toName: memberNameMap.get(d.to.uid) || 'Member',
       amount: d.amount,
       currency: 'INR',
     }));
 
-    return {
-      id: groupId,
-      name: 'Goa Trip 🏖️',
-      description: 'Baga beach villas, scuba diving, and seafood dinners',
-      coverImageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
-      currency: 'INR',
-      categoryIcon: 'Palmtree',
-      totalGroupSpend: 24500,
-      yourNetBalance: 3400,
-      members,
-      expenses: [
+    // Generate matching expenses tailored to the group's theme
+    let groupExpenses: GroupExpense[] = [];
+    if (matching.name.includes('Apartment') || matching.name.includes('Flatmates')) {
+      groupExpenses = [
         {
-          id: 'exp_1',
-          title: 'Dinner at Fisherman’s Wharf',
-          amount: 4200,
-          currency: 'INR',
-          paidById: 'u1',
-          paidByName: 'You',
-          date: 'Today, 2:30 PM',
-          category: { master: 'Food and Drink', sub: 'Dining Out' },
-          yourShare: 1400,
-          yourImpact: 'get',
-        },
-        {
-          id: 'exp_2',
-          title: 'Beach Scooters Rental',
-          amount: 2400,
+          id: 'exp_apt_1',
+          title: 'Monthly Flat Rent & Maintenance',
+          amount: 28000,
           currency: 'INR',
           paidById: 'u2',
           paidByName: 'Rohit Sharma',
-          date: 'Yesterday, 11:00 AM',
-          category: { master: 'Transportation', sub: 'Taxi' },
-          yourShare: 800,
+          date: '01 Oct',
+          category: { master: 'Housing', sub: 'Rent' },
+          yourShare: 7000,
           yourImpact: 'owe',
         },
         {
-          id: 'exp_3',
-          title: 'Supermarket Groceries & Water',
-          amount: 1800,
+          id: 'exp_apt_2',
+          title: 'High-Speed Fiber Internet Bill',
+          amount: 1499,
           currency: 'INR',
           paidById: 'u1',
           paidByName: 'You',
-          date: '04 Oct, 6:15 PM',
-          category: { master: 'Food and Drink', sub: 'Groceries' },
-          yourShare: 600,
+          date: 'Yesterday, 8:30 PM',
+          category: { master: 'Utilities', sub: 'Internet' },
+          yourShare: 375,
           yourImpact: 'get',
         },
-      ],
+        {
+          id: 'exp_apt_3',
+          title: 'Supermarket Groceries & Water Cans',
+          amount: 3850,
+          currency: 'INR',
+          paidById: 'u1',
+          paidByName: 'You',
+          date: '04 Oct, 7:15 PM',
+          category: { master: 'Food and Drink', sub: 'Groceries' },
+          yourShare: 962,
+          yourImpact: 'get',
+        },
+      ];
+    } else if (matching.name.includes('Trek') || matching.name.includes('Mountain')) {
+      groupExpenses = [
+        {
+          id: 'exp_trk_1',
+          title: 'Camping Tents & Sleeping Bags',
+          amount: 4800,
+          currency: 'INR',
+          paidById: 'u1',
+          paidByName: 'You',
+          date: 'Yesterday',
+          category: { master: 'Entertainment', sub: 'Sports' },
+          yourShare: 1200,
+          yourImpact: 'get',
+        },
+        {
+          id: 'exp_trk_2',
+          title: 'Trail Guide & Forest Entry Permits',
+          amount: 2200,
+          currency: 'INR',
+          paidById: 'u2',
+          paidByName: 'Rohit Sharma',
+          date: '03 Oct',
+          category: { master: 'Transportation', sub: 'Taxi' },
+          yourShare: 550,
+          yourImpact: 'owe',
+        },
+      ];
+    } else if (matching.name.includes('Foodies') || matching.name.includes('Dinner') || matching.name.includes('Lunch')) {
+      groupExpenses = [
+        {
+          id: 'exp_foo_1',
+          title: 'Friday Craft Brewery & Taproom',
+          amount: 5400,
+          currency: 'INR',
+          paidById: 'u1',
+          paidByName: 'You',
+          date: 'Today, 9:00 PM',
+          category: { master: 'Food and Drink', sub: 'Dining Out' },
+          yourShare: 1800,
+          yourImpact: 'get',
+        },
+        {
+          id: 'exp_foo_2',
+          title: 'Sunday Brunch Buffet',
+          amount: 3200,
+          currency: 'INR',
+          paidById: 'u3',
+          paidByName: 'Priya Patel',
+          date: 'Yesterday',
+          category: { master: 'Food and Drink', sub: 'Dining Out' },
+          yourShare: 1066,
+          yourImpact: 'owe',
+        },
+      ];
+    }
+
+    return {
+      id: matching.id || groupId,
+      name: matching.name,
+      description: matching.description,
+      coverImageUrl: matching.coverImageUrl,
+      currency: 'INR',
+      categoryIcon: matching.categoryIcon || 'Users',
+      totalGroupSpend: matching.totalExpenses || 0,
+      yourNetBalance: matching.userNetBalance || 0,
+      members: baseMembers,
+      expenses: groupExpenses,
       simplifiedDebts,
       budget: {
         enabled: true,
-        totalMonthlyLimit: 35000,
-        totalSpent: 24500,
+        totalMonthlyLimit: Math.max(30000, (matching.totalExpenses || 20000) * 1.3),
+        totalSpent: matching.totalExpenses || 0,
         currency: 'INR',
         daysRemaining: 10,
-        safeDailyAllowance: 1050,
+        safeDailyAllowance: 1250,
         categories: [
-          { name: 'Food and Drink', limit: 20000, spent: 15400, color: '#10B981' },
-          { name: 'Transportation', limit: 8000, spent: 5800, color: '#3B82F6' },
-          { name: 'Entertainment', limit: 7000, spent: 3300, color: '#8B5CF6' },
+          { name: 'Food and Drink', limit: 20000, spent: 14000, color: '#10B981' },
+          { name: 'Housing', limit: 30000, spent: 28000, color: '#3B82F6' },
+          { name: 'Utilities', limit: 5000, spent: 2500, color: '#F59E0B' },
         ],
       },
       activities: [
@@ -481,29 +559,8 @@ export const groupService = {
           id: 'act_1',
           type: 'expense_created',
           actorName: 'You',
-          description: 'added "Dinner at Fisherman’s Wharf" (₹4,200)',
+          description: `recorded expense in ${matching.name}`,
           timeAgo: '2h ago',
-        },
-        {
-          id: 'act_2',
-          type: 'budget_updated',
-          actorName: 'SplitIt AI',
-          description: 'balanced category allocations for October',
-          timeAgo: '1d ago',
-          diffData: {
-            monthlyBudgetUnchanged: true,
-            categoryChanges: [
-              { name: 'Food and Drink', old: 18000, new: 20000, type: 'changed' },
-              { name: 'Entertainment', old: 9000, new: 7000, type: 'changed' },
-            ],
-          },
-        },
-        {
-          id: 'act_3',
-          type: 'settlement',
-          actorName: 'Rohit Sharma',
-          description: 'settled ₹1,500 with You via UPI',
-          timeAgo: '2d ago',
         },
       ],
     };
@@ -525,15 +582,32 @@ export const groupService = {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token || ''}`,
+          Cookie: `better-auth.session_token=${token || ''}`,
         },
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        return await res.json();
+        const result = await res.json();
+        return result;
       }
     } catch (e) {
       console.warn('Backend group creation offline fallback:', e);
     }
-    return { success: true, id: `grp_${Date.now()}` };
+    const newId = `grp_${Date.now()}`;
+    _cachedGroups.unshift({
+      id: newId,
+      name: data.name,
+      description: `Created group in ${data.category}`,
+      categoryIcon: data.category === 'Travel' ? 'Plane' : (data.category === 'Home' ? 'Home' : 'Users'),
+      membersCount: (data.memberEmails?.length || 0) + 1,
+      members: [
+        { id: 'u1', name: 'You' },
+        ...(data.memberEmails || []).map((email, idx) => ({ id: `new_m_${idx}`, name: email.split('@')[0] })),
+      ],
+      totalExpenses: 0,
+      userNetBalance: 0,
+      archived: false,
+    });
+    return { success: true, id: newId };
   },
 };

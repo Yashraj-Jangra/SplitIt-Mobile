@@ -43,7 +43,8 @@ export default function GroupDetailScreen() {
   useEffect(() => {
     const loadGroup = async () => {
       setLoading(true);
-      const data = await groupService.getGroupDetails(id || 'default');
+      const targetId = Array.isArray(id) ? id[0] : (id || '1');
+      const data = await groupService.getGroupDetails(targetId);
       setGroup(data);
       setLoading(false);
     };

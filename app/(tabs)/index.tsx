@@ -235,8 +235,8 @@ export default function HomeScreen() {
             {[
               {
                 id: 'tx_1',
-                title: 'Fisherman’s Wharf Dinner',
-                group: 'Goa Trip 🏖️',
+                title: 'Dinner at Social',
+                group: 'Apartment Flatmates 🏠',
                 time: 'Today',
                 amount: 1400,
                 type: 'get',
@@ -244,8 +244,8 @@ export default function HomeScreen() {
               },
               {
                 id: 'tx_2',
-                title: 'Beach Scooters Rental',
-                group: 'Goa Trip 🏖️',
+                title: 'High-speed Fiber Internet',
+                group: 'Apartment Flatmates 🏠',
                 time: 'Yesterday',
                 amount: 800,
                 type: 'owe',

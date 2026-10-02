@@ -129,7 +129,7 @@ export default function NewGroupModal() {
               style={styles.heroInput}
               value={name}
               onChangeText={setName}
-              placeholder="e.g. Goa Trip 🏖️"
+              placeholder="e.g. Apartment Flatmates 🏠"
               placeholderTextColor={THEME.colors.textMuted}
             />
           </View>

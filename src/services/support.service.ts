@@ -75,7 +75,7 @@ export const supportService = {
         updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
         messages: [
           {
-            message: 'Would love an option to export our Goa Trip summary as a CSV file.',
+            message: 'Would love an option to export our group expenses summary as a CSV file.',
             sentAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
             sentBy: { uid: 'u1', firstName: 'You', email: 'user@splitit.app' },
           },

@@ -51,7 +51,7 @@ export default function AiChatModal() {
 
   const quickPrompts = [
     'How much do I owe?',
-    'Suggest budget cuts for Goa Trip',
+    'Suggest budget cuts for Apartment Flatmates',
     'What was our largest expense this month?',
   ];
 

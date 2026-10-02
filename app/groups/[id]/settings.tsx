@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,20 +8,33 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, UserPlus, Archive, Trash2, Check } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
+import { groupService } from '../../../src/services/group.service';
 import * as Haptics from 'expo-haptics';
 
 export default function GroupSettingsScreen() {
   const router = useRouter();
-  const [groupName, setGroupName] = useState('Goa Trip 🏖️');
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [groupName, setGroupName] = useState('');
+  const [members, setMembers] = useState<Array<{ id: string; name: string; email?: string }>>([]);
 
-  const members = [
-    { id: 'u1', name: 'You (Creator)', email: 'jangrayash1505@gmail.com' },
-    { id: 'u2', name: 'Rohit Sharma', email: 'rohit@example.com' },
-    { id: 'u3', name: 'Priya Patel', email: 'priya@example.com' },
-  ];
+  useEffect(() => {
+    const targetId = Array.isArray(id) ? id[0] : (id || '1');
+    groupService.getGroupDetails(targetId).then((g) => {
+      if (g) {
+        setGroupName(g.name);
+        setMembers(
+          g.members.map((m) => ({
+            id: m.id,
+            name: m.name,
+            email: `${m.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+          }))
+        );
+      }
+    });
+  }, [id]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>

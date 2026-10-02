@@ -90,13 +90,13 @@ export const aiService = {
 
     if (lower.includes('budget') || lower.includes('reduce') || lower.includes('cut')) {
       reply =
-        'I analyzed your **Goa Trip** spending velocity. You are currently tracking at **70% of your ₹35,000 monthly limit** with 10 days remaining.\n\nTo keep your group burn rate healthy, I generated an auto-balancing proposal: reduce **Entertainment** by ₹2,000 and allocate it toward **Food and Drink** to prevent end-of-month budget breaches.';
+        'I analyzed your **Apartment Flatmates** spending velocity. You are currently tracking at **72% of your ₹48,000 monthly limit** with 10 days remaining.\n\nTo keep your group burn rate healthy, I generated an auto-balancing proposal: reduce **Entertainment** by ₹2,000 and allocate it toward **Food and Drink** to prevent end-of-month budget breaches.';
       mockProposal = {
         id: `prop_${Date.now()}`,
         groupId: groupId || 'default',
-        groupName: 'Goa Trip 🏖️',
-        totalMonthlyLimit: 35000,
-        aiReasoning: 'Shift ₹2,000 from Entertainment to Food & Drink based on recent dining velocity.',
+        groupName: 'Apartment Flatmates 🏠',
+        totalMonthlyLimit: 48000,
+        aiReasoning: 'Shift ₹2,000 from Entertainment to Food & Drink based on recent grocery velocity.',
         status: 'pending',
         categoryChanges: [
           { name: 'Entertainment', old: 7000, new: 5000, diff: -2000 },
@@ -105,10 +105,10 @@ export const aiService = {
       };
     } else if (lower.includes('owe') || lower.includes('balance') || lower.includes('who')) {
       reply =
-        'Here is your current standing in **Goa Trip**:\n\n• **Net Balance**: You are owed **+₹3,400.00**\n• **Rohit Sharma** owes you **₹1,900.00**\n• **Priya Patel** owes you **₹1,500.00**\n\nAll debts have been greedily simplified via `@splitit/core` to minimize total transactions.';
+        'Here is your current standing in **Apartment Flatmates**:\n\n• **Net Balance**: You owe **-₹1,250.00**\n• You owe **Rohit Sharma** **₹1,250.00**\n• All other members are currently settled up\n\nAll debts have been greedily simplified via `@splitit/core` to minimize total transactions.';
     } else {
       reply =
-        `I am your **SplitIt AI Financial Assistant**.\n\nI can help you audit group expenses, calculate safe daily burn rates, detect category spending spikes, and formulate 1-tap budget proposals. Try asking: *"How much do I owe?"* or *"Suggest budget cuts for Goa Trip"*!`;
+        `I am your **SplitIt AI Financial Assistant**.\n\nI can help you audit group expenses, calculate safe daily burn rates, detect category spending spikes, and formulate 1-tap budget proposals. Try asking: *"How much do I owe?"* or *"Suggest budget cuts for Apartment Flatmates"*!`;
     }
 
     // Stream tokens smoothly with natural typing cadence
