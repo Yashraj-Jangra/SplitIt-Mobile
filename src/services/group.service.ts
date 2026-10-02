@@ -62,9 +62,24 @@ export interface GroupActivityItem {
   };
 }
 
+export interface GroupListItem {
+  id: string;
+  name: string;
+  description?: string;
+  coverImageUrl?: string;
+  categoryIcon?: string;
+  membersCount: number;
+  members: Array<{ id: string; name: string; avatarUrl?: string }>;
+  totalExpenses: number;
+  userNetBalance: number;
+  archived?: boolean;
+}
+
 export interface GroupDetailData {
   id: string;
   name: string;
+  description?: string;
+  coverImageUrl?: string;
   currency: string;
   categoryIcon: string;
   totalGroupSpend: number;
@@ -78,6 +93,116 @@ export interface GroupDetailData {
 
 export const groupService = {
   /**
+   * Fetch all user groups with balance & cover images
+   */
+  async getUserGroups(): Promise<GroupListItem[]> {
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/groups`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            return data.map((g: any, index: number) => ({
+              id: g.id || `g_${index}`,
+              name: g.name,
+              description: g.description,
+              coverImageUrl: g.coverImageUrl || [
+                'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
+                'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
+                'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop',
+              ][index % 3],
+              categoryIcon: g.categoryIcon || 'Users',
+              membersCount: g.members?.length || 3,
+              members: (g.members || []).map((m: any) => ({
+                id: m.uid || m.id,
+                name: m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.name || 'Member',
+                avatarUrl: m.avatarUrl,
+              })),
+              totalExpenses: g.totalExpenses || 0,
+              userNetBalance: g.userNetBalance || 0,
+              archived: !!g.archivedAt,
+            }));
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback to rich mock list below
+    }
+
+    return [
+      {
+        id: '1',
+        name: 'Goa Trip 🏖️',
+        description: 'Baga beach villas, scuba diving, and seafood dinners',
+        coverImageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
+        categoryIcon: 'Palmtree',
+        membersCount: 4,
+        members: [
+          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u4', name: 'Aman Verma', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' },
+        ],
+        totalExpenses: 24500,
+        userNetBalance: 3400,
+        archived: false,
+      },
+      {
+        id: '2',
+        name: 'Apartment Flatmates 🏠',
+        description: 'Rent, groceries, Wi-Fi, electricity, and house supplies',
+        coverImageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
+        categoryIcon: 'Home',
+        membersCount: 3,
+        members: [
+          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
+        ],
+        totalExpenses: 48200,
+        userNetBalance: -1250,
+        archived: false,
+      },
+      {
+        id: '3',
+        name: 'Weekend Treks ⛰️',
+        description: 'Kalsubai peak sunrise trail and camping tents',
+        coverImageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop',
+        categoryIcon: 'Mountain',
+        membersCount: 5,
+        members: [
+          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u4', name: 'Aman Verma', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u5', name: 'Sneha Rao', avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=120&auto=format&fit=crop' },
+        ],
+        totalExpenses: 12800,
+        userNetBalance: 0,
+        archived: false,
+      },
+      {
+        id: '4',
+        name: 'Foodies & Dinners ☕',
+        description: 'Friday craft beer tastings and weekend buffet brunches',
+        coverImageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1200&auto=format&fit=crop',
+        categoryIcon: 'Utensils',
+        membersCount: 4,
+        members: [
+          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
+          { id: 'u5', name: 'Sneha Rao', avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=120&auto=format&fit=crop' },
+        ],
+        totalExpenses: 18400,
+        userNetBalance: 850,
+        archived: false,
+      },
+    ];
+  },
+
+  /**
    * Fetch complete group details, expenses, balances, budget, and activity.
    * If backend is not available locally, returns verified fallback data for smooth preview.
    */
@@ -90,7 +215,10 @@ export const groupService = {
         });
         if (res.ok) {
           const data = await res.json();
-          return data;
+          return {
+            ...data,
+            coverImageUrl: data.coverImageUrl || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
+          };
         }
       }
     } catch (e) {
@@ -99,9 +227,9 @@ export const groupService = {
 
     // Default verified group with realistic mock data
     const members: GroupMember[] = [
-      { id: 'u1', name: 'You', netBalance: 3400, upiId: 'yashraj@okaxis' },
-      { id: 'u2', name: 'Rohit Sharma', netBalance: -1900, upiId: 'rohit@okhdfc' },
-      { id: 'u3', name: 'Priya Patel', netBalance: -1500, upiId: 'priya@okicici' },
+      { id: 'u1', name: 'You', netBalance: 3400, upiId: 'yashraj@okaxis', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
+      { id: 'u2', name: 'Rohit Sharma', netBalance: -1900, upiId: 'rohit@okhdfc', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
+      { id: 'u3', name: 'Priya Patel', netBalance: -1500, upiId: 'priya@okicici', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
     ];
 
     // Compute simplified debts using @splitit/core
@@ -123,6 +251,8 @@ export const groupService = {
     return {
       id: groupId,
       name: 'Goa Trip 🏖️',
+      description: 'Baga beach villas, scuba diving, and seafood dinners',
+      coverImageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
       currency: 'INR',
       categoryIcon: 'Palmtree',
       totalGroupSpend: 24500,

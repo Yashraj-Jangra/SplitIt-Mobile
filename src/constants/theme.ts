@@ -16,8 +16,12 @@ export const THEME = {
     text: '#FAFAFA',
     textSecondary: '#A1A1AA',
     textMuted: '#71717A',
+    glassDark: 'rgba(0, 0, 0, 0.70)',
+    glassCard: 'rgba(24, 24, 27, 0.85)',
+    glassBorder: 'rgba(255, 255, 255, 0.12)',
   },
   radius: {
+    xs: 6,
     sm: 8,
     md: 12,
     lg: 16,

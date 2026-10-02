@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -81,58 +82,139 @@ export default function GroupDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Top Header Bar */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.selectionAsync();
-            router.back();
+      {/* Hero Header with Cover Image */}
+      <View style={styles.heroCoverContainer}>
+        <Image
+          source={{
+            uri:
+              group.coverImageUrl ||
+              'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop',
           }}
-          style={styles.iconButton}
-        >
-          <ArrowLeft size={20} color={THEME.colors.text} />
-        </TouchableOpacity>
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+        <View style={styles.heroOverlayGradient} />
 
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {group.name}
-          </Text>
-          <View style={styles.balanceBadge}>
-            <Text
-              style={[
-                styles.balanceBadgeText,
-                { color: group.yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
-              ]}
-            >
-              {group.yourNetBalance >= 0 ? `+₹${group.yourNetBalance} (You get)` : `-₹${Math.abs(group.yourNetBalance)} (You owe)`}
-            </Text>
-          </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push({
-                pathname: '/ai/chat',
-                params: { groupId: group.id, groupName: group.name },
-              });
-            }}
-            style={styles.iconButton}
-          >
-            <Sparkles size={18} color={THEME.colors.aiLight} />
-          </TouchableOpacity>
-
+        {/* Floating Top Controls on Hero */}
+        <View style={styles.heroTopBar}>
           <TouchableOpacity
             onPress={() => {
               Haptics.selectionAsync();
-              router.push(`/groups/${id}/settings`);
+              router.back();
             }}
-            style={styles.iconButton}
+            style={styles.heroGlassBtn}
+            activeOpacity={0.8}
           >
-            <Settings size={20} color={THEME.colors.textSecondary} />
+            <ArrowLeft size={18} color="#FFFFFF" />
           </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                  pathname: '/ai/chat',
+                  params: { groupId: group.id, groupName: group.name },
+                });
+              }}
+              style={[styles.heroGlassBtn, { backgroundColor: 'rgba(139, 92, 246, 0.4)' }]}
+              activeOpacity={0.8}
+            >
+              <Sparkles size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync();
+                router.push(`/groups/${id}/settings`);
+              }}
+              style={styles.heroGlassBtn}
+              activeOpacity={0.8}
+            >
+              <Settings size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* Bottom Title, Description & Action Buttons on Hero */}
+        <View style={styles.heroBottomBar}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.heroGroupTitle} numberOfLines={1}>
+              {group.name}
+            </Text>
+            {group.description ? (
+              <Text style={styles.heroGroupDescription} numberOfLines={1}>
+                {group.description}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.heroActionButtons}>
+            <TouchableOpacity
+              style={styles.heroAddBtn}
+              onPress={handleAddExpense}
+              activeOpacity={0.8}
+            >
+              <Plus size={14} color="#09090B" strokeWidth={2.5} />
+              <Text style={styles.heroAddBtnText}>Add</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.heroSettleBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                  pathname: '/settle/new',
+                  params: { groupId: group.id, defaultDebtorId: 'u2', defaultCreditorId: 'u1' },
+                });
+              }}
+              activeOpacity={0.8}
+            >
+              <Handshake size={14} color="#FFFFFF" />
+              <Text style={styles.heroSettleBtnText}>Settle</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* 4-Column Compact Stats Ribbon Bar (Matching Website GroupDetailHeader!) */}
+      <View style={styles.statsRibbonBar}>
+        <View style={styles.statRibbonCol}>
+          <Text style={styles.statRibbonLabel}>TOTAL SPENT</Text>
+          <Text style={styles.statRibbonValue}>₹{group.totalGroupSpend.toLocaleString('en-IN')}</Text>
+        </View>
+        <View style={styles.statRibbonCol}>
+          <Text style={styles.statRibbonLabel}>MEMBERS</Text>
+          <Text style={styles.statRibbonValue}>{group.members.length}</Text>
+        </View>
+        <View style={styles.statRibbonCol}>
+          <Text style={styles.statRibbonLabel}>YOUR BALANCE</Text>
+          <Text
+            style={[
+              styles.statRibbonValue,
+              { color: group.yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
+            ]}
+          >
+            {group.yourNetBalance >= 0 ? `+₹${group.yourNetBalance}` : `-₹${Math.abs(group.yourNetBalance)}`}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.statRibbonCol}
+          onPress={() => handleTabChange('budget')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.statRibbonLabel}>MONTHLY BUDGET</Text>
+          <Text
+            style={[
+              styles.statRibbonValue,
+              { color: group.budget.enabled ? THEME.colors.primaryLight : THEME.colors.textSecondary },
+            ]}
+          >
+            {group.budget.enabled
+              ? `${Math.round((group.budget.totalSpent / group.budget.totalMonthlyLimit) * 100)}%`
+              : '+ Set'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Segmented Tab Navigation */}
@@ -425,33 +507,125 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  heroCoverContainer: {
+    height: 175,
+    width: '100%',
+    position: 'relative',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
+  heroOverlayGradient: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  heroTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  heroGlassBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  heroGroupTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  heroGroupDescription: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  heroActionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  heroAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.md,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  heroAddBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#09090B',
+  },
+  heroSettleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.md,
+  },
+  heroSettleBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  statsRibbonBar: {
+    flexDirection: 'row',
+    backgroundColor: THEME.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
   },
-  iconButton: {
-    padding: 8,
-  },
-  headerTitleContainer: {
-    alignItems: 'center',
+  statRibbonCol: {
     flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderRightColor: THEME.colors.border,
   },
-  headerTitle: {
-    fontSize: 17,
+  statRibbonLabel: {
+    fontSize: 9,
     fontWeight: '800',
+    letterSpacing: 0.8,
+    color: THEME.colors.textMuted,
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  statRibbonValue: {
+    fontSize: 13,
+    fontWeight: '900',
     color: THEME.colors.text,
-  },
-  balanceBadge: {
-    marginTop: 2,
-  },
-  balanceBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+    textAlign: 'center',
   },
   segmentedTabBar: {
     flexDirection: 'row',
