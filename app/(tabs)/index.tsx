@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 32,
     gap: 24,
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   ledgerRow: {
     flexDirection: 'row',

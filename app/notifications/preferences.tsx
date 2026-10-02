@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -320,7 +320,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
     gap: 20,
     paddingBottom: 36,
   },
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 14,
     gap: 12,
   },

@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 12,
   },
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     backgroundColor: THEME.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.hairline,
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   segmentedTabBar: {
     flexDirection: 'row',
     backgroundColor: THEME.colors.surface,
-    marginHorizontal: 16,
+    marginHorizontal: 10,
     marginVertical: 12,
     padding: 3,
     borderRadius: THEME.radius.lg,
@@ -740,7 +740,7 @@ const styles = StyleSheet.create({
 
   // Content Scroll
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingBottom: 80,
   },
   tabSection: {
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     height: 42,
     borderRadius: THEME.radius.lg,
     borderWidth: 1,
@@ -796,7 +796,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   ledgerRow: {
     flexDirection: 'row',

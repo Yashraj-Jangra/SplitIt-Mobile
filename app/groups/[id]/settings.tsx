@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -152,7 +152,8 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.sm,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
     gap: 20,
   },
   inputGroup: {
@@ -167,7 +168,7 @@ const styles = StyleSheet.create({
   textInput: {
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 15,
     color: THEME.colors.text,
@@ -179,7 +180,8 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.md,
     borderWidth: 1,
     borderColor: THEME.colors.border,
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
     gap: 12,
   },
   sectionHeader: {

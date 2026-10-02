@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 10,
   },
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 36,
     gap: 24,
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   itemRow: {
     flexDirection: 'row',

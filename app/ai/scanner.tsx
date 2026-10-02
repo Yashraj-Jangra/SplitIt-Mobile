@@ -476,10 +476,11 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     backgroundColor: THEME.colors.surface,
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     marginBottom: 16,
     borderRadius: THEME.radius.xl,
-    padding: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.35)',
     gap: 14,

@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -195,7 +195,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
     gap: 18,
   },
   errorBanner: {
@@ -248,7 +249,7 @@ const styles = StyleSheet.create({
   textInput: {
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 15,
     color: THEME.colors.text,
@@ -264,7 +265,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: THEME.radius.md,
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.18)',

@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -87,7 +87,8 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
     gap: 14,
     paddingBottom: 36,
   },

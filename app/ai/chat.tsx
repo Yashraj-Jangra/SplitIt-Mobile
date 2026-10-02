@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -325,7 +325,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesContent: {
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
     gap: 14,
   },
   messageRow: {
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.aiLight,
   },
   pillsRow: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     gap: 8,
     paddingVertical: 8,
   },
@@ -476,7 +477,7 @@ const styles = StyleSheet.create({
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: THEME.colors.surface,
     borderTopWidth: 1,

@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -183,7 +183,8 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
     gap: 18,
     paddingBottom: 36,
   },
@@ -194,7 +195,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(244, 63, 94, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(244, 63, 94, 0.25)',
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
     borderRadius: THEME.radius.lg,
   },
   warningTextContainer: {
@@ -220,7 +222,8 @@ const styles = StyleSheet.create({
   },
   consequencesCard: {
     backgroundColor: THEME.colors.surface,
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
     borderRadius: THEME.radius.lg,
     borderWidth: 1,
     borderColor: THEME.colors.border,
@@ -256,7 +259,7 @@ const styles = StyleSheet.create({
   textInput: {
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 15,
     color: THEME.colors.text,

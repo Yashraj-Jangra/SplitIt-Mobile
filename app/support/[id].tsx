@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -254,7 +254,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   messagesContent: {
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
     gap: 14,
     paddingBottom: 24,
   },
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: THEME.colors.surface,
     borderTopWidth: 1,

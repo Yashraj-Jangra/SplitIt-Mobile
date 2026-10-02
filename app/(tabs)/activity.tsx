@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 16,
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingBottom: 36,
     gap: 20,
   },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   ledgerRow: {
     flexDirection: 'row',

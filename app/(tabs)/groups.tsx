@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 16,
   },
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: THEME.colors.surface,
-    marginHorizontal: 20,
+    marginHorizontal: 12,
     paddingHorizontal: 14,
     height: 44,
     borderRadius: THEME.radius.lg,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   // Filter Pills
   filterPillsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingVertical: 14,
     gap: 8,
   },
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
 
   // Scroll List
   scrollList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingBottom: 36,
     gap: 16,
   },
