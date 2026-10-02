@@ -80,6 +80,13 @@ function NavigationGate() {
         }}
       />
       <Stack.Screen
+        name="groups/[id]/search"
+        options={{
+          headerShown: false,
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
         name="settle/new"
         options={{
           presentation: 'modal',

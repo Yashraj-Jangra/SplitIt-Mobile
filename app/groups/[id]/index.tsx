@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   Image,
   RefreshControl,
@@ -37,8 +36,6 @@ export default function GroupDetailScreen() {
 
   const [group, setGroup] = useState<GroupDetailData | null>(null);
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'budget' | 'activity'>('expenses');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -98,18 +95,6 @@ export default function GroupDetailScreen() {
   const totalGroupSpend = group.totalGroupSpend || 0;
   const yourNetBalance = group.yourNetBalance || 0;
 
-  // Filtered expenses
-  const filteredExpenses = expenses.filter((exp) => {
-    const matchesSearch = (exp.title || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const masterCat = exp.category?.master || '';
-    const subCat = exp.category?.sub || '';
-    const matchesCategory =
-      categoryFilter === 'all' ||
-      masterCat.toLowerCase().includes(categoryFilter.toLowerCase()) ||
-      subCat.toLowerCase().includes(categoryFilter.toLowerCase());
-    return matchesSearch && matchesCategory;
-  });
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Cinematic Hero Header (With Smooth Vignette Fade) */}
@@ -139,6 +124,18 @@ export default function GroupDetailScreen() {
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync();
+                const targetId = Array.isArray(id) ? id[0] : (id || group.id);
+                router.push(`/groups/${targetId}/search`);
+              }}
+              style={styles.heroGlassBtn}
+              activeOpacity={0.8}
+            >
+              <Search size={17} color="#FFFFFF" />
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -286,52 +283,18 @@ export default function GroupDetailScreen() {
         {/* TAB 1: EXPENSES */}
         {activeTab === 'expenses' && (
           <View style={styles.tabSection}>
-            {/* Search Bar & Category Filter */}
-            <View style={styles.searchContainer}>
-              <Search size={15} color={THEME.colors.textMuted} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search expenses..."
-                placeholderTextColor={THEME.colors.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-              {[
-                { id: 'all', label: 'All' },
-                { id: 'food', label: 'Food & Drink' },
-                { id: 'transport', label: 'Transport' },
-                { id: 'groceries', label: 'Groceries' },
-              ].map((pill) => (
-                <TouchableOpacity
-                  key={pill.id}
-                  style={[styles.filterPill, categoryFilter === pill.id && styles.filterPillActive]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setCategoryFilter(pill.id);
-                  }}
-                >
-                  <Text style={[styles.filterPillText, categoryFilter === pill.id && styles.filterPillTextActive]}>
-                    {pill.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
             {/* Expenses Apple-Wallet Style Ledger */}
             <View style={styles.ledgerStream}>
-              {filteredExpenses.length === 0 ? (
+              {expenses.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Receipt size={32} color={THEME.colors.textMuted} />
                   <Text style={styles.emptyTitle}>No expenses recorded</Text>
                   <Text style={styles.emptySubtitle}>
-                    {searchQuery ? 'Try adjusting your search terms.' : 'Tap "+ Add" to record your first expense in this group!'}
+                    Tap "+ Add" to record your first expense in this group!
                   </Text>
                 </View>
               ) : (
-                filteredExpenses.map((exp, index, arr) => {
+                expenses.map((exp, index, arr) => {
                   const isLast = index === arr.length - 1;
 
                   return (
@@ -766,49 +729,6 @@ const styles = StyleSheet.create({
   },
   tabSection: {
     gap: 14,
-  },
-
-  // Search & Filters
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 12,
-    height: 42,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: THEME.colors.text,
-    paddingVertical: 0,
-  },
-  filterRow: {
-    gap: 8,
-  },
-  filterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.full,
-    backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  filterPillActive: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderColor: THEME.colors.hairlineLight,
-  },
-  filterPillText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
-  },
-  filterPillTextActive: {
-    color: THEME.colors.text,
-    fontWeight: '700',
   },
 
   // Ledger Stream
