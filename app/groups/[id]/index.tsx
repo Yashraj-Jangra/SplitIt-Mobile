@@ -16,16 +16,14 @@ import {
   Settings,
   Plus,
   Search,
-  ArrowRight,
   Zap,
   Utensils,
-  Car,
-  ShoppingBag,
   Sparkles,
   Receipt,
   Bot,
   Handshake,
   CheckCircle2,
+  Calendar,
 } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData } from '../../../src/services/group.service';
@@ -102,7 +100,7 @@ export default function GroupDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Hero Header with Cover Image */}
+      {/* Cinematic Hero Header (With Smooth Vignette Fade) */}
       <View style={styles.heroCoverContainer}>
         <Image
           source={{
@@ -113,9 +111,9 @@ export default function GroupDetailScreen() {
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
-        <View style={styles.heroOverlayGradient} />
+        <View style={styles.heroVignette} />
 
-        {/* Floating Top Controls on Hero */}
+        {/* Floating Glass Top Bar */}
         <View style={styles.heroTopBar}>
           <TouchableOpacity
             onPress={() => {
@@ -137,7 +135,7 @@ export default function GroupDetailScreen() {
                   params: { groupId: group.id, groupName: group.name },
                 });
               }}
-              style={[styles.heroGlassBtn, { backgroundColor: 'rgba(139, 92, 246, 0.4)' }]}
+              style={[styles.heroGlassBtn, { backgroundColor: 'rgba(139, 92, 246, 0.45)' }]}
               activeOpacity={0.8}
             >
               <Sparkles size={16} color="#FFFFFF" />
@@ -156,7 +154,7 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
-        {/* Bottom Title, Description & Action Buttons on Hero */}
+        {/* Hero Title & Floating Actions */}
         <View style={styles.heroBottomBar}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.heroGroupTitle} numberOfLines={1}>
@@ -173,9 +171,9 @@ export default function GroupDetailScreen() {
             <TouchableOpacity
               style={styles.heroAddBtn}
               onPress={handleAddExpense}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <Plus size={14} color="#09090B" strokeWidth={2.5} />
+              <Plus size={14} color="#000000" strokeWidth={2.5} />
               <Text style={styles.heroAddBtnText}>Add</Text>
             </TouchableOpacity>
 
@@ -188,7 +186,7 @@ export default function GroupDetailScreen() {
                   params: { groupId: group.id, defaultDebtorId: 'u2', defaultCreditorId: 'u1' },
                 });
               }}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <Handshake size={14} color="#FFFFFF" />
               <Text style={styles.heroSettleBtnText}>Settle</Text>
@@ -197,37 +195,46 @@ export default function GroupDetailScreen() {
         </View>
       </View>
 
-      {/* 4-Column Compact Stats Ribbon Bar (Matching Website GroupDetailHeader!) */}
-      <View style={styles.statsRibbonBar}>
-        <View style={styles.statRibbonCol}>
-          <Text style={styles.statRibbonLabel}>TOTAL SPENT</Text>
-          <Text style={styles.statRibbonValue}>₹{totalGroupSpend.toLocaleString('en-IN')}</Text>
+      {/* Minimalist 4-Stat Strip (Clean Typographic Row, No Rigid Box) */}
+      <View style={styles.statStrip}>
+        <View style={styles.statCol}>
+          <Text style={styles.statLabel}>SPENT</Text>
+          <Text style={styles.statValue}>₹{totalGroupSpend.toLocaleString('en-IN')}</Text>
         </View>
-        <View style={styles.statRibbonCol}>
-          <Text style={styles.statRibbonLabel}>MEMBERS</Text>
-          <Text style={styles.statRibbonValue}>{members.length}</Text>
+
+        <View style={styles.statDivider} />
+
+        <View style={styles.statCol}>
+          <Text style={styles.statLabel}>MEMBERS</Text>
+          <Text style={styles.statValue}>{members.length}</Text>
         </View>
-        <View style={styles.statRibbonCol}>
-          <Text style={styles.statRibbonLabel}>YOUR BALANCE</Text>
+
+        <View style={styles.statDivider} />
+
+        <View style={styles.statCol}>
+          <Text style={styles.statLabel}>YOUR NET</Text>
           <Text
             style={[
-              styles.statRibbonValue,
+              styles.statValue,
               { color: yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
             ]}
           >
             {yourNetBalance >= 0 ? `+₹${yourNetBalance}` : `-₹${Math.abs(yourNetBalance)}`}
           </Text>
         </View>
+
+        <View style={styles.statDivider} />
+
         <TouchableOpacity
-          style={styles.statRibbonCol}
+          style={styles.statCol}
           onPress={() => handleTabChange('budget')}
           activeOpacity={0.7}
         >
-          <Text style={styles.statRibbonLabel}>MONTHLY BUDGET</Text>
+          <Text style={styles.statLabel}>BUDGET</Text>
           <Text
             style={[
-              styles.statRibbonValue,
-              { color: budget.enabled ? THEME.colors.primaryLight : THEME.colors.textSecondary },
+              styles.statValue,
+              { color: budget.enabled ? THEME.colors.primaryLight : THEME.colors.textMuted },
             ]}
           >
             {budget.enabled && budget.totalMonthlyLimit > 0
@@ -237,7 +244,7 @@ export default function GroupDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Segmented Tab Navigation */}
+      {/* Sliding Segmented Pill Bar */}
       <View style={styles.segmentedTabBar}>
         {(['expenses', 'balances', 'budget', 'activity'] as const).map((tab) => (
           <TouchableOpacity
@@ -252,14 +259,14 @@ export default function GroupDetailScreen() {
         ))}
       </View>
 
-      {/* Tab Content */}
+      {/* Tab Content Stream */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* TAB 1: EXPENSES */}
         {activeTab === 'expenses' && (
           <View style={styles.tabSection}>
-            {/* Search Bar */}
+            {/* Search Bar & Category Filter */}
             <View style={styles.searchContainer}>
-              <Search size={16} color={THEME.colors.textMuted} />
+              <Search size={15} color={THEME.colors.textMuted} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search expenses..."
@@ -269,7 +276,6 @@ export default function GroupDetailScreen() {
               />
             </View>
 
-            {/* Category Filter Pills */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
               {[
                 { id: 'all', label: 'All' },
@@ -292,72 +298,78 @@ export default function GroupDetailScreen() {
               ))}
             </ScrollView>
 
-            {/* Expense Rows */}
-            <View style={styles.expensesList}>
+            {/* Expenses Apple-Wallet Style Ledger */}
+            <View style={styles.ledgerStream}>
               {filteredExpenses.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <Receipt size={36} color={THEME.colors.textMuted} />
-                  <Text style={styles.emptyTitle}>No expenses found</Text>
+                  <Receipt size={32} color={THEME.colors.textMuted} />
+                  <Text style={styles.emptyTitle}>No expenses recorded</Text>
                   <Text style={styles.emptySubtitle}>
-                    {searchQuery ? 'Try adjusting your search or category filters.' : 'Tap "+ Add" to record the first expense!'}
+                    {searchQuery ? 'Try adjusting your search terms.' : 'Tap "+ Add" to record your first expense in this group!'}
                   </Text>
                 </View>
               ) : (
-                filteredExpenses.map((exp) => (
-                  <TouchableOpacity
-                    key={exp.id}
-                    style={styles.expenseCard}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      router.push({
-                        pathname: '/expenses/[id]',
-                        params: {
-                          id: exp.id,
-                          title: exp.title,
-                          amount: String(exp.amount),
-                          paidByName: exp.paidByName || 'Member',
-                          date: exp.date,
-                          category: exp.category?.sub || exp.category?.master || 'General',
-                        },
-                      });
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.categoryIconBadge}>
-                      <Utensils size={18} color={THEME.colors.primaryLight} />
-                    </View>
-                    <View style={styles.expenseDetails}>
-                      <Text style={styles.expenseTitle}>{exp.title}</Text>
-                      <Text style={styles.expenseSubtitle}>
-                        {exp.paidByName || 'Member'} paid ₹{exp.amount} • {exp.date}
-                      </Text>
-                    </View>
-                    <View style={styles.impactContainer}>
-                      {exp.yourImpact === 'get' ? (
-                        <View style={styles.impactRight}>
-                          <Text style={[styles.impactAmount, { color: THEME.colors.primary }]}>
-                            +₹{exp.yourShare}
-                          </Text>
-                          <Text style={styles.impactLabel}>you get</Text>
-                        </View>
-                      ) : exp.yourImpact === 'owe' ? (
-                        <View style={styles.impactRight}>
-                          <Text style={[styles.impactAmount, { color: THEME.colors.negative }]}>
-                            -₹{exp.yourShare}
-                          </Text>
-                          <Text style={styles.impactLabel}>you owe</Text>
-                        </View>
-                      ) : (
-                        <View style={styles.impactRight}>
-                          <Text style={[styles.impactAmount, { color: THEME.colors.textMuted }]}>
-                            ₹0
-                          </Text>
-                          <Text style={styles.impactLabel}>not involved</Text>
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))
+                filteredExpenses.map((exp, index, arr) => {
+                  const isLast = index === arr.length - 1;
+
+                  return (
+                    <TouchableOpacity
+                      key={exp.id}
+                      style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        router.push({
+                          pathname: '/expenses/[id]',
+                          params: {
+                            id: exp.id,
+                            title: exp.title,
+                            amount: String(exp.amount),
+                            paidByName: exp.paidByName || 'Member',
+                            date: exp.date,
+                            category: exp.category?.sub || exp.category?.master || 'General',
+                          },
+                        });
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.categoryGlyph}>
+                        <Utensils size={16} color={THEME.colors.textSecondary} />
+                      </View>
+
+                      <View style={styles.ledgerDetails}>
+                        <Text style={styles.ledgerExpenseTitle}>{exp.title}</Text>
+                        <Text style={styles.ledgerExpenseSubtitle}>
+                          {exp.paidByName || 'Member'} paid ₹{exp.amount} • {exp.date}
+                        </Text>
+                      </View>
+
+                      <View style={styles.ledgerImpactCol}>
+                        {exp.yourImpact === 'get' ? (
+                          <>
+                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.primary }]}>
+                              +₹{exp.yourShare}
+                            </Text>
+                            <Text style={styles.ledgerImpactLabel}>you get</Text>
+                          </>
+                        ) : exp.yourImpact === 'owe' ? (
+                          <>
+                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.negative }]}>
+                              -₹{exp.yourShare}
+                            </Text>
+                            <Text style={styles.ledgerImpactLabel}>you owe</Text>
+                          </>
+                        ) : (
+                          <>
+                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.textMuted }]}>
+                              ₹0
+                            </Text>
+                            <Text style={styles.ledgerImpactLabel}>not involved</Text>
+                          </>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
               )}
             </View>
           </View>
@@ -367,10 +379,9 @@ export default function GroupDetailScreen() {
         {activeTab === 'balances' && (
           <View style={styles.tabSection}>
             <View style={styles.simplifiedHeaderCard}>
-              <Sparkles size={16} color={THEME.colors.primary} />
+              <Sparkles size={15} color={THEME.colors.primary} />
               <Text style={styles.simplifiedHeaderText}>
-                Simplified Debts: Convoluted circular debts collapsed into minimum payments using{' '}
-                <Text style={{ fontWeight: '700', color: THEME.colors.text }}>@splitit/core</Text>.
+                Simplified Debts: Circular IOUs collapsed into minimum direct payments.
               </Text>
             </View>
 
@@ -378,9 +389,9 @@ export default function GroupDetailScreen() {
             <View style={styles.debtsList}>
               {simplifiedDebts.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <Handshake size={36} color={THEME.colors.primary} />
+                  <Handshake size={32} color={THEME.colors.primary} />
                   <Text style={styles.emptyTitle}>All settled up!</Text>
-                  <Text style={styles.emptySubtitle}>No pending debts between members in this group.</Text>
+                  <Text style={styles.emptySubtitle}>No pending repayments needed between group members.</Text>
                 </View>
               ) : (
                 simplifiedDebts.map((debt, index) => (
@@ -391,8 +402,8 @@ export default function GroupDetailScreen() {
                       </View>
                       <View style={styles.debtTextCol}>
                         <Text style={styles.debtPrimaryText}>
-                          <Text style={{ fontWeight: '800' }}>{debt.fromName}</Text> owes{' '}
-                          <Text style={{ fontWeight: '800' }}>{debt.toName}</Text>
+                          <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.fromName}</Text> owes{' '}
+                          <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.toName}</Text>
                         </Text>
                         <Text style={styles.debtAmount}>₹{debt.amount.toLocaleString()}</Text>
                       </View>
@@ -415,7 +426,7 @@ export default function GroupDetailScreen() {
                             });
                           }}
                         >
-                          <Zap size={14} color="#09090B" />
+                          <Zap size={13} color="#000000" strokeWidth={2.5} />
                           <Text style={styles.settleButtonText}>Settle</Text>
                         </TouchableOpacity>
                       )}
@@ -461,7 +472,7 @@ export default function GroupDetailScreen() {
             <View style={styles.categoryAllocationsCard}>
               <Text style={styles.sectionHeaderTitle}>CATEGORY BREAKDOWN</Text>
               {(budget.categories || []).length === 0 ? (
-                <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+                <View style={{ paddingVertical: 14, alignItems: 'center' }}>
                   <Text style={{ fontSize: 12, color: THEME.colors.textMuted }}>No category limits configured</Text>
                 </View>
               ) : (
@@ -493,7 +504,7 @@ export default function GroupDetailScreen() {
           <View style={styles.tabSection}>
             {activities.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Receipt size={36} color={THEME.colors.textMuted} />
+                <Receipt size={32} color={THEME.colors.textMuted} />
                 <Text style={styles.emptyTitle}>No activity yet</Text>
                 <Text style={styles.emptySubtitle}>Recent expenses, settlements, and updates will appear here.</Text>
               </View>
@@ -502,56 +513,56 @@ export default function GroupDetailScreen() {
                 <View key={act.id} style={styles.activityCard}>
                   <View style={styles.activityIconBadge}>
                     {act.type === 'budget_updated' ? (
-                      <Bot size={18} color={THEME.colors.aiLight} />
+                      <Bot size={16} color={THEME.colors.aiLight} />
                     ) : act.type === 'settlement' ? (
-                      <Handshake size={18} color={THEME.colors.primary} />
+                      <Handshake size={16} color={THEME.colors.primary} />
                     ) : (
-                      <Receipt size={18} color={THEME.colors.textSecondary} />
+                      <Receipt size={16} color={THEME.colors.textSecondary} />
                     )}
                   </View>
                   <View style={styles.activityDetails}>
                     <Text style={styles.activityDescription}>
-                      <Text style={{ fontWeight: '800' }}>{act.actorName}</Text> {act.description}
+                      <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{act.actorName}</Text> {act.description}
                     </Text>
                     <Text style={styles.activityTime}>{act.timeAgo}</Text>
 
                     {/* Granular Budget Diff Box */}
                     {act.diffData && (
                       <View style={styles.diffBox}>
-                      {act.diffData.monthlyBudgetUnchanged && (
-                        <View style={styles.diffUnchangedRow}>
-                          <CheckCircle2 size={13} color={THEME.colors.primary} />
-                          <Text style={styles.diffUnchangedText}>
-                            Total monthly budget was not changed (₹35,000)
+                        {act.diffData.monthlyBudgetUnchanged && (
+                          <View style={styles.diffUnchangedRow}>
+                            <CheckCircle2 size={13} color={THEME.colors.primary} />
+                            <Text style={styles.diffUnchangedText}>
+                              Total monthly budget was not changed (₹35,000)
+                            </Text>
+                          </View>
+                        )}
+                        {act.diffData.categoryChanges?.map((ch, i) => (
+                          <Text key={i} style={styles.diffChangeText}>
+                            • {ch.name}:{' '}
+                            <Text style={{ textDecorationLine: 'line-through', color: THEME.colors.textMuted }}>
+                              ₹{ch.old.toLocaleString()}
+                            </Text>{' '}
+                            ➔{' '}
+                            <Text style={{ color: THEME.colors.primary, fontWeight: '700' }}>
+                              ₹{ch.new.toLocaleString()}
+                            </Text>
                           </Text>
-                        </View>
-                      )}
-                      {act.diffData.categoryChanges?.map((ch, i) => (
-                        <Text key={i} style={styles.diffChangeText}>
-                          • {ch.name}:{' '}
-                          <Text style={{ textDecorationLine: 'line-through', color: THEME.colors.textMuted }}>
-                            ₹{ch.old.toLocaleString()}
-                          </Text>{' '}
-                          ➔{' '}
-                          <Text style={{ color: THEME.colors.primary, fontWeight: '700' }}>
-                            ₹{ch.new.toLocaleString()}
-                          </Text>
-                        </Text>
-                      ))}
-                    </View>
-                  )}
+                        ))}
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
-            ))
-          )}
-        </View>
-      )}
+              ))
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Floating Add Expense Action Button */}
       {activeTab === 'expenses' && (
         <TouchableOpacity style={styles.fab} onPress={handleAddExpense}>
-          <Plus size={22} color="#09090B" />
+          <Plus size={22} color="#000000" strokeWidth={2.5} />
         </TouchableOpacity>
       )}
     </SafeAreaView>
@@ -568,8 +579,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // Hero Cover
   heroCoverContainer: {
-    height: 175,
+    height: 180,
     width: '100%',
     position: 'relative',
     justifyContent: 'space-between',
@@ -577,9 +590,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
   },
-  heroOverlayGradient: {
+  heroVignette: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.48)',
   },
   heroTopBar: {
     flexDirection: 'row',
@@ -591,23 +604,24 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.60)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   heroBottomBar: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
     justifyContent: 'space-between',
+    alignItems: 'flex-end',
     zIndex: 10,
   },
   heroGroupTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
@@ -622,7 +636,7 @@ const styles = StyleSheet.create({
   heroActionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   heroAddBtn: {
     flexDirection: 'row',
@@ -631,17 +645,17 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
     shadowColor: THEME.colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 3,
+    shadowRadius: 4,
     elevation: 3,
   },
   heroAddBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#09090B',
+    color: '#000000',
   },
   heroSettleBtn: {
     flexDirection: 'row',
@@ -650,59 +664,65 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 7,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
   },
   heroSettleBtnText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  statsRibbonBar: {
+
+  // Minimalist Stat Strip (Borderless Typographic Row)
+  statStrip: {
     flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: THEME.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    borderBottomColor: THEME.colors.hairline,
   },
-  statRibbonCol: {
+  statCol: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRightWidth: 1,
-    borderRightColor: THEME.colors.border,
   },
-  statRibbonLabel: {
+  statDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: THEME.colors.hairlineLight,
+  },
+  statLabel: {
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.8,
     color: THEME.colors.textMuted,
     marginBottom: 2,
-    textAlign: 'center',
   },
-  statRibbonValue: {
+  statValue: {
     fontSize: 13,
     fontWeight: '900',
     color: THEME.colors.text,
-    textAlign: 'center',
   },
+
+  // Segmented Tab Bar
   segmentedTabBar: {
     flexDirection: 'row',
     backgroundColor: THEME.colors.surface,
     marginHorizontal: 16,
-    marginVertical: 10,
+    marginVertical: 12,
     padding: 3,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.hairline,
   },
   tabButton: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: THEME.radius.sm,
+    borderRadius: THEME.radius.md,
   },
   tabButtonActive: {
     backgroundColor: THEME.colors.surfaceElevated,
@@ -714,116 +734,129 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: THEME.colors.text,
+    fontWeight: '700',
   },
+
+  // Content Scroll
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 80,
   },
   tabSection: {
-    gap: 12,
+    gap: 14,
   },
+
+  // Search & Filters
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 12,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    paddingHorizontal: 14,
     height: 42,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
+    fontSize: 13,
     color: THEME.colors.text,
-    fontSize: 14,
+    paddingVertical: 0,
   },
   filterRow: {
     gap: 8,
-    paddingVertical: 4,
   },
   filterPill: {
-    backgroundColor: THEME.colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.surface,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.hairline,
   },
   filterPillActive: {
     backgroundColor: THEME.colors.surfaceElevated,
-    borderColor: THEME.colors.borderFocus,
+    borderColor: THEME.colors.hairlineLight,
   },
   filterPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: THEME.colors.textMuted,
   },
   filterPillTextActive: {
     color: THEME.colors.text,
+    fontWeight: '700',
   },
-  expensesList: {
-    gap: 10,
+
+  // Ledger Stream
+  ledgerStream: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    paddingHorizontal: 16,
   },
-  expenseCard: {
+  ledgerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surface,
-    padding: 14,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    paddingVertical: 14,
     gap: 12,
   },
-  categoryIconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: THEME.radius.sm,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  ledgerRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+  },
+  categoryGlyph: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  expenseDetails: {
+  ledgerDetails: {
     flex: 1,
   },
-  expenseTitle: {
+  ledgerExpenseTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.text,
   },
-  expenseSubtitle: {
+  ledgerExpenseSubtitle: {
     fontSize: 11,
     color: THEME.colors.textMuted,
     marginTop: 2,
   },
-  impactContainer: {
+  ledgerImpactCol: {
     alignItems: 'flex-end',
   },
-  impactRight: {
-    alignItems: 'flex-end',
-  },
-  impactAmount: {
+  ledgerImpactAmount: {
     fontSize: 14,
     fontWeight: '800',
   },
-  impactLabel: {
+  ledgerImpactLabel: {
     fontSize: 10,
     color: THEME.colors.textMuted,
+    marginTop: 1,
   },
+
+  // Balances Tab
   simplifiedHeaderCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    backgroundColor: THEME.colors.primaryMuted,
     padding: 12,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.22)',
   },
   simplifiedHeaderText: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
     flex: 1,
+    fontSize: 11,
+    color: THEME.colors.primaryLight,
+    lineHeight: 16,
   },
   debtsList: {
     gap: 10,
@@ -831,9 +864,9 @@ const styles = StyleSheet.create({
   debtCard: {
     backgroundColor: THEME.colors.surface,
     padding: 14,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.hairline,
   },
   debtInfoRow: {
     flexDirection: 'row',
@@ -841,15 +874,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   debtAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: THEME.radius.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
     color: THEME.colors.text,
   },
@@ -861,8 +894,8 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
   debtAmount: {
-    fontSize: 16,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '800',
     color: THEME.colors.text,
     marginTop: 2,
   },
@@ -873,25 +906,27 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: THEME.radius.sm,
+    borderRadius: THEME.radius.md,
   },
   settleButtonText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#09090B',
+    color: '#000000',
   },
+
+  // Standings
   standingsCard: {
     backgroundColor: THEME.colors.surface,
     padding: 16,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    gap: 10,
+    borderColor: THEME.colors.hairline,
+    gap: 12,
   },
   sectionHeaderTitle: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     color: THEME.colors.textMuted,
     marginBottom: 4,
   },
@@ -899,29 +934,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 4,
   },
   standingName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: THEME.colors.text,
   },
   standingAmount: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
+
+  // Budget Tab
   budgetCard: {
     backgroundColor: THEME.colors.surface,
     padding: 20,
-    borderRadius: THEME.radius.lg,
+    borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.hairline,
   },
   categoryAllocationsCard: {
     backgroundColor: THEME.colors.surface,
     padding: 16,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.hairline,
     gap: 12,
   },
   catRow: {
@@ -941,7 +979,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
   },
   catBarBackground: {
-    height: 6,
+    height: 5,
     backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: 3,
     overflow: 'hidden',
@@ -950,19 +988,21 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 3,
   },
+
+  // Activity Tab
   activityCard: {
     flexDirection: 'row',
     backgroundColor: THEME.colors.surface,
     padding: 14,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.hairline,
     gap: 12,
   },
   activityIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: THEME.radius.sm,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
@@ -972,18 +1012,19 @@ const styles = StyleSheet.create({
   },
   activityDescription: {
     fontSize: 13,
-    color: THEME.colors.text,
+    color: THEME.colors.textSecondary,
+    lineHeight: 18,
   },
   activityTime: {
     fontSize: 11,
     color: THEME.colors.textMuted,
-    marginTop: 2,
+    marginTop: 4,
   },
   diffBox: {
     backgroundColor: THEME.colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    borderRadius: THEME.radius.sm,
+    borderColor: THEME.colors.hairline,
+    borderRadius: THEME.radius.md,
     padding: 10,
     marginTop: 8,
     gap: 4,
@@ -1003,19 +1044,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: THEME.colors.textSecondary,
   },
+
+  // Empty Container
   emptyContainer: {
     paddingVertical: 36,
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    gap: 8,
+    gap: 6,
   },
   emptyTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.text,
     marginTop: 6,
@@ -1025,6 +1064,8 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     textAlign: 'center',
   },
+
+  // FAB
   fab: {
     position: 'absolute',
     right: 20,
@@ -1036,9 +1077,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    shadowColor: '#000',
+    shadowColor: THEME.colors.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
   },
 });

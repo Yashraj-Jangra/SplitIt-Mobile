@@ -36,7 +36,7 @@ export default function SettleUpModal() {
 
   const [amount, setAmount] = useState(defaultAmount);
   const [method, setMethod] = useState<'upi_app' | 'qr' | 'cash'>('upi_app');
-  const [notes, setNotes] = useState('SplitIt Goa Trip settlement');
+  const [notes, setNotes] = useState('SplitIt settlement');
   const [loading, setLoading] = useState(false);
 
   const handleAction = async () => {
@@ -71,7 +71,6 @@ export default function SettleUpModal() {
       });
 
       if (!launched) {
-        // Fallback to QR code if no UPI app answered the intent
         Alert.alert(
           'No UPI App Detected',
           'Could not find a supported UPI app on your device. Opening high-contrast QR code instead.',
@@ -95,26 +94,24 @@ export default function SettleUpModal() {
         return;
       }
 
-      // Prompt to record settlement after returning from external UPI app
       Alert.alert(
         'Payment Initiated',
-        `Did you complete the payment of ₹${numAmount} to ${creditorName}?`,
+        `Did your payment of ₹${numAmount.toLocaleString('en-IN')} complete successfully in your UPI app?`,
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: 'No, Cancel', style: 'cancel' },
           {
             text: 'Yes, Record Payment',
-            onPress: async () => {
-              await recordSettlement(numAmount, 'upi');
-            },
+            onPress: () => recordSettlement(numAmount, 'upi'),
           },
         ]
       );
       return;
     }
 
-    // Cash / Bank Transfer
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await recordSettlement(numAmount, 'cash');
+    if (method === 'cash') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await recordSettlement(numAmount, 'cash');
+    }
   };
 
   const recordSettlement = async (numAmount: number, payMethod: 'upi' | 'cash') => {
@@ -140,51 +137,53 @@ export default function SettleUpModal() {
     }
   };
 
+  const numAmount = parseFloat(amount) || 0;
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* Header */}
+      {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
             Haptics.selectionAsync();
             router.back();
           }}
-          style={styles.closeButton}
+          style={styles.closeBtn}
         >
           <X size={20} color={THEME.colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settle Balance</Text>
-        <View style={{ width: 32 }} />
+        <Text style={styles.headerTitle}>Settle Up</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* Transfer Participants Card */}
-        <View style={styles.partiesCard}>
-          <View style={styles.partyCol}>
-            <View style={styles.partyAvatar}>
-              <Text style={styles.partyAvatarText}>{debtorName.charAt(0)}</Text>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {/* Transfer Participants Flow */}
+        <View style={styles.partiesFlowRow}>
+          <View style={styles.partyItem}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{debtorName.charAt(0)}</Text>
             </View>
             <Text style={styles.partyName}>{debtorName}</Text>
             <Text style={styles.partyRole}>Payer</Text>
           </View>
 
-          <View style={styles.arrowContainer}>
-            <ArrowRight size={22} color={THEME.colors.primary} />
+          <View style={styles.arrowCircle}>
+            <ArrowRight size={18} color={THEME.colors.primary} />
           </View>
 
-          <View style={styles.partyCol}>
-            <View style={[styles.partyAvatar, { backgroundColor: THEME.colors.surfaceElevated }]}>
-              <Text style={styles.partyAvatarText}>{creditorName.charAt(0)}</Text>
+          <View style={styles.partyItem}>
+            <View style={[styles.avatarCircle, { backgroundColor: THEME.colors.surfaceElevated }]}>
+              <Text style={styles.avatarText}>{creditorName.charAt(0)}</Text>
             </View>
             <Text style={styles.partyName}>{creditorName}</Text>
             <Text style={styles.partyRole}>Recipient</Text>
           </View>
         </View>
 
-        {/* Amount Input */}
-        <View style={styles.amountSection}>
-          <Text style={styles.amountLabel}>SETTLEMENT AMOUNT</Text>
-          <View style={styles.amountInputRow}>
+        {/* Large Amount Input */}
+        <View style={styles.amountBlock}>
+          <Text style={styles.amountEyebrow}>SETTLEMENT AMOUNT</Text>
+          <View style={styles.amountRow}>
             <Text style={styles.currencySymbol}>₹</Text>
             <TextInput
               style={styles.amountInput}
@@ -198,8 +197,8 @@ export default function SettleUpModal() {
         </View>
 
         {/* Method Selector */}
-        <View style={styles.methodSection}>
-          <Text style={styles.sectionLabel}>CHOOSE SETTLEMENT METHOD</Text>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionLabel}>PAYMENT METHOD</Text>
 
           {/* Option 1: UPI App Intent */}
           <TouchableOpacity
@@ -208,8 +207,9 @@ export default function SettleUpModal() {
               Haptics.selectionAsync();
               setMethod('upi_app');
             }}
+            activeOpacity={0.8}
           >
-            <View style={[styles.methodIconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+            <View style={[styles.methodIconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
               <Zap size={18} color={THEME.colors.primary} />
             </View>
             <View style={styles.methodDetails}>
@@ -226,13 +226,14 @@ export default function SettleUpModal() {
               Haptics.selectionAsync();
               setMethod('qr');
             }}
+            activeOpacity={0.8}
           >
-            <View style={[styles.methodIconBadge, { backgroundColor: 'rgba(139, 92, 246, 0.12)' }]}>
+            <View style={[styles.methodIconBadge, { backgroundColor: 'rgba(139, 92, 246, 0.14)' }]}>
               <QrCode size={18} color={THEME.colors.aiLight} />
             </View>
             <View style={styles.methodDetails}>
-              <Text style={styles.methodTitle}>Scan High-Contrast QR</Text>
-              <Text style={styles.methodSubtitle}>Display scannable QR on screen or copy UPI ID</Text>
+              <Text style={styles.methodTitle}>Scan QR Code</Text>
+              <Text style={styles.methodSubtitle}>Display high-contrast QR on screen</Text>
             </View>
             <View style={[styles.radioCircle, method === 'qr' && styles.radioCircleActive]} />
           </TouchableOpacity>
@@ -244,46 +245,49 @@ export default function SettleUpModal() {
               Haptics.selectionAsync();
               setMethod('cash');
             }}
+            activeOpacity={0.8}
           >
             <View style={[styles.methodIconBadge, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]}>
               <Banknote size={18} color={THEME.colors.textSecondary} />
             </View>
             <View style={styles.methodDetails}>
-              <Text style={styles.methodTitle}>Record Cash / Offline Payment</Text>
-              <Text style={styles.methodSubtitle}>Settle balance without digital payment intent</Text>
+              <Text style={styles.methodTitle}>Cash / Offline</Text>
+              <Text style={styles.methodSubtitle}>Record payment made in cash or outside UPI</Text>
             </View>
             <View style={[styles.radioCircle, method === 'cash' && styles.radioCircleActive]} />
           </TouchableOpacity>
         </View>
 
-        {/* Security / Disclaimer Callout */}
+        {/* Security / Non-Escrow Callout */}
         <View style={styles.securityCallout}>
-          <ShieldCheck size={16} color={THEME.colors.textMuted} />
+          <ShieldCheck size={15} color={THEME.colors.textMuted} />
           <Text style={styles.securityText}>
-            SplitIt does not intermediate or hold funds. Payments are routed directly to recipient's bank via UPI.
+            Direct P2P settlement: SplitIt does not hold or escrow funds.
           </Text>
         </View>
+      </ScrollView>
 
-        {/* Action Button */}
+      {/* Floating Bottom Action */}
+      <View style={styles.bottomBar}>
         <TouchableOpacity
-          style={styles.primaryActionButton}
+          style={[styles.actionBtn, (numAmount <= 0 || loading) && styles.actionBtnDisabled]}
           onPress={handleAction}
-          disabled={loading}
+          disabled={loading || numAmount <= 0}
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#09090B" />
+            <ActivityIndicator size="small" color="#000000" />
           ) : (
-            <Text style={styles.primaryActionText}>
+            <Text style={styles.actionBtnText}>
               {method === 'upi_app'
-                ? 'Launch UPI Payment'
+                ? `Pay ₹${numAmount.toLocaleString('en-IN')} via UPI`
                 : method === 'qr'
-                ? 'View High-Contrast QR Code'
-                : 'Confirm & Record Payment'}
+                ? 'Open QR Code'
+                : `Confirm ₹${numAmount.toLocaleString('en-IN')} Payment`}
             </Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -297,121 +301,136 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  closeButton: {
-    padding: 6,
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     color: THEME.colors.text,
   },
   content: {
-    padding: 20,
-    gap: 20,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 90,
+    gap: 22,
   },
-  partiesCard: {
+
+  // Parties Row
+  partiesFlowRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: THEME.colors.surface,
-    padding: 20,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    justifyContent: 'space-around',
+    paddingVertical: 14,
   },
-  partyCol: {
+  partyItem: {
     alignItems: 'center',
-    flex: 1,
+    gap: 4,
   },
-  partyAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: THEME.radius.md,
+  avatarCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  partyAvatarText: {
+  avatarText: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#09090B',
+    color: '#000000',
   },
   partyName: {
     fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.text,
-    textAlign: 'center',
   },
   partyRole: {
     fontSize: 11,
     color: THEME.colors.textMuted,
-    marginTop: 2,
   },
-  arrowContainer: {
-    paddingHorizontal: 10,
-  },
-  amountSection: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  amountLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    color: THEME.colors.textMuted,
-  },
-  amountInputRow: {
-    flexDirection: 'row',
+  arrowCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // Amount Block
+  amountBlock: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  amountEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.0,
+    color: THEME.colors.textMuted,
+    marginBottom: 6,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
   currencySymbol: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: THEME.colors.primary,
-    marginRight: 4,
+    fontSize: 32,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+    marginTop: 4,
   },
   amountInput: {
-    fontSize: 44,
+    fontSize: 48,
     fontWeight: '900',
     color: THEME.colors.text,
-    minWidth: 100,
+    letterSpacing: -1,
+    minWidth: 80,
     textAlign: 'center',
+    paddingVertical: 0,
   },
-  methodSection: {
+
+  // Method Cards
+  sectionContainer: {
     gap: 10,
   },
   sectionLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     color: THEME.colors.textMuted,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   methodCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
     backgroundColor: THEME.colors.surface,
-    padding: 16,
-    borderRadius: THEME.radius.md,
+    padding: 14,
+    borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    gap: 12,
+    borderColor: THEME.colors.hairline,
   },
   methodCardActive: {
     borderColor: THEME.colors.primary,
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    backgroundColor: THEME.colors.surfaceElevated,
   },
   methodIconBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: THEME.radius.sm,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -429,42 +448,62 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   radioCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
-    borderColor: THEME.colors.textMuted,
+    borderColor: THEME.colors.hairlineLight,
   },
   radioCircleActive: {
     borderColor: THEME.colors.primary,
     backgroundColor: THEME.colors.primary,
   },
+
+  // Security
   securityCallout: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: THEME.colors.surfaceSubtle,
-    padding: 12,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    paddingHorizontal: 8,
   },
   securityText: {
+    flex: 1,
     fontSize: 11,
     color: THEME.colors.textMuted,
-    flex: 1,
-    lineHeight: 16,
+    lineHeight: 15,
   },
-  primaryActionButton: {
+
+  // Bottom Sticky Bar
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.90)',
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.hairline,
+  },
+  actionBtn: {
     backgroundColor: THEME.colors.primary,
     paddingVertical: 14,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  primaryActionText: {
+  actionBtnDisabled: {
+    opacity: 0.45,
+    backgroundColor: THEME.colors.surfaceElevated,
+  },
+  actionBtnText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#09090B',
+    color: '#000000',
   },
 });

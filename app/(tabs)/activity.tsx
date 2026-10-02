@@ -1,68 +1,138 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Receipt, Handshake, Bot, Wallet } from 'lucide-react-native';
+import { Receipt, Handshake, Bot, Sparkles } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 
+interface ActivityItem {
+  id: string;
+  icon: any;
+  iconColor: string;
+  title: string;
+  subtitle: string;
+  time: string;
+  amount?: string;
+  type?: 'positive' | 'negative';
+  badge?: string;
+}
+
 export default function ActivityScreen() {
-  const activities = [
+  const sections: Array<{ title: string; items: ActivityItem[] }> = [
     {
-      id: '1',
-      icon: Receipt,
-      iconColor: THEME.colors.primary,
-      iconBg: 'rgba(16, 185, 129, 0.12)',
-      title: 'Dinner at Social',
-      subtitle: 'You paid ₹1,200 in Goa Trip',
-      time: '2 hours ago',
-      badge: 'Expense',
+      title: 'Today',
+      items: [
+        {
+          id: '1',
+          icon: Receipt,
+          iconColor: THEME.colors.primary,
+          title: 'Dinner at Social',
+          subtitle: 'You paid ₹1,200 in Goa Trip',
+          time: '2 hours ago',
+          amount: '+₹800',
+          type: 'positive',
+        },
+      ],
     },
     {
-      id: '2',
-      icon: Bot,
-      iconColor: THEME.colors.aiLight,
-      iconBg: 'rgba(139, 92, 246, 0.15)',
-      title: 'AI Budget Proposal Applied',
-      subtitle: 'SplitIt AI balanced categories (₹25k limit)',
-      time: 'Yesterday',
-      badge: 'AI Budget',
+      title: 'Yesterday',
+      items: [
+        {
+          id: '2',
+          icon: Bot,
+          iconColor: THEME.colors.aiLight,
+          title: 'AI Budget Optimized',
+          subtitle: 'Auto-balanced categories for October (₹25k cap)',
+          time: '18 hours ago',
+          badge: 'AI Smart',
+        },
+      ],
     },
     {
-      id: '3',
-      icon: Handshake,
-      iconColor: THEME.colors.primary,
-      iconBg: 'rgba(16, 185, 129, 0.12)',
-      title: 'Settlement via UPI',
-      subtitle: 'Rohit settled ₹450 with you',
-      time: '2 days ago',
-      badge: 'Settlement',
+      title: 'Earlier this week',
+      items: [
+        {
+          id: '3',
+          icon: Handshake,
+          iconColor: THEME.colors.primary,
+          title: 'Settled with Rohit Sharma',
+          subtitle: 'Received ₹450 via UPI in Apartment Flatmates',
+          time: '3 days ago',
+          amount: '+₹450',
+          type: 'positive',
+        },
+        {
+          id: '4',
+          icon: Receipt,
+          iconColor: THEME.colors.negative,
+          title: 'Beach Scooters Rental',
+          subtitle: 'Rohit paid ₹2,400 in Goa Trip',
+          time: '4 days ago',
+          amount: '-₹800',
+          type: 'negative',
+        },
+      ],
     },
   ];
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Activity Feed</Text>
+        <Text style={styles.title}>Activity</Text>
+        <Text style={styles.subtitle}>Recent transactions & group changes</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.listContent}>
-        {activities.map((item) => {
-          const IconComponent = item.icon;
-          return (
-            <View key={item.id} style={styles.activityCard}>
-              <View style={[styles.avatar, { backgroundColor: item.iconBg }]}>
-                <IconComponent size={20} color={item.iconColor} />
-              </View>
-              <View style={styles.details}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.activityTitle}>{item.title}</Text>
-                  <Text style={styles.badge}>{item.badge}</Text>
-                </View>
-                <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
-                <Text style={styles.activityTime}>{item.time}</Text>
-              </View>
+      <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        {sections.map((section) => (
+          <View key={section.title} style={styles.sectionWrap}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+
+            <View style={styles.ledgerCard}>
+              {section.items.map((item, index) => {
+                const IconComponent = item.icon;
+                const isLast = index === section.items.length - 1;
+
+                return (
+                  <View key={item.id} style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}>
+                    <View style={styles.iconCircle}>
+                      <IconComponent size={16} color={item.iconColor} />
+                    </View>
+
+                    <View style={styles.details}>
+                      <Text style={styles.activityTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={styles.activitySubtitle} numberOfLines={1}>
+                        {item.subtitle}
+                      </Text>
+                      <Text style={styles.activityTime}>{item.time}</Text>
+                    </View>
+
+                    {item.amount && (
+                      <View style={styles.amountCol}>
+                        <Text
+                          style={[
+                            styles.amountText,
+                            item.type === 'positive' && { color: THEME.colors.primary },
+                            item.type === 'negative' && { color: THEME.colors.negative },
+                          ]}
+                        >
+                          {item.amount}
+                        </Text>
+                      </View>
+                    )}
+
+                    {item.badge && (
+                      <View style={styles.badgePill}>
+                        <Text style={styles.badgeText}>{item.badge}</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
             </View>
-          );
-        })}
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -75,65 +145,96 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '900',
     color: THEME.colors.text,
+    letterSpacing: -0.8,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
   },
   listContent: {
     paddingHorizontal: 20,
-    gap: 12,
-    paddingBottom: 24,
+    paddingBottom: 36,
+    gap: 20,
   },
-  activityCard: {
-    flexDirection: 'row',
+  sectionWrap: {
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: THEME.colors.textMuted,
+    textTransform: 'uppercase',
+  },
+  ledgerCard: {
     backgroundColor: THEME.colors.surface,
-    padding: 14,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.hairline,
+    paddingHorizontal: 16,
+  },
+  ledgerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 14,
     gap: 12,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: THEME.radius.md,
+  ledgerRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
   details: {
     flex: 1,
   },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
   activityTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.text,
   },
-  badge: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: THEME.colors.textMuted,
-    backgroundColor: THEME.colors.surfaceElevated,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
   activitySubtitle: {
     fontSize: 12,
     color: THEME.colors.textSecondary,
-    marginBottom: 4,
+    marginTop: 2,
   },
   activityTime: {
     fontSize: 10,
     color: THEME.colors.textMuted,
+    marginTop: 3,
+  },
+  amountCol: {
+    alignItems: 'flex-end',
+  },
+  amountText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  badgePill: {
+    backgroundColor: THEME.colors.aiMuted,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: THEME.radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.25)',
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.aiLight,
   },
 });

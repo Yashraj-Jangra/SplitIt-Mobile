@@ -1,24 +1,30 @@
 export const THEME = {
   colors: {
-    background: '#09090B',
-    surface: '#18181B',
-    surfaceElevated: '#27272A',
-    surfaceSubtle: '#121214',
-    border: 'rgba(255, 255, 255, 0.08)',
-    borderFocus: 'rgba(255, 255, 255, 0.20)',
-    primary: '#10B981', // Emerald 500
+    background: '#000000', // Pure OLED Pitch Black
+    surface: '#0A0A0C', // Ultra-dark subtle elevation
+    surfaceElevated: '#141417', // High-contrast interactive layer
+    surfaceSubtle: '#0E0E11', // Inset / recessed element backdrop
+    surfacePill: '#1A1A1F', // Pill selector backdrop
+    border: 'rgba(255, 255, 255, 0.07)', // Ultra-subtle hairline
+    borderFocus: 'rgba(255, 255, 255, 0.22)',
+    hairline: 'rgba(255, 255, 255, 0.06)',
+    hairlineLight: 'rgba(255, 255, 255, 0.12)',
+    primary: '#10B981', // Clean Emerald
     primaryLight: '#34D399',
-    negative: '#F43F5E', // Rose 500
+    primaryMuted: 'rgba(16, 185, 129, 0.12)',
+    negative: '#F43F5E', // Clean Rose
     negativeLight: '#FB7185',
-    warning: '#F59E0B', // Amber 500
-    ai: '#8B5CF6', // Violet 500
+    negativeMuted: 'rgba(244, 63, 94, 0.12)',
+    warning: '#F59E0B',
+    ai: '#8B5CF6', // Electric Violet
     aiLight: '#A78BFA',
-    text: '#FAFAFA',
-    textSecondary: '#A1A1AA',
-    textMuted: '#71717A',
-    glassDark: 'rgba(0, 0, 0, 0.70)',
-    glassCard: 'rgba(24, 24, 27, 0.85)',
-    glassBorder: 'rgba(255, 255, 255, 0.12)',
+    aiMuted: 'rgba(139, 92, 246, 0.14)',
+    text: '#FFFFFF', // High-contrast crisp white
+    textSecondary: '#A1A1AA', // Zinc 400
+    textMuted: '#52525B', // Zinc 600
+    glassDark: 'rgba(0, 0, 0, 0.65)',
+    glassCard: 'rgba(10, 10, 12, 0.85)',
+    glassBorder: 'rgba(255, 255, 255, 0.10)',
   },
   radius: {
     xs: 6,
@@ -26,6 +32,8 @@ export const THEME = {
     md: 12,
     lg: 16,
     xl: 20,
+    '2xl': 24,
+    '3xl': 32,
     full: 9999,
   },
   typography: {

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { User, QrCode, Bell, HelpCircle, Shield, LogOut, Trash2, ChevronRight } from 'lucide-react-native';
+import { QrCode, Bell, HelpCircle, Shield, LogOut, Trash2, ChevronRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import * as Haptics from 'expo-haptics';
@@ -29,7 +29,7 @@ export default function ProfileScreen() {
   const profileItems = [
     {
       icon: QrCode,
-      title: 'UPI ID & QR Code',
+      title: 'UPI & Payment QR',
       subtitle: user?.email ? `${user.email.split('@')[0]}@okaxis` : 'yashraj@okaxis',
       onPress: () =>
         router.push(
@@ -38,20 +38,20 @@ export default function ProfileScreen() {
     },
     {
       icon: Bell,
-      title: 'Push Notifications',
-      subtitle: 'Configured & Active',
+      title: 'Notifications',
+      subtitle: 'Push delivery & quiet hours',
       onPress: () => router.push('/notifications/preferences'),
     },
     {
       icon: HelpCircle,
-      title: 'Customer Support',
-      subtitle: 'Tickets & Live Help',
+      title: 'Support Desk',
+      subtitle: 'Tickets & help center',
       onPress: () => router.push('/support'),
     },
     {
       icon: Shield,
-      title: 'Privacy & Terms',
-      subtitle: 'Legal Information',
+      title: 'Privacy & Legal',
+      subtitle: 'Zero tracking & App Store terms',
       onPress: () => router.push('/legal/privacy'),
     },
   ];
@@ -68,62 +68,67 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Account</Text>
+        <Text style={styles.title}>Settings</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* User Card */}
-        <View style={styles.userCard}>
-          <View style={styles.avatar}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* User Profile Header (Open Canvas) */}
+        <View style={styles.userHeroSection}>
+          <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.name || 'Yashraj Jangra'}</Text>
-            <Text style={styles.userEmail}>{user?.email || 'jangrayash1505@gmail.com'}</Text>
-          </View>
+          <Text style={styles.userName}>{user?.name || 'Yashraj Jangra'}</Text>
+          <Text style={styles.userEmail}>{user?.email || 'jangrayash1505@gmail.com'}</Text>
         </View>
 
-        {/* Settings Group */}
-        <View style={styles.sectionCard}>
+        {/* Grouped Settings Stream */}
+        <View style={styles.settingsGroupCard}>
           {profileItems.map((item, index) => {
             const IconComponent = item.icon;
+            const isLast = index === profileItems.length - 1;
+
             return (
               <TouchableOpacity
                 key={index}
-                style={[styles.itemRow, index > 0 && styles.itemRowBorder]}
+                style={[styles.itemRow, !isLast && styles.itemRowBorder]}
                 onPress={() => {
                   Haptics.selectionAsync();
                   item.onPress();
                 }}
+                activeOpacity={0.7}
               >
-                <IconComponent size={18} color={THEME.colors.textSecondary} />
+                <View style={styles.itemIconCircle}>
+                  <IconComponent size={16} color={THEME.colors.textSecondary} />
+                </View>
+
                 <View style={styles.itemContent}>
                   <Text style={styles.itemTitle}>{item.title}</Text>
                   <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
                 </View>
-                <ChevronRight size={16} color={THEME.colors.textMuted} />
+
+                <ChevronRight size={15} color={THEME.colors.textMuted} />
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Logout / Delete Account */}
+        {/* Action Triggers: Log Out / Delete Account */}
         <View style={styles.dangerSection}>
-          <TouchableOpacity style={styles.actionRow} onPress={handleLogout}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
             <LogOut size={16} color={THEME.colors.textSecondary} />
-            <Text style={styles.actionText}>Log Out</Text>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={[styles.actionRow, styles.deleteAccountRow]}
+            style={styles.deleteBtn}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               router.push('/legal/delete-account');
             }}
+            activeOpacity={0.8}
           >
-            <Trash2 size={16} color={THEME.colors.negative} />
-            <Text style={[styles.actionText, { color: THEME.colors.negative }]}>
-              Delete Account
-            </Text>
+            <Trash2 size={15} color={THEME.colors.negative} />
+            <Text style={styles.deleteText}>Delete Account</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -138,106 +143,120 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '900',
     color: THEME.colors.text,
+    letterSpacing: -0.8,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    gap: 16,
-    paddingBottom: 32,
+    paddingTop: 8,
+    paddingBottom: 36,
+    gap: 24,
   },
-  userCard: {
-    flexDirection: 'row',
+  userHeroSection: {
     alignItems: 'center',
-    backgroundColor: THEME.colors.surface,
-    padding: 16,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    gap: 14,
+    paddingVertical: 14,
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.primary,
+  avatarCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 2,
+    borderColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '900',
-    color: '#09090B',
-  },
-  userInfo: {
-    flex: 1,
+    color: THEME.colors.text,
   },
   userName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     color: THEME.colors.text,
-    marginBottom: 2,
+    letterSpacing: -0.3,
   },
   userEmail: {
     fontSize: 12,
     color: THEME.colors.textMuted,
+    marginTop: 2,
   },
-  sectionCard: {
+  settingsGroupCard: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
+    borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    overflow: 'hidden',
+    borderColor: THEME.colors.hairline,
+    paddingHorizontal: 16,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    paddingVertical: 14,
     gap: 12,
   },
   itemRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+  },
+  itemIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemContent: {
     flex: 1,
   },
   itemTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: THEME.colors.text,
   },
   itemSubtitle: {
     fontSize: 11,
     color: THEME.colors.textMuted,
-    marginTop: 1,
+    marginTop: 2,
   },
   dangerSection: {
-    gap: 8,
-    marginTop: 8,
+    gap: 10,
+    marginTop: 4,
   },
-  actionRow: {
+  logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     backgroundColor: THEME.colors.surface,
-    paddingVertical: 12,
-    borderRadius: THEME.radius.md,
+    paddingVertical: 14,
+    borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.hairline,
   },
-  deleteAccountRow: {
-    borderColor: 'rgba(244, 63, 94, 0.2)',
-    backgroundColor: 'rgba(244, 63, 94, 0.05)',
-  },
-  actionText: {
-    fontSize: 13,
+  logoutText: {
+    fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.textSecondary,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  deleteText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.negative,
   },
 });
