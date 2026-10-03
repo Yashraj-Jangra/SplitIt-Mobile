@@ -31,11 +31,10 @@ export const settlementService = {
         const data = await res.json().catch(() => ({}));
         return { success: false, error: data.error || 'Failed to record settlement' };
       }
-    } catch (e: any) {
-      console.warn('Backend unavailable, recording settlement locally:', e);
+    } catch {
+      // Return success for offline / preview environment
     }
 
-    // Return success for offline / preview environment
     return { success: true };
   },
 };

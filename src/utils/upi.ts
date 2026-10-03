@@ -34,8 +34,8 @@ export async function launchUpiPayment(params: UpiPaymentParams): Promise<boolea
       await Linking.openURL(url);
       return true;
     }
-  } catch (err) {
-    console.warn('Unable to launch UPI URL directly:', err);
+  } catch {
+    // Fall through to direct open attempt
   }
 
   // Fallback direct open without canOpenURL check
@@ -55,8 +55,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     await Clipboard.setStringAsync(text);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     return true;
-  } catch (e) {
-    console.error('Failed to copy to clipboard:', e);
+  } catch {
     return false;
   }
 }

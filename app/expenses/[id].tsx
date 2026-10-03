@@ -22,12 +22,14 @@ import {
   Calendar,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { expenseService } from '../../src/services/expense.service';
 import * as Haptics from 'expo-haptics';
 
 export default function ExpenseDetailModal() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     id: string;
+    groupId?: string;
     title?: string;
     amount?: string;
     paidByName?: string;
@@ -53,7 +55,10 @@ export default function ExpenseDetailModal() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            const expenseId = params.id;
+            const groupId = params.groupId || '';
+            await expenseService.deleteExpense(expenseId, groupId, amount);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.back();
           },

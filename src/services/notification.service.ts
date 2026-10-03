@@ -22,8 +22,7 @@ function getNotificationsModule(): typeof NotificationsType | null {
     const mod = require('expo-notifications') as typeof NotificationsType;
     cachedNotificationsModule = mod;
     return mod;
-  } catch (e) {
-    console.warn('expo-notifications module could not be loaded in this runtime:', e);
+  } catch {
     cachedNotificationsModule = null;
     return null;
   }
@@ -116,8 +115,8 @@ export const notificationService = {
           sound: 'default',
         });
       }
-    } catch (e) {
-      console.warn('Notifications init failed:', e);
+    } catch {
+      // Ignored for environments without native notification channels
     }
   },
 
@@ -184,8 +183,7 @@ export const notificationService = {
       });
 
       return expoPushToken;
-    } catch (e) {
-      console.warn('Register for push notifications skipped/failed:', e);
+    } catch {
       return null;
     }
   },
@@ -205,8 +203,8 @@ export const notificationService = {
         const data = await res.json();
         if (Array.isArray(data)) return data;
       }
-    } catch (e) {
-      console.warn('Failed to fetch notifications from backend, using cached list:', e);
+    } catch {
+      // Fall through to cached / offline list
     }
 
     // High quality offline fallback items
@@ -310,8 +308,8 @@ export const notificationService = {
           },
         };
       }
-    } catch (e) {
-      console.warn('Failed to fetch notification preferences:', e);
+    } catch {
+      // Fall through to defaults
     }
     return DEFAULT_NOTIFICATION_PREFERENCES;
   },
@@ -358,8 +356,7 @@ export const notificationService = {
           navigate(data.url);
         }
       });
-    } catch (e) {
-      console.warn('Failed to attach notification response listener:', e);
+    } catch {
       return { remove: () => {} };
     }
   },

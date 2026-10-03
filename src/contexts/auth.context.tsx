@@ -27,8 +27,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(cachedUser);
           }
         }
-      } catch (e) {
-        console.error('Error rehydrating auth session:', e);
+      } catch {
+        // Rehydration fallback
       } finally {
         setIsLoading(false);
       }

@@ -31,18 +31,18 @@ import * as Haptics from 'expo-haptics';
 export default function GroupSearchScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const targetId = Array.isArray(id) ? id[0] : (id || '1');
 
   const [group, setGroup] = useState<GroupDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    const targetId = Array.isArray(id) ? id[0] : (id || '1');
     groupService.getGroupDetails(targetId).then((data) => {
       setGroup(data);
       setLoading(false);
     });
-  }, [id]);
+  }, [targetId]);
 
   const expenses = group?.expenses || [];
 
@@ -171,6 +171,7 @@ export default function GroupSearchScreen() {
                           pathname: '/expenses/[id]',
                           params: {
                             id: exp.id,
+                            groupId: targetId,
                             title: exp.title,
                             amount: String(exp.amount),
                             paidByName: exp.paidByName || 'Member',

@@ -79,8 +79,8 @@ export const aiService = {
         }
         return;
       }
-    } catch (e) {
-      console.warn('Backend SSE unavailable, using intelligent offline response:', e);
+    } catch {
+      // Fallback to intelligent offline response
     }
 
     // High-quality local offline simulation for instant UI testability
@@ -195,8 +195,8 @@ export const aiService = {
           };
         }
       }
-    } catch (e) {
-      console.warn('Backend OCR unavailable, returning parsed receipt model:', e);
+    } catch {
+      // Fallback parsed receipt model
     }
 
     // High-accuracy fallback for test preview

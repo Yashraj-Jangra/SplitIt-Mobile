@@ -23,7 +23,7 @@ export default function NewGroupModal() {
   const [category, setCategory] = useState<'trip' | 'home' | 'couple' | 'other'>('trip');
   const [currency, setCurrency] = useState<'INR' | 'USD' | 'EUR' | 'GBP'>('INR');
   const [memberInput, setMemberInput] = useState('');
-  const [members, setMembers] = useState<string[]>(['rohit@gmail.com', 'priya@gmail.com']);
+  const [members, setMembers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 

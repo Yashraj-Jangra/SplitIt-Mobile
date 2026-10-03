@@ -52,8 +52,8 @@ export const authService = {
     try {
       await SecureStore.setItemAsync(TOKEN_KEY, token);
       await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
-    } catch (e) {
-      console.error('Failed to persist session to SecureStore:', e);
+    } catch {
+      // SecureStore persist fallback
     }
   },
 
@@ -87,8 +87,8 @@ export const authService = {
     try {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       await SecureStore.deleteItemAsync(USER_KEY);
-    } catch (e) {
-      console.error('Failed to clear session:', e);
+    } catch {
+      // SecureStore clear fallback
     }
   },
 

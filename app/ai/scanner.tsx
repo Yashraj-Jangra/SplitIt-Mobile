@@ -58,8 +58,7 @@ export default function ReceiptScannerScreen() {
           setScanResult(result);
         }
       }
-    } catch (error) {
-      console.warn('Camera capture failed:', error);
+    } catch {
       // Fallback preview
       const fallback = await aiService.scanReceipt('');
       setScanResult(fallback);
@@ -83,8 +82,8 @@ export default function ReceiptScannerScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setScanResult(result);
       }
-    } catch (error) {
-      console.warn('Gallery pick failed:', error);
+    } catch {
+      // Gallery pick cancelled or unhandled
     } finally {
       setIsProcessing(false);
     }

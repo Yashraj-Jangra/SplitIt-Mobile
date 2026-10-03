@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.splitit.app",
+      "buildNumber": "1",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "upi",
@@ -25,11 +26,19 @@
           "credpay",
           "slice"
         ],
-        "NSCameraUsageDescription": "SplitIt needs camera access to scan physical receipts and bills for automatic expense splitting."
+        "NSCameraUsageDescription": "SplitIt needs camera access to scan physical receipts and bills for automatic expense splitting.",
+        "NSPhotoLibraryUsageDescription": "SplitIt needs photo library access to upload receipt images from your photo gallery."
       }
     },
     "android": {
       "package": "com.splitit.app",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#09090B",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -54,7 +63,19 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SplitIt needs camera access to scan physical receipts and bills for automatic expense splitting."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SplitIt needs photo library access to upload receipt images from your photo gallery."
+        }
+      ]
     ]
   }
 }

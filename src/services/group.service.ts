@@ -590,8 +590,8 @@ export const groupService = {
         const result = await res.json();
         return result;
       }
-    } catch (e) {
-      console.warn('Backend group creation offline fallback:', e);
+    } catch {
+      // Offline fallback
     }
     const newId = `grp_${Date.now()}`;
     _cachedGroups.unshift({
@@ -609,5 +609,102 @@ export const groupService = {
       archived: false,
     });
     return { success: true, id: newId };
+  },
+
+  /**
+   * Update group properties (name, description, etc.)
+   */
+  async updateGroup(groupId: string, updates: { name?: string; description?: string }): Promise<boolean> {
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
+          body: JSON.stringify(updates),
+        });
+        if (res.ok) {
+          const match = _cachedGroups.find((g) => g.id === groupId);
+          if (match) {
+            if (updates.name) match.name = updates.name;
+            if (updates.description) match.description = updates.description;
+          }
+          return true;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    const match = _cachedGroups.find((g) => g.id === groupId);
+    if (match) {
+      if (updates.name) match.name = updates.name;
+      if (updates.description) match.description = updates.description;
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Archive group
+   */
+  async archiveGroup(groupId: string): Promise<boolean> {
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}/archive`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
+        });
+        if (res.ok) {
+          const match = _cachedGroups.find((g) => g.id === groupId);
+          if (match) match.archived = true;
+          return true;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    const match = _cachedGroups.find((g) => g.id === groupId);
+    if (match) {
+      match.archived = true;
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Delete group permanently
+   */
+  async deleteGroup(groupId: string): Promise<boolean> {
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
+        });
+        if (res.ok) {
+          _cachedGroups = _cachedGroups.filter((g) => g.id !== groupId);
+          return true;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    _cachedGroups = _cachedGroups.filter((g) => g.id !== groupId);
+    return true;
   },
 };

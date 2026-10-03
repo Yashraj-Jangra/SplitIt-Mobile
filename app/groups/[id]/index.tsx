@@ -33,6 +33,7 @@ import * as Haptics from 'expo-haptics';
 export default function GroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const targetId = Array.isArray(id) ? id[0] : (id || '1');
 
   const [group, setGroup] = useState<GroupDetailData | null>(null);
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'budget' | 'activity'>('expenses');
@@ -40,7 +41,6 @@ export default function GroupDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadGroup = async () => {
-    const targetId = Array.isArray(id) ? id[0] : (id || '1');
     const data = await groupService.getGroupDetails(targetId);
     setGroup(data);
     setLoading(false);
@@ -307,6 +307,7 @@ export default function GroupDetailScreen() {
                           pathname: '/expenses/[id]',
                           params: {
                             id: exp.id,
+                            groupId: targetId,
                             title: exp.title,
                             amount: String(exp.amount),
                             paidByName: exp.paidByName || 'Member',

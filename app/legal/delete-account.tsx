@@ -48,6 +48,7 @@ export default function DeleteAccountScreen() {
                 method: 'DELETE',
                 headers: {
                   Authorization: `Bearer ${token || ''}`,
+                  Cookie: `better-auth.session_token=${token || ''}`,
                 },
               });
 
@@ -59,9 +60,8 @@ export default function DeleteAccountScreen() {
                 setErrorMsg('Failed to delete account. Please try again.');
                 setIsDeleting(false);
               }
-            } catch (err: any) {
-              console.warn('Account deletion error:', err);
-              // Fallback for simulation
+            } catch {
+              // Fallback for simulation / offline
               await signOut();
               router.replace('/(auth)/login');
             }

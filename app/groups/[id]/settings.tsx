@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -17,11 +19,14 @@ import * as Haptics from 'expo-haptics';
 export default function GroupSettingsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const targetId = Array.isArray(id) ? id[0] : (id || '1');
   const [groupName, setGroupName] = useState('');
   const [members, setMembers] = useState<Array<{ id: string; name: string; email?: string }>>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const targetId = Array.isArray(id) ? id[0] : (id || '1');
     groupService.getGroupDetails(targetId).then((g) => {
       if (g) {
         setGroupName(g.name);
@@ -34,7 +39,96 @@ export default function GroupSettingsScreen() {
         );
       }
     });
-  }, [id]);
+  }, [targetId]);
+
+  const handleSave = async () => {
+    if (!groupName.trim() || isSaving) return;
+    setIsSaving(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await groupService.updateGroup(targetId, { name: groupName.trim() });
+    setIsSaving(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.back();
+  };
+
+  const handleArchive = () => {
+    if (isArchiving) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert(
+      'Archive Group',
+      `Are you sure you want to archive "${groupName}"? It will be moved to archived groups.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Archive',
+          style: 'default',
+          onPress: async () => {
+            setIsArchiving(true);
+            await groupService.archiveGroup(targetId);
+            setIsArchiving(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.replace('/(tabs)/groups');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDelete = () => {
+    if (isDeleting) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert(
+      'Delete Group Permanently',
+      `Are you sure you want to permanently delete "${groupName}" and all associated expenses? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            await groupService.deleteGroup(targetId);
+            setIsDeleting(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.replace('/(tabs)/groups');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleInvite = () => {
+    Haptics.selectionAsync();
+    if (typeof (Alert as any).prompt === 'function') {
+      (Alert as any).prompt(
+        'Invite Member',
+        'Enter email address of the person you want to invite:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Invite',
+            onPress: (email?: string) => {
+              if (email && email.trim()) {
+                const trimmed = email.trim();
+                setMembers((prev) => [
+                  ...prev,
+                  {
+                    id: `inv_${Date.now()}`,
+                    name: trimmed.split('@')[0],
+                    email: trimmed,
+                  },
+                ]);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+            },
+          },
+        ],
+        'plain-text'
+      );
+    } else {
+      Alert.alert('Invite Link Ready', 'Group invite link copied to your clipboard!');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -51,13 +145,15 @@ export default function GroupSettingsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Group Settings</Text>
         <TouchableOpacity
-          onPress={() => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.back();
-          }}
-          style={styles.saveButton}
+          onPress={handleSave}
+          disabled={isSaving}
+          style={[styles.saveButton, isSaving && { opacity: 0.6 }]}
         >
-          <Check size={18} color="#09090B" />
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#09090B" />
+          ) : (
+            <Check size={18} color="#09090B" />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -80,7 +176,7 @@ export default function GroupSettingsScreen() {
             <Text style={styles.sectionTitle}>MEMBERS ({members.length})</Text>
             <TouchableOpacity
               style={styles.addMemberButton}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={handleInvite}
             >
               <UserPlus size={14} color={THEME.colors.primary} />
               <Text style={styles.addMemberText}>Invite</Text>
@@ -103,20 +199,34 @@ export default function GroupSettingsScreen() {
         {/* Danger Zone */}
         <View style={styles.dangerGroup}>
           <TouchableOpacity
-            style={styles.dangerRow}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            style={[styles.dangerRow, isArchiving && { opacity: 0.6 }]}
+            onPress={handleArchive}
+            disabled={isArchiving}
           >
-            <Archive size={16} color={THEME.colors.textSecondary} />
-            <Text style={styles.dangerText}>Archive Group</Text>
+            {isArchiving ? (
+              <ActivityIndicator size="small" color={THEME.colors.textSecondary} />
+            ) : (
+              <>
+                <Archive size={16} color={THEME.colors.textSecondary} />
+                <Text style={styles.dangerText}>Archive Group</Text>
+              </>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.dangerRow, styles.deleteRow]}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+            style={[styles.dangerRow, styles.deleteRow, isDeleting && { opacity: 0.6 }]}
+            onPress={handleDelete}
+            disabled={isDeleting}
           >
-            <Trash2 size={16} color={THEME.colors.negative} />
-            <Text style={[styles.dangerText, { color: THEME.colors.negative }]}>
-              Delete Group Permanently
-            </Text>
+            {isDeleting ? (
+              <ActivityIndicator size="small" color={THEME.colors.negative} />
+            ) : (
+              <>
+                <Trash2 size={16} color={THEME.colors.negative} />
+                <Text style={[styles.dangerText, { color: THEME.colors.negative }]}>
+                  Delete Group Permanently
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

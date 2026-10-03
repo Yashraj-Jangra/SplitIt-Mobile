@@ -40,8 +40,8 @@ export const supportService = {
         const data = await res.json();
         if (Array.isArray(data)) return data;
       }
-    } catch (e) {
-      console.warn('Failed to fetch support tickets, using mock data:', e);
+    } catch {
+      // Offline fallback to demo tickets
     }
 
     // High quality offline demo tickets
@@ -105,8 +105,8 @@ export const supportService = {
       if (res.ok) {
         return await res.json();
       }
-    } catch (e) {
-      console.warn('Backend ticket creation offline:', e);
+    } catch {
+      // Offline fallback
     }
     return { success: true, ticketId: `SP-${Math.floor(100 + Math.random() * 900)}` };
   },
