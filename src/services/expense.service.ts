@@ -1,5 +1,6 @@
 import { authService, API_BASE_URL } from './auth.service';
 import { parseComplexChange, ParsedChange } from '@splitit/core';
+import { groupService } from './group.service';
 
 export interface CreateExpensePayload {
   groupId: string;
@@ -114,6 +115,14 @@ export const expenseService = {
       const raw = await res.json();
       if (!Array.isArray(raw)) return [];
 
+      let groupNameMap = new Map<string, string>();
+      try {
+        const userGroups = await groupService.getUserGroups();
+        groupNameMap = new Map(userGroups.map((g) => [g.id, g.name]));
+      } catch {
+        // Safe ignore
+      }
+
       const mapped: UserTransactionItem[] = raw.slice(0, limit).map((e: any) => {
         const firstPayer = e.payers?.[0];
         const payerId = firstPayer?.user?.uid || firstPayer?.userId || e.expenseCreatorId || '';
@@ -154,7 +163,7 @@ export const expenseService = {
         return {
           id: e.id,
           title: e.description || e.title || 'Expense',
-          groupName: e.groupName || 'Group',
+          groupName: e.groupName || groupNameMap.get(e.groupId) || 'Group',
           groupId: e.groupId || '',
           amount: Number(e.amount || 0),
           yourShare,
@@ -181,21 +190,37 @@ export const expenseService = {
     const currentUserId = currentUser?.id || 'u1';
 
     try {
-      if (token && groupId) {
-        const headers = {
+      if (token) {
+        const headers: Record<string, string> = {
           'Accept': 'application/json',
           Authorization: `Bearer ${token}`,
           Cookie: `better-auth.session_token=${token}`,
         };
 
-        const [expenseRes, historyRes] = await Promise.allSettled([
-          fetch(`${API_BASE_URL}/api/expenses/${expenseId}?groupId=${groupId}`, { headers }),
-          fetch(`${API_BASE_URL}/api/history?groupId=${groupId}&expenseId=${expenseId}`, { headers }),
-        ]);
+        const expenseUrl = groupId
+          ? `${API_BASE_URL}/api/expenses/${expenseId}?groupId=${groupId}`
+          : `${API_BASE_URL}/api/expenses/${expenseId}`;
 
-        if (expenseRes.status === 'fulfilled' && expenseRes.value.ok) {
-          const e = await expenseRes.value.json();
-          const historyList = historyRes.status === 'fulfilled' && historyRes.value.ok ? await historyRes.value.json() : [];
+        const expenseRes = await fetch(expenseUrl, { headers });
+
+        if (expenseRes.ok) {
+          const e = await expenseRes.json();
+          const targetGroupId = e.groupId || groupId;
+
+          let historyList: any[] = [];
+          if (targetGroupId) {
+            try {
+              const historyRes = await fetch(
+                `${API_BASE_URL}/api/history?groupId=${targetGroupId}&expenseId=${expenseId}`,
+                { headers }
+              );
+              if (historyRes.ok) {
+                historyList = await historyRes.json();
+              }
+            } catch {
+              // History fetch is optional
+            }
+          }
 
           const payers = (e.payers || []).map((p: any) => {
             const uid = p.user?.uid || p.userId || 'u';
@@ -301,11 +326,25 @@ export const expenseService = {
           const comments = _commentsCache.get(expenseId) || [];
           const allLogs = [...parsedLogs, ...comments];
 
+          // Resolve group name if not on expense object
+          let resolvedGroupName = e.groupName;
+          if (!resolvedGroupName && targetGroupId) {
+            try {
+              const allGroups = await groupService.getUserGroups();
+              const matchedGroup = allGroups.find((g) => g.id === targetGroupId);
+              if (matchedGroup) {
+                resolvedGroupName = matchedGroup.name;
+              }
+            } catch {
+              // Ignore
+            }
+          }
+
           const dateObj = e.date ? new Date(e.date) : new Date();
           return {
             id: e.id,
-            groupId: e.groupId || groupId || '',
-            groupName: e.groupName,
+            groupId: targetGroupId || '',
+            groupName: resolvedGroupName || 'Group',
             title: e.description || e.title || 'Expense',
             amount: Number(e.amount || 0),
             currency: 'INR',
@@ -313,8 +352,8 @@ export const expenseService = {
             rawDate: dateObj.toISOString(),
             createdAt: e.createdAt,
             category: {
-              master: e.masterCategory || (typeof e.category === 'string' ? e.category : 'Food and Drink'),
-              sub: typeof e.category === 'string' ? e.category : e.category?.sub || 'Dining Out',
+              master: e.masterCategory || (typeof e.category === 'string' ? e.category : 'General'),
+              sub: typeof e.category === 'string' ? e.category : e.category?.sub || 'General',
             },
             splitType: e.splitType || 'equally',
             notes: e.notes || undefined,
@@ -339,36 +378,99 @@ export const expenseService = {
       // Offline fallback
     }
 
-    // High quality offline fallback matching the reference screenshot design
-    const defaultAmount = 450;
-    const share = Math.round(defaultAmount / 3);
+    // Dynamic Group-Aware Fallback: Look up from cached group details
+    if (groupId) {
+      try {
+        const groupDetails = await groupService.getGroupDetails(groupId);
+        const matchedExpense = groupDetails.expenses?.find((x) => x.id === expenseId);
+        if (matchedExpense) {
+          const defaultAmount = matchedExpense.amount;
+          const numMembers = Math.max(1, groupDetails.members.length);
+          const share = Math.round(defaultAmount / numMembers);
+          const comments = _commentsCache.get(expenseId) || [];
+
+          return {
+            id: expenseId,
+            groupId,
+            groupName: groupDetails.name,
+            title: matchedExpense.title,
+            amount: defaultAmount,
+            currency: 'INR',
+            date: matchedExpense.date,
+            rawDate: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            category: matchedExpense.category,
+            splitType: 'equally',
+            notes: undefined,
+            receiptImageUrl: undefined,
+            paidById: matchedExpense.paidById,
+            paidByName: matchedExpense.paidByName,
+            paidByAvatar: groupDetails.members.find((m) => m.id === matchedExpense.paidById)?.avatarUrl,
+            payers: [
+              {
+                userId: matchedExpense.paidById,
+                name: matchedExpense.paidByName,
+                avatarUrl: groupDetails.members.find((m) => m.id === matchedExpense.paidById)?.avatarUrl,
+                amount: defaultAmount,
+              },
+            ],
+            participants: groupDetails.members.map((m) => ({
+              userId: m.id,
+              name: m.name,
+              avatarUrl: m.avatarUrl,
+              amountOwed: share,
+              isCurrentUser: m.id === currentUserId,
+            })),
+            creator: {
+              id: matchedExpense.paidById,
+              name: matchedExpense.paidByName,
+              avatarUrl: groupDetails.members.find((m) => m.id === matchedExpense.paidById)?.avatarUrl,
+            },
+            logs: [
+              {
+                id: `log_init_${expenseId}`,
+                type: 'expense_created',
+                actorName: matchedExpense.paidByName,
+                timestamp: matchedExpense.date,
+                timeAgo: matchedExpense.date,
+                description: `Created expense "${matchedExpense.title}" in ${groupDetails.name}`,
+              },
+              ...comments,
+            ],
+          };
+        }
+      } catch {
+        // Fall through
+      }
+    }
+
+    // Dynamic Generic Fallback (never hardcode fake "Dinner 450 MOHIT Y." records)
+    const defaultAmount = 0;
     const comments = _commentsCache.get(expenseId) || [];
 
     return {
       id: expenseId,
-      groupId: groupId || '1',
-      groupName: 'Apartment Flatmates 🏠',
-      title: 'Dinner',
+      groupId: groupId || '',
+      groupName: 'Group Expense',
+      title: 'Expense Details',
       amount: defaultAmount,
       currency: 'INR',
-      date: '3 Mar 2026',
-      rawDate: new Date('2026-03-03T20:30:00Z').toISOString(),
-      createdAt: '2026-03-03T20:30:00Z',
+      date: 'Today',
+      rawDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       category: {
-        master: 'Food and Drink',
-        sub: 'Dining Out',
+        master: 'General',
+        sub: 'General',
       },
       splitType: 'equally',
-      notes: 'South Indian thali and filter coffees with the roommates',
+      notes: undefined,
       receiptImageUrl: undefined,
-      paidById: 'u_mohit',
-      paidByName: 'MOHIT Y.',
-      paidByAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=160&auto=format&fit=crop',
+      paidById: currentUserId,
+      paidByName: 'You',
       payers: [
         {
-          userId: 'u_mohit',
-          name: 'MOHIT Y.',
-          avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=160&auto=format&fit=crop',
+          userId: currentUserId,
+          name: 'You',
           amount: defaultAmount,
         },
       ],
@@ -376,52 +478,22 @@ export const expenseService = {
         {
           userId: currentUserId,
           name: 'You',
-          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=160&auto=format&fit=crop',
-          amountOwed: share,
+          amountOwed: defaultAmount,
           isCurrentUser: true,
-        },
-        {
-          userId: 'u_mohit',
-          name: 'MOHIT Y.',
-          avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=160&auto=format&fit=crop',
-          amountOwed: share,
-          isCurrentUser: false,
-        },
-        {
-          userId: 'u_bhuvansh',
-          name: 'Bhuvansh K.',
-          avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=160&auto=format&fit=crop',
-          amountOwed: share,
-          isCurrentUser: false,
         },
       ],
       creator: {
-        id: 'u_bhuvansh',
-        name: 'Bhuvansh K.',
-        avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=160&auto=format&fit=crop',
+        id: currentUserId,
+        name: 'You',
       },
       logs: [
         {
-          id: 'log_init',
+          id: `log_init_${expenseId}`,
           type: 'expense_created',
-          actorName: 'Bhuvansh K.',
-          actorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=160&auto=format&fit=crop',
-          timestamp: '3 Mar 2026 at 8:30 PM',
-          timeAgo: '3 Mar 2026',
-          description: 'Added this expense in Apartment Flatmates',
-        },
-        {
-          id: 'log_update_1',
-          type: 'expense_updated',
-          actorName: 'MOHIT Y.',
-          actorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=160&auto=format&fit=crop',
-          timestamp: '4 Mar 2026 at 10:15 AM',
-          timeAgo: 'Yesterday',
-          description: 'Updated expense details',
-          changes: [
-            { field: 'Amount', from: '₹400.00', to: '₹450.00', type: 'changed' },
-            { field: 'Split', from: "changed You's share from ₹133.33 to ₹150.00", to: '', type: 'changed', detail: 'Adjusted share' },
-          ],
+          actorName: 'You',
+          timestamp: 'Today',
+          timeAgo: 'Just now',
+          description: 'Recorded expense',
         },
         ...comments,
       ],

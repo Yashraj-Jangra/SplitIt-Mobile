@@ -251,7 +251,26 @@ export default function HomeScreen() {
                 const isOwe = tx.yourImpact === 'owe';
 
                 return (
-                  <View key={tx.id} style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}>
+                  <TouchableOpacity
+                    key={tx.id}
+                    style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      router.push({
+                        pathname: '/expenses/[id]',
+                        params: {
+                          id: tx.id,
+                          groupId: tx.groupId,
+                          title: tx.title,
+                          amount: String(tx.amount),
+                          paidByName: tx.paidByName,
+                          date: tx.date,
+                          category: tx.category,
+                        },
+                      });
+                    }}
+                  >
                     <View style={styles.ledgerIconCircle}>
                       <ShoppingBag size={16} color={THEME.colors.textSecondary} />
                     </View>
@@ -279,7 +298,7 @@ export default function HomeScreen() {
                         {isGet ? 'you get' : isOwe ? 'you owe' : tx.paidByName}
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             ) : (

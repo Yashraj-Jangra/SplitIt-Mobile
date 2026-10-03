@@ -59,18 +59,63 @@ export default function ExpenseDetailScreen() {
   }>();
 
   const expenseId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const groupId = Array.isArray(params.groupId) ? params.groupId[0] : (params.groupId || '1');
+  const rawGroupId = Array.isArray(params.groupId) ? params.groupId[0] : (params.groupId || '');
+  const [groupId, setGroupId] = useState(rawGroupId);
 
-  const [expense, setExpense] = useState<ExpenseDetailModel | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [expense, setExpense] = useState<ExpenseDetailModel | null>(() => {
+    if (params.title && params.amount) {
+      const parsedAmt = parseFloat(params.amount) || 0;
+      return {
+        id: expenseId,
+        groupId: rawGroupId,
+        groupName: 'Group Expense',
+        title: params.title,
+        amount: parsedAmt,
+        currency: 'INR',
+        date: params.date || 'Today',
+        rawDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        category: {
+          master: params.category || 'General',
+          sub: params.category || 'General',
+        },
+        splitType: 'equally',
+        paidById: 'payer',
+        paidByName: params.paidByName || 'Member',
+        payers: [
+          {
+            userId: 'payer',
+            name: params.paidByName || 'Member',
+            amount: parsedAmt,
+          },
+        ],
+        participants: [
+          {
+            userId: 'participant',
+            name: 'You',
+            amountOwed: parsedAmt,
+            isCurrentUser: true,
+          },
+        ],
+        creator: {
+          id: 'creator',
+          name: params.paidByName || 'Member',
+        },
+        logs: [],
+      };
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState(!params.title);
   const [commentInput, setCommentInput] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editAmount, setEditAmount] = useState('');
-  const [editCategory, setEditCategory] = useState('Dining Out');
+  const [editTitle, setEditTitle] = useState(params.title || '');
+  const [editAmount, setEditAmount] = useState(params.amount || '');
+  const [editCategory, setEditCategory] = useState(params.category || 'General');
   const [editNotes, setEditNotes] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
@@ -81,11 +126,14 @@ export default function ExpenseDetailScreen() {
 
   const fetchExpense = async () => {
     try {
-      const data = await expenseService.getExpenseDetails(expenseId, groupId);
+      const data = await expenseService.getExpenseDetails(expenseId, groupId || undefined);
       setExpense(data);
+      if (data.groupId && !groupId) {
+        setGroupId(data.groupId);
+      }
       setEditTitle(data.title);
       setEditAmount(String(data.amount));
-      setEditCategory(data.category.sub || 'Dining Out');
+      setEditCategory(data.category.sub || data.category.master || 'General');
       setEditNotes(data.notes || '');
     } finally {
       setLoading(false);
@@ -108,7 +156,8 @@ export default function ExpenseDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             const amt = expense?.amount || parseFloat(params.amount || '0') || 0;
-            await expenseService.deleteExpense(expenseId, groupId, amt);
+            const targetGroupId = expense?.groupId || groupId;
+            await expenseService.deleteExpense(expenseId, targetGroupId, amt);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.back();
           },
@@ -137,8 +186,9 @@ export default function ExpenseDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const oldAmt = expense?.amount || newAmt;
+    const targetGroupId = expense?.groupId || groupId;
     const res = await expenseService.updateExpense(expenseId, {
-      groupId,
+      groupId: targetGroupId,
       amount: newAmt,
       oldAmount: oldAmt,
       description: editTitle.trim(),

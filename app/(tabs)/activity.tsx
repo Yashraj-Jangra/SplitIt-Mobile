@@ -6,7 +6,9 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Receipt,
@@ -35,6 +37,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 export default function ActivityScreen() {
+  const router = useRouter();
   const [transactions, setTransactions] = useState<UserTransactionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,9 +98,25 @@ export default function ActivityScreen() {
                 const isOwe = tx.yourImpact === 'owe';
 
                 return (
-                  <View
+                  <TouchableOpacity
                     key={tx.id}
                     style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      router.push({
+                        pathname: '/expenses/[id]',
+                        params: {
+                          id: tx.id,
+                          groupId: tx.groupId,
+                          title: tx.title,
+                          amount: String(tx.amount),
+                          paidByName: tx.paidByName,
+                          date: tx.date,
+                          category: tx.category,
+                        },
+                      });
+                    }}
                   >
                     <View style={styles.iconCircle}>
                       <IconComponent
@@ -140,7 +159,7 @@ export default function ActivityScreen() {
                         {isGet ? 'you get' : isOwe ? 'you owe' : 'split'}
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
