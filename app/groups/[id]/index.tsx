@@ -111,29 +111,29 @@ export default function GroupDetailScreen() {
     Haptics.selectionAsync();
     const tabIndex = TABS.indexOf(tab);
 
-    // 1. Smooth spring sliding indicator pill
+    // 1. Snappy native spring sliding indicator pill
     Animated.spring(tabIndicatorAnim, {
       toValue: tabIndex,
       useNativeDriver: true,
-      damping: 24,
-      stiffness: 280,
-      mass: 0.8,
+      damping: 26,
+      stiffness: 340,
+      mass: 0.6,
     }).start();
 
-    // 2. Smooth crossfade for tab content
-    tabContentAnim.setValue(0);
+    // 2. Snappy micro-transition for tab content (never goes blank)
+    tabContentAnim.setValue(0.7);
     Animated.timing(tabContentAnim, {
       toValue: 1,
-      duration: 200,
+      duration: 120,
       useNativeDriver: true,
     }).start();
 
-    // 3. Smooth scale & fade for Add Expense FAB
+    // 3. Fast spring scale & fade for Add Expense FAB
     Animated.spring(fabAnim, {
       toValue: tab === 'expenses' ? 1 : 0,
       useNativeDriver: true,
       friction: 7,
-      tension: 60,
+      tension: 80,
     }).start();
 
     setActiveTab(tab);
@@ -161,9 +161,10 @@ export default function GroupDetailScreen() {
         style={styles.segmentedTabBar}
         onLayout={onTabBarLayout}
       >
-        {/* Smooth Sliding Pill Indicator */}
+        {/* Smooth Sliding Pill Indicator (pointerEvents="none" prevents blocking taps) */}
         {singleTabWidth > 0 && (
           <Animated.View
+            pointerEvents="none"
             style={[
               styles.activeTabPill,
               {
@@ -186,7 +187,9 @@ export default function GroupDetailScreen() {
             key={tab}
             style={styles.tabButton}
             onPress={() => handleTabChange(tab)}
+            delayPressIn={0}
             activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
           >
             <Text
               style={[
@@ -283,178 +286,13 @@ export default function GroupDetailScreen() {
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <StatusBar style="light" />
 
-      {/* Cinematic Collapsing Header (Respects Notification Bar) */}
-      <Animated.View
-        style={[
-          styles.collapsingHeader,
-          {
-            height: headerHeight,
-            paddingTop: topInset,
-          },
-        ]}
-      >
-        <Animated.Image
-          source={{
-            uri:
-              group.coverImageUrl ||
-              'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200&auto=format&fit=crop',
-          }}
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              transform: [{ scale: imageScale }],
-            },
-          ]}
-          resizeMode="cover"
-        />
-        <Animated.View style={[styles.heroVignette, { opacity: vignetteOpacity }]} />
-
-        {/* Floating Glass Top Bar */}
-        <View style={styles.heroTopBar}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.selectionAsync();
-              router.back();
-            }}
-            style={styles.heroGlassBtn}
-            activeOpacity={0.8}
-          >
-            <ArrowLeft size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          {/* Centered Collapsed Title */}
-          <Animated.View
-            style={[
-              styles.collapsedTitleWrap,
-              {
-                opacity: collapsedTitleOpacity,
-                transform: [{ translateY: collapsedTitleTranslateY }],
-              },
-            ]}
-            pointerEvents={isCollapsed ? 'auto' : 'none'}
-          >
-            <TouchableOpacity onPress={scrollToTop} activeOpacity={0.7}>
-              <Text style={styles.collapsedTitleText} numberOfLines={1}>
-                {group.name}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <View style={styles.heroTopBarActions}>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.selectionAsync();
-                const targetId = Array.isArray(id) ? id[0] : (id || group.id);
-                router.push(`/groups/${targetId}/search`);
-              }}
-              style={styles.heroGlassBtn}
-              activeOpacity={0.8}
-            >
-              <Search size={17} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push({
-                  pathname: '/ai/chat',
-                  params: { groupId: group.id, groupName: group.name },
-                });
-              }}
-              style={[styles.heroGlassBtn, { backgroundColor: 'rgba(139, 92, 246, 0.45)' }]}
-              activeOpacity={0.8}
-            >
-              <Sparkles size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.selectionAsync();
-                router.push(`/groups/${id}/settings`);
-              }}
-              style={styles.heroGlassBtn}
-              activeOpacity={0.8}
-            >
-              <Settings size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Hero Expanded Title & Floating Actions */}
-        <Animated.View
-          style={[
-            styles.heroBottomBar,
-            {
-              opacity: expandedContentOpacity,
-              transform: [{ translateY: expandedContentTranslateY }],
-            },
-          ]}
-          pointerEvents={isCollapsed ? 'none' : 'auto'}
-        >
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.heroGroupTitle} numberOfLines={1}>
-              {group.name}
-            </Text>
-            {group.description ? (
-              <Text style={styles.heroGroupDescription} numberOfLines={1}>
-                {group.description}
-              </Text>
-            ) : null}
-          </View>
-
-          <View style={styles.heroActionButtons}>
-            <TouchableOpacity
-              style={styles.heroAddBtn}
-              onPress={handleAddExpense}
-              activeOpacity={0.85}
-            >
-              <Plus size={14} color="#000000" strokeWidth={2.5} />
-              <Text style={styles.heroAddBtnText}>Add</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.heroSettleBtn}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push({
-                  pathname: '/settle/new',
-                  params: { groupId: group.id, defaultDebtorId: 'u2', defaultCreditorId: 'u1' },
-                });
-              }}
-              activeOpacity={0.85}
-            >
-              <Handshake size={14} color="#FFFFFF" />
-              <Text style={styles.heroSettleBtnText}>Settle</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Animated.View>
-
-      {/* Seamless Docking Tab Bar (Single Component with 1:1 Scroll Parity -> Clamps at HEADER_MIN_HEIGHT) */}
-      <Animated.View
-        style={[
-          styles.tabBarContainer,
-          {
-            top: HEADER_MIN_HEIGHT,
-            transform: [{ translateY: tabBarTranslateY }],
-          },
-        ]}
-        onLayout={(e) => {
-          const h = e.nativeEvent.layout.height;
-          if (h && Math.abs(h - tabBarHeight) > 1) {
-            setTabBarHeight(h);
-          }
-        }}
-      >
-        {renderTabBar()}
-      </Animated.View>
-
-      {/* Scrollable Content Stream */}
+      {/* Scrollable Content Stream (Rendered first so floating overlays sit on top of touch hierarchy) */}
       <Animated.ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
+        scrollEventThrottle={1}
+        keyboardShouldPersistTaps="handled"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false }
@@ -814,6 +652,172 @@ export default function GroupDetailScreen() {
         </Animated.View>
       </Animated.ScrollView>
 
+      {/* Cinematic Collapsing Header (Respects Notification Bar) */}
+      <Animated.View
+        style={[
+          styles.collapsingHeader,
+          {
+            height: headerHeight,
+            paddingTop: topInset,
+          },
+        ]}
+      >
+        <Animated.Image
+          source={{
+            uri:
+              group.coverImageUrl ||
+              'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200&auto=format&fit=crop',
+          }}
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [{ scale: imageScale }],
+            },
+          ]}
+          resizeMode="cover"
+        />
+        <Animated.View style={[styles.heroVignette, { opacity: vignetteOpacity }]} />
+
+        {/* Floating Glass Top Bar */}
+        <View style={styles.heroTopBar}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.back();
+            }}
+            style={styles.heroGlassBtn}
+            activeOpacity={0.8}
+          >
+            <ArrowLeft size={18} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {/* Centered Collapsed Title */}
+          <Animated.View
+            style={[
+              styles.collapsedTitleWrap,
+              {
+                opacity: collapsedTitleOpacity,
+                transform: [{ translateY: collapsedTitleTranslateY }],
+              },
+            ]}
+            pointerEvents={isCollapsed ? 'auto' : 'none'}
+          >
+            <TouchableOpacity onPress={scrollToTop} activeOpacity={0.7}>
+              <Text style={styles.collapsedTitleText} numberOfLines={1}>
+                {group.name}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          <View style={styles.heroTopBarActions}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync();
+                const targetId = Array.isArray(id) ? id[0] : (id || group.id);
+                router.push(`/groups/${targetId}/search`);
+              }}
+              style={styles.heroGlassBtn}
+              activeOpacity={0.8}
+            >
+              <Search size={17} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                  pathname: '/ai/chat',
+                  params: { groupId: group.id, groupName: group.name },
+                });
+              }}
+              style={[styles.heroGlassBtn, { backgroundColor: 'rgba(139, 92, 246, 0.45)' }]}
+              activeOpacity={0.8}
+            >
+              <Sparkles size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync();
+                router.push(`/groups/${id}/settings`);
+              }}
+              style={styles.heroGlassBtn}
+              activeOpacity={0.8}
+            >
+              <Settings size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Hero Expanded Title & Floating Actions */}
+        <Animated.View
+          style={[
+            styles.heroBottomBar,
+            {
+              opacity: expandedContentOpacity,
+              transform: [{ translateY: expandedContentTranslateY }],
+            },
+          ]}
+          pointerEvents={isCollapsed ? 'none' : 'auto'}
+        >
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.heroGroupTitle} numberOfLines={1}>
+              {group.name}
+            </Text>
+            {group.description ? (
+              <Text style={styles.heroGroupDescription} numberOfLines={1}>
+                {group.description}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.heroActionButtons}>
+            <TouchableOpacity
+              style={styles.heroAddBtn}
+              onPress={handleAddExpense}
+              activeOpacity={0.85}
+            >
+              <Plus size={14} color="#000000" strokeWidth={2.5} />
+              <Text style={styles.heroAddBtnText}>Add</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.heroSettleBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                  pathname: '/settle/new',
+                  params: { groupId: group.id, defaultDebtorId: 'u2', defaultCreditorId: 'u1' },
+                });
+              }}
+              activeOpacity={0.85}
+            >
+              <Handshake size={14} color="#FFFFFF" />
+              <Text style={styles.heroSettleBtnText}>Settle</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </Animated.View>
+
+      {/* Seamless Docking Tab Bar (Single Component with 1:1 Scroll Parity -> Clamps at HEADER_MIN_HEIGHT) */}
+      <Animated.View
+        style={[
+          styles.tabBarContainer,
+          {
+            top: HEADER_MIN_HEIGHT,
+            transform: [{ translateY: tabBarTranslateY }],
+          },
+        ]}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          if (h && Math.abs(h - tabBarHeight) > 1) {
+            setTabBarHeight(h);
+          }
+        }}
+      >
+        {renderTabBar()}
+      </Animated.View>
+
       {/* Floating Add Expense Action Button (Smooth spring fade & scale) */}
       <Animated.View
         pointerEvents={activeTab === 'expenses' ? 'auto' : 'none'}
@@ -855,6 +859,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100,
+    elevation: 8,
     overflow: 'hidden',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
@@ -1359,6 +1364,7 @@ const styles = StyleSheet.create({
     right: 20,
     bottom: 24,
     zIndex: 95,
+    elevation: 10,
   },
   fab: {
     width: 52,
