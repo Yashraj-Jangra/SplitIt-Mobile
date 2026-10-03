@@ -52,12 +52,13 @@ export default function GroupDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
-  const [tabBarHeight, setTabBarHeight] = useState(56);
+  const [isSticky, setIsSticky] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const initialTabBarWidth = Dimensions.get('window').width - 20;
   const [tabBarWidth, setTabBarWidth] = useState(initialTabBarWidth);
 
+  const isStickyRef = useRef(false);
   const isCollapsedRef = useRef(false);
   const scrollViewRef = useRef<any>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -71,6 +72,11 @@ export default function GroupDetailScreen() {
 
   useEffect(() => {
     const listenerId = scrollY.addListener(({ value }) => {
+      const shouldBeSticky = value >= stickyThreshold;
+      if (shouldBeSticky !== isStickyRef.current) {
+        isStickyRef.current = shouldBeSticky;
+        setIsSticky(shouldBeSticky);
+      }
       const shouldBeCollapsed = value >= SCROLL_DISTANCE * 0.7;
       if (shouldBeCollapsed !== isCollapsedRef.current) {
         isCollapsedRef.current = shouldBeCollapsed;
@@ -80,7 +86,7 @@ export default function GroupDetailScreen() {
     return () => {
       scrollY.removeListener(listenerId);
     };
-  }, [SCROLL_DISTANCE]);
+  }, [SCROLL_DISTANCE, stickyThreshold]);
 
   const scrollToTop = () => {
     if (scrollViewRef.current?.scrollTo) {
@@ -274,12 +280,11 @@ export default function GroupDetailScreen() {
     extrapolate: 'clamp',
   });
 
-  // Seamless single tab bar docking animation (1:1 scroll tracking -> clamped at header bottom)
-  const tabBarTranslateY = scrollY.interpolate({
-    inputRange: [0, stickyThreshold],
-    outputRange: [stickyThreshold, 0],
-    extrapolateLeft: 'extend',
-    extrapolateRight: 'clamp',
+  // Seamless docking handoff for fixed tab bar (activates at exact threshold alignment)
+  const stickyTabOpacity = scrollY.interpolate({
+    inputRange: [Math.max(0, stickyThreshold - 1), stickyThreshold],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
   });
 
   return (
@@ -366,8 +371,10 @@ export default function GroupDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* In-Flow Spacer for the Docking Tab Bar */}
-        <View style={{ height: tabBarHeight }} />
+        {/* In-Flow Native Tab Bar (Scrolls with 100% native lockstep with stat strip & content — zero lag) */}
+        <View style={styles.tabBarInFlowContainer}>
+          {renderTabBar()}
+        </View>
 
         {/* Smooth Animated Tab Content Stream */}
         <Animated.View
@@ -799,21 +806,16 @@ export default function GroupDetailScreen() {
         </Animated.View>
       </Animated.View>
 
-      {/* Seamless Docking Tab Bar (Single Component with 1:1 Scroll Parity -> Clamps at HEADER_MIN_HEIGHT) */}
+      {/* Fixed Docked Tab Bar (Pinned flush at HEADER_MIN_HEIGHT when scrolled past threshold) */}
       <Animated.View
+        pointerEvents={isSticky ? 'auto' : 'none'}
         style={[
-          styles.tabBarContainer,
+          styles.fixedTabBarContainer,
           {
             top: HEADER_MIN_HEIGHT,
-            transform: [{ translateY: tabBarTranslateY }],
+            opacity: stickyTabOpacity,
           },
         ]}
-        onLayout={(e) => {
-          const h = e.nativeEvent.layout.height;
-          if (h && Math.abs(h - tabBarHeight) > 1) {
-            setTabBarHeight(h);
-          }
-        }}
       >
         {renderTabBar()}
       </Animated.View>
@@ -1007,12 +1009,21 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
   },
 
-  // Seamless Docking Tab Bar
-  tabBarContainer: {
+  // In-Flow & Fixed Docked Tab Bar (100% Identical Styling & Sub-pixel Alignment)
+  tabBarInFlowContainer: {
+    backgroundColor: THEME.colors.background,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+  },
+  fixedTabBarContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
     zIndex: 90,
+    elevation: 6,
     backgroundColor: THEME.colors.background,
     paddingTop: 8,
     paddingBottom: 8,
@@ -1023,7 +1034,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 6,
-    elevation: 6,
   },
   segmentedTabBar: {
     position: 'relative',
