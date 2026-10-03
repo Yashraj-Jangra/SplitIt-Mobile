@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Image,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -30,6 +30,10 @@ import { groupService, GroupDetailData } from '../../../src/services/group.servi
 import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRing';
 import * as Haptics from 'expo-haptics';
 
+const HEADER_MAX_HEIGHT = 180;
+const HEADER_MIN_HEIGHT = 56;
+const SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+
 export default function GroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,6 +43,40 @@ export default function GroupDetailScreen() {
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'budget' | 'activity'>('expenses');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [statStripHeight, setStatStripHeight] = useState(58);
+  const [isSticky, setIsSticky] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const isStickyRef = useRef(false);
+  const isCollapsedRef = useRef(false);
+  const scrollViewRef = useRef<any>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const stickyThreshold = SCROLL_DISTANCE + statStripHeight;
+
+  useEffect(() => {
+    const listenerId = scrollY.addListener(({ value }) => {
+      const shouldBeSticky = value >= stickyThreshold;
+      if (shouldBeSticky !== isStickyRef.current) {
+        isStickyRef.current = shouldBeSticky;
+        setIsSticky(shouldBeSticky);
+      }
+      const shouldBeCollapsed = value >= SCROLL_DISTANCE * 0.7;
+      if (shouldBeCollapsed !== isCollapsedRef.current) {
+        isCollapsedRef.current = shouldBeCollapsed;
+        setIsCollapsed(shouldBeCollapsed);
+      }
+    });
+    return () => {
+      scrollY.removeListener(listenerId);
+    };
+  }, [stickyThreshold]);
+
+  const scrollToTop = () => {
+    if (scrollViewRef.current?.scrollTo) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    }
+  };
 
   const loadGroup = async () => {
     const data = await groupService.getGroupDetails(targetId);
@@ -69,6 +107,23 @@ export default function GroupDetailScreen() {
     router.push(`/expenses/new?groupId=${targetId}`);
   };
 
+  const renderTabBar = (isPinned: boolean = false) => (
+    <View style={[styles.segmentedTabBar, isPinned && styles.pinnedTabBar]}>
+      {(['expenses', 'balances', 'budget', 'activity'] as const).map((tab) => (
+        <TouchableOpacity
+          key={tab}
+          style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
+          onPress={() => handleTabChange(tab)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
   if (loading || !group) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -95,20 +150,74 @@ export default function GroupDetailScreen() {
   const totalGroupSpend = group.totalGroupSpend || 0;
   const yourNetBalance = group.yourNetBalance || 0;
 
+  // Header Animations
+  const headerHeight = scrollY.interpolate({
+    inputRange: [-100, 0, SCROLL_DISTANCE],
+    outputRange: [HEADER_MAX_HEIGHT + 100, HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
+    extrapolate: 'clamp',
+  });
+
+  const imageScale = scrollY.interpolate({
+    inputRange: [-100, 0],
+    outputRange: [1.2, 1],
+    extrapolateRight: 'clamp',
+  });
+
+  const vignetteOpacity = scrollY.interpolate({
+    inputRange: [0, SCROLL_DISTANCE],
+    outputRange: [0.48, 0.82],
+    extrapolate: 'clamp',
+  });
+
+  const collapsedTitleOpacity = scrollY.interpolate({
+    inputRange: [SCROLL_DISTANCE * 0.5, SCROLL_DISTANCE],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const collapsedTitleTranslateY = scrollY.interpolate({
+    inputRange: [SCROLL_DISTANCE * 0.5, SCROLL_DISTANCE],
+    outputRange: [8, 0],
+    extrapolate: 'clamp',
+  });
+
+  const expandedContentOpacity = scrollY.interpolate({
+    inputRange: [0, SCROLL_DISTANCE * 0.55],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const expandedContentTranslateY = scrollY.interpolate({
+    inputRange: [0, SCROLL_DISTANCE * 0.55],
+    outputRange: [0, -10],
+    extrapolate: 'clamp',
+  });
+
+  const stickyTabOpacity = scrollY.interpolate({
+    inputRange: [Math.max(0, stickyThreshold - 6), stickyThreshold],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Cinematic Hero Header (With Smooth Vignette Fade) */}
-      <View style={styles.heroCoverContainer}>
-        <Image
+      {/* Cinematic Collapsing Header */}
+      <Animated.View style={[styles.collapsingHeader, { height: headerHeight }]}>
+        <Animated.Image
           source={{
             uri:
               group.coverImageUrl ||
               'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200&auto=format&fit=crop',
           }}
-          style={StyleSheet.absoluteFill}
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [{ scale: imageScale }],
+            },
+          ]}
           resizeMode="cover"
         />
-        <View style={styles.heroVignette} />
+        <Animated.View style={[styles.heroVignette, { opacity: vignetteOpacity }]} />
 
         {/* Floating Glass Top Bar */}
         <View style={styles.heroTopBar}>
@@ -123,7 +232,25 @@ export default function GroupDetailScreen() {
             <ArrowLeft size={18} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          {/* Centered Collapsed Title */}
+          <Animated.View
+            style={[
+              styles.collapsedTitleWrap,
+              {
+                opacity: collapsedTitleOpacity,
+                transform: [{ translateY: collapsedTitleTranslateY }],
+              },
+            ]}
+            pointerEvents={isCollapsed ? 'auto' : 'none'}
+          >
+            <TouchableOpacity onPress={scrollToTop} activeOpacity={0.7}>
+              <Text style={styles.collapsedTitleText} numberOfLines={1}>
+                {group.name}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          <View style={styles.heroTopBarActions}>
             <TouchableOpacity
               onPress={() => {
                 Haptics.selectionAsync();
@@ -163,8 +290,17 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
-        {/* Hero Title & Floating Actions */}
-        <View style={styles.heroBottomBar}>
+        {/* Hero Expanded Title & Floating Actions */}
+        <Animated.View
+          style={[
+            styles.heroBottomBar,
+            {
+              opacity: expandedContentOpacity,
+              transform: [{ translateY: expandedContentTranslateY }],
+            },
+          ]}
+          pointerEvents={isCollapsed ? 'none' : 'auto'}
+        >
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.heroGroupTitle} numberOfLines={1}>
               {group.name}
@@ -201,85 +337,105 @@ export default function GroupDetailScreen() {
               <Text style={styles.heroSettleBtnText}>Settle</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
 
-      {/* Minimalist 4-Stat Strip (Clean Typographic Row, No Rigid Box) */}
-      <View style={styles.statStrip}>
-        <View style={styles.statCol}>
-          <Text style={styles.statLabel}>SPENT</Text>
-          <Text style={styles.statValue}>₹{totalGroupSpend.toLocaleString('en-IN')}</Text>
-        </View>
+      {/* Sticky Tab Bar Overlay */}
+      <Animated.View
+        pointerEvents={isSticky ? 'auto' : 'none'}
+        style={[
+          styles.stickyTabBarContainer,
+          {
+            opacity: stickyTabOpacity,
+          },
+        ]}
+      >
+        {renderTabBar(true)}
+      </Animated.View>
 
-        <View style={styles.statDivider} />
-
-        <View style={styles.statCol}>
-          <Text style={styles.statLabel}>MEMBERS</Text>
-          <Text style={styles.statValue}>{members.length}</Text>
-        </View>
-
-        <View style={styles.statDivider} />
-
-        <View style={styles.statCol}>
-          <Text style={styles.statLabel}>YOUR NET</Text>
-          <Text
-            style={[
-              styles.statValue,
-              { color: yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
-            ]}
-          >
-            {yourNetBalance >= 0 ? `+₹${yourNetBalance}` : `-₹${Math.abs(yourNetBalance)}`}
-          </Text>
-        </View>
-
-        <View style={styles.statDivider} />
-
-        <TouchableOpacity
-          style={styles.statCol}
-          onPress={() => handleTabChange('budget')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.statLabel}>BUDGET</Text>
-          <Text
-            style={[
-              styles.statValue,
-              { color: budget.enabled ? THEME.colors.primaryLight : THEME.colors.textMuted },
-            ]}
-          >
-            {budget.enabled && budget.totalMonthlyLimit > 0
-              ? `${Math.round(((budget.totalSpent || 0) / budget.totalMonthlyLimit) * 100)}%`
-              : '+ Set'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Sliding Segmented Pill Bar */}
-      <View style={styles.segmentedTabBar}>
-        {(['expenses', 'balances', 'budget', 'activity'] as const).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-            onPress={() => handleTabChange(tab)}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Tab Content Stream */}
-      <ScrollView
+      {/* Scrollable Content Stream */}
+      <Animated.ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={THEME.colors.primary}
+            progressViewOffset={HEADER_MAX_HEIGHT}
           />
         }
       >
+        {/* Spacer for Collapsing Header */}
+        <View style={{ height: HEADER_MAX_HEIGHT }} />
+
+        {/* Minimalist 4-Stat Strip (Clean Typographic Row, No Rigid Box) */}
+        <View
+          style={styles.statStrip}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h && Math.abs(h - statStripHeight) > 1) {
+              setStatStripHeight(h);
+            }
+          }}
+        >
+          <View style={styles.statCol}>
+            <Text style={styles.statLabel}>SPENT</Text>
+            <Text style={styles.statValue}>₹{totalGroupSpend.toLocaleString('en-IN')}</Text>
+          </View>
+
+          <View style={styles.statDivider} />
+
+          <View style={styles.statCol}>
+            <Text style={styles.statLabel}>MEMBERS</Text>
+            <Text style={styles.statValue}>{members.length}</Text>
+          </View>
+
+          <View style={styles.statDivider} />
+
+          <View style={styles.statCol}>
+            <Text style={styles.statLabel}>YOUR NET</Text>
+            <Text
+              style={[
+                styles.statValue,
+                { color: yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
+              ]}
+            >
+              {yourNetBalance >= 0 ? `+₹${yourNetBalance}` : `-₹${Math.abs(yourNetBalance)}`}
+            </Text>
+          </View>
+
+          <View style={styles.statDivider} />
+
+          <TouchableOpacity
+            style={styles.statCol}
+            onPress={() => handleTabChange('budget')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.statLabel}>BUDGET</Text>
+            <Text
+              style={[
+                styles.statValue,
+                { color: budget.enabled ? THEME.colors.primaryLight : THEME.colors.textMuted },
+              ]}
+            >
+              {budget.enabled && budget.totalMonthlyLimit > 0
+                ? `${Math.round(((budget.totalSpent || 0) / budget.totalMonthlyLimit) * 100)}%`
+                : '+ Set'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* In-Flow Sliding Segmented Pill Bar */}
+        <View style={styles.inFlowTabBarWrap}>
+          {renderTabBar(false)}
+        </View>
         {/* TAB 1: EXPENSES */}
         {activeTab === 'expenses' && (
           <View style={styles.tabSection}>
@@ -543,7 +699,7 @@ export default function GroupDetailScreen() {
             )}
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Floating Add Expense Action Button */}
       {activeTab === 'expenses' && (
@@ -566,25 +722,53 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Hero Cover
-  heroCoverContainer: {
-    height: 180,
-    width: '100%',
-    position: 'relative',
+  // Collapsing Hero Header
+  collapsingHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    overflow: 'hidden',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: THEME.colors.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.12)',
   },
   heroVignette: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.48)',
+    backgroundColor: '#000000',
   },
   heroTopBar: {
+    height: 36,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    zIndex: 10,
+    justifyContent: 'space-between',
+    zIndex: 20,
+  },
+  collapsedTitleWrap: {
+    flex: 1,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  collapsedTitleText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  heroTopBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   heroGlassBtn: {
     width: 36,
@@ -693,12 +877,36 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
   },
 
-  // Segmented Tab Bar
+  // Sticky & In-Flow Segmented Tab Bar
+  stickyTabBarContainer: {
+    position: 'absolute',
+    top: HEADER_MIN_HEIGHT,
+    left: 0,
+    right: 0,
+    zIndex: 90,
+    backgroundColor: THEME.colors.background,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  pinnedTabBar: {
+    marginHorizontal: 0,
+    marginVertical: 0,
+  },
+  inFlowTabBarWrap: {
+    marginHorizontal: 10,
+    marginVertical: 12,
+  },
   segmentedTabBar: {
     flexDirection: 'row',
     backgroundColor: THEME.colors.surface,
-    marginHorizontal: 10,
-    marginVertical: 12,
     padding: 3,
     borderRadius: THEME.radius.lg,
     borderWidth: 1,
@@ -726,7 +934,7 @@ const styles = StyleSheet.create({
   // Content Scroll
   scrollContent: {
     paddingHorizontal: 10,
-    paddingBottom: 80,
+    paddingBottom: 100,
   },
   tabSection: {
     gap: 14,
