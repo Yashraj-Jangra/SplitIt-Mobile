@@ -5,11 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   RefreshControl,
   Animated,
+  Dimensions,
+  LayoutChangeEvent,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
@@ -30,27 +32,41 @@ import { groupService, GroupDetailData } from '../../../src/services/group.servi
 import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRing';
 import * as Haptics from 'expo-haptics';
 
-const HEADER_MAX_HEIGHT = 180;
-const HEADER_MIN_HEIGHT = 56;
-const SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
+type TabType = typeof TABS[number];
 
 export default function GroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
 
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, 24);
+
+  const HEADER_MIN_HEIGHT = topInset + 54;
+  const HEADER_MAX_HEIGHT = topInset + 180;
+  const SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+
   const [group, setGroup] = useState<GroupDetailData | null>(null);
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'budget' | 'activity'>('expenses');
+  const [activeTab, setActiveTab] = useState<TabType>('expenses');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
   const [isSticky, setIsSticky] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const initialTabBarWidth = Dimensions.get('window').width - 20;
+  const [tabBarWidth, setTabBarWidth] = useState(initialTabBarWidth);
+
   const isStickyRef = useRef(false);
   const isCollapsedRef = useRef(false);
   const scrollViewRef = useRef<any>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Smooth Tab Transitions
+  const tabIndicatorAnim = useRef(new Animated.Value(0)).current;
+  const tabContentAnim = useRef(new Animated.Value(1)).current;
+  const fabAnim = useRef(new Animated.Value(1)).current;
 
   const stickyThreshold = SCROLL_DISTANCE + statStripHeight;
 
@@ -96,8 +112,36 @@ export default function GroupDetailScreen() {
     loadGroup();
   };
 
-  const handleTabChange = (tab: 'expenses' | 'balances' | 'budget' | 'activity') => {
+  const handleTabChange = (tab: TabType) => {
+    if (tab === activeTab) return;
     Haptics.selectionAsync();
+    const tabIndex = TABS.indexOf(tab);
+
+    // 1. Smooth spring sliding indicator pill
+    Animated.spring(tabIndicatorAnim, {
+      toValue: tabIndex,
+      useNativeDriver: true,
+      damping: 24,
+      stiffness: 280,
+      mass: 0.8,
+    }).start();
+
+    // 2. Smooth crossfade for tab content
+    tabContentAnim.setValue(0);
+    Animated.timing(tabContentAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+
+    // 3. Smooth scale & fade for Add Expense FAB
+    Animated.spring(fabAnim, {
+      toValue: tab === 'expenses' ? 1 : 0,
+      useNativeDriver: true,
+      friction: 7,
+      tension: 60,
+    }).start();
+
     setActiveTab(tab);
   };
 
@@ -107,26 +151,66 @@ export default function GroupDetailScreen() {
     router.push(`/expenses/new?groupId=${targetId}`);
   };
 
-  const renderTabBar = (isPinned: boolean = false) => (
-    <View style={[styles.segmentedTabBar, isPinned && styles.pinnedTabBar]}>
-      {(['expenses', 'balances', 'budget', 'activity'] as const).map((tab) => (
-        <TouchableOpacity
-          key={tab}
-          style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-          onPress={() => handleTabChange(tab)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+  const onTabBarLayout = (e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    if (w && Math.abs(w - tabBarWidth) > 1) {
+      setTabBarWidth(w);
+    }
+  };
+
+  const renderTabBar = (isPinned: boolean = false) => {
+    const innerWidth = Math.max(0, tabBarWidth - 6);
+    const singleTabWidth = innerWidth > 0 ? innerWidth / 4 : 0;
+
+    return (
+      <View
+        style={[styles.segmentedTabBar, isPinned && styles.pinnedTabBar]}
+        onLayout={onTabBarLayout}
+      >
+        {/* Smooth Sliding Pill Indicator */}
+        {singleTabWidth > 0 && (
+          <Animated.View
+            style={[
+              styles.activeTabPill,
+              {
+                width: singleTabWidth,
+                transform: [
+                  {
+                    translateX: tabIndicatorAnim.interpolate({
+                      inputRange: [0, 1, 2, 3],
+                      outputRange: [0, singleTabWidth, singleTabWidth * 2, singleTabWidth * 3],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+        )}
+
+        {TABS.map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={styles.tabButton}
+            onPress={() => handleTabChange(tab)}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === tab && styles.tabTextActive,
+              ]}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
 
   if (loading || !group) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={THEME.colors.primary} />
         </View>
@@ -194,15 +278,25 @@ export default function GroupDetailScreen() {
   });
 
   const stickyTabOpacity = scrollY.interpolate({
-    inputRange: [Math.max(0, stickyThreshold - 6), stickyThreshold],
+    inputRange: [Math.max(0, stickyThreshold - 16), stickyThreshold],
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Cinematic Collapsing Header */}
-      <Animated.View style={[styles.collapsingHeader, { height: headerHeight }]}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <StatusBar style="light" />
+
+      {/* Cinematic Collapsing Header (Respects Notification Bar) */}
+      <Animated.View
+        style={[
+          styles.collapsingHeader,
+          {
+            height: headerHeight,
+            paddingTop: topInset,
+          },
+        ]}
+      >
         <Animated.Image
           source={{
             uri:
@@ -346,6 +440,7 @@ export default function GroupDetailScreen() {
         style={[
           styles.stickyTabBarContainer,
           {
+            top: HEADER_MIN_HEIGHT,
             opacity: stickyTabOpacity,
           },
         ]}
@@ -436,6 +531,24 @@ export default function GroupDetailScreen() {
         <View style={styles.inFlowTabBarWrap}>
           {renderTabBar(false)}
         </View>
+
+        {/* Smooth Animated Tab Content Stream */}
+        <Animated.View
+          style={[
+            styles.tabSectionWrapper,
+            {
+              opacity: tabContentAnim,
+              transform: [
+                {
+                  translateY: tabContentAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [6, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
         {/* TAB 1: EXPENSES */}
         {activeTab === 'expenses' && (
           <View style={styles.tabSection}>
@@ -699,14 +812,28 @@ export default function GroupDetailScreen() {
             )}
           </View>
         )}
+        </Animated.View>
       </Animated.ScrollView>
 
-      {/* Floating Add Expense Action Button */}
-      {activeTab === 'expenses' && (
-        <TouchableOpacity style={styles.fab} onPress={handleAddExpense}>
+      {/* Floating Add Expense Action Button (Smooth spring fade & scale) */}
+      <Animated.View
+        pointerEvents={activeTab === 'expenses' ? 'auto' : 'none'}
+        style={[
+          styles.fabContainer,
+          {
+            opacity: fabAnim,
+            transform: [{ scale: fabAnim }],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleAddExpense}
+          activeOpacity={0.85}
+        >
           <Plus size={22} color="#000000" strokeWidth={2.5} />
         </TouchableOpacity>
-      )}
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -732,7 +859,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 10,
     paddingBottom: 10,
     backgroundColor: THEME.colors.background,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -743,7 +869,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   heroTopBar: {
-    height: 36,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -880,7 +1006,6 @@ const styles = StyleSheet.create({
   // Sticky & In-Flow Segmented Tab Bar
   stickyTabBarContainer: {
     position: 'absolute',
-    top: HEADER_MIN_HEIGHT,
     left: 0,
     right: 0,
     zIndex: 90,
@@ -905,6 +1030,7 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   segmentedTabBar: {
+    position: 'relative',
     flexDirection: 'row',
     backgroundColor: THEME.colors.surface,
     padding: 3,
@@ -912,14 +1038,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
   },
+  activeTabPill: {
+    position: 'absolute',
+    top: 3,
+    bottom: 3,
+    left: 3,
+    borderRadius: THEME.radius.md,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairlineLight,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
+    zIndex: 1,
+  },
   tabButton: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: THEME.radius.md,
-  },
-  tabButtonActive: {
-    backgroundColor: THEME.colors.surfaceElevated,
+    zIndex: 2,
   },
   tabText: {
     fontSize: 12,
@@ -929,6 +1070,11 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: THEME.colors.text,
     fontWeight: '700',
+  },
+
+  // Tab Content Stream
+  tabSectionWrapper: {
+    width: '100%',
   },
 
   // Content Scroll
@@ -1217,10 +1363,13 @@ const styles = StyleSheet.create({
   },
 
   // FAB
-  fab: {
+  fabContainer: {
     position: 'absolute',
     right: 20,
     bottom: 24,
+    zIndex: 95,
+  },
+  fab: {
     width: 52,
     height: 52,
     borderRadius: 26,
