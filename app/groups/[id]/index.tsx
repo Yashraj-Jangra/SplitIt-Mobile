@@ -52,13 +52,12 @@ export default function GroupDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
-  const [isSticky, setIsSticky] = useState(false);
+  const [tabBarHeight, setTabBarHeight] = useState(56);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const initialTabBarWidth = Dimensions.get('window').width - 20;
   const [tabBarWidth, setTabBarWidth] = useState(initialTabBarWidth);
 
-  const isStickyRef = useRef(false);
   const isCollapsedRef = useRef(false);
   const scrollViewRef = useRef<any>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -72,11 +71,6 @@ export default function GroupDetailScreen() {
 
   useEffect(() => {
     const listenerId = scrollY.addListener(({ value }) => {
-      const shouldBeSticky = value >= stickyThreshold;
-      if (shouldBeSticky !== isStickyRef.current) {
-        isStickyRef.current = shouldBeSticky;
-        setIsSticky(shouldBeSticky);
-      }
       const shouldBeCollapsed = value >= SCROLL_DISTANCE * 0.7;
       if (shouldBeCollapsed !== isCollapsedRef.current) {
         isCollapsedRef.current = shouldBeCollapsed;
@@ -86,7 +80,7 @@ export default function GroupDetailScreen() {
     return () => {
       scrollY.removeListener(listenerId);
     };
-  }, [stickyThreshold]);
+  }, [SCROLL_DISTANCE]);
 
   const scrollToTop = () => {
     if (scrollViewRef.current?.scrollTo) {
@@ -158,13 +152,13 @@ export default function GroupDetailScreen() {
     }
   };
 
-  const renderTabBar = (isPinned: boolean = false) => {
+  const renderTabBar = () => {
     const innerWidth = Math.max(0, tabBarWidth - 6);
     const singleTabWidth = innerWidth > 0 ? innerWidth / 4 : 0;
 
     return (
       <View
-        style={[styles.segmentedTabBar, isPinned && styles.pinnedTabBar]}
+        style={styles.segmentedTabBar}
         onLayout={onTabBarLayout}
       >
         {/* Smooth Sliding Pill Indicator */}
@@ -277,10 +271,12 @@ export default function GroupDetailScreen() {
     extrapolate: 'clamp',
   });
 
-  const stickyTabOpacity = scrollY.interpolate({
-    inputRange: [Math.max(0, stickyThreshold - 16), stickyThreshold],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
+  // Seamless single tab bar docking animation (1:1 scroll tracking -> clamped at header bottom)
+  const tabBarTranslateY = scrollY.interpolate({
+    inputRange: [0, stickyThreshold],
+    outputRange: [stickyThreshold, 0],
+    extrapolateLeft: 'extend',
+    extrapolateRight: 'clamp',
   });
 
   return (
@@ -434,18 +430,23 @@ export default function GroupDetailScreen() {
         </Animated.View>
       </Animated.View>
 
-      {/* Sticky Tab Bar Overlay */}
+      {/* Seamless Docking Tab Bar (Single Component with 1:1 Scroll Parity -> Clamps at HEADER_MIN_HEIGHT) */}
       <Animated.View
-        pointerEvents={isSticky ? 'auto' : 'none'}
         style={[
-          styles.stickyTabBarContainer,
+          styles.tabBarContainer,
           {
             top: HEADER_MIN_HEIGHT,
-            opacity: stickyTabOpacity,
+            transform: [{ translateY: tabBarTranslateY }],
           },
         ]}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          if (h && Math.abs(h - tabBarHeight) > 1) {
+            setTabBarHeight(h);
+          }
+        }}
       >
-        {renderTabBar(true)}
+        {renderTabBar()}
       </Animated.View>
 
       {/* Scrollable Content Stream */}
@@ -527,10 +528,8 @@ export default function GroupDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* In-Flow Sliding Segmented Pill Bar */}
-        <View style={styles.inFlowTabBarWrap}>
-          {renderTabBar(false)}
-        </View>
+        {/* In-Flow Spacer for the Docking Tab Bar */}
+        <View style={{ height: tabBarHeight }} />
 
         {/* Smooth Animated Tab Content Stream */}
         <Animated.View
@@ -1003,8 +1002,8 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
   },
 
-  // Sticky & In-Flow Segmented Tab Bar
-  stickyTabBarContainer: {
+  // Seamless Docking Tab Bar
+  tabBarContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
@@ -1019,15 +1018,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 6,
-    elevation: 5,
-  },
-  pinnedTabBar: {
-    marginHorizontal: 0,
-    marginVertical: 0,
-  },
-  inFlowTabBarWrap: {
-    marginHorizontal: 10,
-    marginVertical: 12,
+    elevation: 6,
   },
   segmentedTabBar: {
     position: 'relative',
