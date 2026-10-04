@@ -8,6 +8,7 @@ import { groupService, GroupListItem } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
+import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
@@ -284,20 +285,7 @@ export default function HomeScreen() {
                       </Text>
                     </View>
 
-                    <View style={styles.ledgerAmountCol}>
-                      <Text
-                        style={[
-                          styles.ledgerAmount,
-                          isGet && { color: THEME.colors.primary },
-                          isOwe && { color: THEME.colors.negative },
-                        ]}
-                      >
-                        {isGet ? `+₹${tx.yourShare || tx.amount}` : isOwe ? `-₹${tx.yourShare || tx.amount}` : `₹${tx.amount}`}
-                      </Text>
-                      <Text style={styles.ledgerImpactLabel}>
-                        {isGet ? 'you get' : isOwe ? 'you owe' : tx.paidByName}
-                      </Text>
-                    </View>
+                    <ExpenseImpactCol expense={tx} currentUserId={currentUser?.id} />
                   </TouchableOpacity>
                 );
               })

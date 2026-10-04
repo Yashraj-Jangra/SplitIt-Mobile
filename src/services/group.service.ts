@@ -23,6 +23,10 @@ export interface GroupExpense {
   };
   yourShare: number;
   yourImpact: 'get' | 'owe' | 'none';
+  userShareStatus?: 'lent' | 'owe' | 'no_balance' | 'not_involved';
+  netAmount?: number;
+  payers?: any[];
+  participants?: any[];
 }
 
 export interface SimplifiedDebt {
@@ -295,26 +299,39 @@ export const groupService = {
                       ? `${firstPayer.user.firstName} ${firstPayer.user.lastName || ''}`.trim()
                       : firstPayer?.user?.name || e.expenseCreator?.firstName || 'Member');
 
-                const myParticipant = (e.participants || []).find(
-                  (p: any) => (p.user?.uid || p.userId) === currentUserId
+                const myParticipants = (e.participants || []).filter(
+                  (p: any) => (p.user?.uid || p.userId || p.id) === currentUserId
                 );
-                const myPayer = (e.payers || []).find(
-                  (p: any) => (p.user?.uid || p.userId) === currentUserId
+                const myPayers = (e.payers || []).filter(
+                  (p: any) => (p.user?.uid || p.userId || p.id) === currentUserId
                 );
 
+                const myPaid = myPayers.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+                const myOwed = myParticipants.reduce((sum: number, p: any) => sum + (Number(p.amountOwed) || 0), 0);
+                const isPayer = myPayers.length > 0 || myPaid > 0;
+                const isParticipant = myParticipants.length > 0;
+
+                const net = myPaid - myOwed;
                 let yourShare = 0;
                 let yourImpact: 'get' | 'owe' | 'none' = 'none';
+                let userShareStatus: 'lent' | 'owe' | 'no_balance' | 'not_involved' = 'not_involved';
 
-                if (myPayer && !myParticipant) {
-                  yourShare = Number(myPayer.amount || 0);
+                if (net > 0.01) {
+                  yourShare = net;
                   yourImpact = 'get';
-                } else if (myParticipant && !myPayer) {
-                  yourShare = Number(myParticipant.amountOwed || 0);
-                  yourImpact = 'owe';
-                } else if (myPayer && myParticipant) {
-                  const net = Number(myPayer.amount || 0) - Number(myParticipant.amountOwed || 0);
+                  userShareStatus = 'lent';
+                } else if (net < -0.01) {
                   yourShare = Math.abs(net);
-                  yourImpact = net >= 0 ? 'get' : 'owe';
+                  yourImpact = 'owe';
+                  userShareStatus = 'owe';
+                } else if (isPayer || isParticipant) {
+                  yourShare = 0;
+                  yourImpact = 'none';
+                  userShareStatus = 'no_balance';
+                } else {
+                  yourShare = 0;
+                  yourImpact = 'none';
+                  userShareStatus = 'not_involved';
                 }
 
                 const rawDate = e.date ? new Date(e.date) : new Date();
@@ -327,7 +344,7 @@ export const groupService = {
                   id: e.id,
                   title: e.description || e.title || 'Expense',
                   amount: Number(e.amount || 0),
-                  currency: 'INR',
+                  currency: e.currency || 'INR',
                   paidById: payerId,
                   paidByName: payerName,
                   date: formattedDate,
@@ -337,6 +354,10 @@ export const groupService = {
                   },
                   yourShare,
                   yourImpact,
+                  userShareStatus,
+                  netAmount: net,
+                  payers: e.payers,
+                  participants: e.participants,
                 };
               })
             : [];
@@ -447,6 +468,8 @@ export const groupService = {
           category: { master: 'Housing', sub: 'Rent' },
           yourShare: 7000,
           yourImpact: 'owe',
+          userShareStatus: 'owe',
+          netAmount: -7000,
         },
         {
           id: 'exp_apt_2',
@@ -457,8 +480,10 @@ export const groupService = {
           paidByName: 'You',
           date: 'Yesterday, 8:30 PM',
           category: { master: 'Utilities', sub: 'Internet' },
-          yourShare: 375,
+          yourShare: 1124.25,
           yourImpact: 'get',
+          userShareStatus: 'lent',
+          netAmount: 1124.25,
         },
         {
           id: 'exp_apt_3',
@@ -469,8 +494,10 @@ export const groupService = {
           paidByName: 'You',
           date: '04 Oct, 7:15 PM',
           category: { master: 'Food and Drink', sub: 'Groceries' },
-          yourShare: 962,
+          yourShare: 2887.5,
           yourImpact: 'get',
+          userShareStatus: 'lent',
+          netAmount: 2887.5,
         },
       ];
     } else if (matching.name.includes('Trek') || matching.name.includes('Mountain')) {
@@ -484,8 +511,10 @@ export const groupService = {
           paidByName: 'You',
           date: 'Yesterday',
           category: { master: 'Entertainment', sub: 'Sports' },
-          yourShare: 1200,
+          yourShare: 3600,
           yourImpact: 'get',
+          userShareStatus: 'lent',
+          netAmount: 3600,
         },
         {
           id: 'exp_trk_2',
@@ -498,6 +527,8 @@ export const groupService = {
           category: { master: 'Transportation', sub: 'Taxi' },
           yourShare: 550,
           yourImpact: 'owe',
+          userShareStatus: 'owe',
+          netAmount: -550,
         },
       ];
     } else if (matching.name.includes('Foodies') || matching.name.includes('Dinner') || matching.name.includes('Lunch')) {
@@ -511,8 +542,10 @@ export const groupService = {
           paidByName: 'You',
           date: 'Today, 9:00 PM',
           category: { master: 'Food and Drink', sub: 'Dining Out' },
-          yourShare: 1800,
+          yourShare: 3600,
           yourImpact: 'get',
+          userShareStatus: 'lent',
+          netAmount: 3600,
         },
         {
           id: 'exp_foo_2',
@@ -523,8 +556,10 @@ export const groupService = {
           paidByName: 'Priya Patel',
           date: 'Yesterday',
           category: { master: 'Food and Drink', sub: 'Dining Out' },
-          yourShare: 1066,
+          yourShare: 1066.67,
           yourImpact: 'owe',
+          userShareStatus: 'owe',
+          netAmount: -1066.67,
         },
       ];
     }

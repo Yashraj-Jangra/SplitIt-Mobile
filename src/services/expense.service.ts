@@ -23,6 +23,11 @@ export interface UserTransactionItem {
   amount: number;
   yourShare: number;
   yourImpact: 'get' | 'owe' | 'none';
+  userShareStatus?: 'lent' | 'owe' | 'no_balance' | 'not_involved';
+  netAmount?: number;
+  currency?: string;
+  payers?: any[];
+  participants?: any[];
   date: string;
   category: string;
   masterCategory: string;
@@ -132,26 +137,39 @@ export const expenseService = {
               ? `${firstPayer.user.firstName} ${firstPayer.user.lastName || ''}`.trim()
               : firstPayer?.user?.name || e.expenseCreator?.firstName || 'Member');
 
-        const myParticipant = (e.participants || []).find(
-          (p: any) => (p.user?.uid || p.userId) === currentUserId
+        const myParticipants = (e.participants || []).filter(
+          (p: any) => (p.user?.uid || p.userId || p.id) === currentUserId
         );
-        const myPayer = (e.payers || []).find(
-          (p: any) => (p.user?.uid || p.userId) === currentUserId
+        const myPayers = (e.payers || []).filter(
+          (p: any) => (p.user?.uid || p.userId || p.id) === currentUserId
         );
 
+        const myPaid = myPayers.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+        const myOwed = myParticipants.reduce((sum: number, p: any) => sum + (Number(p.amountOwed) || 0), 0);
+        const isPayer = myPayers.length > 0 || myPaid > 0;
+        const isParticipant = myParticipants.length > 0;
+
+        const net = myPaid - myOwed;
         let yourShare = 0;
         let yourImpact: 'get' | 'owe' | 'none' = 'none';
+        let userShareStatus: 'lent' | 'owe' | 'no_balance' | 'not_involved' = 'not_involved';
 
-        if (myPayer && !myParticipant) {
-          yourShare = Number(myPayer.amount || 0);
+        if (net > 0.01) {
+          yourShare = net;
           yourImpact = 'get';
-        } else if (myParticipant && !myPayer) {
-          yourShare = Number(myParticipant.amountOwed || 0);
-          yourImpact = 'owe';
-        } else if (myPayer && myParticipant) {
-          const net = Number(myPayer.amount || 0) - Number(myParticipant.amountOwed || 0);
+          userShareStatus = 'lent';
+        } else if (net < -0.01) {
           yourShare = Math.abs(net);
-          yourImpact = net >= 0 ? 'get' : 'owe';
+          yourImpact = 'owe';
+          userShareStatus = 'owe';
+        } else if (isPayer || isParticipant) {
+          yourShare = 0;
+          yourImpact = 'none';
+          userShareStatus = 'no_balance';
+        } else {
+          yourShare = 0;
+          yourImpact = 'none';
+          userShareStatus = 'not_involved';
         }
 
         const rawDate = e.date ? new Date(e.date) : new Date();
@@ -168,6 +186,11 @@ export const expenseService = {
           amount: Number(e.amount || 0),
           yourShare,
           yourImpact,
+          userShareStatus,
+          netAmount: net,
+          currency: e.currency || 'INR',
+          payers: e.payers,
+          participants: e.participants,
           date: formattedDate,
           category: typeof e.category === 'string' ? e.category : e.category?.sub || 'General',
           masterCategory: e.masterCategory || (typeof e.category === 'string' ? e.category : 'General'),

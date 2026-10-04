@@ -26,6 +26,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
+import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
 import * as Haptics from 'expo-haptics';
 
 export default function GroupSearchScreen() {
@@ -191,34 +192,11 @@ export default function GroupSearchScreen() {
                           {exp.title}
                         </Text>
                         <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
-                          {exp.paidByName || 'Member'} paid ₹{exp.amount} • {exp.date}
+                          {exp.paidByName || 'Member'} paid • {exp.date}
                         </Text>
                       </View>
 
-                      <View style={styles.ledgerImpactCol}>
-                        {exp.yourImpact === 'get' ? (
-                          <>
-                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.primary }]}>
-                              +₹{exp.yourShare}
-                            </Text>
-                            <Text style={styles.ledgerImpactLabel}>you get</Text>
-                          </>
-                        ) : exp.yourImpact === 'owe' ? (
-                          <>
-                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.negative }]}>
-                              -₹{exp.yourShare}
-                            </Text>
-                            <Text style={styles.ledgerImpactLabel}>you owe</Text>
-                          </>
-                        ) : (
-                          <>
-                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.textMuted }]}>
-                              ₹0
-                            </Text>
-                            <Text style={styles.ledgerImpactLabel}>not involved</Text>
-                          </>
-                        )}
-                      </View>
+                      <ExpenseImpactCol expense={exp} />
                     </TouchableOpacity>
                   );
                 })}

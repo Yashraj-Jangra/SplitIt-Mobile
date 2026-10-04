@@ -30,6 +30,7 @@ import {
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData } from '../../../src/services/group.service';
 import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRing';
+import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
 import * as Haptics from 'expo-haptics';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
@@ -436,36 +437,15 @@ export default function GroupDetailScreen() {
                       </View>
 
                       <View style={styles.ledgerDetails}>
-                        <Text style={styles.ledgerExpenseTitle}>{exp.title}</Text>
-                        <Text style={styles.ledgerExpenseSubtitle}>
-                          {exp.paidByName || 'Member'} paid ₹{exp.amount} • {exp.date}
+                        <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
+                          {exp.title}
+                        </Text>
+                        <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
+                          {exp.paidByName || 'Member'} paid • {exp.date}
                         </Text>
                       </View>
 
-                      <View style={styles.ledgerImpactCol}>
-                        {exp.yourImpact === 'get' ? (
-                          <>
-                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.primary }]}>
-                              +₹{exp.yourShare}
-                            </Text>
-                            <Text style={styles.ledgerImpactLabel}>you get</Text>
-                          </>
-                        ) : exp.yourImpact === 'owe' ? (
-                          <>
-                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.negative }]}>
-                              -₹{exp.yourShare}
-                            </Text>
-                            <Text style={styles.ledgerImpactLabel}>you owe</Text>
-                          </>
-                        ) : (
-                          <>
-                            <Text style={[styles.ledgerImpactAmount, { color: THEME.colors.textMuted }]}>
-                              ₹0
-                            </Text>
-                            <Text style={styles.ledgerImpactLabel}>not involved</Text>
-                          </>
-                        )}
-                      </View>
+                      <ExpenseImpactCol expense={exp} />
                     </TouchableOpacity>
                   );
                 })

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
+import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import * as Haptics from 'expo-haptics';
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -141,24 +142,7 @@ export default function ActivityScreen() {
                       <Text style={styles.activityTime}>{tx.date}</Text>
                     </View>
 
-                    <View style={styles.amountCol}>
-                      <Text
-                        style={[
-                          styles.amountText,
-                          isGet && { color: THEME.colors.primary },
-                          isOwe && { color: THEME.colors.negative },
-                        ]}
-                      >
-                        {isGet
-                          ? `+₹${tx.yourShare || tx.amount}`
-                          : isOwe
-                          ? `-₹${tx.yourShare || tx.amount}`
-                          : `₹${tx.amount}`}
-                      </Text>
-                      <Text style={styles.impactSub}>
-                        {isGet ? 'you get' : isOwe ? 'you owe' : 'split'}
-                      </Text>
-                    </View>
+                    <ExpenseImpactCol expense={tx} />
                   </TouchableOpacity>
                 );
               })}
