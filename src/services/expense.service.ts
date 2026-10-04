@@ -9,7 +9,7 @@ export interface CreateExpensePayload {
   description: string;
   category: string;
   masterCategory?: string;
-  splitType: 'equally' | 'unequally' | 'shares' | 'percentage';
+  splitType: 'equally' | 'unequally' | 'by_shares' | 'by_percentage' | 'shares' | 'percentage';
   date?: string;
   notes?: string;
   payers: Array<{ userId: string; amount: number }>;
@@ -553,7 +553,7 @@ export const expenseService = {
       notes?: string;
       splitType?: string;
       payers?: Array<{ userId: string; amount: number }>;
-      participants?: Array<{ userId: string; amountOwed: number }>;
+      participants?: Array<{ userId: string; amountOwed: number; share?: number }>;
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -564,8 +564,16 @@ export const expenseService = {
         payload.masterCategory ||
         (payload.category ? settingsService.getMasterCategory(payload.category) : undefined);
 
+      const normalizedSplitType =
+        payload.splitType === 'shares'
+          ? 'by_shares'
+          : payload.splitType === 'percentage'
+          ? 'by_percentage'
+          : payload.splitType;
+
       const bodyPayload = {
         ...payload,
+        ...(normalizedSplitType ? { splitType: normalizedSplitType } : {}),
         masterCategory: resolvedMasterCategory,
       };
 
@@ -626,8 +634,16 @@ export const expenseService = {
       const resolvedMasterCategory =
         payload.masterCategory || settingsService.getMasterCategory(payload.category);
 
+      const normalizedSplitType =
+        payload.splitType === 'shares'
+          ? 'by_shares'
+          : payload.splitType === 'percentage'
+          ? 'by_percentage'
+          : payload.splitType;
+
       const bodyPayload = {
         ...payload,
+        splitType: normalizedSplitType,
         masterCategory: resolvedMasterCategory,
       };
 

@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -25,37 +26,26 @@ import {
   Users,
   User,
   Wallet,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Film,
-  Home,
-  Zap,
-  Heart,
-  Plane,
   ChevronDown,
   Search,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
-import { calculateSplitAmounts, MasterCategory } from '@splitit/core';
+import {
+  calculateSplitAmounts,
+  validateSplit,
+  MasterCategory,
+  SplitType,
+} from '@splitit/core';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { expenseService } from '../../src/services/expense.service';
 import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon } from '../../src/utils/category-icons';
+import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
+import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-interface Participant {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-  selected: boolean;
-  shares?: number;
-  percentage?: number;
-  exactAmount?: number;
-}
 
 export default function NewExpenseModal() {
   const router = useRouter();
@@ -87,9 +77,14 @@ export default function NewExpenseModal() {
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>(params.groupId || '');
 
+  // Current User State
+  const [currentUserId, setCurrentUserId] = useState('u1');
+
   // Payer & Split Mode State
+  const [payerType, setPayerType] = useState<'single' | 'multiple'>('single');
   const [singlePayerId, setSinglePayerId] = useState('u1');
-  const [splitMode, setSplitMode] = useState<'equally' | 'unequally' | 'shares' | 'percentage'>('equally');
+  const [multiPayers, setMultiPayers] = useState<MultiPayerEntry[]>([]);
+  const [splitMode, setSplitMode] = useState<SplitType>('equally');
 
   // Modals State
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -98,15 +93,16 @@ export default function NewExpenseModal() {
   const [categorySearch, setCategorySearch] = useState('');
 
   // Participants State
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<SplitParticipantItem[]>([]);
 
   // Load user groups and participants dynamically
   useEffect(() => {
     const init = async () => {
       try {
         const user = await authService.getCachedUser();
-        const currentUserId = user?.id || 'u1';
-        setSinglePayerId(currentUserId);
+        const curId = user?.id || 'u1';
+        setCurrentUserId(curId);
+        setSinglePayerId(curId);
 
         const allGroups = await groupService.getUserGroups();
         setGroups(allGroups);
@@ -124,6 +120,8 @@ export default function NewExpenseModal() {
                 avatarUrl: m.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
                 selected: true,
                 shares: 1,
+                percentage: 0,
+                exactAmount: 0,
               }))
             );
           }
@@ -176,26 +174,74 @@ export default function NewExpenseModal() {
     if (numAmount <= 0 || selectedParticipants.length === 0) return {};
 
     try {
-      const inputs = selectedParticipants.map((p) => ({
+      const inputs = participants.map((p) => ({
         userId: p.id,
-        selected: true,
+        selected: p.selected,
         shares: p.shares || 1,
-        percentage: p.percentage || 100 / selectedParticipants.length,
-        amountOwed: p.exactAmount || numAmount / selectedParticipants.length,
+        percentage: p.percentage || 0,
+        amountOwed: p.exactAmount || 0,
       }));
-      const results = calculateSplitAmounts(numAmount, inputs, splitMode as any);
+      const results = calculateSplitAmounts(numAmount, inputs, splitMode);
       const breakdown: Record<string, number> = {};
       results.forEach((r) => {
         breakdown[r.userId] = r.amountOwed;
       });
       return breakdown;
     } catch {
-      const share = numAmount / selectedParticipants.length;
+      const share = numAmount / Math.max(1, selectedParticipants.length);
       return Object.fromEntries(selectedParticipants.map((p) => [p.id, share]));
     }
-  }, [numAmount, selectedParticipants, splitMode]);
+  }, [numAmount, selectedParticipants.length, participants, splitMode]);
 
-  const payerName = singlePayerId === 'u1' ? 'You' : participants.find((p) => p.id === singlePayerId)?.name || 'Someone';
+  const paidByText = useMemo(() => {
+    if (payerType === 'single') {
+      if (singlePayerId === currentUserId) return 'you';
+      const payer = participants.find((p) => p.id === singlePayerId);
+      return payer ? payer.name.split(' ')[0] : 'someone';
+    }
+    const activePayers = multiPayers.filter((p) => p.amount > 0);
+    if (activePayers.length === 0) return 'no one';
+    if (activePayers.length === 1) {
+      if (activePayers[0].userId === currentUserId) return 'you';
+      const payer = participants.find((p) => p.id === activePayers[0].userId);
+      return payer ? payer.name.split(' ')[0] : 'someone';
+    }
+    return 'multiple people';
+  }, [payerType, singlePayerId, multiPayers, currentUserId, participants]);
+
+  const splitText = useMemo(() => {
+    switch (splitMode) {
+      case 'equally':
+        return 'equally';
+      case 'unequally':
+        return 'unequally';
+      case 'by_percentage':
+        return 'by percentage';
+      case 'by_shares':
+        return 'by shares';
+      default:
+        return 'equally';
+    }
+  }, [splitMode]);
+
+  const summarySubtext = useMemo(() => {
+    if (numAmount <= 0) return 'Enter an amount to see your share.';
+    if (selectedParticipants.length === 0) return 'Select a person to split.';
+
+    const userPaid =
+      payerType === 'single'
+        ? singlePayerId === currentUserId
+          ? numAmount
+          : 0
+        : multiPayers.find((p) => p.userId === currentUserId)?.amount || 0;
+
+    const userOwed = splitBreakdown[currentUserId] || 0;
+    const net = userPaid - userOwed;
+
+    if (Math.abs(net) < 0.01) return 'You are all square.';
+    if (net > 0) return `You get back ₹${net.toFixed(2)}`;
+    return `You owe ₹${Math.abs(net).toFixed(2)}`;
+  }, [numAmount, selectedParticipants.length, payerType, singlePayerId, currentUserId, multiPayers, splitBreakdown]);
 
   const handleToggleParticipant = (id: string) => {
     Haptics.selectionAsync();
@@ -207,15 +253,69 @@ export default function NewExpenseModal() {
   const handleSave = async () => {
     if (!description.trim() || numAmount <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Missing Fields', 'Please enter a description and valid positive amount.');
       return;
     }
     if (!selectedGroupId) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Group Missing', 'Please select a valid group for this expense.');
+      return;
+    }
+    if (selectedParticipants.length === 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('No Participants', 'At least one participant must be included in the split.');
+      return;
+    }
+
+    const validation = validateSplit({
+      totalAmount: numAmount,
+      splitType: splitMode,
+      participants: participants.map((p) => ({
+        userId: p.id,
+        selected: p.selected,
+        shares: p.shares || 1,
+        percentage: p.percentage || 0,
+        amountOwed: splitBreakdown[p.id] || 0,
+      })),
+      multiPayerAmounts: payerType === 'multiple' ? multiPayers.map((p) => p.amount || 0) : undefined,
+    });
+
+    if (validation) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (validation.field === 'payers') {
+        Alert.alert(
+          'Unbalanced Payers',
+          `The total paid (₹${validation.totalPaid.toFixed(2)}) must equal the expense amount (₹${validation.totalAmount.toFixed(2)}).`
+        );
+      } else if (validation.field === 'participants') {
+        if (validation.kind === 'amounts') {
+          Alert.alert(
+            'Unbalanced Split',
+            `The total owed (₹${validation.totalOwed.toFixed(2)}) must equal the expense amount (₹${validation.totalAmount.toFixed(2)}).`
+          );
+        } else if (validation.kind === 'percentage') {
+          Alert.alert(
+            'Invalid Percentage',
+            `The sum of percentages (${validation.totalPercentage.toFixed(2)}%) must equal 100%.`
+          );
+        }
+      }
       return;
     }
 
     setIsSaving(true);
     try {
+      const payersPayload =
+        payerType === 'single'
+          ? [{ userId: singlePayerId, amount: numAmount }]
+          : multiPayers.filter((p) => p.amount > 0).map((p) => ({ userId: p.userId, amount: p.amount }));
+
+      const participantsPayload = selectedParticipants.map((p) => ({
+        userId: p.id,
+        amountOwed: splitBreakdown[p.id] || 0,
+        share: p.shares || 1,
+      }));
+
       const res = await expenseService.createExpense({
         groupId: selectedGroupId,
         amount: numAmount,
@@ -225,12 +325,8 @@ export default function NewExpenseModal() {
         splitType: splitMode,
         notes: notes.trim() || undefined,
         date: new Date().toISOString(),
-        payers: [{ userId: singlePayerId, amount: numAmount }],
-        participants: selectedParticipants.map((p) => ({
-          userId: p.id,
-          amountOwed: splitBreakdown[p.id] || numAmount / selectedParticipants.length,
-          share: p.shares || 1,
-        })),
+        payers: payersPayload,
+        participants: participantsPayload,
       });
 
       if (res.success) {
@@ -238,9 +334,11 @@ export default function NewExpenseModal() {
         router.back();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert('Error', res.error || 'Failed to record expense.');
       }
-    } catch {
+    } catch (e: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Error', e.message || 'An unexpected error occurred.');
     } finally {
       setIsSaving(false);
     }
@@ -332,35 +430,37 @@ export default function NewExpenseModal() {
           </View>
 
           {/* Conversational Natural-Language Sentence Dock */}
-          <View style={styles.sentenceDock}>
-            <Text style={styles.sentenceText}>Paid by </Text>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.selectionAsync();
-                setShowPayerModal(true);
-              }}
-              style={styles.sentenceTriggerPill}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.sentenceTriggerText}>{payerName}</Text>
-              <ChevronDown size={13} color={THEME.colors.primary} />
-            </TouchableOpacity>
+          <View style={styles.sentenceDockContainer}>
+            <View style={styles.sentenceDock}>
+              <Text style={styles.sentenceText}>Paid by </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowPayerModal(true);
+                }}
+                style={styles.sentenceTriggerPill}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.sentenceTriggerText}>{paidByText}</Text>
+                <ChevronDown size={13} color={THEME.colors.primary} />
+              </TouchableOpacity>
 
-            <Text style={styles.sentenceText}> and split </Text>
+              <Text style={styles.sentenceText}> and split </Text>
 
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.selectionAsync();
-                setShowSplitModal(true);
-              }}
-              style={styles.sentenceTriggerPill}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.sentenceTriggerText}>
-                {splitMode === 'equally' ? 'Equally' : splitMode.charAt(0).toUpperCase() + splitMode.slice(1)}
-              </Text>
-              <ChevronDown size={13} color={THEME.colors.primary} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowSplitModal(true);
+                }}
+                style={styles.sentenceTriggerPill}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.sentenceTriggerText}>{splitText}</Text>
+                <ChevronDown size={13} color={THEME.colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.sentenceSubtext}>({summarySubtext})</Text>
           </View>
 
           {/* Member Participant Rings (Tap to Toggle Inclusion) */}
@@ -473,69 +573,39 @@ export default function NewExpenseModal() {
         </View>
 
         {/* MODAL 1: PAYER SELECTOR */}
-        <Modal visible={showPayerModal} transparent animationType="fade">
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowPayerModal(false)}
-          >
-            <View style={styles.sheetContainer}>
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>Who paid for this?</Text>
-              {participants.map((p) => (
-                <TouchableOpacity
-                  key={p.id}
-                  style={[styles.sheetOptionRow, singlePayerId === p.id && styles.sheetOptionActive]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setSinglePayerId(p.id);
-                    setShowPayerModal(false);
-                  }}
-                >
-                  <Image source={{ uri: p.avatarUrl }} style={styles.sheetAvatar} />
-                  <Text style={styles.sheetOptionText}>{p.name}</Text>
-                  {singlePayerId === p.id && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        </Modal>
+        <PayerSelectModal
+          visible={showPayerModal}
+          onClose={() => setShowPayerModal(false)}
+          members={participants.map((p) => ({
+            id: p.id,
+            name: p.name,
+            avatarUrl: p.avatarUrl,
+          }))}
+          currentUserId={currentUserId}
+          totalAmount={numAmount}
+          initialPayerType={payerType}
+          initialSinglePayerId={singlePayerId}
+          initialMultiPayers={multiPayers}
+          onConfirm={(result) => {
+            setPayerType(result.payerType);
+            setSinglePayerId(result.singlePayerId);
+            setMultiPayers(result.multiPayers);
+          }}
+        />
 
-        {/* MODAL 2: SPLIT MODE SELECTOR */}
-        <Modal visible={showSplitModal} transparent animationType="fade">
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowSplitModal(false)}
-          >
-            <View style={styles.sheetContainer}>
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>How to split?</Text>
-              {[
-                { id: 'equally', title: 'Split Equally', desc: 'Divided evenly between selected friends' },
-                { id: 'unequally', title: 'Exact Amounts', desc: 'Specify custom amounts for each member' },
-                { id: 'percentage', title: 'By Percentage', desc: 'Split by percent (must equal 100%)' },
-                { id: 'shares', title: 'By Shares', desc: 'Assign 1, 2, or custom portions' },
-              ].map((m) => (
-                <TouchableOpacity
-                  key={m.id}
-                  style={[styles.sheetOptionRow, splitMode === m.id && styles.sheetOptionActive]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setSplitMode(m.id as any);
-                    setShowSplitModal(false);
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.sheetOptionText}>{m.title}</Text>
-                    <Text style={styles.sheetOptionSubtext}>{m.desc}</Text>
-                  </View>
-                  {splitMode === m.id && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        </Modal>
+        {/* MODAL 2: SPLIT OPTIONS SELECTOR */}
+        <SplitOptionsModal
+          visible={showSplitModal}
+          onClose={() => setShowSplitModal(false)}
+          totalAmount={numAmount}
+          currentUserId={currentUserId}
+          initialSplitType={splitMode}
+          participants={participants}
+          onConfirm={(result) => {
+            setSplitMode(result.splitType);
+            setParticipants(result.participants);
+          }}
+        />
 
         {/* MODAL 3: CATEGORY PICKER */}
         <Modal visible={showCategoryModal} transparent animationType="fade">
@@ -737,17 +807,26 @@ const styles = StyleSheet.create({
   },
 
   // Sentence Dock
+  sentenceDockContainer: {
+    backgroundColor: THEME.colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    alignItems: 'center',
+    gap: 4,
+  },
   sentenceDock: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    borderRadius: THEME.radius.xl,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+  },
+  sentenceSubtext: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
   },
   sentenceText: {
     fontSize: 14,

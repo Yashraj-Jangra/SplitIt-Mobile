@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,8 @@ import {
   Check,
   X,
   User,
+  Users,
+  ChevronDown,
   Calendar,
   Clock,
   ArrowRight,
@@ -44,9 +46,13 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
 import { expenseService, ExpenseDetailModel, ExpenseHistoryLog } from '../../src/services/expense.service';
+import { groupService } from '../../src/services/group.service';
+import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon } from '../../src/utils/category-icons';
-import { MasterCategory } from '@splitit/core';
+import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
+import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
+import { MasterCategory, validateSplit, SplitType } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
 
 export default function ExpenseDetailScreen() {
@@ -131,6 +137,19 @@ export default function ExpenseDetailScreen() {
   const [editNotes, setEditNotes] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
+  // Group Members & Auth User
+  const [groupMembers, setGroupMembers] = useState<Array<{ id: string; name: string; avatarUrl?: string }>>([]);
+  const [currentUserId, setCurrentUserId] = useState('u1');
+
+  // Edit Payer & Split state
+  const [editPayerType, setEditPayerType] = useState<'single' | 'multiple'>('single');
+  const [editSinglePayerId, setEditSinglePayerId] = useState('payer');
+  const [editMultiPayers, setEditMultiPayers] = useState<MultiPayerEntry[]>([]);
+  const [editSplitMode, setEditSplitMode] = useState<SplitType>('equally');
+  const [editParticipants, setEditParticipants] = useState<SplitParticipantItem[]>([]);
+  const [showEditPayerModal, setShowEditPayerModal] = useState(false);
+  const [showEditSplitModal, setShowEditSplitModal] = useState(false);
+
   // Receipt Modal State
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
@@ -140,8 +159,12 @@ export default function ExpenseDetailScreen() {
     try {
       const data = await expenseService.getExpenseDetails(expenseId, groupId || undefined);
       setExpense(data);
-      if (data.groupId && !groupId) {
-        setGroupId(data.groupId);
+      const targetGId = data.groupId || groupId;
+      if (targetGId) {
+        if (!groupId) setGroupId(targetGId);
+        groupService.getGroupDetails(targetGId).then((g) => {
+          if (g?.members) setGroupMembers(g.members);
+        });
       }
       setEditTitle(data.title);
       setEditAmount(String(data.amount));
@@ -155,6 +178,12 @@ export default function ExpenseDetailScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    authService.getCachedUser().then((u) => {
+      if (u?.id) setCurrentUserId(u.id);
+    });
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -204,9 +233,78 @@ export default function ExpenseDetailScreen() {
       setEditMasterCategory(master);
       setSelectedEditMaster(master);
       setEditNotes(expense.notes || '');
+
+      const payers = expense.payers || [];
+      if (payers.length > 1) {
+        setEditPayerType('multiple');
+        setEditMultiPayers(payers.map((p) => ({ userId: p.userId, amount: p.amount })));
+        setEditSinglePayerId(payers[0]?.userId || 'payer');
+      } else if (payers.length === 1) {
+        setEditPayerType('single');
+        setEditSinglePayerId(payers[0].userId);
+        setEditMultiPayers([{ userId: payers[0].userId, amount: expense.amount }]);
+      } else {
+        setEditPayerType('single');
+        setEditSinglePayerId(expense.paidById || 'payer');
+        setEditMultiPayers([]);
+      }
+
+      const normalizedSplit: SplitType =
+        expense.splitType === 'shares'
+          ? 'by_shares'
+          : expense.splitType === 'percentage'
+          ? 'by_percentage'
+          : (expense.splitType as SplitType) || 'equally';
+      setEditSplitMode(normalizedSplit);
+
+      const memberList: Array<{ id: string; name: string; avatarUrl?: string }> =
+        groupMembers.length > 0
+          ? groupMembers
+          : expense.participants.map((p) => ({ id: p.userId, name: p.name, avatarUrl: p.avatarUrl }));
+
+      setEditParticipants(
+        memberList.map((m) => {
+          const matched = expense.participants.find((p) => p.userId === m.id);
+          return {
+            id: m.id,
+            name: m.name,
+            avatarUrl: m.avatarUrl,
+            selected: !!matched,
+            amountOwed: matched?.amountOwed || 0,
+            shares: 1,
+            percentage: 0,
+            exactAmount: matched?.amountOwed || 0,
+          };
+        })
+      );
     }
     setIsEditModalOpen(true);
   };
+
+  const editPaidByText = useMemo(() => {
+    if (editPayerType === 'single') {
+      if (editSinglePayerId === currentUserId) return 'You';
+      const member = groupMembers.find((m) => m.id === editSinglePayerId);
+      return member ? member.name : expense?.paidByName || 'Member';
+    }
+    const count = editMultiPayers.filter((p) => p.amount > 0).length;
+    return count > 1 ? `${count} people` : count === 1 ? '1 person' : 'Multiple people';
+  }, [editPayerType, editSinglePayerId, currentUserId, groupMembers, editMultiPayers, expense?.paidByName]);
+
+  const editSplitText = useMemo(() => {
+    switch (editSplitMode) {
+      case 'equally':
+        return 'Split equally';
+      case 'unequally':
+        return 'Split unequally';
+      case 'by_percentage':
+        return 'Split by percentage';
+      case 'by_shares':
+        return 'Split by shares';
+      default:
+        return 'Split equally';
+    }
+  }, [editSplitMode]);
 
   const handleSaveEdit = async () => {
     if (!editTitle.trim() || !editAmount.trim() || isSavingEdit) return;
@@ -221,6 +319,55 @@ export default function ExpenseDetailScreen() {
     const resolvedMaster =
       editMasterCategory || settingsService.getMasterCategory(editCategory, categories);
 
+    const selectedEditParts = editParticipants.filter((p) => p.selected);
+    const participantsPayload = selectedEditParts.map((p) => ({
+      userId: p.id,
+      amountOwed: p.exactAmount || newAmt / Math.max(1, selectedEditParts.length),
+      share: p.shares || 1,
+    }));
+
+    const payersPayload =
+      editPayerType === 'single'
+        ? [{ userId: editSinglePayerId, amount: newAmt }]
+        : editMultiPayers.filter((p) => p.amount > 0).map((p) => ({ userId: p.userId, amount: p.amount }));
+
+    const validation = validateSplit({
+      totalAmount: newAmt,
+      splitType: editSplitMode,
+      participants: editParticipants.map((p) => ({
+        userId: p.id,
+        selected: p.selected,
+        shares: p.shares || 1,
+        percentage: p.percentage || 0,
+        amountOwed: p.exactAmount || 0,
+      })),
+      multiPayerAmounts: editPayerType === 'multiple' ? editMultiPayers.map((p) => p.amount || 0) : undefined,
+    });
+
+    if (validation) {
+      setIsSavingEdit(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (validation.field === 'payers') {
+        Alert.alert(
+          'Unbalanced Payers',
+          `The total paid (₹${validation.totalPaid.toFixed(2)}) must equal the expense amount (₹${validation.totalAmount.toFixed(2)}).`
+        );
+      } else if (validation.field === 'participants') {
+        if (validation.kind === 'amounts') {
+          Alert.alert(
+            'Unbalanced Split',
+            `The total owed (₹${validation.totalOwed.toFixed(2)}) must equal the expense amount (₹${validation.totalAmount.toFixed(2)}).`
+          );
+        } else if (validation.kind === 'percentage') {
+          Alert.alert(
+            'Invalid Percentage',
+            `The sum of percentages (${validation.totalPercentage.toFixed(2)}%) must equal 100%.`
+          );
+        }
+      }
+      return;
+    }
+
     const res = await expenseService.updateExpense(expenseId, {
       groupId: targetGroupId,
       amount: newAmt,
@@ -229,6 +376,9 @@ export default function ExpenseDetailScreen() {
       category: editCategory,
       masterCategory: resolvedMaster,
       notes: editNotes.trim(),
+      splitType: editSplitMode,
+      payers: payersPayload,
+      participants: participantsPayload,
     });
 
     setIsSavingEdit(false);
@@ -398,18 +548,43 @@ export default function ExpenseDetailScreen() {
           {/* Connected Payer & Split Tree */}
           <View style={styles.splitTreeCard}>
             {/* Payer Root Row */}
-            <View style={styles.payerRow}>
-              <View style={styles.payerAvatar}>
-                {expense?.paidByAvatar ? (
-                  <Image source={{ uri: expense.paidByAvatar }} style={styles.avatarImg} />
-                ) : (
-                  <Text style={styles.avatarInitial}>{primaryPayerName.charAt(0)}</Text>
-                )}
+            {expense?.payers && expense.payers.length > 1 ? (
+              <View style={styles.multiPayersBlock}>
+                <View style={styles.multiPayersHeader}>
+                  <Users size={13} color={THEME.colors.primary} />
+                  <Text style={styles.multiPayersHeaderText}>
+                    Paid by {expense.payers.length} people
+                  </Text>
+                </View>
+                {expense.payers.map((p, idx) => (
+                  <View key={p.userId || idx} style={styles.payerRow}>
+                    <View style={styles.payerAvatar}>
+                      {p.avatarUrl ? (
+                        <Image source={{ uri: p.avatarUrl }} style={styles.avatarImg} />
+                      ) : (
+                        <Text style={styles.avatarInitial}>{(p.name || 'M').charAt(0)}</Text>
+                      )}
+                    </View>
+                    <Text style={styles.payerLabel}>
+                      {p.name || 'Member'} paid {currencySymbol}{p.amount.toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
               </View>
-              <Text style={styles.payerLabel}>
-                {primaryPayerName} paid {currencySymbol}{amount.toFixed(2)}
-              </Text>
-            </View>
+            ) : (
+              <View style={styles.payerRow}>
+                <View style={styles.payerAvatar}>
+                  {expense?.paidByAvatar ? (
+                    <Image source={{ uri: expense.paidByAvatar }} style={styles.avatarImg} />
+                  ) : (
+                    <Text style={styles.avatarInitial}>{primaryPayerName.charAt(0)}</Text>
+                  )}
+                </View>
+                <Text style={styles.payerLabel}>
+                  {primaryPayerName} paid {currencySymbol}{amount.toFixed(2)}
+                </Text>
+              </View>
+            )}
 
             {/* Tree Branch Container */}
             <View style={styles.treeBranchesWrapper}>
@@ -623,6 +798,42 @@ export default function ExpenseDetailScreen() {
                 />
               </View>
 
+              <View style={styles.modalRowGroup}>
+                <View style={[styles.modalInputGroup, { flex: 1, marginRight: 6 }]}>
+                  <Text style={styles.modalLabel}>PAID BY</Text>
+                  <TouchableOpacity
+                    style={styles.modalSelectTrigger}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setShowEditPayerModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.modalSelectTriggerText} numberOfLines={1}>
+                      {editPaidByText}
+                    </Text>
+                    <ChevronDown size={14} color={THEME.colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={[styles.modalInputGroup, { flex: 1, marginLeft: 6 }]}>
+                  <Text style={styles.modalLabel}>SPLIT</Text>
+                  <TouchableOpacity
+                    style={styles.modalSelectTrigger}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setShowEditSplitModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.modalSelectTriggerText} numberOfLines={1}>
+                      {editSplitText}
+                    </Text>
+                    <ChevronDown size={14} color={THEME.colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               <View style={styles.modalInputGroup}>
                 <Text style={styles.modalLabel}>CATEGORY</Text>
                 {/* Horizontal master category scroller */}
@@ -764,6 +975,45 @@ export default function ExpenseDetailScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+
+      {/* Sub-Modal: Edit Payer Picker */}
+      <PayerSelectModal
+        visible={showEditPayerModal}
+        onClose={() => setShowEditPayerModal(false)}
+        members={
+          groupMembers.length > 0
+            ? groupMembers
+            : editParticipants.map((p) => ({
+                id: p.id,
+                name: p.name,
+                avatarUrl: p.avatarUrl,
+              }))
+        }
+        currentUserId={currentUserId}
+        totalAmount={parseFloat(editAmount) || expense?.amount || 0}
+        initialPayerType={editPayerType}
+        initialSinglePayerId={editSinglePayerId}
+        initialMultiPayers={editMultiPayers}
+        onConfirm={(result) => {
+          setEditPayerType(result.payerType);
+          setEditSinglePayerId(result.singlePayerId);
+          setEditMultiPayers(result.multiPayers);
+        }}
+      />
+
+      {/* Sub-Modal: Edit Split Options Picker */}
+      <SplitOptionsModal
+        visible={showEditSplitModal}
+        onClose={() => setShowEditSplitModal(false)}
+        totalAmount={parseFloat(editAmount) || expense?.amount || 0}
+        currentUserId={currentUserId}
+        initialSplitType={editSplitMode}
+        participants={editParticipants}
+        onConfirm={(result) => {
+          setEditSplitMode(result.splitType);
+          setEditParticipants(result.participants);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -905,6 +1155,25 @@ const styles = StyleSheet.create({
   // Connected Payer & Split Tree Structure
   splitTreeCard: {
     marginTop: 6,
+  },
+  multiPayersBlock: {
+    gap: 8,
+  },
+  multiPayersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    marginBottom: 4,
+  },
+  multiPayersHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.primaryLight,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   payerRow: {
     flexDirection: 'row',
@@ -1202,6 +1471,28 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#9CA3AF',
     letterSpacing: 1.1,
+  },
+  modalRowGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalSelectTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#27272A',
+    borderRadius: THEME.radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  modalSelectTriggerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10B981',
+    flex: 1,
+    marginRight: 4,
   },
   modalInput: {
     backgroundColor: '#27272A',
