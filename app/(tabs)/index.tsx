@@ -136,26 +136,11 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Sleek Minimal Focused Hero Canvas with Integrated Background Graph */}
-        <View style={styles.heroCanvas}>
-          {/* Background SVG Graph (Seamlessly Integrated, Airy & Unobtrusive) */}
-          {balanceSummary && (
-            <View style={styles.heroGraphLayer} pointerEvents="none">
-              <BalanceHistoryGraph
-                data={balanceSummary.chartData}
-                domain={balanceSummary.domain}
-                gradientOffset={balanceSummary.gradientOffset}
-                minBalance={balanceSummary.minBalance}
-                maxBalance={balanceSummary.maxBalance}
-                height={140}
-              />
-            </View>
-          )}
-
-          {/* Foreground Metrics Layer */}
-          <View style={styles.heroContentLayer}>
-            {/* Eyebrow Row with Integrated Inline Trend */}
-            <View style={styles.heroEyebrowRow}>
+        {/* Modern Fintech Balance Widget with Dedicated Non-Overlapping Sparkline Track */}
+        <View style={styles.balanceWidget}>
+          {/* TIER 1: Hero Metrics Header */}
+          <View style={styles.widgetHeader}>
+            <View style={styles.widgetEyebrowRow}>
               <View
                 style={[
                   styles.statusDot,
@@ -169,11 +154,11 @@ export default function HomeScreen() {
                   },
                 ]}
               />
-              <Text style={styles.heroEyebrow}>TOTAL BALANCE</Text>
+              <Text style={styles.widgetEyebrow}>TOTAL BALANCE</Text>
 
               {balanceSummary && Math.abs(balanceSummary.trendPercentage) > 0 && (
-                <View style={styles.heroTrendInline}>
-                  <Text style={styles.heroTrendSeparator}>·</Text>
+                <View style={styles.widgetTrendInline}>
+                  <Text style={styles.widgetTrendSeparator}>·</Text>
                   {balanceSummary.trendPercentage >= 0 ? (
                     <TrendingUp size={11} color={THEME.colors.primary} />
                   ) : (
@@ -181,7 +166,7 @@ export default function HomeScreen() {
                   )}
                   <Text
                     style={[
-                      styles.heroTrendText,
+                      styles.widgetTrendText,
                       {
                         color:
                           balanceSummary.trendPercentage >= 0
@@ -196,11 +181,10 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* Focused Balance Amount */}
-            <View style={styles.heroAmountBlock}>
+            <View style={styles.widgetAmountBlock}>
               <Text
                 style={[
-                  styles.heroNumber,
+                  styles.widgetNumber,
                   netBalance > 0.01 && { color: THEME.colors.primary },
                   netBalance < -0.01 && { color: THEME.colors.negative },
                 ]}
@@ -211,7 +195,7 @@ export default function HomeScreen() {
                   ? `-₹${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   : '₹0.00'}
               </Text>
-              <Text style={styles.heroSubtitle}>
+              <Text style={styles.widgetSubtitle}>
                 {netBalance > 0.01
                   ? 'Overall you are owed money'
                   : netBalance < -0.01
@@ -219,30 +203,44 @@ export default function HomeScreen() {
                   : 'All settled up • No outstanding balance'}
               </Text>
             </View>
+          </View>
 
-            {/* Unboxed Focused Stat Columns */}
-            <View style={styles.heroStatStrip}>
-              <View style={styles.heroStatColumn}>
-                <View style={styles.heroStatLabelRow}>
-                  <ArrowDownLeft size={12} color={THEME.colors.primary} strokeWidth={2.5} />
-                  <Text style={styles.heroStatLabel}>Owed to you</Text>
-                </View>
-                <Text style={[styles.heroStatValue, { color: THEME.colors.primary }]}>
-                  ₹{totalOwed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Text>
+          {/* TIER 2: Dedicated In-Flow Sparkline Track (Zero Overlap Guaranteed!) */}
+          {balanceSummary && (
+            <View style={styles.graphTrack}>
+              <BalanceHistoryGraph
+                data={balanceSummary.chartData}
+                domain={balanceSummary.domain}
+                gradientOffset={balanceSummary.gradientOffset}
+                minBalance={balanceSummary.minBalance}
+                maxBalance={balanceSummary.maxBalance}
+                height={75}
+              />
+            </View>
+          )}
+
+          {/* TIER 3: Unboxed Stat Breakdown Footer */}
+          <View style={styles.widgetFooter}>
+            <View style={styles.statColumn}>
+              <View style={styles.statLabelRow}>
+                <ArrowDownLeft size={12} color={THEME.colors.primary} strokeWidth={2.5} />
+                <Text style={styles.statLabel}>Owed to you</Text>
               </View>
+              <Text style={[styles.statValue, { color: THEME.colors.primary }]}>
+                ₹{totalOwed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+            </View>
 
-              <View style={styles.heroStatDivider} />
+            <View style={styles.statDivider} />
 
-              <View style={styles.heroStatColumn}>
-                <View style={styles.heroStatLabelRow}>
-                  <ArrowUpRight size={12} color={THEME.colors.negative} strokeWidth={2.5} />
-                  <Text style={styles.heroStatLabel}>You owe</Text>
-                </View>
-                <Text style={[styles.heroStatValue, { color: THEME.colors.negative }]}>
-                  ₹{totalOwe.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Text>
+            <View style={styles.statColumn}>
+              <View style={styles.statLabelRow}>
+                <ArrowUpRight size={12} color={THEME.colors.negative} strokeWidth={2.5} />
+                <Text style={styles.statLabel}>You owe</Text>
               </View>
+              <Text style={[styles.statValue, { color: THEME.colors.negative }]}>
+                ₹{totalOwe.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
             </View>
           </View>
         </View>
@@ -493,31 +491,22 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
   },
 
-  // Sleek Minimal Focused Hero Canvas
-  heroCanvas: {
-    position: 'relative',
-    overflow: 'hidden',
+  // Modern Fintech Balance Widget (Zero-Overlap 3-Tier Architecture)
+  balanceWidget: {
+    backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius['2xl'],
-    paddingTop: 8,
-    paddingBottom: 16,
-    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    overflow: 'hidden',
     marginVertical: 4,
   },
-  heroGraphLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 0,
-    justifyContent: 'flex-end',
+  widgetHeader: {
+    paddingTop: 18,
+    paddingHorizontal: 18,
+    paddingBottom: 2,
+    gap: 8,
   },
-  heroContentLayer: {
-    position: 'relative',
-    zIndex: 1,
-    gap: 10,
-  },
-  heroEyebrowRow: {
+  widgetEyebrowRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -527,70 +516,76 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  heroEyebrow: {
+  widgetEyebrow: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.2,
     color: THEME.colors.textMuted,
   },
-  heroTrendInline: {
+  widgetTrendInline: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  heroTrendSeparator: {
+  widgetTrendSeparator: {
     fontSize: 11,
     color: THEME.colors.textMuted,
     marginHorizontal: 1,
   },
-  heroTrendText: {
+  widgetTrendText: {
     fontSize: 11,
     fontWeight: '700',
   },
-  heroAmountBlock: {
+  widgetAmountBlock: {
     paddingVertical: 2,
   },
-  heroNumber: {
+  widgetNumber: {
     fontSize: 38,
     fontWeight: '900',
     color: THEME.colors.text,
     letterSpacing: -1.4,
     lineHeight: 44,
   },
-  heroSubtitle: {
+  widgetSubtitle: {
     fontSize: 12,
     fontWeight: '500',
     color: THEME.colors.textSecondary,
-    marginTop: 4,
+    marginTop: 3,
   },
-  heroStatStrip: {
+  graphTrack: {
+    height: 75,
+    width: '100%',
+    marginVertical: 4,
+  },
+  widgetFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 14,
-    marginTop: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.hairline,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
   },
-  heroStatColumn: {
+  statColumn: {
     flex: 1,
     gap: 4,
   },
-  heroStatLabelRow: {
+  statLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
   },
-  heroStatLabel: {
+  statLabel: {
     fontSize: 12,
     color: THEME.colors.textSecondary,
     fontWeight: '500',
   },
-  heroStatValue: {
+  statValue: {
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
-  heroStatDivider: {
+  statDivider: {
     width: 1,
     height: 28,
     backgroundColor: THEME.colors.hairline,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { View, StyleSheet, LayoutChangeEvent, ViewStyle, StyleProp } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle, Text as SvgText } from 'react-native-svg';
 
 export interface BalanceHistoryGraphProps {
@@ -9,6 +9,7 @@ export interface BalanceHistoryGraphProps {
   minBalance: number;
   maxBalance: number;
   height?: number;
+  style?: StyleProp<ViewStyle>;
 }
 
 /**
@@ -41,7 +42,8 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   gradientOffset,
   minBalance,
   maxBalance,
-  height = 140,
+  height = 75,
+  style,
 }) => {
   const [layoutWidth, setLayoutWidth] = useState<number>(340);
 
@@ -61,11 +63,10 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   const [minDomain, maxDomain] = domain;
   const domainSpan = maxDomain - minDomain || 1;
 
-  // Map data items to screen coordinates
-  // Provide slight top/bottom padding so the peak/trough never clips the card border
-  const topPadding = 12;
-  const bottomPadding = 12;
-  const usableHeight = h - topPadding - bottomPadding;
+  // Map data items to screen coordinates with slight padding so peak/trough never clips
+  const topPadding = 8;
+  const bottomPadding = 8;
+  const usableHeight = Math.max(10, h - topPadding - bottomPadding);
 
   const points = data.map((item, index) => {
     const x = (index / Math.max(1, ptsCount - 1)) * w;
@@ -89,54 +90,54 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   const offsetPct = Math.round(safeOffset * 100);
 
   return (
-    <View style={[styles.container, { height }]} onLayout={handleLayout} pointerEvents="none">
+    <View style={[styles.container, { height }, style]} onLayout={handleLayout} pointerEvents="none">
       <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
         <Defs>
-          {/* Fill Gradient: Ultra-subtle, airy ambient glow */}
+          {/* Fill Gradient: Soft fintech ambient glow */}
           <LinearGradient id="balanceAreaGrad" x1="0" y1="0" x2="0" y2="1">
             <Stop
               offset="0%"
               stopColor={crossesZero || minBalance >= 0 ? '#10B981' : '#F43F5E'}
-              stopOpacity={crossesZero || minBalance >= 0 ? 0.16 : 0.02}
+              stopOpacity={crossesZero || minBalance >= 0 ? 0.24 : 0.04}
             />
             <Stop
               offset={`${crossesZero ? Math.max(0, offsetPct - 8) : 50}%`}
               stopColor={crossesZero || minBalance >= 0 ? '#10B981' : '#F43F5E'}
-              stopOpacity={0.03}
+              stopOpacity={0.06}
             />
             <Stop
               offset={`${crossesZero ? Math.min(100, offsetPct + 8) : 50}%`}
               stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#10B981'}
-              stopOpacity={0.03}
+              stopOpacity={0.06}
             />
             <Stop
               offset="100%"
               stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#10B981'}
-              stopOpacity={crossesZero || maxBalance <= 0 ? 0.16 : 0.02}
+              stopOpacity={crossesZero || maxBalance <= 0 ? 0.24 : 0.02}
             />
           </LinearGradient>
 
-          {/* Stroke Gradient: Sleek, high-precision curve */}
+          {/* Stroke Gradient: Crisp, high-contrast dynamic curve */}
           <LinearGradient id="balanceStrokeGrad" x1="0" y1="0" x2="0" y2="1">
             <Stop
               offset="0%"
               stopColor={crossesZero || minBalance >= 0 ? '#10B981' : '#F43F5E'}
-              stopOpacity={0.75}
+              stopOpacity={0.9}
             />
             <Stop
               offset={`${crossesZero ? Math.max(0, offsetPct - 3) : 50}%`}
               stopColor={crossesZero || minBalance >= 0 ? '#10B981' : '#F43F5E'}
-              stopOpacity={0.75}
+              stopOpacity={0.9}
             />
             <Stop
               offset={`${crossesZero ? Math.min(100, offsetPct + 3) : 50}%`}
               stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#10B981'}
-              stopOpacity={0.75}
+              stopOpacity={0.9}
             />
             <Stop
               offset="100%"
               stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#10B981'}
-              stopOpacity={0.75}
+              stopOpacity={0.9}
             />
           </LinearGradient>
         </Defs>
@@ -149,14 +150,14 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
               y1={zeroY}
               x2={w}
               y2={zeroY}
-              stroke="rgba(255, 255, 255, 0.08)"
+              stroke="rgba(255, 255, 255, 0.10)"
               strokeDasharray="3 3"
               strokeWidth={1}
             />
             <SvgText
               x={w - 18}
               y={zeroY - 4}
-              fill="rgba(255, 255, 255, 0.2)"
+              fill="rgba(255, 255, 255, 0.3)"
               fontSize={8}
               fontWeight="600"
             >
@@ -173,17 +174,17 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
           d={lineCurve}
           fill="none"
           stroke="url(#balanceStrokeGrad)"
-          strokeWidth={1.75}
+          strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
-        {/* Current Endpoint Dot */}
+        {/* Current Endpoint Indicator */}
         <Circle
           cx={lastPoint.x}
           cy={lastPoint.y}
-          r={5}
-          fill={lastBalance >= 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(244, 63, 94, 0.18)'}
+          r={5.5}
+          fill={lastBalance >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)'}
         />
         <Circle
           cx={lastPoint.x}
@@ -199,10 +200,6 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     overflow: 'hidden',
   },
 });
