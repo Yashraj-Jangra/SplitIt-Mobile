@@ -97,22 +97,22 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
           <LinearGradient id="balanceAreaGrad" x1="0" y1="0" x2="0" y2="1">
             <Stop
               offset="0%"
-              stopColor={crossesZero || minBalance >= 0 ? '#10B981' : '#F43F5E'}
+              stopColor={crossesZero || minBalance >= 0 ? '#1CC29F' : '#F43F5E'}
               stopOpacity={crossesZero || minBalance >= 0 ? 0.24 : 0.04}
             />
             <Stop
               offset={`${crossesZero ? Math.max(0, offsetPct - 8) : 50}%`}
-              stopColor={crossesZero || minBalance >= 0 ? '#10B981' : '#F43F5E'}
+              stopColor={crossesZero || minBalance >= 0 ? '#1CC29F' : '#F43F5E'}
               stopOpacity={0.06}
             />
             <Stop
               offset={`${crossesZero ? Math.min(100, offsetPct + 8) : 50}%`}
-              stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#10B981'}
+              stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#1CC29F'}
               stopOpacity={0.06}
             />
             <Stop
               offset="100%"
-              stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#10B981'}
+              stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#1CC29F'}
               stopOpacity={crossesZero || maxBalance <= 0 ? 0.24 : 0.02}
             />
           </LinearGradient>
@@ -121,22 +121,22 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
           <LinearGradient id="balanceStrokeGrad" x1="0" y1="0" x2="0" y2="1">
             <Stop
               offset="0%"
-              stopColor={crossesZero || minBalance >= 0 ? '#10B981' : '#F43F5E'}
+              stopColor={crossesZero || minBalance >= 0 ? '#1CC29F' : '#F43F5E'}
               stopOpacity={0.9}
             />
             <Stop
               offset={`${crossesZero ? Math.max(0, offsetPct - 3) : 50}%`}
-              stopColor={crossesZero || minBalance >= 0 ? '#10B981' : '#F43F5E'}
+              stopColor={crossesZero || minBalance >= 0 ? '#1CC29F' : '#F43F5E'}
               stopOpacity={0.9}
             />
             <Stop
               offset={`${crossesZero ? Math.min(100, offsetPct + 3) : 50}%`}
-              stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#10B981'}
+              stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#1CC29F'}
               stopOpacity={0.9}
             />
             <Stop
               offset="100%"
-              stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#10B981'}
+              stopColor={crossesZero || maxBalance <= 0 ? '#F43F5E' : '#1CC29F'}
               stopOpacity={0.9}
             />
           </LinearGradient>
@@ -184,13 +184,13 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
           cx={lastPoint.x}
           cy={lastPoint.y}
           r={5.5}
-          fill={lastBalance >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)'}
+          fill={lastBalance >= 0 ? 'rgba(28, 194, 159, 0.25)' : 'rgba(244, 63, 94, 0.25)'}
         />
         <Circle
           cx={lastPoint.x}
           cy={lastPoint.y}
           r={2.5}
-          fill={lastBalance >= 0 ? '#10B981' : '#F43F5E'}
+          fill={lastBalance >= 0 ? '#1CC29F' : '#F43F5E'}
         />
       </Svg>
     </View>

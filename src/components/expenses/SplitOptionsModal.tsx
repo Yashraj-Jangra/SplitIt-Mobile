@@ -696,7 +696,7 @@ export function SplitOptionsModal({
 const styles = StyleSheet.create({
   fullScreen: {
     flex: 1,
-    backgroundColor: '#18191B', // Splitwise Authentic Dark Canvas
+    backgroundColor: THEME.colors.background,
   },
   keyboardContainer: {
     flex: 1,
@@ -911,7 +911,7 @@ const styles = StyleSheet.create({
   splitwiseBottomBar: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: '#18191B',
+    backgroundColor: THEME.colors.background,
     paddingHorizontal: 20,
     paddingVertical: 14,
   },
