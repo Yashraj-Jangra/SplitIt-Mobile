@@ -10,32 +10,12 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Receipt,
-  Utensils,
-  Car,
-  Home,
-  Zap,
-  Heart,
-  ShoppingBag,
-  Plane,
-  Wallet,
-} from 'lucide-react-native';
+import { Receipt } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
+import { CategoryIcon } from '../../src/utils/category-icons';
 import * as Haptics from 'expo-haptics';
-
-const CATEGORY_ICONS: Record<string, any> = {
-  'Food and Drink': Utensils,
-  'Transportation': Car,
-  'Home': Home,
-  'Utilities': Zap,
-  'Personal Care': Heart,
-  'Shopping': ShoppingBag,
-  'Travel': Plane,
-  'Other': Wallet,
-};
 
 export default function ActivityScreen() {
   const router = useRouter();
@@ -93,7 +73,6 @@ export default function ActivityScreen() {
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
             <View style={styles.ledgerCard}>
               {transactions.map((tx, index) => {
-                const IconComponent = CATEGORY_ICONS[tx.masterCategory] || Receipt;
                 const isLast = index === transactions.length - 1;
                 const isGet = tx.yourImpact === 'get';
                 const isOwe = tx.yourImpact === 'owe';
@@ -120,7 +99,9 @@ export default function ActivityScreen() {
                     }}
                   >
                     <View style={styles.iconCircle}>
-                      <IconComponent
+                      <CategoryIcon
+                        subCategory={tx.category}
+                        masterCategory={tx.masterCategory}
                         size={16}
                         color={
                           isGet

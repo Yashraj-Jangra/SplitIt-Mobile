@@ -9,6 +9,7 @@ import { authService, AuthUser } from '../../src/services/auth.service';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
+import { CategoryIcon } from '../../src/utils/category-icons';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
@@ -273,7 +274,7 @@ export default function HomeScreen() {
                     }}
                   >
                     <View style={styles.ledgerIconCircle}>
-                      <ShoppingBag size={16} color={THEME.colors.textSecondary} />
+                      <CategoryIcon subCategory={tx.category} masterCategory={tx.masterCategory} size={16} color={THEME.colors.textSecondary} />
                     </View>
 
                     <View style={styles.ledgerInfo}>

@@ -16,10 +16,6 @@ import {
   Search,
   X,
   Receipt,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Coffee,
   Sparkles,
   ArrowLeft,
   ChevronRight,
@@ -27,6 +23,7 @@ import {
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
+import { CategoryIcon } from '../../../src/utils/category-icons';
 import * as Haptics from 'expo-haptics';
 
 export default function GroupSearchScreen() {
@@ -61,23 +58,6 @@ export default function GroupSearchScreen() {
       return titleMatch || payerMatch || masterCatMatch || subCatMatch || amountMatch;
     });
   }, [expenses, query]);
-
-  const renderCategoryIcon = (category?: { master?: string; sub?: string }) => {
-    const text = `${category?.master || ''} ${category?.sub || ''}`.toLowerCase();
-    if (text.includes('food') || text.includes('dining') || text.includes('dinner') || text.includes('snack')) {
-      return <Utensils size={16} color={THEME.colors.textSecondary} />;
-    }
-    if (text.includes('coffee') || text.includes('cafe')) {
-      return <Coffee size={16} color={THEME.colors.textSecondary} />;
-    }
-    if (text.includes('travel') || text.includes('transport') || text.includes('cab') || text.includes('taxi')) {
-      return <Car size={16} color={THEME.colors.textSecondary} />;
-    }
-    if (text.includes('shop') || text.includes('grocery') || text.includes('mart')) {
-      return <ShoppingBag size={16} color={THEME.colors.textSecondary} />;
-    }
-    return <Receipt size={16} color={THEME.colors.textSecondary} />;
-  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -177,14 +157,19 @@ export default function GroupSearchScreen() {
                             amount: String(exp.amount),
                             paidByName: exp.paidByName || 'Member',
                             date: exp.date,
-                            category: exp.category?.sub || exp.category?.master || 'General',
+                            category: exp.category?.sub || exp.category?.master || 'Other',
                           },
                         });
                       }}
                       activeOpacity={0.7}
                     >
                       <View style={styles.categoryGlyph}>
-                        {renderCategoryIcon(exp.category)}
+                        <CategoryIcon
+                          subCategory={exp.category?.sub}
+                          masterCategory={exp.category?.master}
+                          size={16}
+                          color={THEME.colors.textSecondary}
+                        />
                       </View>
 
                       <View style={styles.ledgerDetails}>

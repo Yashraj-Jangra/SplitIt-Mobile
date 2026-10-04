@@ -1,6 +1,7 @@
 import { authService, API_BASE_URL } from './auth.service';
 import { parseComplexChange, ParsedChange } from '@splitit/core';
 import { groupService } from './group.service';
+import { settingsService } from './settings.service';
 
 export interface CreateExpensePayload {
   groupId: string;
@@ -178,6 +179,13 @@ export const expenseService = {
           day: 'numeric',
         });
 
+        const subCategory = typeof e.category === 'string' ? e.category : e.category?.sub || 'Other';
+        const masterCategory =
+          e.masterCategory ||
+          (typeof e.category === 'object' ? e.category?.master : undefined) ||
+          settingsService.getMasterCategory(subCategory) ||
+          'Uncategorized';
+
         return {
           id: e.id,
           title: e.description || e.title || 'Expense',
@@ -192,8 +200,8 @@ export const expenseService = {
           payers: e.payers,
           participants: e.participants,
           date: formattedDate,
-          category: typeof e.category === 'string' ? e.category : e.category?.sub || 'General',
-          masterCategory: e.masterCategory || (typeof e.category === 'string' ? e.category : 'General'),
+          category: subCategory,
+          masterCategory,
           paidByName: payerName,
         };
       });
@@ -364,6 +372,13 @@ export const expenseService = {
           }
 
           const dateObj = e.date ? new Date(e.date) : new Date();
+          const subCategory = typeof e.category === 'string' ? e.category : e.category?.sub || 'Other';
+          const masterCategory =
+            e.masterCategory ||
+            (typeof e.category === 'object' ? e.category?.master : undefined) ||
+            settingsService.getMasterCategory(subCategory) ||
+            'Uncategorized';
+
           return {
             id: e.id,
             groupId: targetGroupId || '',
@@ -375,8 +390,8 @@ export const expenseService = {
             rawDate: dateObj.toISOString(),
             createdAt: e.createdAt,
             category: {
-              master: e.masterCategory || (typeof e.category === 'string' ? e.category : 'General'),
-              sub: typeof e.category === 'string' ? e.category : e.category?.sub || 'General',
+              master: masterCategory,
+              sub: subCategory,
             },
             splitType: e.splitType || 'equally',
             notes: e.notes || undefined,
@@ -482,8 +497,8 @@ export const expenseService = {
       rawDate: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       category: {
-        master: 'General',
-        sub: 'General',
+        master: 'Uncategorized',
+        sub: 'Other',
       },
       splitType: 'equally',
       notes: undefined,
@@ -534,6 +549,7 @@ export const expenseService = {
       oldAmount?: number;
       description: string;
       category?: string;
+      masterCategory?: string;
       notes?: string;
       splitType?: string;
       payers?: Array<{ userId: string; amount: number }>;
@@ -544,6 +560,15 @@ export const expenseService = {
       const token = await authService.getToken();
       if (!token) return { success: false, error: 'User is not authenticated' };
 
+      const resolvedMasterCategory =
+        payload.masterCategory ||
+        (payload.category ? settingsService.getMasterCategory(payload.category) : undefined);
+
+      const bodyPayload = {
+        ...payload,
+        masterCategory: resolvedMasterCategory,
+      };
+
       const res = await fetch(`${API_BASE_URL}/api/expenses/${expenseId}`, {
         method: 'PUT',
         headers: {
@@ -552,7 +577,7 @@ export const expenseService = {
           Authorization: `Bearer ${token}`,
           Cookie: `better-auth.session_token=${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(bodyPayload),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -598,6 +623,14 @@ export const expenseService = {
       const token = await authService.getToken();
       if (!token) return { success: false, error: 'User is not authenticated' };
 
+      const resolvedMasterCategory =
+        payload.masterCategory || settingsService.getMasterCategory(payload.category);
+
+      const bodyPayload = {
+        ...payload,
+        masterCategory: resolvedMasterCategory,
+      };
+
       const res = await fetch(`${API_BASE_URL}/api/expenses`, {
         method: 'POST',
         headers: {
@@ -606,7 +639,7 @@ export const expenseService = {
           Authorization: `Bearer ${token}`,
           Cookie: `better-auth.session_token=${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(bodyPayload),
       });
 
       const data = await res.json();

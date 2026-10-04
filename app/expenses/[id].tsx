@@ -44,6 +44,9 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
 import { expenseService, ExpenseDetailModel, ExpenseHistoryLog } from '../../src/services/expense.service';
+import { settingsService } from '../../src/services/settings.service';
+import { CategoryIcon } from '../../src/utils/category-icons';
+import { MasterCategory } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
 
 export default function ExpenseDetailScreen() {
@@ -76,8 +79,8 @@ export default function ExpenseDetailScreen() {
         rawDate: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         category: {
-          master: params.category || 'General',
-          sub: params.category || 'General',
+          master: settingsService.getMasterCategory(params.category || 'Other'),
+          sub: params.category || 'Other',
         },
         splitType: 'equally',
         paidById: 'payer',
@@ -111,11 +114,20 @@ export default function ExpenseDetailScreen() {
   const [commentInput, setCommentInput] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
 
+  // Categories State
+  const [categories, setCategories] = useState<Record<string, MasterCategory>>(() =>
+    settingsService.getCachedExpenseCategories()
+  );
+
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(params.title || '');
   const [editAmount, setEditAmount] = useState(params.amount || '');
-  const [editCategory, setEditCategory] = useState(params.category || 'General');
+  const [editCategory, setEditCategory] = useState(params.category || 'Dining Out');
+  const [editMasterCategory, setEditMasterCategory] = useState(() =>
+    settingsService.getMasterCategory(params.category || 'Dining Out') || 'Food and Drink'
+  );
+  const [selectedEditMaster, setSelectedEditMaster] = useState('Food and Drink');
   const [editNotes, setEditNotes] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
@@ -133,12 +145,26 @@ export default function ExpenseDetailScreen() {
       }
       setEditTitle(data.title);
       setEditAmount(String(data.amount));
-      setEditCategory(data.category.sub || data.category.master || 'General');
+      setEditCategory(data.category.sub || 'Other');
+      const resolvedMaster =
+        data.category.master || settingsService.getMasterCategory(data.category.sub || 'Other');
+      setEditMasterCategory(resolvedMaster);
+      setSelectedEditMaster(resolvedMaster);
       setEditNotes(data.notes || '');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+    settingsService.getExpenseCategories().then((cats) => {
+      if (mounted) setCategories(cats);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     fetchExpense();
@@ -171,7 +197,12 @@ export default function ExpenseDetailScreen() {
     if (expense) {
       setEditTitle(expense.title);
       setEditAmount(String(expense.amount));
-      setEditCategory(expense.category.sub || 'Dining Out');
+      const sub = expense.category.sub || 'Other';
+      const master =
+        expense.category.master || settingsService.getMasterCategory(sub) || 'Food and Drink';
+      setEditCategory(sub);
+      setEditMasterCategory(master);
+      setSelectedEditMaster(master);
       setEditNotes(expense.notes || '');
     }
     setIsEditModalOpen(true);
@@ -187,12 +218,16 @@ export default function ExpenseDetailScreen() {
 
     const oldAmt = expense?.amount || newAmt;
     const targetGroupId = expense?.groupId || groupId;
+    const resolvedMaster =
+      editMasterCategory || settingsService.getMasterCategory(editCategory, categories);
+
     const res = await expenseService.updateExpense(expenseId, {
       groupId: targetGroupId,
       amount: newAmt,
       oldAmount: oldAmt,
       description: editTitle.trim(),
       category: editCategory,
+      masterCategory: resolvedMaster,
       notes: editNotes.trim(),
     });
 
@@ -253,28 +288,7 @@ export default function ExpenseDetailScreen() {
     }
   };
 
-  const renderCategoryIcon = (categoryName: string, size = 26, color = '#09090B') => {
-    const lower = categoryName.toLowerCase();
-    if (lower.includes('dinner') || lower.includes('food') || lower.includes('lunch') || lower.includes('drink')) {
-      return <Utensils size={size} color={color} />;
-    }
-    if (lower.includes('car') || lower.includes('taxi') || lower.includes('cab') || lower.includes('uber')) {
-      return <Car size={size} color={color} />;
-    }
-    if (lower.includes('coffee') || lower.includes('cafe')) {
-      return <Coffee size={size} color={color} />;
-    }
-    if (lower.includes('flight') || lower.includes('plane') || lower.includes('travel')) {
-      return <Plane size={size} color={color} />;
-    }
-    if (lower.includes('home') || lower.includes('rent')) {
-      return <Home size={size} color={color} />;
-    }
-    if (lower.includes('shopping') || lower.includes('groceries')) {
-      return <ShoppingBag size={size} color={color} />;
-    }
-    return <Utensils size={size} color={color} />;
-  };
+
 
   if (loading && !expense) {
     return (
@@ -327,7 +341,12 @@ export default function ExpenseDetailScreen() {
         {/* Circular Category Badge Overlapping Seam */}
         <View style={styles.categoryBadgeOuter}>
           <View style={styles.categoryBadgeInner}>
-            {renderCategoryIcon(expense?.category.sub || title, 26, '#09090B')}
+            <CategoryIcon
+              subCategory={expense?.category?.sub}
+              masterCategory={expense?.category?.master}
+              size={26}
+              color="#09090B"
+            />
           </View>
         </View>
       </View>
@@ -350,6 +369,23 @@ export default function ExpenseDetailScreen() {
             <Text style={styles.heroSubtitle}>
               Added by {creatorName} on {dateFormatted}
             </Text>
+
+            <View style={styles.categoryPillRow}>
+              <View style={styles.categoryBadgePill}>
+                <CategoryIcon
+                  subCategory={expense?.category?.sub}
+                  masterCategory={expense?.category?.master}
+                  size={12}
+                  color={THEME.colors.primaryLight}
+                />
+                <Text style={styles.categoryBadgePillText}>
+                  {expense?.category?.sub || 'Other'}
+                  {expense?.category?.master && expense?.category?.master !== 'Uncategorized' && expense?.category?.master !== expense?.category?.sub
+                    ? ` • ${expense.category.master}`
+                    : ''}
+                </Text>
+              </View>
+            </View>
 
             {expense?.notes ? (
               <View style={styles.notesBox}>
@@ -589,29 +625,78 @@ export default function ExpenseDetailScreen() {
 
               <View style={styles.modalInputGroup}>
                 <Text style={styles.modalLabel}>CATEGORY</Text>
-                <View style={styles.categoryPills}>
-                  {['Dining Out', 'Groceries', 'Taxi', 'Rent', 'Flights', 'General'].map((cat) => (
-                    <TouchableOpacity
-                      key={cat}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        setEditCategory(cat);
-                      }}
-                      style={[
-                        styles.catPill,
-                        editCategory === cat && styles.catPillActive,
-                      ]}
-                    >
-                      <Text
+                {/* Horizontal master category scroller */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+                >
+                  {Object.keys(categories).map((master) => {
+                    const isMasterActive = selectedEditMaster === master;
+                    return (
+                      <TouchableOpacity
+                        key={master}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setSelectedEditMaster(master);
+                        }}
                         style={[
-                          styles.catPillText,
-                          editCategory === cat && styles.catPillTextActive,
+                          styles.catMasterPill,
+                          isMasterActive && styles.catMasterPillActive,
                         ]}
                       >
-                        {cat}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <CategoryIcon
+                          masterCategory={master}
+                          size={13}
+                          color={isMasterActive ? '#10B981' : '#9CA3AF'}
+                        />
+                        <Text
+                          style={[
+                            styles.catMasterPillText,
+                            isMasterActive && styles.catMasterPillTextActive,
+                          ]}
+                        >
+                          {master}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Sub-category chips for the selected master category */}
+                <View style={styles.categoryPills}>
+                  {Object.keys(categories[selectedEditMaster]?.subCategories || {}).map((sub) => {
+                    const isSelected = editCategory === sub;
+                    return (
+                      <TouchableOpacity
+                        key={sub}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setEditCategory(sub);
+                          setEditMasterCategory(selectedEditMaster);
+                        }}
+                        style={[
+                          styles.catPill,
+                          isSelected && styles.catPillActive,
+                        ]}
+                      >
+                        <CategoryIcon
+                          subCategory={sub}
+                          masterCategory={selectedEditMaster}
+                          size={13}
+                          color={isSelected ? '#10B981' : '#9CA3AF'}
+                        />
+                        <Text
+                          style={[
+                            styles.catPillText,
+                            isSelected && styles.catPillTextActive,
+                          ]}
+                        >
+                          {sub}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
 
@@ -776,6 +861,27 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#9CA3AF',
     marginTop: 2,
+  },
+  categoryPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  categoryBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  categoryBadgePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#D1D5DB',
   },
   notesBox: {
     flexDirection: 'row',
@@ -1117,6 +1223,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   catPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: THEME.radius.full,
@@ -1134,6 +1243,30 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   catPillTextActive: {
+    color: '#10B981',
+    fontWeight: '700',
+  },
+  catMasterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  catMasterPillActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: '#10B981',
+  },
+  catMasterPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  catMasterPillTextActive: {
     color: '#10B981',
     fontWeight: '700',
   },

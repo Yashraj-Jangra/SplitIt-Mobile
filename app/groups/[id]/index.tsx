@@ -31,6 +31,7 @@ import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData } from '../../../src/services/group.service';
 import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRing';
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
+import { CategoryIcon } from '../../../src/utils/category-icons';
 import * as Haptics from 'expo-haptics';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
@@ -426,14 +427,19 @@ export default function GroupDetailScreen() {
                             amount: String(exp.amount),
                             paidByName: exp.paidByName || 'Member',
                             date: exp.date,
-                            category: exp.category?.sub || exp.category?.master || 'General',
+                            category: exp.category?.sub || exp.category?.master || 'Other',
                           },
                         });
                       }}
                       activeOpacity={0.7}
                     >
                       <View style={styles.categoryGlyph}>
-                        <Utensils size={16} color={THEME.colors.textSecondary} />
+                        <CategoryIcon
+                          subCategory={exp.category?.sub}
+                          masterCategory={exp.category?.master}
+                          size={16}
+                          color={THEME.colors.textSecondary}
+                        />
                       </View>
 
                       <View style={styles.ledgerDetails}>

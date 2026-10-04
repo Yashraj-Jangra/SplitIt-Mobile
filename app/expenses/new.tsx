@@ -37,29 +37,15 @@ import {
   Search,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
-import {
-  calculateSplitAmounts,
-  classifyExpense,
-  defaultExpenseCategories,
-} from '@splitit/core';
+import { calculateSplitAmounts, MasterCategory } from '@splitit/core';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { expenseService } from '../../src/services/expense.service';
 import { authService } from '../../src/services/auth.service';
+import { settingsService } from '../../src/services/settings.service';
+import { CategoryIcon } from '../../src/utils/category-icons';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const CATEGORY_ICONS: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
-  'Food and Drink': Utensils,
-  'Transportation': Car,
-  'Entertainment': Film,
-  'Home': Home,
-  'Utilities': Zap,
-  'Personal Care': Heart,
-  'Shopping': ShoppingBag,
-  'Travel': Plane,
-  'Other': Wallet,
-};
 
 interface Participant {
   id: string;
@@ -80,11 +66,17 @@ export default function NewExpenseModal() {
     groupId?: string;
   }>();
 
+  const [categories, setCategories] = useState<Record<string, MasterCategory>>(() =>
+    settingsService.getCachedExpenseCategories()
+  );
+
   // Form State
   const [amount, setAmount] = useState(params.amount || '');
   const [description, setDescription] = useState(params.description || '');
   const [category, setCategory] = useState(params.category || 'Dining Out');
-  const [masterCategory, setMasterCategory] = useState('Food and Drink');
+  const [masterCategory, setMasterCategory] = useState(() =>
+    settingsService.getMasterCategory(params.category || 'Dining Out') || 'Food and Drink'
+  );
   const [date, setDate] = useState('Today');
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
@@ -143,23 +135,34 @@ export default function NewExpenseModal() {
     init();
   }, [params.groupId]);
 
-  // AI Classification on description change
+  // Fetch dynamic categories from website settings on mount
+  useEffect(() => {
+    let mounted = true;
+    settingsService.getExpenseCategories().then((cats) => {
+      if (mounted) setCategories(cats);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // AI Classification on description change using active categories
   useEffect(() => {
     if (description.trim().length >= 3 && !userOverriddenCategory) {
-      const predicted = classifyExpense(description, defaultExpenseCategories);
+      const predicted = settingsService.classifyExpense(description, categories);
       if (predicted && predicted.sub) {
         setCategory(predicted.sub);
         setMasterCategory(predicted.master);
       }
     }
-  }, [description, userOverriddenCategory]);
+  }, [description, userOverriddenCategory, categories]);
 
   const predictedCategory = useMemo(() => {
     if (description.trim().length >= 3) {
-      return classifyExpense(description, defaultExpenseCategories);
+      return settingsService.classifyExpense(description, categories);
     }
     return null;
-  }, [description]);
+  }, [description, categories]);
 
   const selectedParticipants = useMemo(
     () => participants.filter((p) => p.selected),
@@ -242,8 +245,6 @@ export default function NewExpenseModal() {
       setIsSaving(false);
     }
   };
-
-  const CategoryIconComponent = CATEGORY_ICONS[masterCategory] || Wallet;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -415,7 +416,7 @@ export default function NewExpenseModal() {
               }}
               activeOpacity={0.7}
             >
-              <CategoryIconComponent size={14} color={THEME.colors.textSecondary} />
+              <CategoryIcon subCategory={category} masterCategory={masterCategory} size={14} color={THEME.colors.textSecondary} />
               <Text style={styles.metaPillText}>{category}</Text>
             </TouchableOpacity>
 
@@ -559,35 +560,62 @@ export default function NewExpenseModal() {
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>
-                {Object.entries(defaultExpenseCategories)
-                  .filter(([master]) => !categorySearch || master.toLowerCase().includes(categorySearch.toLowerCase()))
-                  .map(([master, masterCategoryData]) => {
-                    const IconComp = CATEGORY_ICONS[master] || Wallet;
+                {Object.entries(categories)
+                  .filter(([master, masterCategoryData]) => {
+                    if (!categorySearch.trim()) return true;
+                    const q = categorySearch.toLowerCase().trim();
+                    if (master.toLowerCase().includes(q)) return true;
                     const subNames = Object.keys(masterCategoryData.subCategories || {});
+                    return subNames.some((sub) => {
+                      if (sub.toLowerCase().includes(q)) return true;
+                      const kw = masterCategoryData.subCategories[sub]?.keywords || [];
+                      return kw.some((k) => k.toLowerCase().includes(q));
+                    });
+                  })
+                  .map(([master, masterCategoryData]) => {
+                    const q = categorySearch.toLowerCase().trim();
+                    const subNames = Object.keys(masterCategoryData.subCategories || {}).filter((sub) => {
+                      if (!q || master.toLowerCase().includes(q)) return true;
+                      if (sub.toLowerCase().includes(q)) return true;
+                      const kw = masterCategoryData.subCategories[sub]?.keywords || [];
+                      return kw.some((k) => k.toLowerCase().includes(q));
+                    });
+
+                    if (subNames.length === 0) return null;
+
                     return (
                       <View key={master} style={{ marginBottom: 16 }}>
                         <View style={styles.categoryHeaderRow}>
-                          <IconComp size={16} color={THEME.colors.primaryLight} />
+                          <CategoryIcon masterCategory={master} size={16} color={THEME.colors.primaryLight} />
                           <Text style={styles.categoryGroupTitle}>{master}</Text>
                         </View>
                         <View style={styles.categoryPillsWrap}>
-                          {subNames.map((sub) => (
-                            <TouchableOpacity
-                              key={sub}
-                              style={[styles.categoryChoicePill, category === sub && styles.categoryChoiceActive]}
-                              onPress={() => {
-                                Haptics.selectionAsync();
-                                setUserOverriddenCategory(true);
-                                setCategory(sub);
-                                setMasterCategory(master);
-                                setShowCategoryModal(false);
-                              }}
-                            >
-                              <Text style={[styles.categoryChoiceText, category === sub && styles.categoryChoiceTextActive]}>
-                                {sub}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
+                          {subNames.map((sub) => {
+                            const isSelected = category === sub;
+                            return (
+                              <TouchableOpacity
+                                key={sub}
+                                style={[styles.categoryChoicePill, isSelected && styles.categoryChoiceActive]}
+                                onPress={() => {
+                                  Haptics.selectionAsync();
+                                  setUserOverriddenCategory(true);
+                                  setCategory(sub);
+                                  setMasterCategory(master);
+                                  setShowCategoryModal(false);
+                                }}
+                              >
+                                <CategoryIcon
+                                  subCategory={sub}
+                                  masterCategory={master}
+                                  size={13}
+                                  color={isSelected ? THEME.colors.primary : THEME.colors.textMuted}
+                                />
+                                <Text style={[styles.categoryChoiceText, isSelected && styles.categoryChoiceTextActive]}>
+                                  {sub}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
                         </View>
                       </View>
                     );
@@ -984,6 +1012,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryChoicePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: THEME.radius.full,

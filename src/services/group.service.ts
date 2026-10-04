@@ -1,5 +1,6 @@
 import { simplifyDebts } from '@splitit/core';
 import { authService, API_BASE_URL } from './auth.service';
+import { settingsService } from './settings.service';
 
 export interface GroupMember {
   id: string;
@@ -340,18 +341,25 @@ export const groupService = {
                   day: 'numeric',
                 });
 
-                return {
-                  id: e.id,
-                  title: e.description || e.title || 'Expense',
-                  amount: Number(e.amount || 0),
-                  currency: e.currency || 'INR',
-                  paidById: payerId,
-                  paidByName: payerName,
-                  date: formattedDate,
-                  category: {
-                    master: e.masterCategory || (typeof e.category === 'string' ? e.category : 'General'),
-                    sub: typeof e.category === 'string' ? e.category : e.category?.sub || 'General',
-                  },
+                  const subCategory = typeof e.category === 'string' ? e.category : e.category?.sub || 'Other';
+                  const masterCategory =
+                    e.masterCategory ||
+                    (typeof e.category === 'object' ? e.category?.master : undefined) ||
+                    settingsService.getMasterCategory(subCategory) ||
+                    'Uncategorized';
+
+                  return {
+                    id: e.id,
+                    title: e.description || e.title || 'Expense',
+                    amount: Number(e.amount || 0),
+                    currency: e.currency || 'INR',
+                    paidById: payerId,
+                    paidByName: payerName,
+                    date: formattedDate,
+                    category: {
+                      master: masterCategory,
+                      sub: subCategory,
+                    },
                   yourShare,
                   yourImpact,
                   userShareStatus,
