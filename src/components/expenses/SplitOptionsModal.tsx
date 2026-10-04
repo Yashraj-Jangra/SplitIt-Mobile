@@ -17,8 +17,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
+import {
+  calculateSplitAmounts,
+  validateSplit,
+  calculateEqualPercentages,
+  calculateEqualAmounts,
+  SplitType,
+} from '@splitit/core';
 import { THEME } from '../../constants/theme';
-import { calculateSplitAmounts, validateSplit, SplitType } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
 
 export interface SplitParticipantItem {
@@ -121,13 +127,21 @@ export function SplitOptionsModal({
       const pctMap: Record<string, string> = {};
       const sharesMap: Record<string, number> = {};
 
-      const selectedCount = Math.max(1, cloned.filter((p) => p.selected).length);
-      const defaultEqualShare = totalAmount / selectedCount;
-      const defaultEqualPct = 100 / selectedCount;
+      const selectedMembers = cloned.filter((p) => p.selected);
+      const selectedCount = Math.max(1, selectedMembers.length);
+      const equalAmounts = calculateEqualAmounts(totalAmount, selectedCount);
+      const equalPercentages = calculateEqualPercentages(selectedCount);
 
+      let selIdx = 0;
       cloned.forEach((p) => {
-        exactMap[p.id] = p.exactAmount ? String(p.exactAmount) : p.selected ? defaultEqualShare.toFixed(2) : '0';
-        pctMap[p.id] = p.percentage ? String(p.percentage) : p.selected ? defaultEqualPct.toFixed(2) : '0';
+        if (p.selected) {
+          exactMap[p.id] = p.exactAmount ? String(p.exactAmount) : String(equalAmounts[selIdx].toFixed(2));
+          pctMap[p.id] = p.percentage ? String(p.percentage) : String(equalPercentages[selIdx].toFixed(2));
+          selIdx++;
+        } else {
+          exactMap[p.id] = '0';
+          pctMap[p.id] = '0';
+        }
         sharesMap[p.id] = p.shares && p.shares > 0 ? p.shares : 1;
       });
 
@@ -204,24 +218,95 @@ export function SplitOptionsModal({
   const isModeBalanced = useMemo(() => {
     if (selectedCount === 0) return false;
     if (splitType === 'equally') return true;
-    if (splitType === 'unequally') return Math.abs(exactRemaining) <= 0.01;
-    if (splitType === 'by_percentage') return Math.abs(percentageRemaining) <= 0.01;
+    if (splitType === 'unequally') return Math.abs(exactRemaining) < 0.005;
+    if (splitType === 'by_percentage') return Math.abs(percentageRemaining) < 0.005;
     if (splitType === 'by_shares') return totalShares > 0;
     return true;
   }, [selectedCount, splitType, exactRemaining, percentageRemaining, totalShares]);
 
   const toggleSelectMember = (id: string) => {
     Haptics.selectionAsync();
-    setItems((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, selected: !p.selected } : p))
-    );
+    setItems((prev) => {
+      const updated = prev.map((p) => (p.id === id ? { ...p, selected: !p.selected } : p));
+      const sel = updated.filter((p) => p.selected);
+      const sCount = sel.length;
+      if (sCount > 0) {
+        const eqAmounts = calculateEqualAmounts(totalAmount, sCount);
+        const eqPcts = calculateEqualPercentages(sCount);
+
+        setExactInputs((oldExact) => {
+          const next = { ...oldExact };
+          let idx = 0;
+          updated.forEach((p) => {
+            next[p.id] = p.selected ? String(eqAmounts[idx++].toFixed(2)) : '0';
+          });
+          return next;
+        });
+
+        setPercentageInputs((oldPct) => {
+          const next = { ...oldPct };
+          let idx = 0;
+          updated.forEach((p) => {
+            next[p.id] = p.selected ? String(eqPcts[idx++].toFixed(2)) : '0';
+          });
+          return next;
+        });
+      }
+      return updated;
+    });
     setErrorMessage(null);
   };
 
   const handleToggleAll = () => {
     Haptics.selectionAsync();
     const shouldSelectAll = selectedCount < items.length;
-    setItems((prev) => prev.map((p) => ({ ...p, selected: shouldSelectAll })));
+    setItems((prev) => {
+      const updated = prev.map((p) => ({ ...p, selected: shouldSelectAll }));
+      const sCount = shouldSelectAll ? updated.length : 0;
+      if (sCount > 0) {
+        const eqAmounts = calculateEqualAmounts(totalAmount, sCount);
+        const eqPcts = calculateEqualPercentages(sCount);
+        const nextExact: Record<string, string> = {};
+        const nextPct: Record<string, string> = {};
+        let idx = 0;
+        updated.forEach((p) => {
+          nextExact[p.id] = String(eqAmounts[idx].toFixed(2));
+          nextPct[p.id] = String(eqPcts[idx].toFixed(2));
+          idx++;
+        });
+        setExactInputs(nextExact);
+        setPercentageInputs(nextPct);
+      }
+      return updated;
+    });
+    setErrorMessage(null);
+  };
+
+  const handleAutoBalancePercentage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const selected = items.filter((p) => p.selected);
+    if (selected.length === 0) return;
+    const lastMember = selected[selected.length - 1];
+    const curVal = parseFloat(percentageInputs[lastMember.id] || '0') || 0;
+    const adjusted = Math.max(0, parseFloat((curVal + percentageRemaining).toFixed(2)));
+    setPercentageInputs((prev) => ({
+      ...prev,
+      [lastMember.id]: adjusted.toFixed(2),
+    }));
+    setErrorMessage(null);
+  };
+
+  const handleAutoBalanceExact = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const selected = items.filter((p) => p.selected);
+    if (selected.length === 0) return;
+    const lastMember = selected[selected.length - 1];
+    const curVal = parseFloat(exactInputs[lastMember.id] || '0') || 0;
+    const adjusted = Math.max(0, parseFloat((curVal + exactRemaining).toFixed(2)));
+    setExactInputs((prev) => ({
+      ...prev,
+      [lastMember.id]: adjusted.toFixed(2),
+    }));
     setErrorMessage(null);
   };
 
@@ -442,10 +527,14 @@ export function SplitOptionsModal({
                       const isSelected = p.selected;
                       const isCurrentUser = currentUserId === p.id;
                       const userPct = parseFloat(percentageInputs[p.id] || '0') || 0;
-                      const livePctPrice = (totalAmount * userPct) / 100;
+                      const livePctPrice = splitBreakdown[p.id] !== undefined
+                        ? splitBreakdown[p.id]
+                        : (totalAmount * userPct) / 100;
 
                       const userShares = sharesInputs[p.id] || 1;
-                      const liveSharePrice = userShares * perShareAmount;
+                      const liveSharePrice = splitBreakdown[p.id] !== undefined
+                        ? splitBreakdown[p.id]
+                        : userShares * perShareAmount;
                       const liveSharePct = totalShares > 0 ? ((userShares / totalShares) * 100).toFixed(1) : '0';
 
                       const userExact = parseFloat(exactInputs[p.id] || '0') || 0;
@@ -623,34 +712,36 @@ export function SplitOptionsModal({
                     <Text style={styles.bottomMainStat}>
                       ₹{exactSum.toFixed(2)} of ₹{totalAmount.toFixed(2)}
                     </Text>
-                    <Text
-                      style={[
-                        styles.bottomSubStat,
-                        isModeBalanced ? styles.textMint : styles.textWarning,
-                      ]}
-                    >
-                      {isModeBalanced
-                        ? 'Balanced'
-                        : exactRemaining > 0
-                        ? `₹${exactRemaining.toFixed(2)} left`
-                        : `₹${Math.abs(exactRemaining).toFixed(2)} over`}
-                    </Text>
+                    {isModeBalanced ? (
+                      <Text style={[styles.bottomSubStat, styles.textMint]}>
+                        Balanced
+                      </Text>
+                    ) : (
+                      <TouchableOpacity onPress={handleAutoBalanceExact} activeOpacity={0.7}>
+                        <Text style={[styles.bottomSubStat, styles.textWarning]}>
+                          {exactRemaining > 0
+                            ? `₹${exactRemaining.toFixed(2)} left · Tap to balance`
+                            : `₹${Math.abs(exactRemaining).toFixed(2)} over · Tap to balance`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </>
                 ) : splitType === 'by_percentage' ? (
                   <>
                     <Text style={styles.bottomMainStat}>{percentageSum.toFixed(2)}% of 100%</Text>
-                    <Text
-                      style={[
-                        styles.bottomSubStat,
-                        isModeBalanced ? styles.textMint : styles.textWarning,
-                      ]}
-                    >
-                      {isModeBalanced
-                        ? '100% Allocated'
-                        : percentageRemaining > 0
-                        ? `${percentageRemaining.toFixed(2)}% left`
-                        : `${Math.abs(percentageRemaining).toFixed(2)}% over`}
-                    </Text>
+                    {isModeBalanced ? (
+                      <Text style={[styles.bottomSubStat, styles.textMint]}>
+                        100% Allocated
+                      </Text>
+                    ) : (
+                      <TouchableOpacity onPress={handleAutoBalancePercentage} activeOpacity={0.7}>
+                        <Text style={[styles.bottomSubStat, styles.textWarning]}>
+                          {percentageRemaining > 0
+                            ? `${percentageRemaining.toFixed(2)}% left · Tap to balance`
+                            : `${Math.abs(percentageRemaining).toFixed(2)}% over · Tap to balance`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </>
                 ) : (
                   <>
