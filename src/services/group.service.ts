@@ -116,27 +116,60 @@ export const groupService = {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
-            const mapped: GroupListItem[] = data.map((g: any, index: number) => ({
-              id: g.id || `g_${index}`,
-              name: g.name,
-              description: g.description,
-              coverImageUrl: g.coverImageUrl || [
-                'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1200&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop',
-              ][index % 4],
-              categoryIcon: g.categoryIcon || 'Users',
-              membersCount: g.members?.length || 1,
-              members: (g.members || []).map((m: any) => ({
-                id: m.uid || m.id,
-                name: m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.name || 'Member',
-                avatarUrl: m.avatarUrl,
-              })),
-              totalExpenses: g.totalExpenses || 0,
-              userNetBalance: g.userNetBalance || 0,
-              archived: !!g.archivedAt,
-            }));
+            const currentUser = await authService.getCachedUser();
+            const currentUserId = currentUser?.id || '';
+
+            const balanceResults = await Promise.allSettled(
+              data.map((g: any) =>
+                fetch(`${API_BASE_URL}/api/groups/${g.id}/balances`, {
+                  headers: {
+                    'Accept': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                    Cookie: `better-auth.session_token=${token}`,
+                  },
+                }).then((r) => (r.ok ? r.json() : []))
+              )
+            );
+
+            const mapped: GroupListItem[] = data.map((g: any, index: number) => {
+              const balances =
+                balanceResults[index]?.status === 'fulfilled' &&
+                Array.isArray(balanceResults[index].value)
+                  ? balanceResults[index].value
+                  : [];
+              const myBalanceObj = balances.find(
+                (b: any) => (b.user?.uid || b.user?.id) === currentUserId
+              );
+              const computedNet = myBalanceObj
+                ? Number(myBalanceObj.netBalance || 0)
+                : Number(g.userNetBalance || 0);
+
+              return {
+                id: g.id || `g_${index}`,
+                name: g.name,
+                description: g.description,
+                coverImageUrl:
+                  g.coverImageUrl ||
+                  [
+                    'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1200&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop',
+                  ][index % 4],
+                categoryIcon: g.categoryIcon || 'Users',
+                membersCount: g.members?.length || 1,
+                members: (g.members || []).map((m: any) => ({
+                  id: m.uid || m.id,
+                  name: m.firstName
+                    ? `${m.firstName} ${m.lastName || ''}`.trim()
+                    : m.name || 'Member',
+                  avatarUrl: m.avatarUrl,
+                })),
+                totalExpenses: g.totalExpenses || 0,
+                userNetBalance: computedNet,
+                archived: !!g.archivedAt,
+              };
+            });
             _cachedGroups = mapped;
             return mapped;
           }

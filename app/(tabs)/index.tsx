@@ -1,15 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Plus, Sparkles, Bell, Handshake, ChevronRight, ArrowUpRight, ArrowDownLeft, Utensils, Car, ShoppingBag, Palmtree, Home } from 'lucide-react-native';
+import {
+  Plus,
+  Sparkles,
+  Bell,
+  Handshake,
+  ChevronRight,
+  ArrowUpRight,
+  ArrowDownLeft,
+  TrendingUp,
+  TrendingDown,
+  Utensils,
+  Car,
+  ShoppingBag,
+  Palmtree,
+  Home,
+} from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
+import { balanceService, UserBalanceSummary } from '../../src/services/balance.service';
 import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
+import { BalanceHistoryGraph } from '../../src/components/dashboard/BalanceHistoryGraph';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
@@ -17,27 +34,38 @@ export default function HomeScreen() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>([]);
+  const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const user = await authService.getCachedUser();
+      setCurrentUser(user);
+      const [groupList, txList, summary] = await Promise.all([
+        groupService.getUserGroups(),
+        expenseService.getUserExpenses(10),
+        balanceService.getUserBalanceSummary(),
+      ]);
+      setGroups(groupList);
+      setRecentTransactions(txList);
+      setBalanceSummary(summary);
+    } catch {
+      // Fallback gracefully
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const user = await authService.getCachedUser();
-        setCurrentUser(user);
-        const [groupList, txList] = await Promise.all([
-          groupService.getUserGroups(),
-          expenseService.getUserExpenses(10),
-        ]);
-        setGroups(groupList);
-        setRecentTransactions(txList);
-      } catch {
-        // Fallback gracefully
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
+    loadData();
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   const handleAddExpense = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -49,10 +77,10 @@ export default function HomeScreen() {
     router.push('/settle/new');
   };
 
-  // Compute aggregate numbers from real groups
-  const totalOwed = groups.reduce((acc, g) => acc + (g.userNetBalance > 0 ? g.userNetBalance : 0), 0);
-  const totalOwe = Math.abs(groups.reduce((acc, g) => acc + (g.userNetBalance < 0 ? g.userNetBalance : 0), 0));
-  const netBalance = totalOwed - totalOwe;
+  // Compute aggregate numbers from real groups and P2P balance summary
+  const totalOwed = balanceSummary?.totalOwed ?? groups.reduce((acc, g) => acc + (g.userNetBalance > 0 ? g.userNetBalance : 0), 0);
+  const totalOwe = balanceSummary?.totalOwe ?? Math.abs(groups.reduce((acc, g) => acc + (g.userNetBalance < 0 ? g.userNetBalance : 0), 0));
+  const netBalance = balanceSummary?.netBalance ?? (totalOwed - totalOwe);
 
   // Time-aware greeting
   const getGreeting = () => {
@@ -64,7 +92,11 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.primary} />}
+      >
         {/* Minimalist Header with Official Branding */}
         <View style={styles.header}>
           <View style={styles.brandHeaderLeft}>
@@ -104,30 +136,113 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Open Canvas Hero Balance (Borderless & Confident) */}
-        <View style={styles.heroSection}>
-          <Text style={styles.heroEyebrow}>TOTAL BALANCE</Text>
-          <Text style={styles.heroNumber}>
-            {netBalance >= 0 ? `+₹${netBalance.toLocaleString('en-IN')}` : `-₹${Math.abs(netBalance).toLocaleString('en-IN')}`}
-          </Text>
+        {/* Sleek Minimal Focused Hero Canvas with Integrated Background Graph */}
+        <View style={styles.heroCanvas}>
+          {/* Background SVG Graph (Seamlessly Integrated, Airy & Unobtrusive) */}
+          {balanceSummary && (
+            <View style={styles.heroGraphLayer} pointerEvents="none">
+              <BalanceHistoryGraph
+                data={balanceSummary.chartData}
+                domain={balanceSummary.domain}
+                gradientOffset={balanceSummary.gradientOffset}
+                minBalance={balanceSummary.minBalance}
+                maxBalance={balanceSummary.maxBalance}
+                height={140}
+              />
+            </View>
+          )}
 
-          <View style={styles.heroBreakdownRow}>
-            <View style={styles.heroStatItem}>
-              <ArrowDownLeft size={13} color={THEME.colors.primary} />
-              <Text style={styles.heroStatLabel}>Owed to you</Text>
-              <Text style={[styles.heroStatValue, { color: THEME.colors.primary }]}>
-                ₹{totalOwed.toLocaleString('en-IN')}
+          {/* Foreground Metrics Layer */}
+          <View style={styles.heroContentLayer}>
+            {/* Eyebrow Row with Integrated Inline Trend */}
+            <View style={styles.heroEyebrowRow}>
+              <View
+                style={[
+                  styles.statusDot,
+                  {
+                    backgroundColor:
+                      netBalance > 0.01
+                        ? THEME.colors.primary
+                        : netBalance < -0.01
+                        ? THEME.colors.negative
+                        : THEME.colors.textMuted,
+                  },
+                ]}
+              />
+              <Text style={styles.heroEyebrow}>TOTAL BALANCE</Text>
+
+              {balanceSummary && Math.abs(balanceSummary.trendPercentage) > 0 && (
+                <View style={styles.heroTrendInline}>
+                  <Text style={styles.heroTrendSeparator}>·</Text>
+                  {balanceSummary.trendPercentage >= 0 ? (
+                    <TrendingUp size={11} color={THEME.colors.primary} />
+                  ) : (
+                    <TrendingDown size={11} color={THEME.colors.negative} />
+                  )}
+                  <Text
+                    style={[
+                      styles.heroTrendText,
+                      {
+                        color:
+                          balanceSummary.trendPercentage >= 0
+                            ? THEME.colors.primary
+                            : THEME.colors.negative,
+                      },
+                    ]}
+                  >
+                    {Math.abs(balanceSummary.trendPercentage).toFixed(0)}% (30d)
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Focused Balance Amount */}
+            <View style={styles.heroAmountBlock}>
+              <Text
+                style={[
+                  styles.heroNumber,
+                  netBalance > 0.01 && { color: THEME.colors.primary },
+                  netBalance < -0.01 && { color: THEME.colors.negative },
+                ]}
+              >
+                {netBalance > 0.01
+                  ? `+₹${netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : netBalance < -0.01
+                  ? `-₹${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : '₹0.00'}
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                {netBalance > 0.01
+                  ? 'Overall you are owed money'
+                  : netBalance < -0.01
+                  ? 'Overall you owe money'
+                  : 'All settled up • No outstanding balance'}
               </Text>
             </View>
 
-            <View style={styles.heroStatDivider} />
+            {/* Unboxed Focused Stat Columns */}
+            <View style={styles.heroStatStrip}>
+              <View style={styles.heroStatColumn}>
+                <View style={styles.heroStatLabelRow}>
+                  <ArrowDownLeft size={12} color={THEME.colors.primary} strokeWidth={2.5} />
+                  <Text style={styles.heroStatLabel}>Owed to you</Text>
+                </View>
+                <Text style={[styles.heroStatValue, { color: THEME.colors.primary }]}>
+                  ₹{totalOwed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
 
-            <View style={styles.heroStatItem}>
-              <ArrowUpRight size={13} color={THEME.colors.negative} />
-              <Text style={styles.heroStatLabel}>You owe</Text>
-              <Text style={[styles.heroStatValue, { color: THEME.colors.negative }]}>
-                ₹{totalOwe.toLocaleString('en-IN')}
-              </Text>
+              <View style={styles.heroStatDivider} />
+
+              <View style={styles.heroStatColumn}>
+                <View style={styles.heroStatLabelRow}>
+                  <ArrowUpRight size={12} color={THEME.colors.negative} strokeWidth={2.5} />
+                  <Text style={styles.heroStatLabel}>You owe</Text>
+                </View>
+                <Text style={[styles.heroStatValue, { color: THEME.colors.negative }]}>
+                  ₹{totalOwe.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -378,41 +493,92 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
   },
 
-  // Hero Balance Section (Open Canvas)
-  heroSection: {
-    paddingVertical: 12,
+  // Sleek Minimal Focused Hero Canvas
+  heroCanvas: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: THEME.radius['2xl'],
+    paddingTop: 8,
+    paddingBottom: 16,
+    paddingHorizontal: 8,
+    marginVertical: 4,
+  },
+  heroGraphLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+    justifyContent: 'flex-end',
+  },
+  heroContentLayer: {
+    position: 'relative',
+    zIndex: 1,
+    gap: 10,
+  },
+  heroEyebrowRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   heroEyebrow: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.2,
     color: THEME.colors.textMuted,
-    marginBottom: 6,
+  },
+  heroTrendInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heroTrendSeparator: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginHorizontal: 1,
+  },
+  heroTrendText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  heroAmountBlock: {
+    paddingVertical: 2,
   },
   heroNumber: {
-    fontSize: 42,
+    fontSize: 38,
     fontWeight: '900',
     color: THEME.colors.text,
-    letterSpacing: -1.2,
-    marginBottom: 16,
+    letterSpacing: -1.4,
+    lineHeight: 44,
   },
-  heroBreakdownRow: {
+  heroSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: THEME.colors.textSecondary,
+    marginTop: 4,
+  },
+  heroStatStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    paddingTop: 14,
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.hairline,
   },
-  heroStatItem: {
+  heroStatColumn: {
+    flex: 1,
+    gap: 4,
+  },
+  heroStatLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   heroStatLabel: {
     fontSize: 12,
@@ -420,14 +586,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   heroStatValue: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   heroStatDivider: {
     width: 1,
-    height: 12,
-    backgroundColor: THEME.colors.hairlineLight,
+    height: 28,
+    backgroundColor: THEME.colors.hairline,
+    marginHorizontal: 16,
   },
 
   // Action Dock
