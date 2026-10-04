@@ -8,7 +8,6 @@ import {
   ScrollView,
   Modal,
   Image,
-  Dimensions,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -17,16 +16,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  X,
+  ArrowLeft,
   Check,
+  Receipt,
   Camera,
   Sparkles,
   Calendar,
   FileText,
   Users,
-  User,
-  Wallet,
-  ChevronDown,
   Search,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
@@ -44,8 +41,6 @@ import { CategoryIcon } from '../../src/utils/category-icons';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import * as Haptics from 'expo-haptics';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function NewExpenseModal() {
   const router = useRouter();
@@ -73,20 +68,17 @@ export default function NewExpenseModal() {
   const [userOverriddenCategory, setUserOverriddenCategory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Group State
-  const [groups, setGroups] = useState<GroupListItem[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>(params.groupId || '');
-
-  // Current User State
-  const [currentUserId, setCurrentUserId] = useState('u1');
-
-  // Payer & Split Mode State
+  // Payment & Split Modal State
   const [payerType, setPayerType] = useState<'single' | 'multiple'>('single');
-  const [singlePayerId, setSinglePayerId] = useState('u1');
+  const [singlePayerId, setSinglePayerId] = useState<string>('u1');
   const [multiPayers, setMultiPayers] = useState<MultiPayerEntry[]>([]);
   const [splitMode, setSplitMode] = useState<SplitType>('equally');
 
-  // Modals State
+  const [currentUserId, setCurrentUserId] = useState<string>('u1');
+  const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(params.groupId || '');
+
+  // Sub-modal triggers
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showPayerModal, setShowPayerModal] = useState(false);
   const [showSplitModal, setShowSplitModal] = useState(false);
@@ -117,7 +109,9 @@ export default function NewExpenseModal() {
               groupDetails.members.map((m) => ({
                 id: m.id,
                 name: m.name,
-                avatarUrl: m.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
+                avatarUrl:
+                  m.avatarUrl ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
                 selected: true,
                 shares: 1,
                 percentage: 0,
@@ -243,34 +237,33 @@ export default function NewExpenseModal() {
     return `You owe ₹${Math.abs(net).toFixed(2)}`;
   }, [numAmount, selectedParticipants.length, payerType, singlePayerId, currentUserId, multiPayers, splitBreakdown]);
 
-  const handleToggleParticipant = (id: string) => {
-    Haptics.selectionAsync();
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, selected: !p.selected } : p))
-    );
-  };
+  const activeGroup = useMemo(() => {
+    return groups.find((g) => g.id === selectedGroupId) || groups[0];
+  }, [groups, selectedGroupId]);
 
   const handleSave = async () => {
-    if (!description.trim() || numAmount <= 0) {
+    if (!description.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Missing Fields', 'Please enter a description and valid positive amount.');
+      Alert.alert('Missing Description', 'Please enter a description for this expense.');
       return;
     }
-    if (!selectedGroupId) {
+
+    if (numAmount <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Group Missing', 'Please select a valid group for this expense.');
+      Alert.alert('Invalid Amount', 'Please enter a valid expense amount.');
       return;
     }
+
     if (selectedParticipants.length === 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('No Participants', 'At least one participant must be included in the split.');
+      Alert.alert('No Participants', 'Please select at least one person to split with.');
       return;
     }
 
     const validation = validateSplit({
       totalAmount: numAmount,
       splitType: splitMode,
-      participants: participants.map((p) => ({
+      participants: selectedParticipants.map((p) => ({
         userId: p.id,
         selected: p.selected,
         shares: p.shares || 1,
@@ -345,234 +338,209 @@ export default function NewExpenseModal() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Minimalist Top Header */}
-        <View style={styles.header}>
+        {/* Splitwise App Bar: ← Back | Add expense | ✓ Save */}
+        <View style={styles.appBar}>
           <TouchableOpacity
             onPress={() => {
               Haptics.selectionAsync();
               router.back();
             }}
-            style={styles.closeBtn}
+            style={styles.navBtn}
             activeOpacity={0.7}
           >
-            <X size={20} color={THEME.colors.textSecondary} />
+            <ArrowLeft size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Add Expense</Text>
+          <Text style={styles.appBarTitle}>Add expense</Text>
 
           <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/ai/scanner');
-            }}
-            style={styles.scanBtn}
-            activeOpacity={0.8}
+            onPress={handleSave}
+            style={styles.navBtn}
+            disabled={isSaving}
+            activeOpacity={0.7}
           >
-            <Camera size={16} color={THEME.colors.primary} />
-            <Text style={styles.scanBtnText}>Scan</Text>
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#1CC29F" />
+            ) : (
+              <Check size={24} color="#FFFFFF" strokeWidth={2.5} />
+            )}
           </TouchableOpacity>
         </View>
 
+        {/* Scrollable Form Body (Compact & Fits tightly in Viewport) */}
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={styles.formContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Revolut / Cash App Style Centered Amount Display */}
-          <View style={styles.amountHeroBlock}>
-            <View style={styles.amountDisplayRow}>
-              <Text style={styles.currencyPrefix}>₹</Text>
+          {/* Recipient Row: With you and: [ 💚 All of College ] */}
+          <View style={styles.recipientRow}>
+            <Text style={styles.recipientPrefix}>With you and:</Text>
+            <View style={styles.recipientPill}>
+              <View style={styles.recipientIconCircle}>
+                <Users size={12} color="#1CC29F" />
+              </View>
+              <Text style={styles.recipientPillText} numberOfLines={1}>
+                {activeGroup?.name ? `All of ${activeGroup.name}` : 'All of Group'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Description Input Row with Receipt Icon Box */}
+          <View style={styles.inputRow}>
+            <View style={styles.inputIconBox}>
+              <Receipt size={22} color="#9CA3AF" />
+            </View>
+            <View style={styles.descriptionUnderlineWrap}>
               <TextInput
-                style={styles.amountBigInput}
+                style={styles.descriptionInput}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Enter a description"
+                placeholderTextColor="#6B7280"
+                autoCapitalize="sentences"
+              />
+            </View>
+          </View>
+
+          {/* Amount Input Row with Currency Box & Green Underline */}
+          <View style={styles.inputRow}>
+            <View style={styles.inputIconBox}>
+              <Text style={styles.currencyIconBoxText}>₹</Text>
+            </View>
+            <View style={styles.amountUnderlineWrap}>
+              <TextInput
+                style={styles.amountInput}
                 value={amount}
                 onChangeText={setAmount}
-                placeholder="0"
-                placeholderTextColor={THEME.colors.textMuted}
-                keyboardType="numeric"
+                placeholder="0.00"
+                placeholderTextColor="#6B7280"
+                keyboardType="decimal-pad"
                 autoFocus
               />
             </View>
-
-            {/* Description Input */}
-            <TextInput
-              style={styles.descriptionInput}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="What was this for?"
-              placeholderTextColor={THEME.colors.textMuted}
-              autoCapitalize="sentences"
-            />
-
-            {/* Smart AI Category Suggestion Chip */}
-            {predictedCategory && predictedCategory.sub !== category && (
-              <TouchableOpacity
-                style={styles.aiSuggestionChip}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setCategory(predictedCategory.sub);
-                  setMasterCategory(predictedCategory.master);
-                  setUserOverriddenCategory(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <Sparkles size={12} color={THEME.colors.aiLight} />
-                <Text style={styles.aiSuggestionText}>
-                  Suggestion: <Text style={{ fontWeight: '800', color: '#FFFFFF' }}>{predictedCategory.sub}</Text>
-                </Text>
-                <Text style={styles.aiApplyLabel}>Tap to apply</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
-          {/* Conversational Natural-Language Sentence Dock */}
-          <View style={styles.sentenceDockContainer}>
-            <View style={styles.sentenceDock}>
-              <Text style={styles.sentenceText}>Paid by </Text>
+          {/* AI Category Suggestion Chip */}
+          {predictedCategory && predictedCategory.sub !== category && (
+            <TouchableOpacity
+              style={styles.aiSuggestionChip}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setCategory(predictedCategory.sub);
+                setMasterCategory(predictedCategory.master);
+                setUserOverriddenCategory(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Sparkles size={12} color="#1CC29F" />
+              <Text style={styles.aiSuggestionText}>
+                Category: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{predictedCategory.sub}</Text> • Tap to apply
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Conversational Sentence: Paid by [ you ] and split [ equally ] */}
+          <View style={styles.conversationalBlock}>
+            <View style={styles.conversationalRow}>
+              <Text style={styles.conversationalText}>Paid by </Text>
               <TouchableOpacity
+                style={styles.sentenceChip}
                 onPress={() => {
                   Haptics.selectionAsync();
                   setShowPayerModal(true);
                 }}
-                style={styles.sentenceTriggerPill}
                 activeOpacity={0.7}
               >
-                <Text style={styles.sentenceTriggerText}>{paidByText}</Text>
-                <ChevronDown size={13} color={THEME.colors.primary} />
+                <Text style={styles.sentenceChipText}>{paidByText}</Text>
               </TouchableOpacity>
 
-              <Text style={styles.sentenceText}> and split </Text>
+              <Text style={styles.conversationalText}> and split </Text>
 
               <TouchableOpacity
+                style={styles.sentenceChip}
                 onPress={() => {
                   Haptics.selectionAsync();
                   setShowSplitModal(true);
                 }}
-                style={styles.sentenceTriggerPill}
                 activeOpacity={0.7}
               >
-                <Text style={styles.sentenceTriggerText}>{splitText}</Text>
-                <ChevronDown size={13} color={THEME.colors.primary} />
+                <Text style={styles.sentenceChipText}>{splitText}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sentenceSubtext}>({summarySubtext})</Text>
+            <Text style={styles.netShareSummaryText}>({summarySubtext})</Text>
           </View>
 
-          {/* Member Participant Rings (Tap to Toggle Inclusion) */}
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionHeading}>Split with</Text>
-              <Text style={styles.sectionCountText}>
-                {selectedParticipants.length} of {participants.length} included
-              </Text>
+          {/* Collapsible Notes Field */}
+          {showNotes && (
+            <View style={styles.notesBox}>
+              <TextInput
+                style={styles.notesInput}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Add extra details, bill numbers..."
+                placeholderTextColor="#6B7280"
+                multiline
+              />
             </View>
+          )}
+        </ScrollView>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarRingsScroll}>
-              {participants.map((member) => (
-                <TouchableOpacity
-                  key={member.id}
-                  style={[styles.memberRingCard, !member.selected && styles.memberRingInactive]}
-                  onPress={() => handleToggleParticipant(member.id)}
-                  activeOpacity={0.8}
-                >
-                  <View
-                    style={[
-                      styles.avatarRingCircle,
-                      member.selected ? styles.avatarRingActive : styles.avatarRingMuted,
-                    ]}
-                  >
-                    <Image source={{ uri: member.avatarUrl }} style={styles.avatarImg} />
-                    {member.selected && (
-                      <View style={styles.checkBadge}>
-                        <Check size={9} color="#000000" strokeWidth={3} />
-                      </View>
-                    )}
-                  </View>
-                  <Text style={[styles.memberNameText, member.selected && styles.memberNameActive]} numberOfLines={1}>
-                    {member.name.split(' ')[0]}
-                  </Text>
-                  {numAmount > 0 && member.selected && (
-                    <Text style={styles.memberShareText}>
-                      ₹{(splitBreakdown[member.id] || 0).toFixed(0)}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        {/* Keyboard-Anchored Accessory Toolbar (Direct Splitwise Match) */}
+        <View style={styles.keyboardAccessoryToolbar}>
+          {/* Left: Group Tag */}
+          <View style={styles.toolbarGroupBadge}>
+            <Users size={15} color="#F97316" />
+            <Text style={styles.toolbarGroupName} numberOfLines={1}>
+              {activeGroup?.name || 'Group'}
+            </Text>
           </View>
 
-          {/* Inline Action Pills: Category, Date, Notes */}
-          <View style={styles.metaPillsRow}>
+          {/* Right Action Icons: Category, Date, Camera, Notes */}
+          <View style={styles.toolbarIconsRow}>
             <TouchableOpacity
-              style={styles.metaPill}
+              style={styles.toolbarActionBtn}
               onPress={() => {
                 Haptics.selectionAsync();
                 setShowCategoryModal(true);
               }}
               activeOpacity={0.7}
             >
-              <CategoryIcon subCategory={category} masterCategory={masterCategory} size={14} color={THEME.colors.textSecondary} />
-              <Text style={styles.metaPillText}>{category}</Text>
+              <CategoryIcon subCategory={category} masterCategory={masterCategory} size={18} color="#9CA3AF" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.metaPill} activeOpacity={0.7}>
-              <Calendar size={14} color={THEME.colors.textSecondary} />
-              <Text style={styles.metaPillText}>{date}</Text>
+            <TouchableOpacity style={styles.toolbarActionBtn} activeOpacity={0.7}>
+              <Calendar size={18} color="#9CA3AF" />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.metaPill}
+              style={styles.toolbarActionBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/ai/scanner');
+              }}
+              activeOpacity={0.7}
+            >
+              <Camera size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.toolbarActionBtn, showNotes && styles.toolbarActionBtnActive]}
               onPress={() => setShowNotes(!showNotes)}
               activeOpacity={0.7}
             >
-              <FileText size={14} color={THEME.colors.textSecondary} />
-              <Text style={styles.metaPillText}>{notes ? 'Notes added' : 'Add note'}</Text>
+              <FileText size={18} color={showNotes ? '#1CC29F' : '#9CA3AF'} />
             </TouchableOpacity>
           </View>
-
-          {/* Collapsible Notes Field */}
-          {showNotes && (
-            <TextInput
-              style={styles.notesInput}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Add extra details, bill numbers, or links..."
-              placeholderTextColor={THEME.colors.textMuted}
-              multiline
-            />
-          )}
-        </ScrollView>
-
-        {/* Floating Bottom Sticky Action Button */}
-        <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={[
-              styles.recordBtn,
-              (!description.trim() || numAmount <= 0 || isSaving) && styles.recordBtnDisabled,
-            ]}
-            onPress={handleSave}
-            disabled={!description.trim() || numAmount <= 0 || isSaving}
-            activeOpacity={0.85}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#000000" />
-            ) : (
-              <>
-                <Check size={18} color="#000000" strokeWidth={2.5} />
-                <Text style={styles.recordBtnText}>
-                  {numAmount > 0 ? `Record ₹${numAmount.toLocaleString('en-IN')} Expense` : 'Enter Amount to Save'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
 
-        {/* MODAL 1: PAYER SELECTOR */}
+        {/* SUB-MODAL 1: PAYER SELECTOR */}
         <PayerSelectModal
           visible={showPayerModal}
           onClose={() => setShowPayerModal(false)}
@@ -593,7 +561,7 @@ export default function NewExpenseModal() {
           }}
         />
 
-        {/* MODAL 2: SPLIT OPTIONS SELECTOR */}
+        {/* SUB-MODAL 2: ADJUST SPLIT SELECTOR */}
         <SplitOptionsModal
           visible={showSplitModal}
           onClose={() => setShowSplitModal(false)}
@@ -607,7 +575,7 @@ export default function NewExpenseModal() {
           }}
         />
 
-        {/* MODAL 3: CATEGORY PICKER */}
+        {/* SUB-MODAL 3: CATEGORY PICKER */}
         <Modal visible={showCategoryModal} transparent animationType="fade">
           <TouchableOpacity
             style={styles.modalBackdrop}
@@ -619,11 +587,11 @@ export default function NewExpenseModal() {
               <Text style={styles.sheetTitle}>Choose Category</Text>
 
               <View style={styles.sheetSearchBox}>
-                <Search size={15} color={THEME.colors.textMuted} />
+                <Search size={15} color="#9CA3AF" />
                 <TextInput
                   style={styles.sheetSearchInput}
                   placeholder="Search categories..."
-                  placeholderTextColor={THEME.colors.textMuted}
+                  placeholderTextColor="#6B7280"
                   value={categorySearch}
                   onChangeText={setCategorySearch}
                 />
@@ -656,7 +624,7 @@ export default function NewExpenseModal() {
                     return (
                       <View key={master} style={{ marginBottom: 16 }}>
                         <View style={styles.categoryHeaderRow}>
-                          <CategoryIcon masterCategory={master} size={16} color={THEME.colors.primaryLight} />
+                          <CategoryIcon masterCategory={master} size={16} color="#1CC29F" />
                           <Text style={styles.categoryGroupTitle}>{master}</Text>
                         </View>
                         <View style={styles.categoryPillsWrap}>
@@ -678,7 +646,7 @@ export default function NewExpenseModal() {
                                   subCategory={sub}
                                   masterCategory={master}
                                   size={13}
-                                  color={isSelected ? THEME.colors.primary : THEME.colors.textMuted}
+                                  color={isSelected ? '#1CC29F' : '#9CA3AF'}
                                 />
                                 <Text style={[styles.categoryChoiceText, isSelected && styles.categoryChoiceTextActive]}>
                                   {sub}
@@ -702,318 +670,220 @@ export default function NewExpenseModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: '#18191B', // Splitwise Authentic Dark Canvas
   },
-  header: {
+  appBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 14,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: THEME.colors.text,
-  },
-  scanBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  scanBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  content: {
-    paddingHorizontal: 12,
-    paddingTop: 16,
-    paddingBottom: 90,
-    gap: 22,
-  },
-
-  // Revolut / Cash App Centered Amount Block
-  amountHeroBlock: {
-    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  amountDisplayRow: {
-    flexDirection: 'row',
+  navBtn: {
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
   },
-  currencyPrefix: {
-    fontSize: 32,
+  appBarTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: THEME.colors.textSecondary,
-    marginTop: 4,
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
-  amountBigInput: {
-    fontSize: 52,
-    fontWeight: '900',
-    color: THEME.colors.text,
-    letterSpacing: -1,
-    minWidth: 80,
-    textAlign: 'center',
-    paddingVertical: 0,
+  formContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+    gap: 16,
+  },
+  recipientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recipientPrefix: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginRight: 8,
+  },
+  recipientPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#222427',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  recipientIconCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(28, 194, 159, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recipientPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  inputIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#222427',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currencyIconBoxText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  descriptionUnderlineWrap: {
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+    paddingBottom: 6,
   },
   descriptionInput: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    textAlign: 'center',
-    marginTop: 10,
-    width: '100%',
-    paddingVertical: 8,
+    fontSize: 17,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    paddingVertical: 0,
+  },
+  amountUnderlineWrap: {
+    flex: 1,
+    borderBottomWidth: 2,
+    borderBottomColor: '#1CC29F', // Signature Splitwise Mint Underline
+    paddingBottom: 4,
+  },
+  amountInput: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    paddingVertical: 0,
   },
   aiSuggestionChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: THEME.colors.aiMuted,
+    backgroundColor: 'rgba(28, 194, 159, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: THEME.radius.full,
-    marginTop: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
+    borderColor: 'rgba(28, 194, 159, 0.25)',
+    alignSelf: 'flex-start',
   },
   aiSuggestionText: {
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
+    fontSize: 12,
+    color: '#9CA3AF',
   },
-  aiApplyLabel: {
-    fontSize: 11,
-    color: THEME.colors.aiLight,
-    fontWeight: '700',
-    marginLeft: 4,
+  conversationalBlock: {
+    marginTop: 10,
+    alignItems: 'center',
+    gap: 6,
   },
-
-  // Sentence Dock
-  sentenceDockContainer: {
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: THEME.radius.xl,
+  conversationalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  conversationalText: {
+    fontSize: 15,
+    color: '#9CA3AF',
+  },
+  sentenceChip: {
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    alignItems: 'center',
-    gap: 4,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: '#222427',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginHorizontal: 4,
   },
-  sentenceDock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-  },
-  sentenceSubtext: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-    fontWeight: '500',
-  },
-  sentenceText: {
+  sentenceChipText: {
     fontSize: 14,
-    color: THEME.colors.textSecondary,
-  },
-  sentenceTriggerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: THEME.colors.surfaceElevated,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-  },
-  sentenceTriggerText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: THEME.colors.primary,
-  },
-
-  // Participants
-  sectionContainer: {
-    gap: 12,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionHeading: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: THEME.colors.text,
-  },
-  sectionCountText: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-  },
-  avatarRingsScroll: {
-    gap: 14,
-    paddingVertical: 4,
-  },
-  memberRingCard: {
-    alignItems: 'center',
-    width: 68,
-    gap: 6,
-  },
-  memberRingInactive: {
-    opacity: 0.45,
-  },
-  avatarRingCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    padding: 2,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarRingActive: {
-    borderWidth: 2,
-    borderColor: THEME.colors.primary,
-  },
-  avatarRingMuted: {
-    borderWidth: 1.5,
-    borderColor: THEME.colors.hairline,
-  },
-  avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  checkBadge: {
-    position: 'absolute',
-    bottom: -1,
-    right: -1,
-    width: 17,
-    height: 17,
-    borderRadius: 8.5,
-    backgroundColor: THEME.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#000000',
-  },
-  memberNameText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
-    textAlign: 'center',
-  },
-  memberNameActive: {
-    color: THEME.colors.text,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
-  memberShareText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: THEME.colors.primaryLight,
+  netShareSummaryText: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
-
-  // Meta Pills Row
-  metaPillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  metaPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: THEME.colors.surface,
+  notesBox: {
+    marginTop: 6,
+    backgroundColor: '#222427',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  metaPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
   },
   notesInput: {
-    backgroundColor: THEME.colors.surface,
-    padding: 12,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    color: THEME.colors.text,
-    fontSize: 13,
-    minHeight: 70,
-    textAlignVertical: 'top',
+    fontSize: 14,
+    color: '#FFFFFF',
+    minHeight: 50,
   },
-
-  // Bottom Sticky Bar
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.90)',
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
-  },
-  recordBtn: {
+  keyboardAccessoryToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#18191B',
+  },
+  toolbarGroupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  toolbarGroupName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    maxWidth: 140,
+  },
+  toolbarIconsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  toolbarActionBtn: {
+    padding: 6,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: THEME.colors.primary,
-    paddingVertical: 14,
-    borderRadius: THEME.radius.xl,
-    shadowColor: THEME.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  recordBtnDisabled: {
-    opacity: 0.45,
-    backgroundColor: THEME.colors.surfaceElevated,
+  toolbarActionBtnActive: {
+    backgroundColor: 'rgba(28, 194, 159, 0.15)',
+    borderRadius: 6,
   },
-  recordBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#000000',
-  },
-
-  // Modal Sheets
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    backgroundColor: '#121215',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 36,
-    gap: 12,
+    backgroundColor: '#222427',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
     borderWidth: 1,
-    borderColor: THEME.colors.hairlineLight,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   sheetHandle: {
     width: 36,
@@ -1021,69 +891,40 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignSelf: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   sheetTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: THEME.colors.text,
-    marginBottom: 8,
-  },
-  sheetOptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: THEME.radius.lg,
-  },
-  sheetOptionActive: {
-    backgroundColor: THEME.colors.surfaceElevated,
-  },
-  sheetAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  sheetOptionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: THEME.colors.text,
-  },
-  sheetOptionSubtext: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-    marginTop: 2,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
   },
   sheetSearchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 12,
-    height: 40,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    marginBottom: 8,
+    gap: 8,
+    backgroundColor: '#18191B',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 14,
   },
   sheetSearchInput: {
     flex: 1,
-    fontSize: 13,
-    color: THEME.colors.text,
-    paddingVertical: 0,
+    fontSize: 14,
+    color: '#FFFFFF',
+    padding: 0,
   },
   categoryHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     marginBottom: 8,
   },
   categoryGroupTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: THEME.colors.textSecondary,
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#9CA3AF',
   },
   categoryPillsWrap: {
     flexDirection: 'row',
@@ -1094,23 +935,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
+    backgroundColor: '#18191B',
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: THEME.radius.full,
-    backgroundColor: THEME.colors.surface,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   categoryChoiceActive: {
-    backgroundColor: THEME.colors.primaryMuted,
-    borderColor: THEME.colors.primary,
+    borderColor: '#1CC29F',
+    backgroundColor: 'rgba(28, 194, 159, 0.12)',
   },
   categoryChoiceText: {
     fontSize: 12,
-    color: THEME.colors.textSecondary,
+    color: '#9CA3AF',
   },
   categoryChoiceTextActive: {
-    color: THEME.colors.primary,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
 });

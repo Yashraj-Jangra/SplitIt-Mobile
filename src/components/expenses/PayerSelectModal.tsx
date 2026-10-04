@@ -13,9 +13,10 @@ import {
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Check, Users, User, AlertCircle, Sparkles, MoveHorizontal } from 'lucide-react-native';
+import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import * as Haptics from 'expo-haptics';
 
@@ -46,9 +47,9 @@ interface PayerSelectModalProps {
   }) => void;
 }
 
-const PAYER_MODES: Array<{ type: 'single' | 'multiple'; label: string; hint: string }> = [
-  { type: 'single', label: 'Single Person', hint: 'One member paid the entire bill' },
-  { type: 'multiple', label: 'Multiple People', hint: 'Shared payment across multiple contributors' },
+const PAYER_TABS = [
+  { type: 'single' as const, label: 'Single person' },
+  { type: 'multiple' as const, label: 'Multiple people' },
 ];
 
 export function PayerSelectModal({
@@ -64,6 +65,7 @@ export function PayerSelectModal({
 }: PayerSelectModalProps) {
   const { width } = useWindowDimensions();
   const horizontalScrollRef = useRef<ScrollView>(null);
+  const tabUnderlineAnim = useRef(new Animated.Value(0)).current;
 
   const [payerType, setPayerType] = useState<'single' | 'multiple'>(initialPayerType);
   const [selectedSingleId, setSelectedSingleId] = useState<string>(
@@ -72,7 +74,6 @@ export function PayerSelectModal({
   const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Sync initial state when modal opens
   useEffect(() => {
     if (visible) {
       setPayerType(initialPayerType);
@@ -95,9 +96,11 @@ export function PayerSelectModal({
       setPayerAmounts(amountsMap);
 
       const targetIdx = initialPayerType === 'multiple' ? 1 : 0;
+      tabUnderlineAnim.setValue(targetIdx);
+
       setTimeout(() => {
         horizontalScrollRef.current?.scrollTo({ x: targetIdx * width, animated: false });
-      }, 60);
+      }, 50);
     }
   }, [visible, initialPayerType, initialSinglePayerId, initialMultiPayers, members, currentUserId, totalAmount, width]);
 
@@ -132,6 +135,12 @@ export function PayerSelectModal({
     setPayerType(type);
     setErrorMessage(null);
     const idx = type === 'multiple' ? 1 : 0;
+    Animated.spring(tabUnderlineAnim, {
+      toValue: idx,
+      useNativeDriver: false,
+      friction: 8,
+      tension: 65,
+    }).start();
     horizontalScrollRef.current?.scrollTo({ x: idx * width, animated: true });
   };
 
@@ -143,10 +152,15 @@ export function PayerSelectModal({
       Haptics.selectionAsync();
       setPayerType(targetType);
       setErrorMessage(null);
+      Animated.spring(tabUnderlineAnim, {
+        toValue: pageIndex,
+        useNativeDriver: false,
+        friction: 8,
+        tension: 65,
+      }).start();
     }
   };
 
-  // Strict .2f amount input handler
   const handleAmountChange = (userId: string, text: string) => {
     setErrorMessage(null);
     let cleaned = text.replace(/[^0-9.]/g, '');
@@ -154,7 +168,6 @@ export function PayerSelectModal({
     if (parts.length > 2) {
       cleaned = parts[0] + '.' + parts.slice(1).join('');
     }
-    // Limit to max 2 decimal places
     if (parts.length === 2 && parts[1].length > 2) {
       cleaned = `${parts[0]}.${parts[1].slice(0, 2)}`;
     }
@@ -177,8 +190,8 @@ export function PayerSelectModal({
     if (members.length === 0 || totalAmount <= 0) return;
     const n = members.length;
     const baseShare = Math.floor((totalAmount / n) * 100) / 100;
-    const remainder = parseFloat((totalAmount - baseShare * n).toFixed(2));
-    const extraPennies = Math.round(remainder * 100);
+    const rem = parseFloat((totalAmount - baseShare * n).toFixed(2));
+    const extraPennies = Math.round(rem * 100);
 
     const newMap: Record<string, string> = {};
     members.forEach((m, idx) => {
@@ -189,13 +202,17 @@ export function PayerSelectModal({
     setErrorMessage(null);
   };
 
-  const handleClearAll = () => {
-    Haptics.selectionAsync();
-    setPayerAmounts({});
-    setErrorMessage(null);
-  };
+  const handleConfirm = () => {
+    if (payerType === 'single') {
+      onConfirm({
+        payerType: 'single',
+        singlePayerId: selectedSingleId,
+        multiPayers: [{ userId: selectedSingleId, amount: totalAmount }],
+      });
+      onClose();
+      return;
+    }
 
-  const handleConfirmMultiple = () => {
     if (!isBalanced) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (remaining > 0) {
@@ -222,7 +239,11 @@ export function PayerSelectModal({
     onClose();
   };
 
-  const activeModeInfo = payerType === 'multiple' ? PAYER_MODES[1] : PAYER_MODES[0];
+  const tabWidth = width / 2;
+  const underlineTranslateX = tabUnderlineAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, tabWidth],
+  });
 
   return (
     <Modal
@@ -236,57 +257,49 @@ export function PayerSelectModal({
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Who paid?</Text>
-              <Text style={styles.subtitle}>
-                Total expense: <Text style={styles.boldText}>₹{totalAmount.toFixed(2)}</Text>
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <X size={18} color={THEME.colors.textSecondary} />
+          {/* Top Bar: ← Back | Who paid? | ✓ Confirm */}
+          <View style={styles.appBar}>
+            <TouchableOpacity onPress={onClose} style={styles.navActionBtn} activeOpacity={0.7}>
+              <ArrowLeft size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <Text style={styles.appBarTitle}>Who paid?</Text>
+
+            <TouchableOpacity onPress={handleConfirm} style={styles.navActionBtn} activeOpacity={0.7}>
+              <Check size={24} color="#FFFFFF" strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
 
-          {/* Segmented Mode Selector: Single vs Multiple */}
-          <View style={styles.modeTabs}>
-            <TouchableOpacity
-              style={[styles.modeTab, payerType === 'single' && styles.modeTabActive]}
-              onPress={() => handleModeTabPress('single')}
-              activeOpacity={0.8}
-            >
-              <User
-                size={15}
-                color={payerType === 'single' ? THEME.colors.primary : THEME.colors.textMuted}
-              />
-              <Text style={[styles.modeTabText, payerType === 'single' && styles.modeTabTextActive]}>
-                Single Person
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.modeTab, payerType === 'multiple' && styles.modeTabActive]}
-              onPress={() => handleModeTabPress('multiple')}
-              activeOpacity={0.8}
-            >
-              <Users
-                size={15}
-                color={payerType === 'multiple' ? THEME.colors.primary : THEME.colors.textMuted}
-              />
-              <Text style={[styles.modeTabText, payerType === 'multiple' && styles.modeTabTextActive]}>
-                Multiple People
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Mode Hint & Swipe Strip */}
-          <View style={styles.hintStrip}>
-            <Text style={styles.hintText}>{activeModeInfo.hint}</Text>
-            <View style={styles.swipeHintWrap}>
-              <MoveHorizontal size={12} color={THEME.colors.textMuted} />
-              <Text style={styles.swipeHintText}>Swipe page</Text>
+          {/* Underline Tab Bar */}
+          <View style={styles.tabBarContainer}>
+            <View style={styles.tabRow}>
+              {PAYER_TABS.map((tab) => {
+                const isActive = payerType === tab.type;
+                return (
+                  <TouchableOpacity
+                    key={tab.type}
+                    style={styles.tabButton}
+                    onPress={() => handleModeTabPress(tab.type)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+
+            <Animated.View
+              style={[
+                styles.tabUnderline,
+                {
+                  width: tabWidth - 40,
+                  transform: [{ translateX: underlineTranslateX }],
+                  marginHorizontal: 20,
+                },
+              ]}
+            />
           </View>
 
           {/* Horizontal Paging Screen */}
@@ -298,18 +311,17 @@ export function PayerSelectModal({
             onMomentumScrollEnd={handleHorizontalScrollEnd}
             style={styles.horizontalScroll}
           >
-            {/* Page 0: SINGLE PERSON PICKER */}
+            {/* Page 0: Single Person List */}
             <View style={{ width, flex: 1 }}>
               <ScrollView
                 style={styles.verticalList}
                 contentContainerStyle={styles.verticalListContent}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
               >
                 {members.map((m) => {
                   const isSelected = selectedSingleId === m.id;
                   const isCurrentUser = currentUserId === m.id;
+
                   return (
                     <TouchableOpacity
                       key={m.id}
@@ -322,53 +334,50 @@ export function PayerSelectModal({
                           <Image source={{ uri: m.avatarUrl }} style={styles.avatarImg} />
                         ) : (
                           <View style={styles.avatarFallback}>
-                            <Text style={styles.avatarInitial}>{m.name.charAt(0).toUpperCase()}</Text>
+                            <Text style={styles.avatarInitial}>
+                              {m.name.charAt(0).toUpperCase()}
+                            </Text>
                           </View>
                         )}
                       </View>
 
                       <View style={styles.memberInfo}>
-                        <Text
-                          style={[styles.memberName, isSelected && styles.memberNameSelected]}
-                          numberOfLines={1}
-                        >
+                        <Text style={styles.memberName} numberOfLines={1}>
                           {m.name}
                           {isCurrentUser ? ' (You)' : ''}
                         </Text>
-                        <Text style={styles.memberSubtitle}>
+                        <Text style={styles.memberSubline}>
                           {isSelected ? `Paid full ₹${totalAmount.toFixed(2)}` : 'Tap to select'}
                         </Text>
                       </View>
 
-                      <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                        {isSelected && <Check size={14} color="#000000" strokeWidth={3} />}
-                      </View>
+                      {isSelected && (
+                        <View style={styles.checkIndicator}>
+                          <Check size={18} color="#1CC29F" strokeWidth={2.5} />
+                        </View>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
             </View>
 
-            {/* Page 1: MULTIPLE PEOPLE MATRIX */}
+            {/* Page 1: Multiple People Matrix */}
             <View style={{ width, flex: 1 }}>
-              {/* Quick Helper Toolbar */}
+              {/* Quick Helper Shortcut */}
               <View style={styles.multiHelperRow}>
                 <TouchableOpacity
-                  style={styles.helperChip}
+                  style={styles.splitEquallyChip}
                   onPress={handleSplitPaidEqually}
                   activeOpacity={0.7}
                 >
-                  <Sparkles size={12} color={THEME.colors.primary} />
-                  <Text style={styles.helperChipText}>Split paid equally</Text>
+                  <Sparkles size={12} color="#1CC29F" />
+                  <Text style={styles.splitEquallyText}>Split paid equally</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.helperChip}
-                  onPress={handleClearAll}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.helperChipTextMuted}>Clear all</Text>
-                </TouchableOpacity>
+                <Text style={styles.totalRequiredText}>
+                  Total: ₹{totalAmount.toFixed(2)}
+                </Text>
               </View>
 
               <ScrollView
@@ -381,7 +390,7 @@ export function PayerSelectModal({
                 {members.map((m) => {
                   const val = payerAmounts[m.id] || '';
                   const numVal = parseFloat(val) || 0;
-                  const pctOfTotal = totalAmount > 0 ? ((numVal / totalAmount) * 100).toFixed(1) : '0';
+                  const pct = totalAmount > 0 ? ((numVal / totalAmount) * 100).toFixed(1) : '0';
                   const isCurrentUser = currentUserId === m.id;
 
                   return (
@@ -391,7 +400,9 @@ export function PayerSelectModal({
                           <Image source={{ uri: m.avatarUrl }} style={styles.avatarImg} />
                         ) : (
                           <View style={styles.avatarFallback}>
-                            <Text style={styles.avatarInitial}>{m.name.charAt(0).toUpperCase()}</Text>
+                            <Text style={styles.avatarInitial}>
+                              {m.name.charAt(0).toUpperCase()}
+                            </Text>
                           </View>
                         )}
                       </View>
@@ -402,30 +413,30 @@ export function PayerSelectModal({
                           {isCurrentUser ? ' (You)' : ''}
                         </Text>
                         {numVal > 0 ? (
-                          <Text style={styles.livePctText}>{pctOfTotal}% of total</Text>
+                          <Text style={styles.livePctText}>{pct}% of total</Text>
                         ) : (
-                          <Text style={styles.memberSubtitle}>Didn't pay</Text>
+                          <Text style={styles.memberSublineMuted}>Didn't pay</Text>
                         )}
                       </View>
 
-                      <View style={styles.inputAndQuickAction}>
+                      <View style={styles.inputActionWrap}>
                         <TouchableOpacity
-                          style={styles.quickAllBtn}
+                          style={styles.quickAllChip}
                           onPress={() => handleQuickAssignAll(m.id)}
                           activeOpacity={0.7}
                         >
                           <Text style={styles.quickAllText}>All</Text>
                         </TouchableOpacity>
 
-                        <View style={styles.currencyInputBox}>
+                        <View style={styles.currencyUnderlineBox}>
                           <Text style={styles.currencyPrefix}>₹</Text>
                           <TextInput
-                            style={styles.currencyInput}
+                            style={styles.currencyTextInput}
                             placeholder="0.00"
-                            placeholderTextColor={THEME.colors.textMuted}
+                            placeholderTextColor="#6B7280"
                             keyboardType="decimal-pad"
                             value={val}
-                            onChangeText={(text) => handleAmountChange(m.id, text)}
+                            onChangeText={(t) => handleAmountChange(m.id, t)}
                           />
                         </View>
                       </View>
@@ -436,53 +447,43 @@ export function PayerSelectModal({
             </View>
           </ScrollView>
 
-          {/* Bottom Dock (Always Visible for Multiple Mode) */}
+          {/* Bottom Dock (For Multiple People Mode) */}
           {payerType === 'multiple' && (
-            <View style={styles.bottomDock}>
+            <View style={styles.bottomBar}>
               {errorMessage && (
-                <View style={styles.errorBanner}>
-                  <AlertCircle size={14} color={THEME.colors.negative} />
-                  <Text style={styles.errorBannerText}>{errorMessage}</Text>
+                <View style={styles.errorStrip}>
+                  <AlertCircle size={13} color="#F43F5E" />
+                  <Text style={styles.errorStripText}>{errorMessage}</Text>
                 </View>
               )}
 
-              <View style={styles.summaryRow}>
+              <View style={styles.bottomStatRow}>
                 <View>
-                  <Text style={styles.summaryLabel}>TOTAL PAID</Text>
-                  <Text style={styles.summaryAmount}>₹{sumOfPaid.toFixed(2)}</Text>
+                  <Text style={styles.bottomMainStat}>
+                    ₹{sumOfPaid.toFixed(2)} of ₹{totalAmount.toFixed(2)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.bottomSubStat,
+                      isBalanced ? styles.textMint : styles.textWarning,
+                    ]}
+                  >
+                    {isBalanced
+                      ? 'Balanced'
+                      : remaining > 0
+                      ? `₹${remaining.toFixed(2)} left to allocate`
+                      : `₹${Math.abs(remaining).toFixed(2)} over total`}
+                  </Text>
                 </View>
 
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.summaryLabel}>STATUS</Text>
-                  {isBalanced ? (
-                    <View style={styles.statusBadgeGreen}>
-                      <Check size={12} color={THEME.colors.primary} strokeWidth={3} />
-                      <Text style={styles.statusTextGreen}>Balanced</Text>
-                    </View>
-                  ) : remaining > 0 ? (
-                    <Text style={[styles.statusText, styles.textUnder]}>
-                      ₹{remaining.toFixed(2)} left
-                    </Text>
-                  ) : (
-                    <Text style={[styles.statusText, styles.textOver]}>
-                      ₹{Math.abs(remaining).toFixed(2)} over
-                    </Text>
-                  )}
-                </View>
+                <TouchableOpacity
+                  style={[styles.confirmMultipleBtn, !isBalanced && styles.confirmBtnDisabled]}
+                  onPress={handleConfirm}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.confirmBtnText}>Save</Text>
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={[styles.confirmBtn, !isBalanced && styles.confirmBtnDisabled]}
-                onPress={handleConfirmMultiple}
-                activeOpacity={0.85}
-              >
-                <Check size={16} color="#000000" strokeWidth={2.5} />
-                <Text style={styles.confirmBtnText}>
-                  {isBalanced
-                    ? `Confirm Payers (₹${totalAmount.toFixed(2)})`
-                    : 'Balance Total to Confirm'}
-                </Text>
-              </TouchableOpacity>
             </View>
           )}
         </KeyboardAvoidingView>
@@ -494,99 +495,60 @@ export function PayerSelectModal({
 const styles = StyleSheet.create({
   fullScreen: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: '#18191B',
   },
   keyboardContainer: {
     flex: 1,
   },
-  header: {
+  appBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: THEME.colors.text,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
-  },
-  boldText: {
-    fontWeight: '700',
-    color: THEME.colors.primary,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.colors.surfaceElevated,
+  navActionBtn: {
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
   },
-  modeTabs: {
+  appBarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  tabBarContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    position: 'relative',
+  },
+  tabRow: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 6,
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    alignItems: 'center',
   },
-  modeTab: {
+  tabButton: {
     flex: 1,
-    flexDirection: 'row',
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    paddingVertical: 10,
-    borderRadius: THEME.radius.md,
   },
-  modeTabActive: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
-  },
-  modeTabText: {
-    fontSize: 13,
+  tabLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    color: THEME.colors.textMuted,
+    color: '#9CA3AF',
   },
-  modeTabTextActive: {
-    color: THEME.colors.text,
+  tabLabelActive: {
+    color: '#FFFFFF',
     fontWeight: '700',
   },
-  hintStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 4,
-  },
-  hintText: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    flex: 1,
-  },
-  swipeHintWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    opacity: 0.6,
-  },
-  swipeHintText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
+  tabUnderline: {
+    height: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 1.5,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
   },
   horizontalScroll: {
     flex: 1,
@@ -595,32 +557,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   verticalListContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 24,
-    gap: 8,
   },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   memberRowSelected: {
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    backgroundColor: 'rgba(16, 185, 129, 0.06)',
+    backgroundColor: 'rgba(28, 194, 159, 0.05)',
   },
   avatarWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#27272A',
-    marginRight: 12,
+    backgroundColor: '#2A2B2E',
+    marginRight: 14,
   },
   avatarImg: {
     width: '100%',
@@ -630,223 +587,166 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: '#2A2B2E',
   },
   avatarInitial: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: THEME.colors.text,
+    color: '#FFFFFF',
   },
   memberInfo: {
     flex: 1,
   },
   memberName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
-  memberNameSelected: {
-    color: THEME.colors.text,
+  memberSubline: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
-  memberSubtitle: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
+  memberSublineMuted: {
+    fontSize: 12,
+    color: '#6B7280',
     marginTop: 2,
   },
   livePctText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    color: THEME.colors.primary,
+    color: '#1CC29F',
     marginTop: 2,
   },
-  radioCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: THEME.colors.textMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioCircleActive: {
-    borderColor: THEME.colors.primary,
-    backgroundColor: THEME.colors.primary,
+  checkIndicator: {
+    paddingRight: 6,
   },
   multiHelperRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
-  helperChip: {
+  splitEquallyChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: THEME.radius.full,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(28, 194, 159, 0.1)',
   },
-  helperChipText: {
-    fontSize: 11,
+  splitEquallyText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: THEME.colors.primary,
+    color: '#1CC29F',
   },
-  helperChipTextMuted: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
+  totalRequiredText: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
   multiPayerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  inputAndQuickAction: {
+  inputActionWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  quickAllBtn: {
+  quickAllChip: {
     paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.sm,
-    backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   quickAllText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    color: THEME.colors.textSecondary,
+    color: '#9CA3AF',
   },
-  currencyInputBox: {
+  currencyUnderlineBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.background,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairlineLight,
-    paddingHorizontal: 8,
-    width: 100,
-    height: 38,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#1CC29F',
+    minWidth: 85,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
   },
   currencyPrefix: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
-    marginRight: 4,
-  },
-  currencyInput: {
-    flex: 1,
     fontSize: 14,
     fontWeight: '700',
-    color: THEME.colors.text,
-    paddingVertical: 0,
+    color: '#1CC29F',
+    marginRight: 4,
+  },
+  currencyTextInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    padding: 0,
     textAlign: 'right',
   },
-  bottomDock: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: THEME.colors.surface,
+  bottomBar: {
     borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
-    gap: 12,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#18191B',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  errorBanner: {
+  errorStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: THEME.colors.negativeMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.25)',
+    marginBottom: 8,
   },
-  errorBannerText: {
+  errorStripText: {
     fontSize: 12,
     fontWeight: '600',
-    color: THEME.colors.negative,
-    flex: 1,
+    color: '#F43F5E',
   },
-  summaryRow: {
+  bottomStatRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  summaryLabel: {
-    fontSize: 10,
+  bottomMainStat: {
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.8,
-    color: THEME.colors.textMuted,
-    marginBottom: 2,
+    color: '#FFFFFF',
   },
-  summaryAmount: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: THEME.colors.text,
+  bottomSubStat: {
+    fontSize: 12,
+    marginTop: 2,
   },
-  statusBadgeGreen: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: THEME.colors.primaryMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
+  textMint: {
+    color: '#1CC29F',
+    fontWeight: '600',
   },
-  statusTextGreen: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.primary,
+  textWarning: {
+    color: '#F59E0B',
+    fontWeight: '600',
   },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  textUnder: {
-    color: THEME.colors.warning,
-  },
-  textOver: {
-    color: THEME.colors.negative,
-  },
-  confirmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: THEME.colors.primary,
-    height: 48,
-    borderRadius: THEME.radius.lg,
-    shadowColor: THEME.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
+  confirmMultipleBtn: {
+    backgroundColor: '#1CC29F',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
   confirmBtnDisabled: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    shadowOpacity: 0,
+    backgroundColor: '#2A2B2E',
+    opacity: 0.5,
   },
   confirmBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#000000',
   },
 });

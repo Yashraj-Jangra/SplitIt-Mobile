@@ -13,9 +13,10 @@ import {
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Check, AlertCircle, Sparkles, Plus, Minus, MoveHorizontal } from 'lucide-react-native';
+import { ArrowLeft, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { calculateSplitAmounts, validateSplit, SplitType } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
@@ -44,11 +45,31 @@ interface SplitOptionsModalProps {
   }) => void;
 }
 
-const MODES: Array<{ type: SplitType; label: string; symbol: string; hint: string }> = [
-  { type: 'equally', label: 'Equally', symbol: '=', hint: 'Evenly split across all selected members' },
-  { type: 'unequally', label: 'Exact', symbol: '1.23', hint: 'Specify exact amounts for each member' },
-  { type: 'by_percentage', label: 'Percent', symbol: '%', hint: 'Allocate precise percentage shares (max 2 decimals)' },
-  { type: 'by_shares', label: 'Shares', symbol: '+/-', hint: 'Split by weighted shares (e.g., 2 shares, 1 share)' },
+const MODES: Array<{ type: SplitType; label: string; title: string; subtitle: string }> = [
+  {
+    type: 'equally',
+    label: 'Equally',
+    title: 'Split equally',
+    subtitle: 'Select which people owe an equal share.',
+  },
+  {
+    type: 'unequally',
+    label: 'Unequally',
+    title: 'Split by exact amounts',
+    subtitle: 'Specify exactly how much each person owes.',
+  },
+  {
+    type: 'by_percentage',
+    label: 'By percentages',
+    title: 'Split by percentages',
+    subtitle: 'Enter percentage shares for each person.',
+  },
+  {
+    type: 'by_shares',
+    label: 'By shares',
+    title: 'Split by shares',
+    subtitle: 'Assign weighted shares to each member.',
+  },
 ];
 
 export function SplitOptionsModal({
@@ -63,7 +84,7 @@ export function SplitOptionsModal({
   const { width } = useWindowDimensions();
   const horizontalScrollRef = useRef<ScrollView>(null);
 
-  // Normalize legacy 'shares' / 'percentage' to 'by_shares' / 'by_percentage'
+  // Normalize legacy 'shares' / 'percentage'
   const normalizedInitialType: SplitType =
     initialSplitType === 'shares'
       ? 'by_shares'
@@ -78,7 +99,10 @@ export function SplitOptionsModal({
   const [sharesInputs, setSharesInputs] = useState<Record<string, number>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Initialize modal state on open
+  // Animated Underline Indicator
+  const tabUnderlineAnim = useRef(new Animated.Value(0)).current;
+
+  // Sync state on open
   useEffect(() => {
     if (visible) {
       setSplitType(normalizedInitialType);
@@ -111,19 +135,20 @@ export function SplitOptionsModal({
       setPercentageInputs(pctMap);
       setSharesInputs(sharesMap);
 
-      // Scroll to initial page
       const initialIdx = MODES.findIndex((m) => m.type === normalizedInitialType);
-      if (initialIdx >= 0) {
-        setTimeout(() => {
-          horizontalScrollRef.current?.scrollTo({ x: initialIdx * width, animated: false });
-        }, 60);
-      }
+      const targetIdx = initialIdx >= 0 ? initialIdx : 0;
+
+      tabUnderlineAnim.setValue(targetIdx);
+
+      setTimeout(() => {
+        horizontalScrollRef.current?.scrollTo({ x: targetIdx * width, animated: false });
+      }, 50);
     }
   }, [visible, initialSplitType, initialParticipants, totalAmount, width]);
 
   const selectedCount = useMemo(() => items.filter((p) => p.selected).length, [items]);
 
-  // Real-time calculation of owed amounts per participant via @splitit/core
+  // Real-time calculation of owed amounts
   const splitBreakdown = useMemo<Record<string, number>>(() => {
     if (totalAmount <= 0 || selectedCount === 0) {
       return Object.fromEntries(items.map((p) => [p.id, 0]));
@@ -149,7 +174,7 @@ export function SplitOptionsModal({
     }
   }, [totalAmount, selectedCount, items, splitType, sharesInputs, percentageInputs, exactInputs]);
 
-  // Mode-specific sums and balances
+  // Mode calculations
   const exactSum = useMemo(() => {
     return items
       .filter((p) => p.selected)
@@ -193,40 +218,26 @@ export function SplitOptionsModal({
     setErrorMessage(null);
   };
 
-  const handleSelectAll = (select: boolean) => {
+  const handleToggleAll = () => {
     Haptics.selectionAsync();
-    setItems((prev) => prev.map((p) => ({ ...p, selected: select })));
+    const shouldSelectAll = selectedCount < items.length;
+    setItems((prev) => prev.map((p) => ({ ...p, selected: shouldSelectAll })));
     setErrorMessage(null);
   };
 
-  const handleResetToEqual = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const n = Math.max(1, selectedCount);
-    const equalShare = totalAmount / n;
-    const equalPct = 100 / n;
-
-    const newExact: Record<string, string> = {};
-    const newPct: Record<string, string> = {};
-    const newShares: Record<string, number> = {};
-
-    items.forEach((p) => {
-      newExact[p.id] = p.selected ? equalShare.toFixed(2) : '0';
-      newPct[p.id] = p.selected ? equalPct.toFixed(2) : '0';
-      newShares[p.id] = 1;
-    });
-
-    setExactInputs(newExact);
-    setPercentageInputs(newPct);
-    setSharesInputs(newShares);
-    setErrorMessage(null);
-  };
-
+  // Tab switching with smooth animated underline
   const handleTabPress = (type: SplitType) => {
     Haptics.selectionAsync();
     setSplitType(type);
     setErrorMessage(null);
     const idx = MODES.findIndex((m) => m.type === type);
     if (idx >= 0) {
+      Animated.spring(tabUnderlineAnim, {
+        toValue: idx,
+        useNativeDriver: false,
+        friction: 8,
+        tension: 65,
+      }).start();
       horizontalScrollRef.current?.scrollTo({ x: idx * width, animated: true });
     }
   };
@@ -240,6 +251,12 @@ export function SplitOptionsModal({
         Haptics.selectionAsync();
         setSplitType(targetMode);
         setErrorMessage(null);
+        Animated.spring(tabUnderlineAnim, {
+          toValue: pageIndex,
+          useNativeDriver: false,
+          friction: 8,
+          tension: 65,
+        }).start();
       }
     }
   };
@@ -252,11 +269,9 @@ export function SplitOptionsModal({
     if (parts.length > 2) {
       cleaned = parts[0] + '.' + parts.slice(1).join('');
     }
-    // Limit to max 2 decimal places
     if (parts.length === 2 && parts[1].length > 2) {
       cleaned = `${parts[0]}.${parts[1].slice(0, 2)}`;
     }
-    // Limit to 100%
     const num = parseFloat(cleaned);
     if (!isNaN(num) && num > 100) {
       cleaned = '100';
@@ -329,161 +344,12 @@ export function SplitOptionsModal({
     onClose();
   };
 
-  // Render rows for a specific split mode
-  const renderParticipantRows = (mode: SplitType) => {
-    const perShareAmount = totalShares > 0 ? totalAmount / totalShares : 0;
-    const equalShare = selectedCount > 0 ? totalAmount / selectedCount : 0;
-
-    return items.map((p) => {
-      const isSelected = p.selected;
-      const isCurrentUser = currentUserId === p.id;
-      const currentOwed = splitBreakdown[p.id] || 0;
-
-      // Mode-specific live calculations
-      const userPct = parseFloat(percentageInputs[p.id] || '0') || 0;
-      const livePctPrice = (totalAmount * userPct) / 100;
-
-      const userShares = sharesInputs[p.id] || 1;
-      const liveSharePrice = userShares * perShareAmount;
-      const liveSharePct = totalShares > 0 ? ((userShares / totalShares) * 100).toFixed(1) : '0';
-
-      const userExact = parseFloat(exactInputs[p.id] || '0') || 0;
-      const liveExactPct = totalAmount > 0 ? ((userExact / totalAmount) * 100).toFixed(1) : '0';
-
-      return (
-        <View
-          key={p.id}
-          style={[styles.participantRow, !isSelected && styles.participantRowUnselected]}
-        >
-          {/* Checkbox */}
-          <TouchableOpacity
-            style={[styles.checkbox, isSelected && styles.checkboxActive]}
-            onPress={() => toggleSelectMember(p.id)}
-            activeOpacity={0.7}
-          >
-            {isSelected && <Check size={12} color="#000000" strokeWidth={3} />}
-          </TouchableOpacity>
-
-          {/* Avatar */}
-          <View style={styles.avatarWrap}>
-            {p.avatarUrl ? (
-              <Image source={{ uri: p.avatarUrl }} style={styles.avatarImg} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarInitial}>{p.name.charAt(0).toUpperCase()}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Member Details & Live Subtext */}
-          <View style={styles.memberInfo}>
-            <Text style={[styles.memberName, !isSelected && styles.textMuted]} numberOfLines={1}>
-              {p.name}
-              {isCurrentUser ? ' (You)' : ''}
-            </Text>
-
-            {isSelected ? (
-              mode === 'equally' ? (
-                <Text style={styles.calculatedShareText}>
-                  Equal share • ₹{equalShare.toFixed(2)}
-                </Text>
-              ) : mode === 'unequally' ? (
-                <Text style={styles.calculatedShareText}>
-                  {liveExactPct}% of total
-                </Text>
-              ) : mode === 'by_percentage' ? (
-                <Text style={styles.calculatedShareTextHighlight}>
-                  = ₹{livePctPrice.toFixed(2)}
-                </Text>
-              ) : (
-                <Text style={styles.calculatedShareTextHighlight}>
-                  = ₹{liveSharePrice.toFixed(2)} ({liveSharePct}%)
-                </Text>
-              )
-            ) : (
-              <Text style={styles.excludedText}>Excluded from split</Text>
-            )}
-          </View>
-
-          {/* Mode-Specific Input Controls */}
-          {isSelected && (
-            <View style={styles.inputControlWrap}>
-              {/* EQUALLY: Read-only badge */}
-              {mode === 'equally' && (
-                <View style={styles.equalBadge}>
-                  <Text style={styles.equalBadgeText}>₹{currentOwed.toFixed(2)}</Text>
-                </View>
-              )}
-
-              {/* UNEQUALLY: Exact Amount Input (.2f) */}
-              {mode === 'unequally' && (
-                <View style={styles.amountInputBox}>
-                  <Text style={styles.inputPrefix}>₹</Text>
-                  <TextInput
-                    style={styles.amountInput}
-                    placeholder="0.00"
-                    placeholderTextColor={THEME.colors.textMuted}
-                    keyboardType="decimal-pad"
-                    value={exactInputs[p.id] || ''}
-                    onChangeText={(text) => handleExactChange(p.id, text)}
-                  />
-                </View>
-              )}
-
-              {/* BY PERCENTAGE: % Input (.2f limit) */}
-              {mode === 'by_percentage' && (
-                <View style={styles.amountInputBox}>
-                  <TextInput
-                    style={styles.amountInput}
-                    placeholder="0.00"
-                    placeholderTextColor={THEME.colors.textMuted}
-                    keyboardType="decimal-pad"
-                    value={percentageInputs[p.id] || ''}
-                    onChangeText={(text) => handlePercentageChange(p.id, text)}
-                  />
-                  <Text style={styles.inputSuffix}>%</Text>
-                </View>
-              )}
-
-              {/* BY SHARES: Stepper (- / +) */}
-              {mode === 'by_shares' && (
-                <View style={styles.stepperContainer}>
-                  <TouchableOpacity
-                    style={styles.stepperBtn}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      const currentVal = sharesInputs[p.id] || 1;
-                      const newVal = Math.max(1, currentVal - 1);
-                      setSharesInputs((prev) => ({ ...prev, [p.id]: newVal }));
-                    }}
-                  >
-                    <Minus size={13} color={THEME.colors.text} />
-                  </TouchableOpacity>
-
-                  <Text style={styles.stepperValue}>
-                    {sharesInputs[p.id] || 1}
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.stepperBtn}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      const currentVal = sharesInputs[p.id] || 1;
-                      setSharesInputs((prev) => ({ ...prev, [p.id]: currentVal + 1 }));
-                    }}
-                  >
-                    <Plus size={13} color={THEME.colors.text} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-      );
-    });
-  };
-
-  const activeModeInfo = MODES.find((m) => m.type === splitType) || MODES[0];
+  // Tab width for underline calculation
+  const tabWidth = width / MODES.length;
+  const underlineTranslateX = tabUnderlineAnim.interpolate({
+    inputRange: [0, 1, 2, 3],
+    outputRange: [0, tabWidth, tabWidth * 2, tabWidth * 3],
+  });
 
   return (
     <Modal
@@ -497,79 +363,53 @@ export function SplitOptionsModal({
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* Top Header Bar */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Split options</Text>
-              <Text style={styles.subtitle}>
-                Total expense: <Text style={styles.boldText}>₹{totalAmount.toFixed(2)}</Text>
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <X size={18} color={THEME.colors.textSecondary} />
+          {/* Splitwise App Bar: ← Back | Adjust split | ✓ Confirm */}
+          <View style={styles.appBar}>
+            <TouchableOpacity onPress={onClose} style={styles.navActionBtn} activeOpacity={0.7}>
+              <ArrowLeft size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <Text style={styles.appBarTitle}>Adjust split</Text>
+
+            <TouchableOpacity onPress={handleConfirm} style={styles.navActionBtn} activeOpacity={0.7}>
+              <Check size={24} color="#FFFFFF" strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
 
-          {/* 4-Segmented Split Mode Bar */}
-          <View style={styles.modeTabs}>
-            {MODES.map((mode) => {
-              const isActive = splitType === mode.type;
-              return (
-                <TouchableOpacity
-                  key={mode.type}
-                  style={[styles.modeTab, isActive && styles.modeTabActive]}
-                  onPress={() => handleTabPress(mode.type)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.modeTabSymbol, isActive && styles.modeTabSymbolActive]}>
-                    {mode.symbol}
-                  </Text>
-                  <Text style={[styles.modeTabText, isActive && styles.modeTabTextActive]}>
-                    {mode.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Mode Hint & Swipe Indicator Strip */}
-          <View style={styles.hintStrip}>
-            <Text style={styles.hintText}>{activeModeInfo.hint}</Text>
-            <View style={styles.swipeHintWrap}>
-              <MoveHorizontal size={12} color={THEME.colors.textMuted} />
-              <Text style={styles.swipeHintText}>Swipe page</Text>
-            </View>
-          </View>
-
-          {/* Quick Helper Toolbar */}
-          <View style={styles.helperRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <TouchableOpacity
-                onPress={() => handleSelectAll(selectedCount < items.length)}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Text style={styles.helperActionText}>
-                  {selectedCount < items.length ? 'Select all' : 'Deselect all'}
-                </Text>
-              </TouchableOpacity>
-              <Text style={styles.helperCountText}>
-                ({selectedCount} of {items.length} included)
-              </Text>
+          {/* Sleek Underline Tab Bar (Splitwise Pure Text Style) */}
+          <View style={styles.tabBarContainer}>
+            <View style={styles.tabRow}>
+              {MODES.map((mode) => {
+                const isActive = splitType === mode.type;
+                return (
+                  <TouchableOpacity
+                    key={mode.type}
+                    style={styles.tabButton}
+                    onPress={() => handleTabPress(mode.type)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                      {mode.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
-            {splitType !== 'equally' && (
-              <TouchableOpacity
-                style={styles.resetChip}
-                onPress={handleResetToEqual}
-                activeOpacity={0.7}
-              >
-                <Sparkles size={11} color={THEME.colors.primary} />
-                <Text style={styles.resetChipText}>Reset to equal</Text>
-              </TouchableOpacity>
-            )}
+            {/* Smooth Animated Underline */}
+            <Animated.View
+              style={[
+                styles.tabUnderline,
+                {
+                  width: tabWidth - 24,
+                  transform: [{ translateX: underlineTranslateX }],
+                  marginHorizontal: 12,
+                },
+              ]}
+            />
           </View>
 
-          {/* Horizontal Paging Screen for Split Modes */}
+          {/* Horizontal Paging Content */}
           <ScrollView
             ref={horizontalScrollRef}
             horizontal
@@ -578,100 +418,274 @@ export function SplitOptionsModal({
             onMomentumScrollEnd={handleHorizontalScrollEnd}
             style={styles.horizontalScroll}
           >
-            {MODES.map((mode) => (
-              <View key={mode.type} style={{ width, flex: 1 }}>
-                <ScrollView
-                  style={styles.verticalList}
-                  contentContainerStyle={styles.verticalListContent}
-                  keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode="on-drag"
-                  showsVerticalScrollIndicator={false}
-                >
-                  {renderParticipantRows(mode.type)}
-                </ScrollView>
-              </View>
-            ))}
+            {MODES.map((mode) => {
+              const perShareAmount = totalShares > 0 ? totalAmount / totalShares : 0;
+              const equalShare = selectedCount > 0 ? totalAmount / selectedCount : 0;
+
+              return (
+                <View key={mode.type} style={{ width, flex: 1 }}>
+                  <ScrollView
+                    style={styles.verticalList}
+                    contentContainerStyle={styles.verticalListContent}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {/* Mode Header Banner (Splitwise Style) */}
+                    <View style={styles.modeHeaderBanner}>
+                      <Text style={styles.modeBannerTitle}>{mode.title}</Text>
+                      <Text style={styles.modeBannerSubtitle}>{mode.subtitle}</Text>
+                    </View>
+
+                    {/* Participant Rows */}
+                    {items.map((p) => {
+                      const isSelected = p.selected;
+                      const isCurrentUser = currentUserId === p.id;
+                      const userPct = parseFloat(percentageInputs[p.id] || '0') || 0;
+                      const livePctPrice = (totalAmount * userPct) / 100;
+
+                      const userShares = sharesInputs[p.id] || 1;
+                      const liveSharePrice = userShares * perShareAmount;
+                      const liveSharePct = totalShares > 0 ? ((userShares / totalShares) * 100).toFixed(1) : '0';
+
+                      const userExact = parseFloat(exactInputs[p.id] || '0') || 0;
+                      const liveExactPct = totalAmount > 0 ? ((userExact / totalAmount) * 100).toFixed(1) : '0';
+
+                      return (
+                        <View
+                          key={p.id}
+                          style={[
+                            styles.participantRow,
+                            !isSelected && styles.participantRowUnselected,
+                          ]}
+                        >
+                          {/* Avatar */}
+                          <View style={styles.avatarWrap}>
+                            {p.avatarUrl ? (
+                              <Image source={{ uri: p.avatarUrl }} style={styles.avatarImg} />
+                            ) : (
+                              <View style={styles.avatarFallback}>
+                                <Text style={styles.avatarInitial}>
+                                  {p.name.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {/* Member Name & Live Calculations */}
+                          <View style={styles.memberInfo}>
+                            <Text
+                              style={[styles.memberName, !isSelected && styles.memberNameMuted]}
+                              numberOfLines={1}
+                            >
+                              {p.name}
+                              {isCurrentUser ? ' (You)' : ''}
+                            </Text>
+
+                            {/* Subtext info for each mode */}
+                            {isSelected ? (
+                              mode.type === 'unequally' ? (
+                                <Text style={styles.memberSubline}>
+                                  {liveExactPct}% of total
+                                </Text>
+                              ) : mode.type === 'by_percentage' ? (
+                                <Text style={styles.memberSublineHighlight}>
+                                  = ₹{livePctPrice.toFixed(2)}
+                                </Text>
+                              ) : mode.type === 'by_shares' ? (
+                                <Text style={styles.memberSublineHighlight}>
+                                  = ₹{liveSharePrice.toFixed(2)} ({liveSharePct}%)
+                                </Text>
+                              ) : null
+                            ) : (
+                              <Text style={styles.memberSublineMuted}>Excluded</Text>
+                            )}
+                          </View>
+
+                          {/* Mode-Specific Right Control */}
+                          {mode.type === 'equally' ? (
+                            /* Splitwise Green Square Checkbox */
+                            <TouchableOpacity
+                              style={[
+                                styles.squareCheckbox,
+                                isSelected && styles.squareCheckboxChecked,
+                              ]}
+                              onPress={() => toggleSelectMember(p.id)}
+                              activeOpacity={0.7}
+                            >
+                              {isSelected && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+                            </TouchableOpacity>
+                          ) : isSelected ? (
+                            <View style={styles.inputWrap}>
+                              {mode.type === 'unequally' && (
+                                <View style={styles.exactInputBox}>
+                                  <Text style={styles.currencyPrefix}>₹</Text>
+                                  <TextInput
+                                    style={styles.cleanTextInput}
+                                    placeholder="0.00"
+                                    placeholderTextColor="#6B7280"
+                                    keyboardType="decimal-pad"
+                                    value={exactInputs[p.id] || ''}
+                                    onChangeText={(t) => handleExactChange(p.id, t)}
+                                  />
+                                </View>
+                              )}
+
+                              {mode.type === 'by_percentage' && (
+                                <View style={styles.exactInputBox}>
+                                  <TextInput
+                                    style={styles.cleanTextInput}
+                                    placeholder="0.00"
+                                    placeholderTextColor="#6B7280"
+                                    keyboardType="decimal-pad"
+                                    value={percentageInputs[p.id] || ''}
+                                    onChangeText={(t) => handlePercentageChange(p.id, t)}
+                                  />
+                                  <Text style={styles.percentSuffix}>%</Text>
+                                </View>
+                              )}
+
+                              {mode.type === 'by_shares' && (
+                                <View style={styles.stepperWrap}>
+                                  <TouchableOpacity
+                                    style={styles.stepperActionBtn}
+                                    onPress={() => {
+                                      Haptics.selectionAsync();
+                                      const cur = sharesInputs[p.id] || 1;
+                                      setSharesInputs((prev) => ({
+                                        ...prev,
+                                        [p.id]: Math.max(1, cur - 1),
+                                      }));
+                                    }}
+                                  >
+                                    <Minus size={13} color="#FFFFFF" />
+                                  </TouchableOpacity>
+
+                                  <Text style={styles.stepperCountText}>
+                                    {sharesInputs[p.id] || 1}
+                                  </Text>
+
+                                  <TouchableOpacity
+                                    style={styles.stepperActionBtn}
+                                    onPress={() => {
+                                      Haptics.selectionAsync();
+                                      const cur = sharesInputs[p.id] || 1;
+                                      setSharesInputs((prev) => ({
+                                        ...prev,
+                                        [p.id]: cur + 1,
+                                      }));
+                                    }}
+                                  >
+                                    <Plus size={13} color="#FFFFFF" />
+                                  </TouchableOpacity>
+                                </View>
+                              )}
+                            </View>
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.squareCheckbox}
+                              onPress={() => toggleSelectMember(p.id)}
+                              activeOpacity={0.7}
+                            />
+                          )}
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              );
+            })}
           </ScrollView>
 
-          {/* Bottom Summary & Confirmation Dock (Always Visible) */}
-          <View style={styles.bottomDock}>
+          {/* Bottom Dock: Live Stats & All Toggle (Direct Splitwise Parity) */}
+          <View style={styles.splitwiseBottomBar}>
             {errorMessage && (
-              <View style={styles.errorBanner}>
-                <AlertCircle size={14} color={THEME.colors.negative} />
-                <Text style={styles.errorBannerText}>{errorMessage}</Text>
+              <View style={styles.errorStrip}>
+                <AlertCircle size={13} color="#F43F5E" />
+                <Text style={styles.errorStripText}>{errorMessage}</Text>
               </View>
             )}
 
-            <View style={styles.summaryRow}>
-              {/* Left Column: Total or Shares */}
-              <View>
-                <Text style={styles.summaryLabel}>
-                  {splitType === 'by_percentage'
-                    ? 'TOTAL PERCENT'
-                    : splitType === 'by_shares'
-                    ? 'TOTAL SHARES'
-                    : 'TOTAL SPLIT'}
-                </Text>
-                <Text style={styles.summaryAmount}>
-                  {splitType === 'by_percentage'
-                    ? `${percentageSum.toFixed(2)}%`
-                    : splitType === 'by_shares'
-                    ? `${totalShares} ${totalShares === 1 ? 'share' : 'shares'}`
-                    : `₹${(splitType === 'unequally' ? exactSum : totalAmount).toFixed(2)}`}
-                </Text>
-              </View>
-
-              {/* Right Column: Status */}
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.summaryLabel}>STATUS</Text>
+            <View style={styles.bottomBarRow}>
+              {/* Left Column: Calculation */}
+              <View style={styles.bottomStatLeft}>
                 {splitType === 'equally' ? (
-                  <View style={styles.statusBadgeGreen}>
-                    <Check size={12} color={THEME.colors.primary} strokeWidth={3} />
-                    <Text style={styles.statusTextGreen}>Split Equally</Text>
-                  </View>
+                  <>
+                    <Text style={styles.bottomMainStat}>
+                      ₹{(selectedCount > 0 ? totalAmount / selectedCount : 0).toFixed(2)}/person
+                    </Text>
+                    <Text style={styles.bottomSubStat}>
+                      ({selectedCount} {selectedCount === 1 ? 'person' : 'people'})
+                    </Text>
+                  </>
                 ) : splitType === 'unequally' ? (
-                  isModeBalanced ? (
-                    <View style={styles.statusBadgeGreen}>
-                      <Check size={12} color={THEME.colors.primary} strokeWidth={3} />
-                      <Text style={styles.statusTextGreen}>Balanced</Text>
-                    </View>
-                  ) : (
-                    <Text style={[styles.statusText, exactRemaining > 0 ? styles.textUnder : styles.textOver]}>
-                      {exactRemaining > 0 ? `₹${exactRemaining.toFixed(2)} left` : `₹${Math.abs(exactRemaining).toFixed(2)} over`}
+                  <>
+                    <Text style={styles.bottomMainStat}>
+                      ₹{exactSum.toFixed(2)} of ₹{totalAmount.toFixed(2)}
                     </Text>
-                  )
+                    <Text
+                      style={[
+                        styles.bottomSubStat,
+                        isModeBalanced ? styles.textMint : styles.textWarning,
+                      ]}
+                    >
+                      {isModeBalanced
+                        ? 'Balanced'
+                        : exactRemaining > 0
+                        ? `₹${exactRemaining.toFixed(2)} left`
+                        : `₹${Math.abs(exactRemaining).toFixed(2)} over`}
+                    </Text>
+                  </>
                 ) : splitType === 'by_percentage' ? (
-                  isModeBalanced ? (
-                    <View style={styles.statusBadgeGreen}>
-                      <Check size={12} color={THEME.colors.primary} strokeWidth={3} />
-                      <Text style={styles.statusTextGreen}>100% Allocated</Text>
-                    </View>
-                  ) : (
-                    <Text style={[styles.statusText, percentageRemaining > 0 ? styles.textUnder : styles.textOver]}>
-                      {percentageRemaining > 0 ? `${percentageRemaining.toFixed(2)}% left` : `${Math.abs(percentageRemaining).toFixed(2)}% over`}
+                  <>
+                    <Text style={styles.bottomMainStat}>{percentageSum.toFixed(2)}% of 100%</Text>
+                    <Text
+                      style={[
+                        styles.bottomSubStat,
+                        isModeBalanced ? styles.textMint : styles.textWarning,
+                      ]}
+                    >
+                      {isModeBalanced
+                        ? '100% Allocated'
+                        : percentageRemaining > 0
+                        ? `${percentageRemaining.toFixed(2)}% left`
+                        : `${Math.abs(percentageRemaining).toFixed(2)}% over`}
                     </Text>
-                  )
+                  </>
                 ) : (
-                  <View style={styles.statusBadgeGreen}>
-                    <Check size={12} color={THEME.colors.primary} strokeWidth={3} />
-                    <Text style={styles.statusTextGreen}>
-                      {totalShares > 0 ? `₹${(totalAmount / totalShares).toFixed(2)}/share` : '0 shares'}
+                  <>
+                    <Text style={styles.bottomMainStat}>
+                      {totalShares} total {totalShares === 1 ? 'share' : 'shares'}
                     </Text>
-                  </View>
+                    <Text style={[styles.bottomSubStat, styles.textMint]}>
+                      ₹{(totalShares > 0 ? totalAmount / totalShares : 0).toFixed(2)}/share
+                    </Text>
+                  </>
                 )}
               </View>
-            </View>
 
-            <TouchableOpacity
-              style={[styles.confirmBtn, !isModeBalanced && styles.confirmBtnDisabled]}
-              onPress={handleConfirm}
-              activeOpacity={0.85}
-            >
-              <Check size={16} color="#000000" strokeWidth={2.5} />
-              <Text style={styles.confirmBtnText}>
-                {isModeBalanced ? `Confirm Split (₹${totalAmount.toFixed(2)})` : 'Balance Split to Confirm'}
-              </Text>
-            </TouchableOpacity>
+              {/* Vertical Hairline Divider */}
+              <View style={styles.bottomDivider} />
+
+              {/* Right Column: "All [✓]" Quick Toggle */}
+              <TouchableOpacity
+                style={styles.allToggleBtn}
+                onPress={handleToggleAll}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.allToggleLabel}>All</Text>
+                <View
+                  style={[
+                    styles.squareCheckbox,
+                    selectedCount === items.length && styles.squareCheckboxChecked,
+                  ]}
+                >
+                  {selectedCount === items.length && (
+                    <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -682,141 +696,60 @@ export function SplitOptionsModal({
 const styles = StyleSheet.create({
   fullScreen: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: '#18191B', // Splitwise Authentic Dark Canvas
   },
   keyboardContainer: {
     flex: 1,
   },
-  header: {
+  appBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: THEME.colors.text,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    marginTop: 2,
-  },
-  boldText: {
-    fontWeight: '700',
-    color: THEME.colors.primary,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.colors.surfaceElevated,
+  navActionBtn: {
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
   },
-  modeTabs: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 6,
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  modeTab: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: THEME.radius.md,
-  },
-  modeTabActive: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
-  },
-  modeTabSymbol: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: THEME.colors.textMuted,
-  },
-  modeTabSymbolActive: {
-    color: THEME.colors.primary,
-  },
-  modeTabText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
-    marginTop: 1,
-  },
-  modeTabTextActive: {
-    color: THEME.colors.text,
+  appBarTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
-  hintStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 4,
-  },
-  hintText: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    flex: 1,
-  },
-  swipeHintWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    opacity: 0.6,
-  },
-  swipeHintText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
-  },
-  helperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+  tabBarContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    position: 'relative',
   },
-  helperActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.primary,
-  },
-  helperCountText: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-  },
-  resetChip: {
+  tabRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
   },
-  resetChipText: {
-    fontSize: 11,
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: THEME.colors.primary,
+    color: '#9CA3AF',
+  },
+  tabLabelActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  tabUnderline: {
+    height: 3,
+    backgroundColor: '#FFFFFF', // Clean White Splitwise Underline
+    borderRadius: 1.5,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
   },
   horizontalScroll: {
     flex: 1,
@@ -825,46 +758,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   verticalListContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 24,
-    gap: 8,
+  },
+  modeHeaderBanner: {
+    marginBottom: 20,
+  },
+  modeBannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 3,
+  },
+  modeBannerSubtitle: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    lineHeight: 18,
   },
   participantRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: THEME.radius.lg,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   participantRowUnselected: {
-    opacity: 0.4,
-    backgroundColor: 'transparent',
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: THEME.colors.textMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  checkboxActive: {
-    borderColor: THEME.colors.primary,
-    backgroundColor: THEME.colors.primary,
+    opacity: 0.45,
   },
   avatarWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#27272A',
-    marginRight: 10,
+    backgroundColor: '#2A2B2E',
+    marginRight: 14,
   },
   avatarImg: {
     width: '100%',
@@ -874,205 +802,173 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: '#2A2B2E',
   },
   avatarInitial: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
-    color: THEME.colors.text,
+    color: '#FFFFFF',
   },
   memberInfo: {
     flex: 1,
   },
   memberName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
-  textMuted: {
-    color: THEME.colors.textMuted,
+  memberNameMuted: {
+    color: '#9CA3AF',
   },
-  calculatedShareText: {
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
+  memberSubline: {
+    fontSize: 12,
+    color: '#9CA3AF',
     marginTop: 2,
   },
-  calculatedShareTextHighlight: {
+  memberSublineHighlight: {
     fontSize: 12,
     fontWeight: '700',
-    color: THEME.colors.primary,
+    color: '#1CC29F',
     marginTop: 2,
   },
-  excludedText: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
+  memberSublineMuted: {
+    fontSize: 12,
+    color: '#6B7280',
     marginTop: 2,
   },
-  inputControlWrap: {
-    marginLeft: 10,
+  squareCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
-  equalBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+  squareCheckboxChecked: {
+    backgroundColor: '#1CC29F',
+    borderColor: '#1CC29F',
   },
-  equalBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.primary,
+  inputWrap: {
+    marginLeft: 12,
   },
-  amountInputBox: {
+  exactInputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.background,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairlineLight,
-    paddingHorizontal: 8,
-    width: 100,
-    height: 38,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#1CC29F',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    minWidth: 85,
   },
-  inputPrefix: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
-    marginRight: 4,
-  },
-  inputSuffix: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.primary,
-    marginLeft: 4,
-  },
-  amountInput: {
-    flex: 1,
+  currencyPrefix: {
     fontSize: 14,
     fontWeight: '700',
-    color: THEME.colors.text,
-    paddingVertical: 0,
+    color: '#1CC29F',
+    marginRight: 4,
+  },
+  percentSuffix: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1CC29F',
+    marginLeft: 4,
+  },
+  cleanTextInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    padding: 0,
     textAlign: 'right',
   },
-  stepperContainer: {
+  stepperWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.background,
-    borderRadius: THEME.radius.md,
+    backgroundColor: '#222427',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: THEME.colors.hairlineLight,
-    height: 38,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    height: 34,
     paddingHorizontal: 4,
-    gap: 6,
+    gap: 8,
   },
-  stepperBtn: {
-    width: 28,
-    height: 28,
+  stepperActionBtn: {
+    width: 26,
+    height: 26,
     borderRadius: 6,
-    backgroundColor: THEME.colors.surfaceElevated,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperValue: {
+  stepperCountText: {
     fontSize: 14,
-    fontWeight: '800',
-    color: THEME.colors.text,
-    minWidth: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    minWidth: 18,
     textAlign: 'center',
   },
-  bottomDock: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: THEME.colors.surface,
+  splitwiseBottomBar: {
     borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
-    gap: 12,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#18191B',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  errorBanner: {
+  errorStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: THEME.colors.negativeMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.25)',
+    marginBottom: 10,
   },
-  errorBannerText: {
+  errorStripText: {
     fontSize: 12,
     fontWeight: '600',
-    color: THEME.colors.negative,
-    flex: 1,
+    color: '#F43F5E',
   },
-  summaryRow: {
+  bottomBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  summaryLabel: {
-    fontSize: 10,
+  bottomStatLeft: {
+    flex: 1,
+  },
+  bottomMainStat: {
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.8,
-    color: THEME.colors.textMuted,
-    marginBottom: 2,
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
-  summaryAmount: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: THEME.colors.text,
+  bottomSubStat: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
-  statusBadgeGreen: {
+  bottomDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginHorizontal: 16,
+  },
+  allToggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: THEME.colors.primaryMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-  },
-  statusTextGreen: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.primary,
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  textUnder: {
-    color: THEME.colors.warning,
-  },
-  textOver: {
-    color: THEME.colors.negative,
-  },
-  confirmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    backgroundColor: THEME.colors.primary,
-    height: 48,
-    borderRadius: THEME.radius.lg,
-    shadowColor: THEME.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
-  confirmBtnDisabled: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    shadowOpacity: 0,
+  allToggleLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  confirmBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#000000',
+  textMint: {
+    color: '#1CC29F',
+    fontWeight: '600',
+  },
+  textWarning: {
+    color: '#F59E0B',
+    fontWeight: '600',
   },
 });
