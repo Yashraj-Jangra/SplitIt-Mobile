@@ -334,13 +334,6 @@ export default function GroupDetailScreen() {
           <View style={styles.statDivider} />
 
           <View style={styles.statCol}>
-            <Text style={styles.statLabel}>MEMBERS</Text>
-            <Text style={styles.statValue}>{members.length}</Text>
-          </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statCol}>
             <Text style={styles.statLabel}>YOUR NET</Text>
             <Text
               style={[
@@ -1001,8 +994,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
   },
   fixedTabBarContainer: {
     position: 'absolute',
@@ -1014,8 +1005,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
