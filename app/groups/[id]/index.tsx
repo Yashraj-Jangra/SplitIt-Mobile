@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -32,10 +32,13 @@ import { groupService, GroupDetailData } from '../../../src/services/group.servi
 import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRing';
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../../src/utils/category-icons';
+import { TransactionRowSkeleton } from '../../../src/components/skeletons/TransactionRowSkeleton';
 import * as Haptics from 'expo-haptics';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
 type TabType = typeof TABS[number];
+
+const PAGE_SIZE = 15;
 
 export default function GroupDetailScreen() {
   const router = useRouter();
@@ -54,14 +57,14 @@ export default function GroupDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
-  const [isSticky, setIsSticky] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Progressive infinite scroll for expense records
+  const [visibleExpenseCount, setVisibleExpenseCount] = useState(PAGE_SIZE);
+  const [isLoadingMoreExpenses, setIsLoadingMoreExpenses] = useState(false);
 
   const initialTabBarWidth = Dimensions.get('window').width - 20;
   const [tabBarWidth, setTabBarWidth] = useState(initialTabBarWidth);
 
-  const isStickyRef = useRef(false);
-  const isCollapsedRef = useRef(false);
   const scrollViewRef = useRef<any>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -71,24 +74,6 @@ export default function GroupDetailScreen() {
   const fabAnim = useRef(new Animated.Value(1)).current;
 
   const stickyThreshold = SCROLL_DISTANCE + statStripHeight;
-
-  useEffect(() => {
-    const listenerId = scrollY.addListener(({ value }) => {
-      const shouldBeSticky = value >= stickyThreshold;
-      if (shouldBeSticky !== isStickyRef.current) {
-        isStickyRef.current = shouldBeSticky;
-        setIsSticky(shouldBeSticky);
-      }
-      const shouldBeCollapsed = value >= SCROLL_DISTANCE * 0.7;
-      if (shouldBeCollapsed !== isCollapsedRef.current) {
-        isCollapsedRef.current = shouldBeCollapsed;
-        setIsCollapsed(shouldBeCollapsed);
-      }
-    });
-    return () => {
-      scrollY.removeListener(listenerId);
-    };
-  }, [SCROLL_DISTANCE, stickyThreshold]);
 
   const scrollToTop = () => {
     if (scrollViewRef.current?.scrollTo) {
@@ -104,6 +89,7 @@ export default function GroupDetailScreen() {
   };
 
   useEffect(() => {
+    setVisibleExpenseCount(PAGE_SIZE);
     // 0ms fast tick: hydrate from persistent offline storage
     groupService.getCachedGroupDetails(targetId).then((cached) => {
       if (cached) {
@@ -116,6 +102,7 @@ export default function GroupDetailScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
+    setVisibleExpenseCount(PAGE_SIZE);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     loadGroup();
   };
@@ -245,17 +232,52 @@ export default function GroupDetailScreen() {
   const totalGroupSpend = group.totalGroupSpend || 0;
   const yourNetBalance = group.yourNetBalance || 0;
 
-  // Header Animations
-  const headerHeight = scrollY.interpolate({
-    inputRange: [-100, 0, SCROLL_DISTANCE],
-    outputRange: [HEADER_MAX_HEIGHT + 100, HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
+  // Progressive infinite scroll data & loader
+  const visibleExpenses = useMemo(
+    () => expenses.slice(0, visibleExpenseCount),
+    [expenses, visibleExpenseCount]
+  );
+
+  const loadMoreExpenses = useCallback(() => {
+    if (isLoadingMoreExpenses || visibleExpenseCount >= expenses.length) return;
+    setIsLoadingMoreExpenses(true);
+    setTimeout(() => {
+      setVisibleExpenseCount((prev) => Math.min(expenses.length, prev + PAGE_SIZE));
+      setIsLoadingMoreExpenses(false);
+    }, 180);
+  }, [isLoadingMoreExpenses, visibleExpenseCount, expenses.length]);
+
+  const handleScroll = useCallback(
+    (event: any) => {
+      if (activeTab !== 'expenses') return;
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      if (
+        contentSize.height > 0 &&
+        layoutMeasurement.height + contentOffset.y >= contentSize.height - 350
+      ) {
+        loadMoreExpenses();
+      }
+    },
+    [activeTab, loadMoreExpenses]
+  );
+
+  // Header Animations (100% Native Driver Hardware Accelerated)
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, SCROLL_DISTANCE],
+    outputRange: [0, -SCROLL_DISTANCE],
     extrapolate: 'clamp',
   });
 
   const imageScale = scrollY.interpolate({
-    inputRange: [-100, 0],
-    outputRange: [1.2, 1],
+    inputRange: [-150, 0],
+    outputRange: [1.3, 1],
     extrapolateRight: 'clamp',
+  });
+
+  const imageTranslateY = scrollY.interpolate({
+    inputRange: [-150, 0, SCROLL_DISTANCE],
+    outputRange: [-75, 0, SCROLL_DISTANCE * 0.5],
+    extrapolate: 'clamp',
   });
 
   const vignetteOpacity = scrollY.interpolate({
@@ -271,8 +293,8 @@ export default function GroupDetailScreen() {
   });
 
   const collapsedTitleTranslateY = scrollY.interpolate({
-    inputRange: [SCROLL_DISTANCE * 0.5, SCROLL_DISTANCE],
-    outputRange: [8, 0],
+    inputRange: [0, SCROLL_DISTANCE * 0.5, SCROLL_DISTANCE],
+    outputRange: [-30, -30, 0],
     extrapolate: 'clamp',
   });
 
@@ -283,15 +305,21 @@ export default function GroupDetailScreen() {
   });
 
   const expandedContentTranslateY = scrollY.interpolate({
-    inputRange: [0, SCROLL_DISTANCE * 0.55],
-    outputRange: [0, -10],
+    inputRange: [0, SCROLL_DISTANCE * 0.55, SCROLL_DISTANCE],
+    outputRange: [0, -20, -300],
     extrapolate: 'clamp',
   });
 
   // Seamless docking handoff for fixed tab bar (activates at exact threshold alignment)
   const stickyTabOpacity = scrollY.interpolate({
-    inputRange: [Math.max(0, stickyThreshold - 1), stickyThreshold],
+    inputRange: [Math.max(0, stickyThreshold - 8), stickyThreshold],
     outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const stickyTabTranslateY = scrollY.interpolate({
+    inputRange: [0, Math.max(0, stickyThreshold - 1), stickyThreshold],
+    outputRange: [-200, -200, 0],
     extrapolate: 'clamp',
   });
 
@@ -304,11 +332,14 @@ export default function GroupDetailScreen() {
         ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={1}
+        scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
+          {
+            useNativeDriver: true,
+            listener: handleScroll,
+          }
         )}
         refreshControl={
           <RefreshControl
@@ -408,52 +439,75 @@ export default function GroupDetailScreen() {
                   </Text>
                 </View>
               ) : (
-                expenses.map((exp, index, arr) => {
-                  const isLast = index === arr.length - 1;
+                <>
+                  {visibleExpenses.map((exp, index) => {
+                    const isLast =
+                      index === visibleExpenses.length - 1 &&
+                      visibleExpenseCount >= expenses.length &&
+                      !isLoadingMoreExpenses;
 
-                  return (
-                    <TouchableOpacity
-                      key={exp.id}
-                      style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        router.push({
-                          pathname: '/expenses/[id]',
-                          params: {
-                            id: exp.id,
-                            groupId: targetId,
-                            title: exp.title,
-                            amount: String(exp.amount),
-                            paidByName: exp.paidByName || 'Member',
-                            date: exp.date,
-                            category: exp.category?.sub || exp.category?.master || 'Other',
-                          },
-                        });
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.categoryGlyph}>
-                        <CategoryIcon
-                          subCategory={exp.category?.sub}
-                          masterCategory={exp.category?.master}
-                          size={16}
-                          color={THEME.colors.textSecondary}
-                        />
-                      </View>
+                    return (
+                      <TouchableOpacity
+                        key={exp.id}
+                        style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          router.push({
+                            pathname: '/expenses/[id]',
+                            params: {
+                              id: exp.id,
+                              groupId: targetId,
+                              title: exp.title,
+                              amount: String(exp.amount),
+                              paidByName: exp.paidByName || 'Member',
+                              date: exp.date,
+                              category: exp.category?.sub || exp.category?.master || 'Other',
+                            },
+                          });
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.categoryGlyph}>
+                          <CategoryIcon
+                            subCategory={exp.category?.sub}
+                            masterCategory={exp.category?.master}
+                            size={16}
+                            color={THEME.colors.textSecondary}
+                          />
+                        </View>
 
-                      <View style={styles.ledgerDetails}>
-                        <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
-                          {exp.title}
+                        <View style={styles.ledgerDetails}>
+                          <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
+                            {exp.title}
+                          </Text>
+                          <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
+                            {exp.paidByName || 'Member'} paid • {exp.date}
+                          </Text>
+                        </View>
+
+                        <ExpenseImpactCol expense={exp} />
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {/* Progressive Loading Shimmer Indicator */}
+                  {isLoadingMoreExpenses && (
+                    <View style={styles.progressiveLoaderContainer}>
+                      <TransactionRowSkeleton count={2} />
+                    </View>
+                  )}
+
+                  {/* End of list completion footer */}
+                  {expenses.length > PAGE_SIZE &&
+                    visibleExpenseCount >= expenses.length &&
+                    !isLoadingMoreExpenses && (
+                      <View style={styles.endOfListFooter}>
+                        <Text style={styles.endOfListText}>
+                          • All {expenses.length} expenses loaded •
                         </Text>
-                        <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
-                          {exp.paidByName || 'Member'} paid • {exp.date}
-                        </Text>
                       </View>
-
-                      <ExpenseImpactCol expense={exp} />
-                    </TouchableOpacity>
-                  );
-                })
+                    )}
+                </>
               )}
             </View>
           </View>
@@ -644,13 +698,15 @@ export default function GroupDetailScreen() {
         </Animated.View>
       </Animated.ScrollView>
 
-      {/* Cinematic Collapsing Header (Respects Notification Bar) */}
+      {/* Cinematic Collapsing Header (Hardware accelerated native driver) */}
       <Animated.View
+        pointerEvents="box-none"
         style={[
           styles.collapsingHeader,
           {
-            height: headerHeight,
+            height: HEADER_MAX_HEIGHT,
             paddingTop: topInset,
+            transform: [{ translateY: headerTranslateY }],
           },
         ]}
       >
@@ -663,83 +719,12 @@ export default function GroupDetailScreen() {
           style={[
             StyleSheet.absoluteFill,
             {
-              transform: [{ scale: imageScale }],
+              transform: [{ scale: imageScale }, { translateY: imageTranslateY }],
             },
           ]}
           resizeMode="cover"
         />
         <Animated.View style={[styles.heroVignette, { opacity: vignetteOpacity }]} />
-
-        {/* Floating Glass Top Bar */}
-        <View style={styles.heroTopBar}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.selectionAsync();
-              router.back();
-            }}
-            style={styles.heroGlassBtn}
-            activeOpacity={0.8}
-          >
-            <ArrowLeft size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          {/* Centered Collapsed Title */}
-          <Animated.View
-            style={[
-              styles.collapsedTitleWrap,
-              {
-                opacity: collapsedTitleOpacity,
-                transform: [{ translateY: collapsedTitleTranslateY }],
-              },
-            ]}
-            pointerEvents={isCollapsed ? 'auto' : 'none'}
-          >
-            <TouchableOpacity onPress={scrollToTop} activeOpacity={0.7}>
-              <Text style={styles.collapsedTitleText} numberOfLines={1}>
-                {group.name}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <View style={styles.heroTopBarActions}>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.selectionAsync();
-                const targetId = Array.isArray(id) ? id[0] : (id || group.id);
-                router.push(`/groups/${targetId}/search`);
-              }}
-              style={styles.heroGlassBtn}
-              activeOpacity={0.8}
-            >
-              <Search size={17} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push({
-                  pathname: '/ai/chat',
-                  params: { groupId: group.id, groupName: group.name },
-                });
-              }}
-              style={[styles.heroGlassBtn, { backgroundColor: 'rgba(139, 92, 246, 0.45)' }]}
-              activeOpacity={0.8}
-            >
-              <Sparkles size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.selectionAsync();
-                router.push(`/groups/${id}/settings`);
-              }}
-              style={styles.heroGlassBtn}
-              activeOpacity={0.8}
-            >
-              <Settings size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Hero Expanded Title & Floating Actions */}
         <Animated.View
@@ -750,7 +735,6 @@ export default function GroupDetailScreen() {
               transform: [{ translateY: expandedContentTranslateY }],
             },
           ]}
-          pointerEvents={isCollapsed ? 'none' : 'auto'}
         >
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.heroGroupTitle} numberOfLines={1}>
@@ -791,14 +775,84 @@ export default function GroupDetailScreen() {
         </Animated.View>
       </Animated.View>
 
+      {/* Floating Glass Top Bar (Pinned at topInset, sits above collapsingHeader) */}
+      <View style={[styles.heroTopBarFixed, { top: topInset }]}>
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.selectionAsync();
+            router.back();
+          }}
+          style={styles.heroGlassBtn}
+          activeOpacity={0.8}
+        >
+          <ArrowLeft size={18} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        {/* Centered Collapsed Title */}
+        <Animated.View
+          style={[
+            styles.collapsedTitleWrap,
+            {
+              opacity: collapsedTitleOpacity,
+              transform: [{ translateY: collapsedTitleTranslateY }],
+            },
+          ]}
+        >
+          <TouchableOpacity onPress={scrollToTop} activeOpacity={0.7}>
+            <Text style={styles.collapsedTitleText} numberOfLines={1}>
+              {group.name}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <View style={styles.heroTopBarActions}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.selectionAsync();
+              const targetId = Array.isArray(id) ? id[0] : (id || group.id);
+              router.push(`/groups/${targetId}/search`);
+            }}
+            style={styles.heroGlassBtn}
+            activeOpacity={0.8}
+          >
+            <Search size={17} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: '/ai/chat',
+                params: { groupId: group.id, groupName: group.name },
+              });
+            }}
+            style={[styles.heroGlassBtn, { backgroundColor: 'rgba(139, 92, 246, 0.45)' }]}
+            activeOpacity={0.8}
+          >
+            <Sparkles size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.push(`/groups/${id}/settings`);
+            }}
+            style={styles.heroGlassBtn}
+            activeOpacity={0.8}
+          >
+            <Settings size={18} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Fixed Docked Tab Bar (Pinned flush at HEADER_MIN_HEIGHT when scrolled past threshold) */}
       <Animated.View
-        pointerEvents={isSticky ? 'auto' : 'none'}
         style={[
           styles.fixedTabBarContainer,
           {
             top: HEADER_MIN_HEIGHT,
             opacity: stickyTabOpacity,
+            transform: [{ translateY: stickyTabTranslateY }],
           },
         ]}
       >
@@ -848,7 +902,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
     elevation: 8,
     overflow: 'hidden',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 12,
     paddingBottom: 10,
     backgroundColor: THEME.colors.background,
@@ -858,6 +912,17 @@ const styles = StyleSheet.create({
   heroVignette: {
     ...StyleSheet.absoluteFill,
     backgroundColor: '#000000',
+  },
+  heroTopBarFixed: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 110,
+    elevation: 10,
   },
   heroTopBar: {
     height: 40,
@@ -1347,6 +1412,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.colors.textMuted,
     textAlign: 'center',
+  },
+
+  // Progressive Loading & Completion
+  progressiveLoaderContainer: {
+    paddingVertical: 8,
+  },
+  endOfListFooter: {
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endOfListText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.3,
   },
 
   // FAB
