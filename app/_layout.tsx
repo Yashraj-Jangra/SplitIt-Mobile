@@ -5,6 +5,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { THEME } from '../src/constants/theme';
 import { AuthProvider, useAuth } from '../src/contexts/auth.context';
+import { NetworkProvider } from '../src/contexts/network.context';
+import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { notificationService } from '../src/services/notification.service';
 import { useEffect } from 'react';
 
@@ -173,9 +175,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        <AuthProvider>
-          <NavigationGate />
-        </AuthProvider>
+        <NetworkProvider>
+          <AuthProvider>
+            <OfflineBanner />
+            <NavigationGate />
+          </AuthProvider>
+        </NetworkProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

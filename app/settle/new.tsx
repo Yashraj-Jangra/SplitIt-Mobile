@@ -15,10 +15,12 @@ import { X, ArrowRight, Zap, QrCode, Banknote, ShieldCheck } from 'lucide-react-
 import { THEME } from '../../src/constants/theme';
 import { launchUpiPayment } from '../../src/utils/upi';
 import { settlementService } from '../../src/services/settlement.service';
+import { useNetwork } from '../../src/contexts/network.context';
 import * as Haptics from 'expo-haptics';
 
 export default function SettleUpModal() {
   const router = useRouter();
+  const { requireOnline } = useNetwork();
   const params = useLocalSearchParams<{
     groupId?: string;
     debtorId?: string;
@@ -40,6 +42,7 @@ export default function SettleUpModal() {
   const [loading, setLoading] = useState(false);
 
   const handleAction = async () => {
+    if (!requireOnline('record settlements')) return;
     const numAmount = parseFloat(amount) || 0;
     if (numAmount <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

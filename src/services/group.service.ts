@@ -2,6 +2,7 @@ import { simplifyDebts } from '@splitit/core';
 import * as SecureStore from 'expo-secure-store';
 import { authService, API_BASE_URL } from './auth.service';
 import { settingsService } from './settings.service';
+import { storageService, STORAGE_KEYS } from './storage.service';
 
 const DEFAULT_GROUP_STORAGE_KEY = 'splitit_default_group_id';
 
@@ -103,7 +104,31 @@ let _cachedGroups: GroupListItem[] = [];
 
 export const groupService = {
   /**
-   * Fetch all user groups with balance & cover images
+   * Fast tick lookup of user groups from persistent offline storage (0ms cold boot).
+   */
+  async getCachedUserGroups(): Promise<GroupListItem[]> {
+    if (_cachedGroups.length > 0) return _cachedGroups;
+    const fromStorage = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
+    if (fromStorage && fromStorage.length > 0) {
+      _cachedGroups = fromStorage;
+      return fromStorage;
+    }
+    return [];
+  },
+
+  /**
+   * Fast tick lookup of a group's cached detail from persistent offline storage (0ms instant display).
+   */
+  async getCachedGroupDetails(groupId: string): Promise<GroupDetailData | null> {
+    try {
+      return await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Fetch all user groups with balance & cover images (SWR pattern).
    */
   async getUserGroups(): Promise<GroupListItem[]> {
     try {
@@ -174,12 +199,19 @@ export const groupService = {
               };
             });
             _cachedGroups = mapped;
+            await storageService.setItem(STORAGE_KEYS.GROUPS, mapped);
             return mapped;
           }
         }
       }
-    } catch (e) {
-      // Fallback for development / offline preview
+    } catch {
+      // Offline fallback
+    }
+
+    const offlineGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
+    if (offlineGroups && offlineGroups.length > 0) {
+      _cachedGroups = offlineGroups;
+      return offlineGroups;
     }
 
     if (_cachedGroups.length > 0) {
@@ -448,7 +480,7 @@ export const groupService = {
               }))
             : [];
 
-          return {
+          const detailResult: GroupDetailData = {
             id: groupData.id,
             name: groupData.name || 'Group',
             description: groupData.description || undefined,
@@ -463,10 +495,39 @@ export const groupService = {
             budget,
             activities,
           };
+
+          // Cache group details offline
+          await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), detailResult);
+
+          // Proactively warm each expense's detail cache in persistent storage
+          for (const exp of expenses) {
+            await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(exp.id), {
+              id: exp.id,
+              title: exp.title,
+              amount: exp.amount,
+              currency: exp.currency,
+              date: exp.date,
+              paidById: exp.paidById,
+              paidByName: exp.paidByName,
+              category: exp.category,
+              payers: exp.payers,
+              participants: exp.participants,
+              groupId: groupData.id,
+              groupName: groupData.name || 'Group',
+            });
+          }
+
+          return detailResult;
         }
       }
-    } catch (e) {
+    } catch {
       // Backend request failed or offline
+    }
+
+    // Check offline storage before falling back to defaults
+    const offlineGroup = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+    if (offlineGroup) {
+      return offlineGroup;
     }
 
     // Match requested group by ID from active user groups

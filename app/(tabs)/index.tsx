@@ -27,10 +27,14 @@ import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { BalanceHistoryGraph } from '../../src/components/dashboard/BalanceHistoryGraph';
+import { BalanceSkeleton } from '../../src/components/skeletons/BalanceSkeleton';
+import { TransactionRowSkeleton } from '../../src/components/skeletons/TransactionRowSkeleton';
+import { useNetwork } from '../../src/contexts/network.context';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isOnline, requireOnline } = useNetwork();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>([]);
@@ -59,6 +63,21 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    // 0ms Fast Tick: Hydrate immediately from persistent offline storage
+    Promise.all([
+      authService.getCachedUser(),
+      groupService.getCachedUserGroups(),
+      expenseService.getCachedUserExpenses(),
+      balanceService.getCachedUserBalanceSummary(),
+    ]).then(([cachedUser, cachedGroups, cachedTx, cachedSummary]) => {
+      if (cachedUser) setCurrentUser(cachedUser);
+      if (cachedGroups && cachedGroups.length > 0) setGroups(cachedGroups);
+      if (cachedTx && cachedTx.length > 0) setRecentTransactions(cachedTx);
+      if (cachedSummary) setBalanceSummary(cachedSummary);
+      if (cachedGroups.length > 0 || cachedTx.length > 0 || cachedSummary) {
+        setLoading(false);
+      }
+    });
     loadData();
   }, []);
 
@@ -68,11 +87,13 @@ export default function HomeScreen() {
   };
 
   const handleAddExpense = () => {
+    if (!requireOnline('create an expense')) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/expenses/new');
   };
 
   const handleSettleUp = () => {
+    if (!requireOnline('record settlements')) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/settle/new');
   };
@@ -137,113 +158,117 @@ export default function HomeScreen() {
         </View>
 
         {/* Modern Fintech Balance Widget with Dedicated Non-Overlapping Sparkline Track */}
-        <View style={styles.balanceWidget}>
-          {/* TIER 1: Hero Metrics Header */}
-          <View style={styles.widgetHeader}>
-            <View style={styles.widgetEyebrowRow}>
-              <View
-                style={[
-                  styles.statusDot,
-                  {
-                    backgroundColor:
-                      netBalance > 0.01
-                        ? THEME.colors.primary
-                        : netBalance < -0.01
-                        ? THEME.colors.negative
-                        : THEME.colors.textMuted,
-                  },
-                ]}
-              />
-              <Text style={styles.widgetEyebrow}>TOTAL BALANCE</Text>
+        {loading && !balanceSummary ? (
+          <BalanceSkeleton />
+        ) : (
+          <View style={styles.balanceWidget}>
+            {/* TIER 1: Hero Metrics Header */}
+            <View style={styles.widgetHeader}>
+              <View style={styles.widgetEyebrowRow}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor:
+                        netBalance > 0.01
+                          ? THEME.colors.primary
+                          : netBalance < -0.01
+                          ? THEME.colors.negative
+                          : THEME.colors.textMuted,
+                    },
+                  ]}
+                />
+                <Text style={styles.widgetEyebrow}>TOTAL BALANCE</Text>
 
-              {balanceSummary && Math.abs(balanceSummary.trendPercentage) > 0 && (
-                <View style={styles.widgetTrendInline}>
-                  <Text style={styles.widgetTrendSeparator}>·</Text>
-                  {balanceSummary.trendPercentage >= 0 ? (
-                    <TrendingUp size={11} color={THEME.colors.primary} />
-                  ) : (
-                    <TrendingDown size={11} color={THEME.colors.negative} />
-                  )}
-                  <Text
-                    style={[
-                      styles.widgetTrendText,
-                      {
-                        color:
-                          balanceSummary.trendPercentage >= 0
-                            ? THEME.colors.primary
-                            : THEME.colors.negative,
-                      },
-                    ]}
-                  >
-                    {Math.abs(balanceSummary.trendPercentage).toFixed(0)}% (30d)
-                  </Text>
+                {balanceSummary && Math.abs(balanceSummary.trendPercentage) > 0 && (
+                  <View style={styles.widgetTrendInline}>
+                    <Text style={styles.widgetTrendSeparator}>·</Text>
+                    {balanceSummary.trendPercentage >= 0 ? (
+                      <TrendingUp size={11} color={THEME.colors.primary} />
+                    ) : (
+                      <TrendingDown size={11} color={THEME.colors.negative} />
+                    )}
+                    <Text
+                      style={[
+                        styles.widgetTrendText,
+                        {
+                          color:
+                            balanceSummary.trendPercentage >= 0
+                              ? THEME.colors.primary
+                              : THEME.colors.negative,
+                        },
+                      ]}
+                    >
+                      {Math.abs(balanceSummary.trendPercentage).toFixed(0)}% (30d)
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.widgetAmountBlock}>
+                <Text
+                  style={[
+                    styles.widgetNumber,
+                    netBalance > 0.01 && { color: THEME.colors.primary },
+                    netBalance < -0.01 && { color: THEME.colors.negative },
+                  ]}
+                >
+                  {netBalance > 0.01
+                    ? `+₹${netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : netBalance < -0.01
+                    ? `-₹${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : '₹0.00'}
+                </Text>
+                <Text style={styles.widgetSubtitle}>
+                  {netBalance > 0.01
+                    ? 'Overall you are owed money'
+                    : netBalance < -0.01
+                    ? 'Overall you owe money'
+                    : 'All settled up • No outstanding balance'}
+                </Text>
+              </View>
+            </View>
+
+            {/* TIER 2: Dedicated In-Flow Sparkline Track (Zero Overlap Guaranteed!) */}
+            {balanceSummary && (
+              <View style={styles.graphTrack}>
+                <BalanceHistoryGraph
+                  data={balanceSummary.chartData}
+                  domain={balanceSummary.domain}
+                  gradientOffset={balanceSummary.gradientOffset}
+                  minBalance={balanceSummary.minBalance}
+                  maxBalance={balanceSummary.maxBalance}
+                  height={75}
+                />
+              </View>
+            )}
+
+            {/* TIER 3: Unboxed Stat Breakdown Footer */}
+            <View style={styles.widgetFooter}>
+              <View style={styles.statColumn}>
+                <View style={styles.statLabelRow}>
+                  <ArrowDownLeft size={12} color={THEME.colors.primary} strokeWidth={2.5} />
+                  <Text style={styles.statLabel}>Owed to you</Text>
                 </View>
-              )}
-            </View>
+                <Text style={[styles.statValue, { color: THEME.colors.primary }]}>
+                  ₹{totalOwed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
 
-            <View style={styles.widgetAmountBlock}>
-              <Text
-                style={[
-                  styles.widgetNumber,
-                  netBalance > 0.01 && { color: THEME.colors.primary },
-                  netBalance < -0.01 && { color: THEME.colors.negative },
-                ]}
-              >
-                {netBalance > 0.01
-                  ? `+₹${netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : netBalance < -0.01
-                  ? `-₹${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : '₹0.00'}
-              </Text>
-              <Text style={styles.widgetSubtitle}>
-                {netBalance > 0.01
-                  ? 'Overall you are owed money'
-                  : netBalance < -0.01
-                  ? 'Overall you owe money'
-                  : 'All settled up • No outstanding balance'}
-              </Text>
+              <View style={styles.statDivider} />
+
+              <View style={styles.statColumn}>
+                <View style={styles.statLabelRow}>
+                  <ArrowUpRight size={12} color={THEME.colors.negative} strokeWidth={2.5} />
+                  <Text style={styles.statLabel}>You owe</Text>
+                </View>
+                <Text style={[styles.statValue, { color: THEME.colors.negative }]}>
+                  ₹{totalOwe.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
             </View>
           </View>
-
-          {/* TIER 2: Dedicated In-Flow Sparkline Track (Zero Overlap Guaranteed!) */}
-          {balanceSummary && (
-            <View style={styles.graphTrack}>
-              <BalanceHistoryGraph
-                data={balanceSummary.chartData}
-                domain={balanceSummary.domain}
-                gradientOffset={balanceSummary.gradientOffset}
-                minBalance={balanceSummary.minBalance}
-                maxBalance={balanceSummary.maxBalance}
-                height={75}
-              />
-            </View>
-          )}
-
-          {/* TIER 3: Unboxed Stat Breakdown Footer */}
-          <View style={styles.widgetFooter}>
-            <View style={styles.statColumn}>
-              <View style={styles.statLabelRow}>
-                <ArrowDownLeft size={12} color={THEME.colors.primary} strokeWidth={2.5} />
-                <Text style={styles.statLabel}>Owed to you</Text>
-              </View>
-              <Text style={[styles.statValue, { color: THEME.colors.primary }]}>
-                ₹{totalOwed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </Text>
-            </View>
-
-            <View style={styles.statDivider} />
-
-            <View style={styles.statColumn}>
-              <View style={styles.statLabelRow}>
-                <ArrowUpRight size={12} color={THEME.colors.negative} strokeWidth={2.5} />
-                <Text style={styles.statLabel}>You owe</Text>
-              </View>
-              <Text style={[styles.statValue, { color: THEME.colors.negative }]}>
-                ₹{totalOwe.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </Text>
-            </View>
-          </View>
-        </View>
+        )}
 
         {/* Tactile Action Dock */}
         <View style={styles.actionDock}>
@@ -403,6 +428,8 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 );
               })
+            ) : loading ? (
+              <TransactionRowSkeleton count={5} />
             ) : (
               <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                 <Text style={{ color: THEME.colors.textMuted, fontSize: 13 }}>No recent transactions recorded yet</Text>

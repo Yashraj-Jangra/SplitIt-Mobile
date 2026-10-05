@@ -2,6 +2,7 @@ import { authService, API_BASE_URL } from './auth.service';
 import { parseComplexChange, ParsedChange } from '@splitit/core';
 import { groupService } from './group.service';
 import { settingsService } from './settings.service';
+import { storageService, STORAGE_KEYS } from './storage.service';
 
 export interface CreateExpensePayload {
   groupId: string;
@@ -98,6 +99,29 @@ const _commentsCache = new Map<string, ExpenseHistoryLog[]>();
 
 export const expenseService = {
   /**
+   * Fast tick lookup of recent transactions from persistent offline storage (0ms cold boot).
+   */
+  async getCachedUserExpenses(): Promise<UserTransactionItem[]> {
+    try {
+      const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+      return cached || [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Fast tick lookup of an expense's cached details and split record from persistent offline storage.
+   */
+  async getCachedExpenseDetails(expenseId: string): Promise<ExpenseDetailModel | null> {
+    try {
+      return await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
+    } catch {
+      return null;
+    }
+  },
+
+  /**
    * Fetch recent expenses for the authenticated user across all groups.
    */
   async getUserExpenses(limit: number = 20): Promise<UserTransactionItem[]> {
@@ -106,7 +130,10 @@ export const expenseService = {
       const currentUser = await authService.getCachedUser();
       const currentUserId = currentUser?.id || '';
 
-      if (!token) return [];
+      if (!token) {
+        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+        return cached || [];
+      }
 
       const res = await fetch(`${API_BASE_URL}/api/expenses`, {
         headers: {
@@ -116,10 +143,16 @@ export const expenseService = {
         },
       });
 
-      if (!res.ok) return [];
+      if (!res.ok) {
+        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+        return cached || [];
+      }
 
       const raw = await res.json();
-      if (!Array.isArray(raw)) return [];
+      if (!Array.isArray(raw)) {
+        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+        return cached || [];
+      }
 
       let groupNameMap = new Map<string, string>();
       try {
@@ -206,9 +239,57 @@ export const expenseService = {
         };
       });
 
+      // Persist user transactions for instant offline rendering
+      await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS, mapped);
+
+      // Pre-warm individual expense detail caches if payers and participants exist
+      for (const item of mapped) {
+        if (item.payers && item.participants && item.payers.length > 0) {
+          const existing = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(item.id));
+          if (!existing) {
+            await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(item.id), {
+              id: item.id,
+              groupId: item.groupId,
+              groupName: item.groupName,
+              title: item.title,
+              amount: item.amount,
+              currency: item.currency || 'INR',
+              date: item.date,
+              rawDate: new Date().toISOString(),
+              category: {
+                master: item.masterCategory,
+                sub: item.category,
+              },
+              splitType: 'equally',
+              paidById: item.payers[0]?.user?.uid || item.payers[0]?.userId || '',
+              paidByName: item.paidByName,
+              payers: item.payers.map((p: any) => ({
+                userId: p.user?.uid || p.userId || '',
+                name: (p.user?.uid || p.userId) === currentUserId ? 'You' : (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : p.user?.name || 'Member'),
+                avatarUrl: p.user?.avatarUrl,
+                amount: Number(p.amount || 0),
+              })),
+              participants: item.participants.map((p: any) => ({
+                userId: p.user?.uid || p.userId || '',
+                name: (p.user?.uid || p.userId) === currentUserId ? 'You' : (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : p.user?.name || 'Member'),
+                avatarUrl: p.user?.avatarUrl,
+                amountOwed: Number(p.amountOwed || 0),
+                isCurrentUser: (p.user?.uid || p.userId) === currentUserId,
+              })),
+              creator: {
+                id: item.payers[0]?.user?.uid || item.payers[0]?.userId || '',
+                name: item.paidByName,
+              },
+              logs: [],
+            });
+          }
+        }
+      }
+
       return mapped;
     } catch {
-      return [];
+      const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+      return cached || [];
     }
   },
 
@@ -379,7 +460,7 @@ export const expenseService = {
             settingsService.getMasterCategory(subCategory) ||
             'Uncategorized';
 
-          return {
+          const detailResult: ExpenseDetailModel = {
             id: e.id,
             groupId: targetGroupId || '',
             groupName: resolvedGroupName || 'Group',
@@ -410,10 +491,21 @@ export const expenseService = {
             },
             logs: allLogs,
           };
+
+          // Cache expense detail offline
+          await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(expenseId), detailResult);
+
+          return detailResult;
         }
       }
     } catch {
       // Offline fallback
+    }
+
+    // Check offline storage before falling back to defaults
+    const cachedExpense = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
+    if (cachedExpense) {
+      return cachedExpense;
     }
 
     // Dynamic Group-Aware Fallback: Look up from cached group details

@@ -40,10 +40,12 @@ import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
+import { useNetwork } from '../../src/contexts/network.context';
 import * as Haptics from 'expo-haptics';
 
 export default function NewExpenseModal() {
   const router = useRouter();
+  const { requireOnline } = useNetwork();
   const params = useLocalSearchParams<{
     amount?: string;
     description?: string;
@@ -315,6 +317,7 @@ export default function NewExpenseModal() {
   };
 
   const handleSave = async () => {
+    if (!requireOnline('create an expense')) return;
     if (!description.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Missing Description', 'Please enter a description for this expense.');

@@ -54,9 +54,12 @@ import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import { MasterCategory, validateSplit, calculateSplitAmounts, SplitType } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
+import { useNetwork } from '../../src/contexts/network.context';
+import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBreakdownSkeleton';
 
 export default function ExpenseDetailScreen() {
   const router = useRouter();
+  const { isOnline, requireOnline } = useNetwork();
   const params = useLocalSearchParams<{
     id: string;
     groupId?: string;
@@ -70,6 +73,7 @@ export default function ExpenseDetailScreen() {
   const expenseId = Array.isArray(params.id) ? params.id[0] : params.id;
   const rawGroupId = Array.isArray(params.groupId) ? params.groupId[0] : (params.groupId || '');
   const [groupId, setGroupId] = useState(rawGroupId);
+  const [hasSplitLoaded, setHasSplitLoaded] = useState(false);
 
   const [expense, setExpense] = useState<ExpenseDetailModel | null>(() => {
     if (params.title && params.amount) {
@@ -98,14 +102,7 @@ export default function ExpenseDetailScreen() {
             amount: parsedAmt,
           },
         ],
-        participants: [
-          {
-            userId: 'participant',
-            name: 'You',
-            amountOwed: parsedAmt,
-            isCurrentUser: true,
-          },
-        ],
+        participants: [], // No bogus 100% owe participant! Avoid flashing "You owe full amount"
         creator: {
           id: 'creator',
           name: params.paidByName || 'Member',
@@ -159,6 +156,9 @@ export default function ExpenseDetailScreen() {
     try {
       const data = await expenseService.getExpenseDetails(expenseId, groupId || undefined);
       setExpense(data);
+      if (data?.participants && data.participants.length > 0) {
+        setHasSplitLoaded(true);
+      }
       const targetGId = data.groupId || groupId;
       if (targetGId) {
         if (!groupId) setGroupId(targetGId);
@@ -196,10 +196,21 @@ export default function ExpenseDetailScreen() {
   }, []);
 
   useEffect(() => {
+    // 0ms Fast Tick: Hydrate offline split record immediately
+    expenseService.getCachedExpenseDetails(expenseId).then((cached) => {
+      if (cached) {
+        setExpense(cached);
+        if (cached.participants && cached.participants.length > 0) {
+          setHasSplitLoaded(true);
+        }
+        setLoading(false);
+      }
+    });
     fetchExpense();
   }, [expenseId, groupId]);
 
   const handleDelete = () => {
+    if (!requireOnline('delete an expense')) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       'Delete Expense',
@@ -208,7 +219,6 @@ export default function ExpenseDetailScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
-          style: 'destructive',
           onPress: async () => {
             const amt = expense?.amount || parseFloat(params.amount || '0') || 0;
             const targetGroupId = expense?.groupId || groupId;
@@ -222,6 +232,7 @@ export default function ExpenseDetailScreen() {
   };
 
   const handleOpenEdit = () => {
+    if (!requireOnline('edit this expense')) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (expense) {
       setEditTitle(expense.title);
@@ -307,6 +318,7 @@ export default function ExpenseDetailScreen() {
   }, [editSplitMode]);
 
   const handleSaveEdit = async () => {
+    if (!requireOnline('save changes to this expense')) return;
     if (!editTitle.trim() || !editAmount.trim() || isSavingEdit) return;
     const newAmt = parseFloat(editAmount);
     if (isNaN(newAmt) || newAmt <= 0) return;
@@ -407,6 +419,7 @@ export default function ExpenseDetailScreen() {
   };
 
   const handleSendComment = async () => {
+    if (!requireOnline('post comments')) return;
     const text = commentInput.trim();
     if (!text || isSendingComment) return;
 
@@ -602,36 +615,45 @@ export default function ExpenseDetailScreen() {
             )}
 
             {/* Tree Branch Container */}
-            <View style={styles.treeBranchesWrapper}>
-              {participants.map((p, index) => {
-                const isLast = index === participants.length - 1;
-                const owedText = p.isCurrentUser
-                  ? `You owe ${currencySymbol}${p.amountOwed.toFixed(2)}`
-                  : `${p.name} owes ${currencySymbol}${p.amountOwed.toFixed(2)}`;
+            {!hasSplitLoaded ? (
+              <View style={styles.splitSkeletonBlock}>
+                <View style={styles.splitLoadingNotice}>
+                  <Text style={styles.splitLoadingNoticeText}>Calculating split breakdown...</Text>
+                </View>
+                <SplitBreakdownSkeleton count={3} />
+              </View>
+            ) : (
+              <View style={styles.treeBranchesWrapper}>
+                {participants.map((p, index) => {
+                  const isLast = index === participants.length - 1;
+                  const owedText = p.isCurrentUser
+                    ? `You owe ${currencySymbol}${p.amountOwed.toFixed(2)}`
+                    : `${p.name} owes ${currencySymbol}${p.amountOwed.toFixed(2)}`;
 
-                return (
-                  <View key={p.userId || index} style={styles.treeBranchRow}>
-                    {/* Visual Branch Line Connector */}
-                    <View style={styles.branchVisual}>
-                      <View style={[styles.branchVerticalLine, isLast && styles.branchVerticalHalf]} />
-                      <View style={styles.branchHorizontalLine} />
-                    </View>
+                  return (
+                    <View key={p.userId || index} style={styles.treeBranchRow}>
+                      {/* Visual Branch Line Connector */}
+                      <View style={styles.branchVisual}>
+                        <View style={[styles.branchVerticalLine, isLast && styles.branchVerticalHalf]} />
+                        <View style={styles.branchHorizontalLine} />
+                      </View>
 
-                    {/* Participant Debt Text */}
-                    <View style={styles.branchContent}>
-                      <Text
-                        style={[
-                          styles.branchText,
-                          p.isCurrentUser && styles.branchTextSelf,
-                        ]}
-                      >
-                        {owedText}
-                      </Text>
+                      {/* Participant Debt Text */}
+                      <View style={styles.branchContent}>
+                        <Text
+                          style={[
+                            styles.branchText,
+                            p.isCurrentUser && styles.branchTextSelf,
+                          ]}
+                        >
+                          {owedText}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* Activity & History Audit Logs Section */}
@@ -1269,6 +1291,21 @@ const styles = StyleSheet.create({
   branchTextSelf: {
     color: '#E5E7EB',
     fontWeight: '700',
+  },
+  splitSkeletonBlock: {
+    paddingVertical: 10,
+    paddingLeft: 6,
+  },
+  splitLoadingNotice: {
+    marginBottom: 6,
+    paddingLeft: 4,
+  },
+  splitLoadingNoticeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#71717A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
 
   // Activity & Audit Logs Section

@@ -104,9 +104,15 @@ export default function GroupDetailScreen() {
   };
 
   useEffect(() => {
-    setLoading(true);
+    // 0ms fast tick: hydrate from persistent offline storage
+    groupService.getCachedGroupDetails(targetId).then((cached) => {
+      if (cached) {
+        setGroup(cached);
+        setLoading(false);
+      }
+    });
     loadGroup();
-  }, [id]);
+  }, [targetId]);
 
   const onRefresh = () => {
     setRefreshing(true);

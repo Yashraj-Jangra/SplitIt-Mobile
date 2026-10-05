@@ -1,5 +1,6 @@
 import { authService, API_BASE_URL } from './auth.service';
 import { groupService, GroupListItem } from './group.service';
+import { storageService, STORAGE_KEYS } from './storage.service';
 import {
   simplifyDebts,
   calculateBalanceHistory,
@@ -20,6 +21,17 @@ export interface UserBalanceSummary {
 }
 
 export const balanceService = {
+  /**
+   * Fast tick lookup of balance summary from persistent offline storage (0ms cold boot).
+   */
+  async getCachedUserBalanceSummary(): Promise<UserBalanceSummary | null> {
+    try {
+      return await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY);
+    } catch {
+      return null;
+    }
+  },
+
   /**
    * Fetches and computes the comprehensive user financial balance summary:
    * 1. Aggregates P2P debt simplifications across all user groups.
@@ -171,7 +183,7 @@ export const balanceService = {
 
       const history: BalanceHistoryCalculation = calculateBalanceHistory(transactions, 30);
 
-      return {
+      const result: UserBalanceSummary = {
         netBalance,
         totalOwed,
         totalOwe,
@@ -182,7 +194,13 @@ export const balanceService = {
         minBalance: history.minBalance,
         maxBalance: history.maxBalance,
       };
+
+      await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY, result);
+      return result;
     } catch {
+      const cached = await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY);
+      if (cached) return cached;
+
       // Safe fallback
       const defaultHistory = calculateBalanceHistory([], 30);
       return {
