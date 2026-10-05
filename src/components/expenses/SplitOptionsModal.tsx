@@ -22,6 +22,9 @@ import {
   validateSplit,
   calculateEqualPercentages,
   calculateEqualAmounts,
+  calculateSplitPercentages,
+  calculateSharesPercentages,
+  calculateAmountsPercentages,
   SplitType,
 } from '@splitit/core';
 import { THEME } from '../../constants/theme';
@@ -135,8 +138,8 @@ export function SplitOptionsModal({
       let selIdx = 0;
       cloned.forEach((p) => {
         if (p.selected) {
-          exactMap[p.id] = p.exactAmount ? String(p.exactAmount) : String(equalAmounts[selIdx].toFixed(2));
-          pctMap[p.id] = p.percentage ? String(p.percentage) : String(equalPercentages[selIdx].toFixed(2));
+          exactMap[p.id] = p.exactAmount ? String(Number(p.exactAmount).toFixed(2)) : String(equalAmounts[selIdx].toFixed(2));
+          pctMap[p.id] = p.percentage ? String(Number(p.percentage).toFixed(2)) : String(equalPercentages[selIdx].toFixed(2));
           selIdx++;
         } else {
           exactMap[p.id] = '0.00';
@@ -184,8 +187,31 @@ export function SplitOptionsModal({
       });
       return map;
     } catch {
-      const share = selectedCount > 0 ? totalAmount / selectedCount : 0;
+      const share = selectedCount > 0 ? parseFloat((totalAmount / selectedCount).toFixed(2)) : 0;
       return Object.fromEntries(items.map((p) => [p.id, p.selected ? share : 0]));
+    }
+  }, [totalAmount, selectedCount, items, splitType, exactInputs, percentageInputs, sharesInputs]);
+
+  // Real-time calculation of allocated percentages (all rounded and reconciled with 2 decimals, summing to 100.00% across all modes)
+  const splitPercentages = useMemo<Record<string, number>>(() => {
+    if (selectedCount === 0) {
+      return Object.fromEntries(items.map((p) => [p.id, 0]));
+    }
+
+    try {
+      const inputs = items.map((p) => ({
+        userId: p.id,
+        selected: p.selected,
+        shares: sharesInputs[p.id] || 1,
+        percentage: parseFloat(percentageInputs[p.id] || '0') || 0,
+        amountOwed: parseFloat(exactInputs[p.id] || '0') || 0,
+      }));
+
+      return calculateSplitPercentages(totalAmount, inputs, splitType);
+    } catch {
+      const pcts = calculateEqualPercentages(selectedCount);
+      let idx = 0;
+      return Object.fromEntries(items.map((p) => [p.id, p.selected ? pcts[idx++] : 0]));
     }
   }, [totalAmount, selectedCount, items, splitType, exactInputs, percentageInputs, sharesInputs]);
 
@@ -437,7 +463,7 @@ export function SplitOptionsModal({
           );
         } else if (validation.kind === 'percentage') {
           setErrorMessage(
-            `Percentages sum (${validation.totalPercentage.toFixed(2)}%) must equal 100%.`
+            `Percentages sum (${validation.totalPercentage.toFixed(2)}%) must equal 100.00%.`
           );
         }
       } else {
@@ -448,12 +474,17 @@ export function SplitOptionsModal({
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    const updatedParticipants: SplitParticipantItem[] = items.map((p) => ({
-      ...p,
-      shares: sharesInputs[p.id] || 1,
-      percentage: parseFloat(percentageInputs[p.id] || '0') || 0,
-      exactAmount: parseFloat(exactInputs[p.id] || '0') || 0,
-    }));
+    const updatedParticipants: SplitParticipantItem[] = items.map((p) => {
+      const isSelected = p.selected;
+      const amt = isSelected ? (splitBreakdown[p.id] !== undefined ? splitBreakdown[p.id] : 0) : 0;
+      const pct = isSelected ? (splitPercentages[p.id] !== undefined ? splitPercentages[p.id] : 0) : 0;
+      return {
+        ...p,
+        shares: sharesInputs[p.id] || 1,
+        percentage: parseFloat(pct.toFixed(2)),
+        exactAmount: parseFloat(amt.toFixed(2)),
+      };
+    });
 
     onConfirm({
       splitType,
@@ -560,19 +591,35 @@ export function SplitOptionsModal({
                     {items.map((p) => {
                       const isSelected = p.selected;
                       const isCurrentUser = currentUserId === p.id;
-                      const userPct = parseFloat(percentageInputs[p.id] || '0') || 0;
-                      const livePctPrice = splitBreakdown[p.id] !== undefined
-                        ? splitBreakdown[p.id]
-                        : (totalAmount * userPct) / 100;
 
-                      const userShares = sharesInputs[p.id] || 1;
-                      const liveSharePrice = splitBreakdown[p.id] !== undefined
-                        ? splitBreakdown[p.id]
-                        : userShares * perShareAmount;
-                      const liveSharePct = totalShares > 0 ? ((userShares / totalShares) * 100).toFixed(1) : '0';
+                      // 1. Equal mode values (exact reconciled amount & percentage)
+                      const liveEqualPrice = isSelected
+                        ? (splitBreakdown[p.id] !== undefined ? splitBreakdown[p.id] : (selectedCount > 0 ? totalAmount / selectedCount : 0))
+                        : 0;
+                      const liveEqualPct = isSelected
+                        ? (splitPercentages[p.id] !== undefined ? splitPercentages[p.id] : 0)
+                        : 0;
 
+                      // 2. Unequal mode values (strict 2-decimal percentage & exact amount)
                       const userExact = parseFloat(exactInputs[p.id] || '0') || 0;
-                      const liveExactPct = totalAmount > 0 ? ((userExact / totalAmount) * 100).toFixed(1) : '0';
+                      const liveExactPct = isSelected
+                        ? (splitPercentages[p.id] !== undefined ? splitPercentages[p.id] : (totalAmount > 0 ? (userExact / totalAmount) * 100 : 0))
+                        : 0;
+
+                      // 3. Percentage mode values (reconciled price matching 100.00% total)
+                      const userPct = parseFloat(percentageInputs[p.id] || '0') || 0;
+                      const livePctPrice = isSelected
+                        ? (splitBreakdown[p.id] !== undefined ? splitBreakdown[p.id] : (totalAmount * userPct) / 100)
+                        : 0;
+
+                      // 4. Shares mode values (reconciled share amount & 2-decimal share percentage summing to 100.00%)
+                      const userShares = sharesInputs[p.id] || 1;
+                      const liveSharePrice = isSelected
+                        ? (splitBreakdown[p.id] !== undefined ? splitBreakdown[p.id] : 0)
+                        : 0;
+                      const liveSharePct = isSelected
+                        ? (splitPercentages[p.id] !== undefined ? splitPercentages[p.id] : 0)
+                        : 0;
 
                       return (
                         <TouchableOpacity
@@ -623,11 +670,11 @@ export function SplitOptionsModal({
                             {isSelected ? (
                               mode.type === 'equally' ? (
                                 <Text style={styles.memberSublineHighlight}>
-                                  = ₹{equalShare.toFixed(2)}
+                                  = ₹{liveEqualPrice.toFixed(2)} ({liveEqualPct.toFixed(2)}%)
                                 </Text>
                               ) : mode.type === 'unequally' ? (
                                 <Text style={styles.memberSubline}>
-                                  {liveExactPct}% of total
+                                  {liveExactPct.toFixed(2)}% of total
                                 </Text>
                               ) : mode.type === 'by_percentage' ? (
                                 <Text style={styles.memberSublineHighlight}>
@@ -635,7 +682,7 @@ export function SplitOptionsModal({
                                 </Text>
                               ) : mode.type === 'by_shares' ? (
                                 <Text style={styles.memberSublineHighlight}>
-                                  = ₹{liveSharePrice.toFixed(2)} ({liveSharePct}%)
+                                  = ₹{liveSharePrice.toFixed(2)} ({liveSharePct.toFixed(2)}%)
                                 </Text>
                               ) : null
                             ) : (
@@ -647,7 +694,7 @@ export function SplitOptionsModal({
                           {mode.type === 'equally' ? (
                             <View style={styles.equalRightStatus}>
                               {isSelected ? (
-                                <Text style={styles.equalShareText}>₹{equalShare.toFixed(2)}</Text>
+                                <Text style={styles.equalShareText}>₹{liveEqualPrice.toFixed(2)}</Text>
                               ) : (
                                 <Text style={styles.equalShareTextMuted}>₹0.00</Text>
                               )}
@@ -823,10 +870,10 @@ export function SplitOptionsModal({
                   </>
                 ) : splitType === 'by_percentage' ? (
                   <>
-                    <Text style={styles.bottomMainStat}>{percentageSum.toFixed(2)}% of 100%</Text>
+                    <Text style={styles.bottomMainStat}>{percentageSum.toFixed(2)}% of 100.00%</Text>
                     {isModeBalanced ? (
                       <Text style={[styles.bottomSubStat, styles.textMint]}>
-                        100% Allocated
+                        100.00% Allocated
                       </Text>
                     ) : (
                       <TouchableOpacity onPress={handleAutoBalancePercentage} activeOpacity={0.7}>

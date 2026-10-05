@@ -630,7 +630,7 @@ export default function NewExpenseModal() {
                   </Text>
                   {numAmount > 0 && member.selected && (
                     <Text style={styles.memberShareText}>
-                      ₹{(splitBreakdown[member.id] || 0).toFixed(0)}
+                      ₹{(splitBreakdown[member.id] || 0).toFixed(2)}
                     </Text>
                   )}
                 </TouchableOpacity>
