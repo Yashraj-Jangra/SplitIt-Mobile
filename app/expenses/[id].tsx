@@ -168,9 +168,9 @@ export default function ExpenseDetailScreen() {
       }
       setEditTitle(data.title);
       setEditAmount(String(data.amount));
-      setEditCategory(data.category.sub || 'Other');
+      setEditCategory(data?.category?.sub || 'Other');
       const resolvedMaster =
-        data.category.master || settingsService.getMasterCategory(data.category.sub || 'Other');
+        data?.category?.master || settingsService.getMasterCategory(data?.category?.sub || 'Other');
       setEditMasterCategory(resolvedMaster);
       setSelectedEditMaster(resolvedMaster);
       setEditNotes(data.notes || '');
@@ -237,9 +237,9 @@ export default function ExpenseDetailScreen() {
     if (expense) {
       setEditTitle(expense.title);
       setEditAmount(String(expense.amount));
-      const sub = expense.category.sub || 'Other';
+      const sub = expense?.category?.sub || 'Other';
       const master =
-        expense.category.master || settingsService.getMasterCategory(sub) || 'Food and Drink';
+        expense?.category?.master || settingsService.getMasterCategory(sub) || 'Food and Drink';
       setEditCategory(sub);
       setEditMasterCategory(master);
       setSelectedEditMaster(master);
@@ -479,9 +479,9 @@ export default function ExpenseDetailScreen() {
   const title = expense?.title || params.title || 'Dinner';
   const amount = expense?.amount || parseFloat(params.amount || '450') || 450;
   const currencySymbol = '₹';
-  const creatorName = expense?.creator.name || 'Bhuvansh K.';
+  const creatorName = expense?.creator?.name || expense?.paidByName || params.paidByName || 'Member';
   const dateFormatted = expense?.date || params.date || '3 Mar 2026';
-  const primaryPayerName = expense?.paidByName || params.paidByName || 'MOHIT Y.';
+  const primaryPayerName = expense?.paidByName || params.paidByName || 'Member';
   const participants = expense?.participants || [];
   const logs = expense?.logs || [];
 
@@ -559,7 +559,7 @@ export default function ExpenseDetailScreen() {
                 <Text style={styles.categoryBadgePillText}>
                   {expense?.category?.sub || 'Other'}
                   {expense?.category?.master && expense?.category?.master !== 'Uncategorized' && expense?.category?.master !== expense?.category?.sub
-                    ? ` • ${expense.category.master}`
+                    ? ` • ${expense?.category?.master}`
                     : ''}
                 </Text>
               </View>

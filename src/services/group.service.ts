@@ -514,6 +514,13 @@ export const groupService = {
               participants: exp.participants,
               groupId: groupData.id,
               groupName: groupData.name || 'Group',
+              rawDate: new Date().toISOString(),
+              splitType: 'equally',
+              creator: {
+                id: exp.paidById || 'creator',
+                name: exp.paidByName || 'Member',
+              },
+              logs: [],
             });
           }
 
