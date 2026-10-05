@@ -205,7 +205,8 @@ export default function NewExpenseModal() {
         percentage: p.percentage || 0,
         amountOwed: p.exactAmount || 0,
       }));
-      const results = calculateSplitAmounts(numAmount, inputs, splitMode);
+      const effectivePayerId = payerType === 'single' ? singlePayerId : currentUserId;
+      const results = calculateSplitAmounts(numAmount, inputs, splitMode, effectivePayerId);
       const breakdown: Record<string, number> = {};
       results.forEach((r) => {
         breakdown[r.userId] = r.amountOwed;
@@ -215,7 +216,7 @@ export default function NewExpenseModal() {
       const share = numAmount / Math.max(1, selectedParticipants.length);
       return Object.fromEntries(selectedParticipants.map((p) => [p.id, share]));
     }
-  }, [numAmount, selectedParticipants.length, participants, splitMode]);
+  }, [numAmount, selectedParticipants.length, participants, splitMode, payerType, singlePayerId, currentUserId]);
 
   const paidByText = useMemo(() => {
     if (payerType === 'single') {
@@ -747,6 +748,7 @@ export default function NewExpenseModal() {
           onClose={() => setShowSplitModal(false)}
           totalAmount={numAmount}
           currentUserId={currentUserId}
+          payerId={payerType === 'single' ? singlePayerId : currentUserId}
           initialSplitType={splitMode}
           participants={participants}
           onConfirm={(result) => {

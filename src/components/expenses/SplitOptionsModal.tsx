@@ -45,6 +45,7 @@ interface SplitOptionsModalProps {
   onClose: () => void;
   totalAmount: number;
   currentUserId?: string;
+  payerId?: string;
   initialSplitType?: 'equally' | 'unequally' | 'by_shares' | 'by_percentage' | 'shares' | 'percentage';
   participants: SplitParticipantItem[];
   onConfirm: (result: {
@@ -86,6 +87,7 @@ export function SplitOptionsModal({
   onClose,
   totalAmount,
   currentUserId,
+  payerId,
   initialSplitType = 'equally',
   participants: initialParticipants,
   onConfirm,
@@ -107,6 +109,8 @@ export function SplitOptionsModal({
   const [percentageInputs, setPercentageInputs] = useState<Record<string, string>>({});
   const [sharesInputs, setSharesInputs] = useState<Record<string, number>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const effectivePayerId = payerId || currentUserId;
 
   // Animated Underline Indicator
   const tabUnderlineAnim = useRef(new Animated.Value(0)).current;
@@ -132,8 +136,10 @@ export function SplitOptionsModal({
 
       const selectedMembers = cloned.filter((p) => p.selected);
       const selectedCount = Math.max(1, selectedMembers.length);
-      const equalAmounts = calculateEqualAmounts(totalAmount, selectedCount);
-      const equalPercentages = calculateEqualPercentages(selectedCount);
+      const payerIdx = effectivePayerId ? selectedMembers.findIndex((p) => p.id === effectivePayerId) : -1;
+      const preferredIdx = payerIdx >= 0 ? payerIdx : 0;
+      const equalAmounts = calculateEqualAmounts(totalAmount, selectedCount, preferredIdx);
+      const equalPercentages = calculateEqualPercentages(selectedCount, preferredIdx);
 
       let selIdx = 0;
       cloned.forEach((p) => {
@@ -161,11 +167,11 @@ export function SplitOptionsModal({
         horizontalScrollRef.current?.scrollTo({ x: targetIdx * width, animated: false });
       }, 50);
     }
-  }, [visible, initialSplitType, initialParticipants, totalAmount, width]);
+  }, [visible, initialSplitType, initialParticipants, totalAmount, width, effectivePayerId]);
 
   const selectedCount = useMemo(() => items.filter((p) => p.selected).length, [items]);
 
-  // Real-time calculation of owed amounts
+  // Real-time calculation of owed amounts (with payer priority)
   const splitBreakdown = useMemo<Record<string, number>>(() => {
     if (totalAmount <= 0 || selectedCount === 0) {
       return Object.fromEntries(items.map((p) => [p.id, 0]));
@@ -180,17 +186,21 @@ export function SplitOptionsModal({
         amountOwed: parseFloat(exactInputs[p.id] || '0') || 0,
       }));
 
-      const results = calculateSplitAmounts(totalAmount, inputs, splitType);
+      const results = calculateSplitAmounts(totalAmount, inputs, splitType, effectivePayerId);
       const map: Record<string, number> = {};
       results.forEach((r) => {
         map[r.userId] = r.amountOwed;
       });
       return map;
     } catch {
-      const share = selectedCount > 0 ? parseFloat((totalAmount / selectedCount).toFixed(2)) : 0;
-      return Object.fromEntries(items.map((p) => [p.id, p.selected ? share : 0]));
+      const sel = items.filter((p) => p.selected);
+      const payerIdx = effectivePayerId ? sel.findIndex((p) => p.id === effectivePayerId) : -1;
+      const preferredIdx = payerIdx >= 0 ? payerIdx : 0;
+      const eq = calculateEqualAmounts(totalAmount, selectedCount, preferredIdx);
+      let idx = 0;
+      return Object.fromEntries(items.map((p) => [p.id, p.selected ? eq[idx++] : 0]));
     }
-  }, [totalAmount, selectedCount, items, splitType, exactInputs, percentageInputs, sharesInputs]);
+  }, [totalAmount, selectedCount, items, splitType, exactInputs, percentageInputs, sharesInputs, effectivePayerId]);
 
   // Real-time calculation of allocated percentages (all rounded and reconciled with 2 decimals, summing to 100.00% across all modes)
   const splitPercentages = useMemo<Record<string, number>>(() => {
@@ -207,13 +217,16 @@ export function SplitOptionsModal({
         amountOwed: parseFloat(exactInputs[p.id] || '0') || 0,
       }));
 
-      return calculateSplitPercentages(totalAmount, inputs, splitType);
+      return calculateSplitPercentages(totalAmount, inputs, splitType, effectivePayerId);
     } catch {
-      const pcts = calculateEqualPercentages(selectedCount);
+      const sel = items.filter((p) => p.selected);
+      const payerIdx = effectivePayerId ? sel.findIndex((p) => p.id === effectivePayerId) : -1;
+      const preferredIdx = payerIdx >= 0 ? payerIdx : 0;
+      const pcts = calculateEqualPercentages(selectedCount, preferredIdx);
       let idx = 0;
       return Object.fromEntries(items.map((p) => [p.id, p.selected ? pcts[idx++] : 0]));
     }
-  }, [totalAmount, selectedCount, items, splitType, exactInputs, percentageInputs, sharesInputs]);
+  }, [totalAmount, selectedCount, items, splitType, exactInputs, percentageInputs, sharesInputs, effectivePayerId]);
 
   // Total exact amounts sum
   const exactSum = useMemo(() => {
@@ -266,8 +279,10 @@ export function SplitOptionsModal({
       const sel = updated.filter((p) => p.selected);
       const sCount = sel.length;
       if (sCount > 0) {
-        const eqAmounts = calculateEqualAmounts(totalAmount, sCount);
-        const eqPcts = calculateEqualPercentages(sCount);
+        const payerIdx = effectivePayerId ? sel.findIndex((p) => p.id === effectivePayerId) : -1;
+        const preferredIdx = payerIdx >= 0 ? payerIdx : 0;
+        const eqAmounts = calculateEqualAmounts(totalAmount, sCount, preferredIdx);
+        const eqPcts = calculateEqualPercentages(sCount, preferredIdx);
 
         setExactInputs((oldExact) => {
           const next = { ...oldExact };
@@ -314,8 +329,10 @@ export function SplitOptionsModal({
       const updated = prev.map((p) => ({ ...p, selected: shouldSelectAll }));
       const sCount = shouldSelectAll ? updated.length : 0;
       if (sCount > 0) {
-        const eqAmounts = calculateEqualAmounts(totalAmount, sCount);
-        const eqPcts = calculateEqualPercentages(sCount);
+        const payerIdx = effectivePayerId ? updated.findIndex((p) => p.id === effectivePayerId) : -1;
+        const preferredIdx = payerIdx >= 0 ? payerIdx : 0;
+        const eqAmounts = calculateEqualAmounts(totalAmount, sCount, preferredIdx);
+        const eqPcts = calculateEqualPercentages(sCount, preferredIdx);
         const nextExact: Record<string, string> = {};
         const nextPct: Record<string, string> = {};
         let idx = 0;

@@ -52,7 +52,7 @@ import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
-import { MasterCategory, validateSplit, SplitType } from '@splitit/core';
+import { MasterCategory, validateSplit, calculateSplitAmounts, SplitType } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
 
 export default function ExpenseDetailScreen() {
@@ -320,9 +320,24 @@ export default function ExpenseDetailScreen() {
       editMasterCategory || settingsService.getMasterCategory(editCategory, categories);
 
     const selectedEditParts = editParticipants.filter((p) => p.selected);
+    const effectivePayerId = editPayerType === 'single' ? editSinglePayerId : currentUserId;
+    const splitResults = calculateSplitAmounts(
+      newAmt,
+      editParticipants.map((p) => ({
+        userId: p.id,
+        selected: p.selected,
+        shares: p.shares || 1,
+        percentage: p.percentage || 0,
+        amountOwed: p.exactAmount || 0,
+      })),
+      editSplitMode,
+      effectivePayerId
+    );
+    const splitMap = Object.fromEntries(splitResults.map((r) => [r.userId, r.amountOwed]));
+
     const participantsPayload = selectedEditParts.map((p) => ({
       userId: p.id,
-      amountOwed: p.exactAmount || newAmt / Math.max(1, selectedEditParts.length),
+      amountOwed: splitMap[p.id] ?? (p.exactAmount || newAmt / Math.max(1, selectedEditParts.length)),
       share: p.shares || 1,
     }));
 
@@ -1007,6 +1022,7 @@ export default function ExpenseDetailScreen() {
         onClose={() => setShowEditSplitModal(false)}
         totalAmount={parseFloat(editAmount) || expense?.amount || 0}
         currentUserId={currentUserId}
+        payerId={editPayerType === 'single' ? editSinglePayerId : currentUserId}
         initialSplitType={editSplitMode}
         participants={editParticipants}
         onConfirm={(result) => {

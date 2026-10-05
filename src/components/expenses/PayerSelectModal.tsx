@@ -254,7 +254,9 @@ export function PayerSelectModal({
       setSelectedPayers(allSelected);
     }
 
-    const equalAmounts = calculateEqualAmounts(totalAmount, targetMembers.length);
+    const userIdx = currentUserId ? targetMembers.findIndex((m) => m.id === currentUserId) : -1;
+    const preferredIdx = userIdx >= 0 ? userIdx : 0;
+    const equalAmounts = calculateEqualAmounts(totalAmount, targetMembers.length, preferredIdx);
     const newMap: Record<string, string> = {};
     targetMembers.forEach((m, idx) => {
       newMap[m.id] = equalAmounts[idx].toFixed(2);
