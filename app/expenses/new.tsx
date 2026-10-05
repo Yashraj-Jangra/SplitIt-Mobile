@@ -22,9 +22,9 @@ import {
   Sparkles,
   Calendar,
   FileText,
-  Users,
   ChevronDown,
   Search,
+  Star,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import {
@@ -62,15 +62,21 @@ export default function NewExpenseModal() {
   const [masterCategory, setMasterCategory] = useState(() =>
     settingsService.getMasterCategory(params.category || 'Dining Out') || 'Food and Drink'
   );
-  const [date, setDate] = useState('Today');
+
+  const [expenseDate, setExpenseDate] = useState<Date>(new Date());
+  const [showDateModal, setShowDateModal] = useState(false);
+
   const [notes, setNotes] = useState('');
-  const [showNotes, setShowNotes] = useState(false);
+  const [showNotesInput, setShowNotesInput] = useState(false);
+
   const [userOverriddenCategory, setUserOverriddenCategory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Group State
+  // Group State & Default Group
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>(params.groupId || '');
+  const [defaultGroupId, setDefaultGroupIdState] = useState<string | null>(null);
+  const [isDefaultGroupChecked, setIsDefaultGroupChecked] = useState(false);
 
   // Current User State
   const [currentUserId, setCurrentUserId] = useState<string>('u1');
@@ -92,7 +98,30 @@ export default function NewExpenseModal() {
   // Participants State
   const [participants, setParticipants] = useState<SplitParticipantItem[]>([]);
 
-  // Load user groups and participants dynamically
+  const loadGroupMembers = async (groupId: string) => {
+    try {
+      const groupDetails = await groupService.getGroupDetails(groupId);
+      if (groupDetails?.members?.length > 0) {
+        setParticipants(
+          groupDetails.members.map((m) => ({
+            id: m.id,
+            name: m.name,
+            avatarUrl:
+              m.avatarUrl ||
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
+            selected: true,
+            shares: 1,
+            percentage: 0,
+            exactAmount: 0,
+          }))
+        );
+      }
+    } catch {
+      // Keep default state
+    }
+  };
+
+  // Load user groups and participants dynamically + default group handling
   useEffect(() => {
     const init = async () => {
       try {
@@ -104,26 +133,22 @@ export default function NewExpenseModal() {
         const allGroups = await groupService.getUserGroups();
         setGroups(allGroups);
 
-        const targetGroupId = params.groupId || allGroups[0]?.id || '';
-        setSelectedGroupId(targetGroupId);
+        const savedDefault = await groupService.getDefaultGroupId();
+        setDefaultGroupIdState(savedDefault);
+
+        let targetGroupId = params.groupId;
+
+        // If not opened from a specific group, check for saved default group
+        if (!targetGroupId && savedDefault && allGroups.some((g) => g.id === savedDefault)) {
+          targetGroupId = savedDefault;
+        }
 
         if (targetGroupId) {
-          const groupDetails = await groupService.getGroupDetails(targetGroupId);
-          if (groupDetails?.members?.length > 0) {
-            setParticipants(
-              groupDetails.members.map((m) => ({
-                id: m.id,
-                name: m.name,
-                avatarUrl:
-                  m.avatarUrl ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
-                selected: true,
-                shares: 1,
-                percentage: 0,
-                exactAmount: 0,
-              }))
-            );
-          }
+          setSelectedGroupId(targetGroupId);
+          await loadGroupMembers(targetGroupId);
+        } else if (allGroups.length > 0) {
+          // If no group is passed and no default is set, prompt user to pick group
+          setShowGroupModal(true);
         }
       } catch {
         // Keep default state
@@ -246,6 +271,28 @@ export default function NewExpenseModal() {
     return groups.find((g) => g.id === selectedGroupId) || groups[0];
   }, [groups, selectedGroupId]);
 
+  const dateDisplayLabel = useMemo(() => {
+    const today = new Date();
+    const isToday =
+      expenseDate.getDate() === today.getDate() &&
+      expenseDate.getMonth() === today.getMonth() &&
+      expenseDate.getFullYear() === today.getFullYear();
+    if (isToday) return 'Today';
+
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const isYesterday =
+      expenseDate.getDate() === yesterday.getDate() &&
+      expenseDate.getMonth() === yesterday.getMonth() &&
+      expenseDate.getFullYear() === yesterday.getFullYear();
+    if (isYesterday) return 'Yesterday';
+
+    return expenseDate.toLocaleDateString('en-IN', {
+      month: 'short',
+      day: 'numeric',
+    });
+  }, [expenseDate]);
+
   const handleToggleParticipant = (id: string) => {
     Haptics.selectionAsync();
     setParticipants((prev) =>
@@ -254,29 +301,16 @@ export default function NewExpenseModal() {
   };
 
   const handleSelectGroup = async (groupId: string) => {
-    setSelectedGroupId(groupId);
-    setShowGroupModal(false);
     Haptics.selectionAsync();
-    try {
-      const groupDetails = await groupService.getGroupDetails(groupId);
-      if (groupDetails?.members?.length > 0) {
-        setParticipants(
-          groupDetails.members.map((m) => ({
-            id: m.id,
-            name: m.name,
-            avatarUrl:
-              m.avatarUrl ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
-            selected: true,
-            shares: 1,
-            percentage: 0,
-            exactAmount: 0,
-          }))
-        );
-      }
-    } catch {
-      // Keep state
+    setSelectedGroupId(groupId);
+
+    if (isDefaultGroupChecked) {
+      await groupService.setDefaultGroupId(groupId);
+      setDefaultGroupIdState(groupId);
     }
+
+    await loadGroupMembers(groupId);
+    setShowGroupModal(false);
   };
 
   const handleSave = async () => {
@@ -294,7 +328,7 @@ export default function NewExpenseModal() {
 
     if (!selectedGroupId) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Group Missing', 'Please select a valid group for this expense.');
+      setShowGroupModal(true);
       return;
     }
 
@@ -361,7 +395,7 @@ export default function NewExpenseModal() {
         masterCategory,
         splitType: splitMode,
         notes: notes.trim() || undefined,
-        date: new Date().toISOString(),
+        date: expenseDate.toISOString(),
         payers: payersPayload,
         participants: participantsPayload,
       });
@@ -387,7 +421,7 @@ export default function NewExpenseModal() {
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Sleek Top Header */}
+        {/* Sleek Minimal Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
@@ -400,7 +434,36 @@ export default function NewExpenseModal() {
             <X size={20} color={THEME.colors.textSecondary} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Add Expense</Text>
+          {/* Group display in header */}
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.headerTitle}>Add an expense</Text>
+            {activeGroup ? (
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowGroupModal(true);
+                }}
+                activeOpacity={0.7}
+                style={styles.headerGroupBadge}
+              >
+                <Text style={styles.headerGroupText} numberOfLines={1}>
+                  in <Text style={styles.headerGroupNameHighlight}>{activeGroup.name}</Text>
+                </Text>
+                <ChevronDown size={11} color={THEME.colors.primary} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowGroupModal(true);
+                }}
+                activeOpacity={0.7}
+                style={styles.headerGroupBadge}
+              >
+                <Text style={styles.headerGroupPromptText}>Select group ▾</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           <TouchableOpacity
             onPress={() => {
@@ -410,60 +473,92 @@ export default function NewExpenseModal() {
             style={styles.scanBtn}
             activeOpacity={0.8}
           >
-            <Camera size={15} color={THEME.colors.primary} />
+            <Camera size={14} color={THEME.colors.primary} />
             <Text style={styles.scanBtnText}>Scan</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Scrollable Form Body */}
         <ScrollView
-          contentContainerStyle={styles.content}
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          {/* Centered Amount Hero Block */}
-          <View style={styles.amountHeroBlock}>
-            <View style={styles.amountDisplayRow}>
-              <Text style={styles.currencyPrefix}>₹</Text>
-              <TextInput
-                style={styles.amountBigInput}
-                value={amount}
-                onChangeText={setAmount}
-                placeholder="0"
-                placeholderTextColor={THEME.colors.textMuted}
-                keyboardType="decimal-pad"
-                autoFocus
-              />
+          {/* Hero Details Block: Category Left + Underline Inputs Right */}
+          <View style={styles.detailsHeroRow}>
+            {/* Left: Category Icon Box + Name below */}
+            <TouchableOpacity
+              style={styles.categoryIconBtn}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setShowCategoryModal(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.categoryIconBox}>
+                <CategoryIcon
+                  subCategory={category}
+                  masterCategory={masterCategory}
+                  size={28}
+                  color={THEME.colors.primary}
+                />
+              </View>
+              <Text style={styles.categoryNameLabel} numberOfLines={1}>
+                {category}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Right: Description & Amount Underline Fields */}
+            <View style={styles.detailsInputsCol}>
+              {/* Description Input with Underline */}
+              <View style={styles.descriptionUnderlineRow}>
+                <TextInput
+                  style={styles.descriptionUnderlineInput}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Description"
+                  placeholderTextColor={THEME.colors.textMuted}
+                  autoCapitalize="sentences"
+                  returnKeyType="next"
+                />
+              </View>
+
+              {/* AI Category Suggestion Chip if predicted */}
+              {predictedCategory && predictedCategory.sub !== category && (
+                <TouchableOpacity
+                  style={styles.aiSuggestionChip}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setCategory(predictedCategory.sub);
+                    setMasterCategory(predictedCategory.master);
+                    setUserOverriddenCategory(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Sparkles size={11} color={THEME.colors.aiLight} />
+                  <Text style={styles.aiSuggestionText}>
+                    Category: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{predictedCategory.sub}</Text>
+                  </Text>
+                  <Text style={styles.aiApplyLabel}>Apply</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Amount Input with Currency Symbol and Underline */}
+              <View style={styles.amountUnderlineRow}>
+                <Text style={styles.currencyPrefix}>₹</Text>
+                <TextInput
+                  style={styles.amountUnderlineInput}
+                  value={amount}
+                  onChangeText={setAmount}
+                  placeholder="0.00"
+                  placeholderTextColor={THEME.colors.textMuted}
+                  keyboardType="decimal-pad"
+                  autoFocus
+                />
+              </View>
             </View>
-
-            {/* Description Input */}
-            <TextInput
-              style={styles.descriptionInput}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="What was this for?"
-              placeholderTextColor={THEME.colors.textMuted}
-              autoCapitalize="sentences"
-            />
-
-            {/* Smart AI Category Suggestion Chip */}
-            {predictedCategory && predictedCategory.sub !== category && (
-              <TouchableOpacity
-                style={styles.aiSuggestionChip}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setCategory(predictedCategory.sub);
-                  setMasterCategory(predictedCategory.master);
-                  setUserOverriddenCategory(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <Sparkles size={12} color={THEME.colors.aiLight} />
-                <Text style={styles.aiSuggestionText}>
-                  Suggestion: <Text style={{ fontWeight: '800', color: '#FFFFFF' }}>{predictedCategory.sub}</Text>
-                </Text>
-                <Text style={styles.aiApplyLabel}>Tap to apply</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
           {/* Conversational Natural-Language Sentence Dock */}
@@ -542,64 +637,64 @@ export default function NewExpenseModal() {
               ))}
             </ScrollView>
           </View>
+        </ScrollView>
 
-          {/* Inline Action Pills: Group, Category, Date, Notes */}
-          <View style={styles.metaPillsRow}>
+        {/* Keyboard-Anchored Accessory Toolbar (Date & Notes stay above keyboard always) */}
+        <View style={styles.anchoredToolbar}>
+          {/* Accessory Pills Row: Date & Add Note */}
+          <View style={styles.accessoryPillsRow}>
             <TouchableOpacity
-              style={styles.metaPill}
+              style={[styles.accessoryPill, showDateModal && styles.accessoryPillActive]}
               onPress={() => {
                 Haptics.selectionAsync();
-                setShowGroupModal(true);
+                setShowDateModal(true);
               }}
               activeOpacity={0.7}
             >
-              <Users size={14} color={THEME.colors.primary} />
-              <Text style={styles.metaPillText} numberOfLines={1}>
-                {activeGroup?.name || 'Group'}
-              </Text>
+              <Calendar size={13} color={THEME.colors.textSecondary} />
+              <Text style={styles.accessoryPillText}>{dateDisplayLabel}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.metaPill}
+              style={[styles.accessoryPill, (showNotesInput || notes) && styles.accessoryPillActive]}
               onPress={() => {
                 Haptics.selectionAsync();
-                setShowCategoryModal(true);
+                setShowNotesInput((prev) => !prev);
               }}
               activeOpacity={0.7}
             >
-              <CategoryIcon subCategory={category} masterCategory={masterCategory} size={14} color={THEME.colors.primary} />
-              <Text style={styles.metaPillText} numberOfLines={1}>
-                {category}
+              <FileText size={13} color={notes ? THEME.colors.primary : THEME.colors.textSecondary} />
+              <Text style={styles.accessoryPillText}>
+                {notes ? (notes.length > 16 ? `${notes.slice(0, 16)}...` : notes) : 'Add note'}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.metaPill} activeOpacity={0.7}>
-              <Calendar size={14} color={THEME.colors.textSecondary} />
-              <Text style={styles.metaPillText}>{date}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.metaPill}
-              onPress={() => setShowNotes(!showNotes)}
-              activeOpacity={0.7}
-            >
-              <FileText size={14} color={notes ? THEME.colors.primary : THEME.colors.textSecondary} />
-              <Text style={styles.metaPillText}>{notes ? 'Notes added' : 'Add note'}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Collapsible Notes Field */}
-          {showNotes && (
-            <TextInput
-              style={styles.notesInput}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Add extra details, bill numbers, or links..."
-              placeholderTextColor={THEME.colors.textMuted}
-              multiline
-            />
+          {/* Expandable Inline Note Input (Docked Above Keyboard) */}
+          {showNotesInput && (
+            <View style={styles.inlineNoteContainer}>
+              <TextInput
+                style={styles.inlineNoteInput}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Add extra details, bill numbers, or links..."
+                placeholderTextColor={THEME.colors.textMuted}
+                multiline
+                autoFocus
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowNotesInput(false);
+                }}
+                style={styles.inlineNoteDoneBtn}
+                activeOpacity={0.7}
+              >
+                <Check size={14} color={THEME.colors.primary} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
           )}
-        </ScrollView>
+        </View>
 
         {/* Floating Bottom Sticky Action Button */}
         <View style={styles.bottomBar}>
@@ -660,16 +755,46 @@ export default function NewExpenseModal() {
           }}
         />
 
-        {/* MODAL 3: GROUP PICKER SHEET */}
+        {/* MODAL 3: GROUP PICKER SHEET (WITH DEFAULT TOGGLE) */}
         <Modal visible={showGroupModal} transparent animationType="slide">
           <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
-            onPress={() => setShowGroupModal(false)}
+            onPress={() => {
+              if (selectedGroupId) {
+                setShowGroupModal(false);
+              }
+            }}
           >
-            <View style={[styles.sheetContainer, { maxHeight: '75%' }]}>
+            <View style={[styles.sheetContainer, { maxHeight: '80%' }]}>
               <View style={styles.sheetHandle} />
               <Text style={styles.sheetTitle}>Choose Group</Text>
+              <Text style={styles.sheetSubtitle}>
+                Select which group this expense will be added to
+              </Text>
+
+              {/* Set as Default Toggle Card */}
+              <TouchableOpacity
+                style={styles.defaultToggleCard}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setIsDefaultGroupChecked((prev) => !prev);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.defaultCheckbox, isDefaultGroupChecked && styles.defaultCheckboxActive]}>
+                  {isDefaultGroupChecked && <Check size={12} color="#000000" strokeWidth={3} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.defaultToggleTitle}>Set as default group</Text>
+                  <Text style={styles.defaultToggleSub}>Auto-select when adding from homescreen</Text>
+                </View>
+                <Star
+                  size={18}
+                  color={isDefaultGroupChecked ? THEME.colors.primary : THEME.colors.textMuted}
+                  fill={isDefaultGroupChecked ? THEME.colors.primary : 'transparent'}
+                />
+              </TouchableOpacity>
 
               <View style={styles.sheetSearchBox}>
                 <Search size={15} color={THEME.colors.textMuted} />
@@ -687,6 +812,7 @@ export default function NewExpenseModal() {
                   .filter((g) => g.name.toLowerCase().includes(groupSearch.toLowerCase()))
                   .map((grp) => {
                     const isSelected = grp.id === selectedGroupId;
+                    const isDefault = grp.id === defaultGroupId;
                     return (
                       <TouchableOpacity
                         key={grp.id}
@@ -702,9 +828,17 @@ export default function NewExpenseModal() {
                           )}
                         </View>
                         <View style={styles.groupInfoCol}>
-                          <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
-                            {grp.name}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
+                              {grp.name}
+                            </Text>
+                            {isDefault && (
+                              <View style={styles.defaultBadge}>
+                                <Star size={9} color={THEME.colors.primary} fill={THEME.colors.primary} />
+                                <Text style={styles.defaultBadgeText}>Default</Text>
+                              </View>
+                            )}
+                          </View>
                           <Text style={styles.groupMetaText}>{grp.membersCount || 0} members</Text>
                         </View>
                         {isSelected && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
@@ -803,6 +937,60 @@ export default function NewExpenseModal() {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* MODAL 5: DATE PICKER SHEET */}
+        <Modal visible={showDateModal} transparent animationType="slide">
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowDateModal(false)}
+          >
+            <View style={[styles.sheetContainer, { maxHeight: '60%' }]}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>Expense Date</Text>
+
+              <View style={{ marginTop: 12 }}>
+                {[
+                  { label: 'Today', date: new Date() },
+                  { label: 'Yesterday', date: new Date(Date.now() - 86400000) },
+                  { label: '2 days ago', date: new Date(Date.now() - 2 * 86400000) },
+                  { label: '3 days ago', date: new Date(Date.now() - 3 * 86400000) },
+                  { label: '1 week ago', date: new Date(Date.now() - 7 * 86400000) },
+                ].map((item) => {
+                  const isSelected =
+                    expenseDate.getDate() === item.date.getDate() &&
+                    expenseDate.getMonth() === item.date.getMonth() &&
+                    expenseDate.getFullYear() === item.date.getFullYear();
+
+                  return (
+                    <TouchableOpacity
+                      key={item.label}
+                      style={[styles.dateChoiceRow, isSelected && styles.dateChoiceRowActive]}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setExpenseDate(item.date);
+                        setShowDateModal(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.dateChoiceLabel, isSelected && styles.dateChoiceLabelActive]}>
+                        {item.label}
+                      </Text>
+                      <Text style={styles.dateChoiceSub}>
+                        {item.date.toLocaleDateString('en-IN', {
+                          month: 'short',
+                          day: 'numeric',
+                          weekday: 'short',
+                        })}
+                      </Text>
+                      {isSelected && <Check size={16} color={THEME.colors.primary} strokeWidth={2.5} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -822,7 +1010,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 14,
+    paddingBottom: 12,
   },
   closeBtn: {
     width: 36,
@@ -832,10 +1020,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerTitleWrap: {
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
     color: THEME.colors.text,
+  },
+  headerGroupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.surfaceElevated,
+  },
+  headerGroupText: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+  },
+  headerGroupNameHighlight: {
+    color: THEME.colors.text,
+    fontWeight: '600',
+  },
+  headerGroupPromptText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.primary,
   },
   scanBtn: {
     flexDirection: 'row',
@@ -849,96 +1063,129 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.hairline,
   },
   scanBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.text,
   },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 100,
-    gap: 20,
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 16,
   },
 
-  // Centered Amount Hero Block
-  amountHeroBlock: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  amountDisplayRow: {
+  /* Hero Details Row */
+  detailsHeroRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    gap: 16,
+  },
+  categoryIconBtn: {
+    alignItems: 'center',
+    width: 68,
+  },
+  categoryIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+  },
+  categoryNameLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: THEME.colors.textSecondary,
+    marginTop: 6,
+    textAlign: 'center',
+    maxWidth: 68,
+  },
+  detailsInputsCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  descriptionUnderlineRow: {
+    borderBottomWidth: 1.5,
+    borderBottomColor: THEME.colors.hairline,
+    paddingBottom: 4,
+  },
+  descriptionUnderlineInput: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: THEME.colors.text,
+    paddingVertical: 4,
+    paddingHorizontal: 0,
+  },
+  amountUnderlineRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    borderBottomWidth: 1.5,
+    borderBottomColor: THEME.colors.hairline,
+    marginTop: 14,
+    paddingBottom: 4,
   },
   currencyPrefix: {
     fontSize: 32,
     fontWeight: '700',
     color: THEME.colors.primary,
-    marginTop: 4,
+    marginRight: 4,
+    lineHeight: 38,
   },
-  amountBigInput: {
-    fontSize: 50,
-    fontWeight: '900',
+  amountUnderlineInput: {
+    flex: 1,
+    fontSize: 32,
+    fontWeight: '700',
     color: THEME.colors.text,
-    letterSpacing: -1,
-    minWidth: 80,
-    textAlign: 'center',
     paddingVertical: 0,
+    paddingHorizontal: 0,
+    lineHeight: 38,
   },
-  descriptionInput: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    textAlign: 'center',
-    marginTop: 8,
-    width: '100%',
-    paddingVertical: 6,
-  },
+
   aiSuggestionChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: THEME.colors.aiMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.full,
-    marginTop: 10,
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 6,
+    alignSelf: 'flex-start',
   },
   aiSuggestionText: {
     fontSize: 11,
     color: THEME.colors.textSecondary,
   },
   aiApplyLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: THEME.colors.primary,
-    marginLeft: 4,
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.colors.aiLight,
+    textTransform: 'uppercase',
   },
 
-  // Conversational Natural-Language Sentence Dock
+  /* Sentence Dock */
   sentenceDockContainer: {
     alignItems: 'center',
-    gap: 6,
+    marginVertical: 12,
+    paddingHorizontal: 16,
   },
   sentenceDock: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     flexWrap: 'wrap',
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    justifyContent: 'center',
   },
   sentenceText: {
-    fontSize: 14,
-    color: THEME.colors.textSecondary,
+    fontSize: 15,
     fontWeight: '500',
+    color: THEME.colors.textSecondary,
   },
   sentenceTriggerPill: {
     flexDirection: 'row',
@@ -946,34 +1193,36 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    borderRadius: 8,
     backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(28, 194, 159, 0.25)',
+    marginHorizontal: 2,
+    marginVertical: 2,
   },
   sentenceTriggerText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: THEME.colors.text,
+    color: THEME.colors.primary,
   },
   sentenceSubtext: {
-    fontSize: 12,
+    fontSize: 13,
     color: THEME.colors.textMuted,
-    fontWeight: '600',
+    marginTop: 4,
   },
 
-  // Participant Avatar Rings
+  /* Participant Rings Section */
   sectionContainer: {
-    gap: 12,
+    marginTop: 12,
+    paddingHorizontal: 16,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
   },
   sectionHeading: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: THEME.colors.text,
   },
   sectionCountText: {
@@ -982,42 +1231,38 @@ const styles = StyleSheet.create({
   },
   avatarRingsScroll: {
     gap: 14,
-    paddingVertical: 4,
+    paddingRight: 16,
   },
   memberRingCard: {
     alignItems: 'center',
-    width: 68,
-    gap: 6,
+    width: 62,
   },
   memberRingInactive: {
-    opacity: 0.45,
+    opacity: 0.4,
   },
   avatarRingCircle: {
     width: 52,
     height: 52,
     borderRadius: 26,
     padding: 2,
+    borderWidth: 2,
     position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   avatarRingActive: {
-    borderWidth: 2,
     borderColor: THEME.colors.primary,
   },
   avatarRingMuted: {
-    borderWidth: 1.5,
-    borderColor: THEME.colors.hairline,
+    borderColor: 'transparent',
   },
   avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
   },
   checkBadge: {
     position: 'absolute',
-    bottom: -1,
-    right: -1,
+    bottom: -2,
+    right: -2,
     width: 17,
     height: 17,
     borderRadius: 4,
@@ -1029,95 +1274,113 @@ const styles = StyleSheet.create({
   },
   memberNameText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
     color: THEME.colors.textSecondary,
+    marginTop: 6,
     textAlign: 'center',
   },
   memberNameActive: {
     color: THEME.colors.text,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   memberShareText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     color: THEME.colors.primary,
+    marginTop: 2,
   },
 
-  // Meta Pills Row
-  metaPillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  /* Anchored Toolbar (Date & Notes) */
+  anchoredToolbar: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: THEME.colors.background,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.surface,
+    gap: 8,
   },
-  metaPill: {
+  accessoryPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  accessoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: THEME.colors.surface,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: THEME.radius.lg,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    maxWidth: '48%',
   },
-  metaPillText: {
-    fontSize: 12,
-    fontWeight: '600',
+  accessoryPillActive: {
+    borderColor: THEME.colors.primary,
+    backgroundColor: THEME.colors.surface,
+  },
+  accessoryPillText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: THEME.colors.textSecondary,
   },
-  notesInput: {
-    backgroundColor: THEME.colors.surface,
-    padding: 12,
-    borderRadius: THEME.radius.lg,
+  inlineNoteContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    color: THEME.colors.text,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  inlineNoteInput: {
+    flex: 1,
     fontSize: 13,
-    minHeight: 70,
-    textAlignVertical: 'top',
+    color: THEME.colors.text,
+    paddingVertical: 4,
+    maxHeight: 60,
+  },
+  inlineNoteDoneBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: THEME.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  // Bottom Sticky Bar
+  /* Bottom Sticky Action Bar */
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingBottom: Platform.OS === 'ios' ? 4 : 12,
     backgroundColor: THEME.colors.background,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
   },
   recordBtn: {
+    height: 50,
+    borderRadius: THEME.radius.xl,
+    backgroundColor: THEME.colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: THEME.colors.primary,
-    paddingVertical: 14,
-    borderRadius: THEME.radius.lg,
-    shadowColor: THEME.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
   },
   recordBtnDisabled: {
-    opacity: 0.45,
     backgroundColor: THEME.colors.surfaceElevated,
+    opacity: 0.5,
   },
   recordBtnText: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#000000',
   },
 
-  // Modal Sheets
+  /* Modal Sheets Shared */
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
@@ -1126,58 +1389,101 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 36,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairlineLight,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.hairline,
   },
   sheetHandle: {
-    width: 36,
+    width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: THEME.colors.hairline,
     alignSelf: 'center',
-    marginBottom: 8,
+    marginBottom: 14,
   },
   sheetTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: THEME.colors.text,
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  sheetSubtitle: {
+    fontSize: 13,
+    color: THEME.colors.textMuted,
+    marginBottom: 14,
   },
   sheetSearchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: THEME.colors.surfaceSubtle,
+    gap: 10,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    height: 40,
-    borderRadius: THEME.radius.md,
+    paddingVertical: 9,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    marginBottom: 8,
   },
   sheetSearchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: THEME.colors.text,
     paddingVertical: 0,
   },
-  sheetGroupRow: {
+
+  /* Default Toggle Card */
+  defaultToggleCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 14,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: THEME.radius.md,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  defaultCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.textMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  defaultCheckboxActive: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
+  },
+  defaultToggleTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  defaultToggleSub: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+
+  /* Group Sheet Rows */
+  sheetGroupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    gap: 12,
   },
   sheetGroupRowActive: {
     backgroundColor: THEME.colors.surfaceElevated,
   },
   groupAvatarWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1190,7 +1496,7 @@ const styles = StyleSheet.create({
   groupAvatarInitial: {
     fontSize: 16,
     fontWeight: '700',
-    color: THEME.colors.text,
+    color: THEME.colors.primary,
   },
   groupInfoCol: {
     flex: 1,
@@ -1202,23 +1508,40 @@ const styles = StyleSheet.create({
   },
   groupNameTextActive: {
     color: THEME.colors.primary,
-    fontWeight: '700',
   },
   groupMetaText: {
     fontSize: 12,
     color: THEME.colors.textMuted,
     marginTop: 2,
   },
+  defaultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(28, 194, 159, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+
+  /* Category Sheet Rows */
   categoryHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     marginBottom: 8,
+    marginTop: 4,
   },
   categoryGroupTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: THEME.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.textMuted,
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   categoryPillsWrap: {
@@ -1230,23 +1553,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.full,
     backgroundColor: THEME.colors.surfaceElevated,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.full,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
   },
   categoryChoiceActive: {
-    backgroundColor: THEME.colors.primaryMuted,
+    backgroundColor: 'rgba(28, 194, 159, 0.15)',
     borderColor: THEME.colors.primary,
   },
   categoryChoiceText: {
-    fontSize: 12,
+    fontSize: 13,
     color: THEME.colors.textSecondary,
   },
   categoryChoiceTextActive: {
     color: THEME.colors.primary,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+
+  /* Date Sheet Rows */
+  dateChoiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  dateChoiceRowActive: {
+    backgroundColor: THEME.colors.surfaceElevated,
+  },
+  dateChoiceLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: THEME.colors.text,
+    flex: 1,
+  },
+  dateChoiceLabelActive: {
+    color: THEME.colors.primary,
+  },
+  dateChoiceSub: {
+    fontSize: 13,
+    color: THEME.colors.textMuted,
+    marginRight: 10,
   },
 });

@@ -1,6 +1,9 @@
 import { simplifyDebts } from '@splitit/core';
+import * as SecureStore from 'expo-secure-store';
 import { authService, API_BASE_URL } from './auth.service';
 import { settingsService } from './settings.service';
+
+const DEFAULT_GROUP_STORAGE_KEY = 'splitit_default_group_id';
 
 export interface GroupMember {
   id: string;
@@ -782,5 +785,31 @@ export const groupService = {
     }
     _cachedGroups = _cachedGroups.filter((g) => g.id !== groupId);
     return true;
+  },
+
+  /**
+   * Retrieve the user's default group ID for new expenses
+   */
+  async getDefaultGroupId(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(DEFAULT_GROUP_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Set or clear the user's default group ID for new expenses
+   */
+  async setDefaultGroupId(groupId: string | null): Promise<void> {
+    try {
+      if (groupId) {
+        await SecureStore.setItemAsync(DEFAULT_GROUP_STORAGE_KEY, groupId);
+      } else {
+        await SecureStore.deleteItemAsync(DEFAULT_GROUP_STORAGE_KEY);
+      }
+    } catch {
+      // SecureStore error fallback
+    }
   },
 };
