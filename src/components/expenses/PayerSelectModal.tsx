@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react-native';
+import { calculateEqualAmounts } from '@splitit/core';
 import { THEME } from '../../constants/theme';
 import * as Haptics from 'expo-haptics';
 
@@ -71,6 +72,7 @@ export function PayerSelectModal({
   const [selectedSingleId, setSelectedSingleId] = useState<string>(
     initialSinglePayerId || currentUserId || members[0]?.id || ''
   );
+  const [selectedPayers, setSelectedPayers] = useState<Record<string, boolean>>({});
   const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -80,19 +82,35 @@ export function PayerSelectModal({
       setSelectedSingleId(initialSinglePayerId || currentUserId || members[0]?.id || '');
       setErrorMessage(null);
 
+      const selMap: Record<string, boolean> = {};
       const amountsMap: Record<string, string> = {};
+
       if (initialMultiPayers && initialMultiPayers.length > 0) {
-        initialMultiPayers.forEach((p) => {
-          if (p.amount > 0) {
-            amountsMap[p.userId] = String(p.amount);
+        const hasAnyPaid = initialMultiPayers.some((p) => p.amount > 0);
+        members.forEach((m) => {
+          const entry = initialMultiPayers.find((p) => p.userId === m.id);
+          if (entry && entry.amount > 0) {
+            selMap[m.id] = true;
+            amountsMap[m.id] = String(entry.amount);
+          } else {
+            selMap[m.id] = !hasAnyPaid;
+            amountsMap[m.id] = '';
           }
         });
-      } else if (initialPayerType === 'multiple') {
-        const primaryId = initialSinglePayerId || currentUserId || members[0]?.id;
-        if (primaryId && totalAmount > 0) {
-          amountsMap[primaryId] = totalAmount.toFixed(2);
+      } else {
+        // By default, select all members in multiple mode
+        members.forEach((m) => {
+          selMap[m.id] = true;
+        });
+        if (initialPayerType === 'multiple') {
+          const primaryId = initialSinglePayerId || currentUserId || members[0]?.id;
+          if (primaryId && totalAmount > 0) {
+            amountsMap[primaryId] = totalAmount.toFixed(2);
+          }
         }
       }
+
+      setSelectedPayers(selMap);
       setPayerAmounts(amountsMap);
 
       const targetIdx = initialPayerType === 'multiple' ? 1 : 0;
@@ -104,12 +122,18 @@ export function PayerSelectModal({
     }
   }, [visible, initialPayerType, initialSinglePayerId, initialMultiPayers, members, currentUserId, totalAmount, width]);
 
+  const selectedPayersCount = useMemo(
+    () => members.filter((m) => selectedPayers[m.id]).length,
+    [members, selectedPayers]
+  );
+
   const sumOfPaid = useMemo(() => {
-    return Object.values(payerAmounts).reduce((acc, val) => {
+    return Object.entries(payerAmounts).reduce((acc, [userId, val]) => {
+      if (!selectedPayers[userId]) return acc;
       const parsed = parseFloat(val);
       return acc + (isNaN(parsed) ? 0 : parsed);
     }, 0);
-  }, [payerAmounts]);
+  }, [payerAmounts, selectedPayers]);
 
   const remaining = useMemo(() => {
     return parseFloat((totalAmount - sumOfPaid).toFixed(2));
@@ -128,6 +152,37 @@ export function PayerSelectModal({
       multiPayers: [{ userId: id, amount: totalAmount }],
     });
     onClose();
+  };
+
+  const toggleSelectPayer = (userId: string) => {
+    Haptics.selectionAsync();
+    setSelectedPayers((prev) => {
+      const nextVal = !prev[userId];
+      const nextPayers = { ...prev, [userId]: nextVal };
+      if (!nextVal) {
+        setPayerAmounts((oldAmounts) => {
+          const nextAmounts = { ...oldAmounts };
+          delete nextAmounts[userId];
+          return nextAmounts;
+        });
+      }
+      return nextPayers;
+    });
+    setErrorMessage(null);
+  };
+
+  const handleToggleAllPayers = () => {
+    Haptics.selectionAsync();
+    const shouldSelectAll = selectedPayersCount < members.length;
+    const nextPayers: Record<string, boolean> = {};
+    members.forEach((m) => {
+      nextPayers[m.id] = shouldSelectAll;
+    });
+    setSelectedPayers(nextPayers);
+    if (!shouldSelectAll) {
+      setPayerAmounts({});
+    }
+    setErrorMessage(null);
   };
 
   const handleModeTabPress = (type: 'single' | 'multiple') => {
@@ -171,6 +226,7 @@ export function PayerSelectModal({
     if (parts.length === 2 && parts[1].length > 2) {
       cleaned = `${parts[0]}.${parts[1].slice(0, 2)}`;
     }
+    setSelectedPayers((prev) => ({ ...prev, [userId]: true }));
     setPayerAmounts((prev) => ({
       ...prev,
       [userId]: cleaned,
@@ -179,6 +235,7 @@ export function PayerSelectModal({
 
   const handleQuickAssignAll = (userId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedPayers((prev) => ({ ...prev, [userId]: true }));
     setPayerAmounts({
       [userId]: totalAmount.toFixed(2),
     });
@@ -188,17 +245,36 @@ export function PayerSelectModal({
   const handleSplitPaidEqually = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (members.length === 0 || totalAmount <= 0) return;
-    const n = members.length;
-    const baseShare = Math.floor((totalAmount / n) * 100) / 100;
-    const rem = parseFloat((totalAmount - baseShare * n).toFixed(2));
-    const extraPennies = Math.round(rem * 100);
 
+    let targetMembers = members.filter((m) => selectedPayers[m.id]);
+    if (targetMembers.length === 0) {
+      targetMembers = members;
+      const allSelected: Record<string, boolean> = {};
+      members.forEach((m) => (allSelected[m.id] = true));
+      setSelectedPayers(allSelected);
+    }
+
+    const equalAmounts = calculateEqualAmounts(totalAmount, targetMembers.length);
     const newMap: Record<string, string> = {};
-    members.forEach((m, idx) => {
-      const share = idx < extraPennies ? baseShare + 0.01 : baseShare;
-      newMap[m.id] = share.toFixed(2);
+    targetMembers.forEach((m, idx) => {
+      newMap[m.id] = equalAmounts[idx].toFixed(2);
     });
+
     setPayerAmounts(newMap);
+    setErrorMessage(null);
+  };
+
+  const handleAutoBalancePayer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const activePayers = members.filter((m) => selectedPayers[m.id]);
+    if (activePayers.length === 0) return;
+    const lastPayer = activePayers[activePayers.length - 1];
+    const curVal = parseFloat(payerAmounts[lastPayer.id] || '0') || 0;
+    const adjusted = Math.max(0, parseFloat((curVal + remaining).toFixed(2)));
+    setPayerAmounts((prev) => ({
+      ...prev,
+      [lastPayer.id]: adjusted.toFixed(2),
+    }));
     setErrorMessage(null);
   };
 
@@ -225,6 +301,7 @@ export function PayerSelectModal({
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const entries: MultiPayerEntry[] = members
+      .filter((m) => selectedPayers[m.id])
       .map((m) => ({
         userId: m.id,
         amount: parseFloat(payerAmounts[m.id] || '0') || 0,
@@ -375,9 +452,30 @@ export function PayerSelectModal({
                   <Text style={styles.splitEquallyText}>Split paid equally</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.totalRequiredText}>
-                  Total: ₹{totalAmount.toFixed(2)}
-                </Text>
+                <View style={styles.multiHelperRight}>
+                  <Text style={styles.totalRequiredText}>
+                    Total: ₹{totalAmount.toFixed(2)}
+                  </Text>
+
+                  {/* All [✓] Quick Toggle for Payers */}
+                  <TouchableOpacity
+                    style={styles.allToggleBtn}
+                    onPress={handleToggleAllPayers}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.allToggleLabel}>All</Text>
+                    <View
+                      style={[
+                        styles.squareCheckboxSmall,
+                        selectedPayersCount === members.length && styles.squareCheckboxChecked,
+                      ]}
+                    >
+                      {selectedPayersCount === members.length && (
+                        <Check size={11} color="#FFFFFF" strokeWidth={3} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <ScrollView
@@ -388,13 +486,35 @@ export function PayerSelectModal({
                 showsVerticalScrollIndicator={false}
               >
                 {members.map((m) => {
-                  const val = payerAmounts[m.id] || '';
+                  const isSelected = !!selectedPayers[m.id];
+                  const val = isSelected ? (payerAmounts[m.id] || '') : '';
                   const numVal = parseFloat(val) || 0;
                   const pct = totalAmount > 0 ? ((numVal / totalAmount) * 100).toFixed(1) : '0';
                   const isCurrentUser = currentUserId === m.id;
 
                   return (
-                    <View key={m.id} style={styles.multiPayerRow}>
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[
+                        styles.multiPayerRow,
+                        !isSelected && styles.multiPayerRowUnselected,
+                      ]}
+                      onPress={() => toggleSelectPayer(m.id)}
+                      activeOpacity={0.7}
+                    >
+                      {/* Selection Checkbox on the Left */}
+                      <TouchableOpacity
+                        style={[
+                          styles.squareCheckbox,
+                          isSelected && styles.squareCheckboxChecked,
+                        ]}
+                        onPress={() => toggleSelectPayer(m.id)}
+                        activeOpacity={0.7}
+                      >
+                        {isSelected && <Check size={13} color="#FFFFFF" strokeWidth={3} />}
+                      </TouchableOpacity>
+
+                      {/* Avatar */}
                       <View style={styles.avatarWrap}>
                         {m.avatarUrl ? (
                           <Image source={{ uri: m.avatarUrl }} style={styles.avatarImg} />
@@ -407,40 +527,71 @@ export function PayerSelectModal({
                         )}
                       </View>
 
+                      {/* Member Info */}
                       <View style={styles.memberInfo}>
-                        <Text style={styles.memberName} numberOfLines={1}>
+                        <Text
+                          style={[styles.memberName, !isSelected && styles.memberNameMuted]}
+                          numberOfLines={1}
+                        >
                           {m.name}
                           {isCurrentUser ? ' (You)' : ''}
                         </Text>
-                        {numVal > 0 ? (
-                          <Text style={styles.livePctText}>{pct}% of total</Text>
+                        {isSelected ? (
+                          numVal > 0 ? (
+                            <Text style={styles.livePctText}>{pct}% of total</Text>
+                          ) : (
+                            <Text style={styles.memberSubline}>Enter amount</Text>
+                          )
                         ) : (
                           <Text style={styles.memberSublineMuted}>Didn't pay</Text>
                         )}
                       </View>
 
-                      <View style={styles.inputActionWrap}>
+                      {/* Input Action Wrap (Right) */}
+                      <View
+                        style={styles.inputActionWrap}
+                        pointerEvents={isSelected ? 'auto' : 'none'}
+                      >
                         <TouchableOpacity
-                          style={styles.quickAllChip}
+                          style={[styles.quickAllChip, !isSelected && styles.quickAllChipDisabled]}
                           onPress={() => handleQuickAssignAll(m.id)}
+                          disabled={!isSelected}
                           activeOpacity={0.7}
                         >
-                          <Text style={styles.quickAllText}>All</Text>
+                          <Text style={[styles.quickAllText, !isSelected && styles.quickAllTextDisabled]}>
+                            All
+                          </Text>
                         </TouchableOpacity>
 
-                        <View style={styles.currencyUnderlineBox}>
-                          <Text style={styles.currencyPrefix}>₹</Text>
+                        <View
+                          style={[
+                            styles.currencyUnderlineBox,
+                            !isSelected && styles.currencyUnderlineBoxLocked,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.currencyPrefix,
+                              !isSelected && styles.currencyPrefixLocked,
+                            ]}
+                          >
+                            ₹
+                          </Text>
                           <TextInput
-                            style={styles.currencyTextInput}
+                            style={[
+                              styles.currencyTextInput,
+                              !isSelected && styles.currencyTextInputLocked,
+                            ]}
                             placeholder="0.00"
                             placeholderTextColor="#6B7280"
                             keyboardType="decimal-pad"
-                            value={val}
+                            value={isSelected ? val : '0.00'}
+                            editable={isSelected}
                             onChangeText={(t) => handleAmountChange(m.id, t)}
                           />
                         </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </ScrollView>
@@ -462,18 +613,19 @@ export function PayerSelectModal({
                   <Text style={styles.bottomMainStat}>
                     ₹{sumOfPaid.toFixed(2)} of ₹{totalAmount.toFixed(2)}
                   </Text>
-                  <Text
-                    style={[
-                      styles.bottomSubStat,
-                      isBalanced ? styles.textMint : styles.textWarning,
-                    ]}
-                  >
-                    {isBalanced
-                      ? 'Balanced'
-                      : remaining > 0
-                      ? `₹${remaining.toFixed(2)} left to allocate`
-                      : `₹${Math.abs(remaining).toFixed(2)} over total`}
-                  </Text>
+                  {isBalanced ? (
+                    <Text style={[styles.bottomSubStat, styles.textMint]}>
+                      Balanced
+                    </Text>
+                  ) : (
+                    <TouchableOpacity onPress={handleAutoBalancePayer} activeOpacity={0.7}>
+                      <Text style={[styles.bottomSubStat, styles.textWarning]}>
+                        {remaining > 0
+                          ? `₹${remaining.toFixed(2)} left · Tap to balance`
+                          : `₹${Math.abs(remaining).toFixed(2)} over · Tap to balance`}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 <TouchableOpacity
@@ -557,27 +709,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   verticalListContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 24,
   },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginVertical: 3,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
   },
   memberRowSelected: {
-    backgroundColor: 'rgba(28, 194, 159, 0.05)',
+    backgroundColor: 'rgba(28, 194, 159, 0.06)',
+    borderColor: 'rgba(28, 194, 159, 0.25)',
   },
   avatarWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     overflow: 'hidden',
     backgroundColor: '#2A2B2E',
-    marginRight: 14,
+    marginRight: 12,
   },
   avatarImg: {
     width: '100%',
@@ -596,11 +753,15 @@ const styles = StyleSheet.create({
   },
   memberInfo: {
     flex: 1,
+    marginRight: 10,
   },
   memberName: {
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  memberNameMuted: {
+    color: '#9CA3AF',
   },
   memberSubline: {
     fontSize: 12,
@@ -625,7 +786,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
@@ -644,16 +805,65 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1CC29F',
   },
+  multiHelperRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   totalRequiredText: {
     fontSize: 12,
     color: '#9CA3AF',
   },
+  allToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  allToggleLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  squareCheckboxSmall: {
+    width: 17,
+    height: 17,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#6B7280',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   multiPayerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginVertical: 3,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
+  },
+  multiPayerRowUnselected: {
+    opacity: 0.45,
+  },
+  squareCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: '#6B7280',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  squareCheckboxChecked: {
+    backgroundColor: '#1CC29F',
+    borderColor: '#1CC29F',
   },
   inputActionWrap: {
     flexDirection: 'row',
@@ -666,10 +876,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
+  quickAllChipDisabled: {
+    opacity: 0.3,
+  },
   quickAllText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#9CA3AF',
+  },
+  quickAllTextDisabled: {
+    color: '#6B7280',
   },
   currencyUnderlineBox: {
     flexDirection: 'row',
@@ -680,11 +896,18 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 2,
   },
+  currencyUnderlineBoxLocked: {
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    opacity: 0.5,
+  },
   currencyPrefix: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1CC29F',
     marginRight: 4,
+  },
+  currencyPrefixLocked: {
+    color: '#6B7280',
   },
   currencyTextInput: {
     flex: 1,
@@ -693,6 +916,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     padding: 0,
     textAlign: 'right',
+  },
+  currencyTextInputLocked: {
+    color: '#6B7280',
   },
   bottomBar: {
     borderTopWidth: 1,
@@ -723,26 +949,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   bottomSubStat: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
     marginTop: 2,
   },
   textMint: {
     color: '#1CC29F',
-    fontWeight: '600',
   },
   textWarning: {
     color: '#F59E0B',
-    fontWeight: '600',
   },
   confirmMultipleBtn: {
     backgroundColor: '#1CC29F',
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   confirmBtnDisabled: {
-    backgroundColor: '#2A2B2E',
-    opacity: 0.5,
+    opacity: 0.4,
   },
   confirmBtnText: {
     fontSize: 14,
