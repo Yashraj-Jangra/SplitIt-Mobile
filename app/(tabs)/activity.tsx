@@ -19,14 +19,16 @@ import * as Haptics from 'expo-haptics';
 
 export default function ActivityScreen() {
   const router = useRouter();
-  const [transactions, setTransactions] = useState<UserTransactionItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
+  const [loading, setLoading] = useState(() => expenseService.getInMemoryUserExpenses().length === 0);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     try {
       const data = await expenseService.getUserExpenses(30);
-      setTransactions(data);
+      if (data && data.length > 0) {
+        setTransactions(data);
+      }
     } catch {
       // Graceful fallback
     } finally {
@@ -36,6 +38,14 @@ export default function ActivityScreen() {
   };
 
   useEffect(() => {
+    if (transactions.length === 0) {
+      expenseService.getCachedUserExpenses().then((cached) => {
+        if (cached && cached.length > 0) {
+          setTransactions(cached);
+          setLoading(false);
+        }
+      });
+    }
     loadData();
   }, []);
 
@@ -64,7 +74,7 @@ export default function ActivityScreen() {
           />
         }
       >
-        {loading ? (
+        {loading && transactions.length === 0 ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="small" color={THEME.colors.primary} />
           </View>

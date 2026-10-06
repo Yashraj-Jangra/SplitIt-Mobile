@@ -101,8 +101,23 @@ export interface GroupDetailData {
 }
 
 let _cachedGroups: GroupListItem[] = [];
+const _groupDetailsMap = new Map<string, GroupDetailData>();
 
 export const groupService = {
+  /**
+   * Synchronous accessor for in-memory cached groups list (prevents back-navigation blanking).
+   */
+  getInMemoryGroups(): GroupListItem[] {
+    return _cachedGroups;
+  },
+
+  /**
+   * Synchronous accessor for in-memory cached group details by ID.
+   */
+  getInMemoryGroupDetail(groupId: string): GroupDetailData | null {
+    return _groupDetailsMap.get(groupId) || null;
+  },
+
   /**
    * Fast tick lookup of user groups from persistent offline storage (0ms cold boot).
    */
@@ -120,8 +135,16 @@ export const groupService = {
    * Fast tick lookup of a group's cached detail from persistent offline storage (0ms instant display).
    */
   async getCachedGroupDetails(groupId: string): Promise<GroupDetailData | null> {
+    if (_groupDetailsMap.has(groupId)) {
+      return _groupDetailsMap.get(groupId)!;
+    }
     try {
-      return await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+      const fromStorage = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+      if (fromStorage) {
+        _groupDetailsMap.set(groupId, fromStorage);
+        return fromStorage;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -496,7 +519,8 @@ export const groupService = {
             activities,
           };
 
-          // Cache group details offline
+          // Cache group details offline and in-memory
+          _groupDetailsMap.set(groupId, detailResult);
           await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), detailResult);
 
           // Proactively warm each expense's detail cache in persistent storage
@@ -534,6 +558,7 @@ export const groupService = {
     // Check offline storage before falling back to defaults
     const offlineGroup = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
     if (offlineGroup) {
+      _groupDetailsMap.set(groupId, offlineGroup);
       return offlineGroup;
     }
 
@@ -676,7 +701,7 @@ export const groupService = {
       ];
     }
 
-    return {
+    const fallbackResult: GroupDetailData = {
       id: matching.id || groupId,
       name: matching.name,
       description: matching.description,
@@ -711,6 +736,9 @@ export const groupService = {
         },
       ],
     };
+
+    _groupDetailsMap.set(groupId, fallbackResult);
+    return fallbackResult;
   },
 
   /**

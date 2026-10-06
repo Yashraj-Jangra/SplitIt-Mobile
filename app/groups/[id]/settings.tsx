@@ -20,8 +20,15 @@ export default function GroupSettingsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
-  const [groupName, setGroupName] = useState('');
-  const [members, setMembers] = useState<Array<{ id: string; name: string; email?: string }>>([]);
+  const inMem = groupService.getInMemoryGroupDetail(targetId);
+  const [groupName, setGroupName] = useState(() => inMem?.name || '');
+  const [members, setMembers] = useState<Array<{ id: string; name: string; email?: string }>>(() =>
+    inMem?.members?.map((m) => ({
+      id: m.id,
+      name: m.name,
+      email: `${m.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+    })) || []
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

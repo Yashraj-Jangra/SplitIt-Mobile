@@ -31,13 +31,14 @@ export default function GroupSearchScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
 
-  const [group, setGroup] = useState<GroupDetailData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const inMem = groupService.getInMemoryGroupDetail(targetId);
+  const [group, setGroup] = useState<GroupDetailData | null>(() => inMem);
+  const [loading, setLoading] = useState(!inMem);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
     groupService.getGroupDetails(targetId).then((data) => {
-      setGroup(data);
+      if (data) setGroup(data);
       setLoading(false);
     });
   }, [targetId]);

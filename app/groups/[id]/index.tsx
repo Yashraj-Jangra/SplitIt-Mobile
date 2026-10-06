@@ -52,9 +52,9 @@ export default function GroupDetailScreen() {
   const HEADER_MAX_HEIGHT = topInset + 180;
   const SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
-  const [group, setGroup] = useState<GroupDetailData | null>(null);
+  const [group, setGroup] = useState<GroupDetailData | null>(() => groupService.getInMemoryGroupDetail(targetId));
   const [activeTab, setActiveTab] = useState<TabType>('expenses');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!group);
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
 
@@ -82,10 +82,15 @@ export default function GroupDetailScreen() {
   };
 
   const loadGroup = async () => {
-    const data = await groupService.getGroupDetails(targetId);
-    setGroup(data);
-    setLoading(false);
-    setRefreshing(false);
+    try {
+      const data = await groupService.getGroupDetails(targetId);
+      if (data) {
+        setGroup(data);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -313,7 +318,7 @@ export default function GroupDetailScreen() {
     extrapolate: 'clamp',
   });
 
-  if (loading || !group) {
+  if (!group) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.loadingContainer}>

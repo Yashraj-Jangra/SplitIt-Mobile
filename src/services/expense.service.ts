@@ -96,15 +96,36 @@ export interface ExpenseDetailModel {
 }
 
 const _commentsCache = new Map<string, ExpenseHistoryLog[]>();
+let _cachedUserExpenses: UserTransactionItem[] = [];
+const _cachedExpenseDetailsMap = new Map<string, ExpenseDetailModel>();
 
 export const expenseService = {
+  /**
+   * Synchronous accessor for in-memory cached user transactions (prevents back-navigation blanking).
+   */
+  getInMemoryUserExpenses(): UserTransactionItem[] {
+    return _cachedUserExpenses;
+  },
+
+  /**
+   * Synchronous accessor for in-memory cached expense details by ID.
+   */
+  getInMemoryExpenseDetails(expenseId: string): ExpenseDetailModel | null {
+    return _cachedExpenseDetailsMap.get(expenseId) || null;
+  },
+
   /**
    * Fast tick lookup of recent transactions from persistent offline storage (0ms cold boot).
    */
   async getCachedUserExpenses(): Promise<UserTransactionItem[]> {
+    if (_cachedUserExpenses.length > 0) return _cachedUserExpenses;
     try {
       const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
-      return cached || [];
+      if (cached && cached.length > 0) {
+        _cachedUserExpenses = cached;
+        return cached;
+      }
+      return [];
     } catch {
       return [];
     }
@@ -114,8 +135,16 @@ export const expenseService = {
    * Fast tick lookup of an expense's cached details and split record from persistent offline storage.
    */
   async getCachedExpenseDetails(expenseId: string): Promise<ExpenseDetailModel | null> {
+    if (_cachedExpenseDetailsMap.has(expenseId)) {
+      return _cachedExpenseDetailsMap.get(expenseId)!;
+    }
     try {
-      return await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
+      const fromStorage = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
+      if (fromStorage) {
+        _cachedExpenseDetailsMap.set(expenseId, fromStorage);
+        return fromStorage;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -240,6 +269,7 @@ export const expenseService = {
       });
 
       // Persist user transactions for instant offline rendering
+      _cachedUserExpenses = mapped;
       await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS, mapped);
 
       // Pre-warm individual expense detail caches if payers and participants exist
@@ -492,7 +522,8 @@ export const expenseService = {
             logs: allLogs,
           };
 
-          // Cache expense detail offline
+          // Cache expense detail offline and in-memory
+          _cachedExpenseDetailsMap.set(expenseId, detailResult);
           await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(expenseId), detailResult);
 
           return detailResult;
@@ -505,6 +536,7 @@ export const expenseService = {
     // Check offline storage before falling back to defaults
     const cachedExpense = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
     if (cachedExpense) {
+      _cachedExpenseDetailsMap.set(expenseId, cachedExpense);
       return cachedExpense;
     }
 
@@ -519,7 +551,7 @@ export const expenseService = {
           const share = Math.round(defaultAmount / numMembers);
           const comments = _commentsCache.get(expenseId) || [];
 
-          return {
+          const matchedResult: ExpenseDetailModel = {
             id: expenseId,
             groupId,
             groupName: groupDetails.name,
@@ -568,6 +600,8 @@ export const expenseService = {
               ...comments,
             ],
           };
+          _cachedExpenseDetailsMap.set(expenseId, matchedResult);
+          return matchedResult;
         }
       } catch {
         // Fall through
@@ -578,7 +612,7 @@ export const expenseService = {
     const defaultAmount = 0;
     const comments = _commentsCache.get(expenseId) || [];
 
-    return {
+    const genericFallback: ExpenseDetailModel = {
       id: expenseId,
       groupId: groupId || '',
       groupName: 'Group Expense',
@@ -628,6 +662,9 @@ export const expenseService = {
         ...comments,
       ],
     };
+
+    _cachedExpenseDetailsMap.set(expenseId, genericFallback);
+    return genericFallback;
   },
 
   /**

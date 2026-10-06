@@ -71,9 +71,11 @@ export default function ExpenseDetailScreen() {
   const expenseId = Array.isArray(params.id) ? params.id[0] : params.id;
   const rawGroupId = Array.isArray(params.groupId) ? params.groupId[0] : (params.groupId || '');
   const [groupId, setGroupId] = useState(rawGroupId);
-  const [hasSplitLoaded, setHasSplitLoaded] = useState(false);
+  const inMem = expenseService.getInMemoryExpenseDetails(expenseId);
+  const [hasSplitLoaded, setHasSplitLoaded] = useState(() => !!inMem?.participants?.length);
 
   const [expense, setExpense] = useState<ExpenseDetailModel | null>(() => {
+    if (inMem) return inMem;
     if (params.title && params.amount) {
       const parsedAmt = parseFloat(params.amount) || 0;
       return {
@@ -111,7 +113,7 @@ export default function ExpenseDetailScreen() {
     return null;
   });
 
-  const [loading, setLoading] = useState(!params.title);
+  const [loading, setLoading] = useState(!inMem && !params.title);
   const [commentInput, setCommentInput] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
 

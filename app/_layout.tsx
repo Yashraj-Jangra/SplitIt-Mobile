@@ -1,4 +1,4 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, Theme } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -9,6 +9,18 @@ import { NetworkProvider } from '../src/contexts/network.context';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { notificationService } from '../src/services/notification.service';
 import { useEffect } from 'react';
+
+const splitItNavTheme: Theme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: THEME.colors.primary,
+    background: THEME.colors.background,
+    card: THEME.colors.background,
+    border: THEME.colors.hairline,
+    text: THEME.colors.text,
+  },
+};
 
 function NavigationGate() {
   const { user, isLoading } = useAuth();
@@ -51,29 +63,33 @@ function NavigationGate() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: THEME.colors.background },
-        animation: 'slide_from_right',
-      }}
-    >
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="expenses/new"
-        options={{
-          presentation: 'modal',
+    <ThemeProvider value={splitItNavTheme}>
+      <Stack
+        screenOptions={{
           headerShown: false,
+          contentStyle: { backgroundColor: THEME.colors.background },
+          animation: 'ios_from_right',
+          freezeOnBlur: false,
         }}
-      />
-      <Stack.Screen
-        name="expenses/[id]"
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
+      >
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="groups/[id]/index" options={{ headerShown: false }} />
+        <Stack.Screen name="groups/[id]/settings" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="expenses/new"
+          options={{
+            presentation: 'modal',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="expenses/[id]"
+          options={{
+            presentation: 'modal',
+            headerShown: false,
+          }}
+        />
       <Stack.Screen
         name="groups/new"
         options={{
@@ -166,7 +182,8 @@ function NavigationGate() {
           headerShown: false,
         }}
       />
-    </Stack>
+      </Stack>
+    </ThemeProvider>
   );
 }
 

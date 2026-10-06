@@ -29,8 +29,8 @@ type FilterType = 'all' | 'owed' | 'owe' | 'archived';
 
 export default function GroupsScreen() {
   const router = useRouter();
-  const [groups, setGroups] = useState<GroupListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
+  const [loading, setLoading] = useState(() => groupService.getInMemoryGroups().length === 0);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -38,7 +38,9 @@ export default function GroupsScreen() {
   const loadGroups = async () => {
     try {
       const data = await groupService.getUserGroups();
-      setGroups(data);
+      if (data && data.length > 0) {
+        setGroups(data);
+      }
     } catch {
       // Fallback
     } finally {
@@ -48,6 +50,14 @@ export default function GroupsScreen() {
   };
 
   useEffect(() => {
+    if (groups.length === 0) {
+      groupService.getCachedUserGroups().then((cached) => {
+        if (cached && cached.length > 0) {
+          setGroups(cached);
+          setLoading(false);
+        }
+      });
+    }
     loadGroups();
   }, []);
 
@@ -148,7 +158,7 @@ export default function GroupsScreen() {
       </View>
 
       {/* Main Groups List */}
-      {loading ? (
+      {loading && groups.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={THEME.colors.primary} />
         </View>

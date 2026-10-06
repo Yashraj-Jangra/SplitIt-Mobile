@@ -23,6 +23,7 @@ export default function TabsLayout() {
           fontSize: 11,
           fontWeight: '700',
         },
+        freezeOnBlur: false,
       }}
       screenListeners={{
         tabPress: () => {
