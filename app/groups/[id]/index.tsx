@@ -206,20 +206,10 @@ export default function GroupDetailScreen() {
     );
   };
 
-  if (loading || !group) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const expenses = group.expenses || [];
-  const members = group.members || [];
-  const simplifiedDebts = group.simplifiedDebts || [];
-  const budget = group.budget || {
+  const expenses = group?.expenses || [];
+  const members = group?.members || [];
+  const simplifiedDebts = group?.simplifiedDebts || [];
+  const budget = group?.budget || {
     enabled: false,
     totalMonthlyLimit: 0,
     totalSpent: 0,
@@ -228,11 +218,11 @@ export default function GroupDetailScreen() {
     safeDailyAllowance: 0,
     categories: [],
   };
-  const activities = group.activities || [];
-  const totalGroupSpend = group.totalGroupSpend || 0;
-  const yourNetBalance = group.yourNetBalance || 0;
+  const activities = group?.activities || [];
+  const totalGroupSpend = group?.totalGroupSpend || 0;
+  const yourNetBalance = group?.yourNetBalance || 0;
 
-  // Progressive infinite scroll data & loader
+  // Progressive infinite scroll data & loader (Called unconditionally before any early returns)
   const visibleExpenses = useMemo(
     () => expenses.slice(0, visibleExpenseCount),
     [expenses, visibleExpenseCount]
@@ -322,6 +312,16 @@ export default function GroupDetailScreen() {
     outputRange: [-200, -200, 0],
     extrapolate: 'clamp',
   });
+
+  if (loading || !group) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={THEME.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
