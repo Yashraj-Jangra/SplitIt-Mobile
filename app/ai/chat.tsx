@@ -12,6 +12,8 @@ import {
   Keyboard,
   Alert,
   Modal,
+  Animated,
+  LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -147,9 +149,7 @@ function RichMessageContent({ text, isStreaming }: { text: string; isStreaming?:
           </View>
         );
       })}
-      {isStreaming && (
-        <Text style={styles.typewriterCursor}>▋</Text>
-      )}
+      {isStreaming && <Text style={styles.typewriterCursor}>▋</Text>}
     </View>
   );
 }
@@ -173,35 +173,90 @@ export default function AiChatModal() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamStage, setStreamStage] = useState<string | null>(null);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [arePillsDismissed, setArePillsDismissed] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
 
+  // Height tracking to detect if the OS window automatically resizes on Android
+  const baseContainerHeightRef = useRef<number>(0);
+  const [isWindowAutoResized, setIsWindowAutoResized] = useState(false);
+  const keyboardAnim = useRef(new Animated.Value(0)).current;
+
   const scrollViewRef = useRef<ScrollView>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Keyboard state tracking & precise auto-scroll
+  const scrollToEndThrottled = useCallback(() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 60);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 200);
+  }, []);
+
+  // Bulletproof Keyboard Listener for both iOS and Android
   useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
-        setIsKeyboardOpen(true);
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-        }, 80);
-      }
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setIsKeyboardOpen(false);
-      }
-    );
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onKeyboardShow = (e: any) => {
+      const height = e?.endCoordinates?.height || 0;
+      setKeyboardHeight(height);
+      setIsKeyboardOpen(true);
+
+      // On Android, if window doesn't resize automatically, lift by keyboard height
+      const targetOffset = Platform.OS === 'ios' ? 0 : (isWindowAutoResized ? 0 : height);
+      Animated.timing(keyboardAnim, {
+        toValue: targetOffset,
+        duration: Platform.OS === 'ios' ? (e?.duration || 250) : 120,
+        useNativeDriver: false,
+      }).start();
+
+      scrollToEndThrottled();
+    };
+
+    const onKeyboardHide = (e: any) => {
+      setKeyboardHeight(0);
+      setIsKeyboardOpen(false);
+
+      Animated.timing(keyboardAnim, {
+        toValue: 0,
+        duration: Platform.OS === 'ios' ? (e?.duration || 250) : 120,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const showSub = Keyboard.addListener(showEvent, onKeyboardShow);
+    const hideSub = Keyboard.addListener(hideEvent, onKeyboardHide);
+
     return () => {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [isWindowAutoResized, scrollToEndThrottled, keyboardAnim]);
+
+  // Measure container layout to detect OS window resize behavior
+  const handleContainerLayout = (e: LayoutChangeEvent) => {
+    const currentHeight = e.nativeEvent.layout.height;
+    if (!baseContainerHeightRef.current || (!isKeyboardOpen && currentHeight > baseContainerHeightRef.current)) {
+      baseContainerHeightRef.current = currentHeight;
+    }
+
+    if (isKeyboardOpen && baseContainerHeightRef.current > 0) {
+      // If layout height shrank by >120px, Android adjustResize already handled the window
+      if (currentHeight < baseContainerHeightRef.current - 120) {
+        setIsWindowAutoResized(true);
+        Animated.timing(keyboardAnim, { toValue: 0, duration: 60, useNativeDriver: false }).start();
+      } else {
+        setIsWindowAutoResized(false);
+        if (keyboardHeight > 0) {
+          Animated.timing(keyboardAnim, { toValue: keyboardHeight, duration: 60, useNativeDriver: false }).start();
+        }
+      }
+    }
+  };
 
   // Starter Cards for Empty / Welcome State
   const starterCards = useMemo(
@@ -378,18 +433,19 @@ export default function AiChatModal() {
   };
 
   useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages, isStreaming]);
+    scrollToEndThrottled();
+  }, [messages, isStreaming, scrollToEndThrottled]);
 
-  // Show inline follow-up chips when conversation is active and input is empty
+  // Show inline follow-up chips ONLY when conversation is active, input is empty, and keyboard is NOT covering the screen
   const showFollowUpChips =
     messages.length > 1 &&
     input.trim().length === 0 &&
     !isStreaming &&
-    !arePillsDismissed;
+    !arePillsDismissed &&
+    !isKeyboardOpen;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top']} onLayout={handleContainerLayout}>
       {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
       <View style={styles.modalGrabber} />
 
@@ -444,280 +500,316 @@ export default function AiChatModal() {
       {/* ── Keyboard-Adaptive Container ─────────────────────────────────── */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 10 : 0}
         style={styles.keyboardContainer}
       >
-        {/* ── Messages Feed ─────────────────────────────────────────────── */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesScroll}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Welcome Intro & Hero Starter Cards Grid (Shown when conversation is young) */}
-          {messages.length <= 1 && (
-            <View style={styles.welcomeHeroContainer}>
-              <View style={styles.heroSparkleBadge}>
-                <Sparkles size={24} color={THEME.colors.primary} />
-              </View>
-              <Text style={styles.heroTitle}>Financial Intelligence</Text>
-              <Text style={styles.heroSubtitle}>
-                Real-time ledger context on your balances, debts, and budgets with zero math hallucinations.
-              </Text>
-
-              <View style={styles.starterGrid}>
-                {starterCards.map((card) => {
-                  const CardIcon = card.icon;
-                  return (
-                    <TouchableOpacity
-                      key={card.id}
-                      style={styles.starterCard}
-                      onPress={() => handleSend(card.prompt)}
-                      activeOpacity={0.75}
-                      disabled={isStreaming}
-                    >
-                      <View style={styles.starterCardHeader}>
-                        <View style={[styles.starterIconBadge, { backgroundColor: card.badgeBg }]}>
-                          <CardIcon size={16} color={card.accentColor} />
-                        </View>
-                        <ArrowRight size={14} color={THEME.colors.textMuted} />
-                      </View>
-                      <Text style={styles.starterCardTitle}>{card.title}</Text>
-                      <Text style={styles.starterCardDesc} numberOfLines={2}>
-                        {card.description}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Messages Flow */}
-          {messages.map((msg) => {
-            const isUser = msg.sender === 'user';
-            return (
-              <View
-                key={msg.id}
-                style={[
-                  styles.messageRow,
-                  isUser ? styles.messageRowUser : styles.messageRowAssistant,
-                ]}
-              >
-                {!isUser && (
-                  <View style={styles.assistantAvatar}>
-                    <Bot size={15} color={THEME.colors.aiLight} />
+        <Animated.View style={[styles.innerContentWrapper, { paddingBottom: keyboardAnim }]}>
+          {/* ── Messages Feed ─────────────────────────────────────────────── */}
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesScroll}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Welcome State: Expands when keyboard is closed, collapses compactly when keyboard is open */}
+            {messages.length <= 1 && (
+              isKeyboardOpen ? (
+                /* Compact 1-line Starter Bar when Keyboard is Active */
+                <View style={styles.compactWelcomeContainer}>
+                  <View style={styles.compactWelcomeHeader}>
+                    <Sparkles size={14} color={THEME.colors.primary} />
+                    <Text style={styles.compactWelcomeTitle}>Quick Financial Prompts</Text>
                   </View>
-                )}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.compactChipsRow}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {starterCards.map((card) => {
+                      const CardIcon = card.icon;
+                      return (
+                        <TouchableOpacity
+                          key={card.id}
+                          style={styles.compactStarterChip}
+                          onPress={() => handleSend(card.prompt)}
+                          activeOpacity={0.75}
+                          disabled={isStreaming}
+                        >
+                          <CardIcon size={12} color={card.accentColor} />
+                          <Text style={styles.compactStarterChipText}>{card.title}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              ) : (
+                /* Full Flagship Hero Starter Cards Grid when Keyboard is Closed */
+                <View style={styles.welcomeHeroContainer}>
+                  <View style={styles.heroSparkleBadge}>
+                    <Sparkles size={24} color={THEME.colors.primary} />
+                  </View>
+                  <Text style={styles.heroTitle}>Financial Intelligence</Text>
+                  <Text style={styles.heroSubtitle}>
+                    Real-time ledger context on your balances, debts, and budgets with zero math hallucinations.
+                  </Text>
 
+                  <View style={styles.starterGrid}>
+                    {starterCards.map((card) => {
+                      const CardIcon = card.icon;
+                      return (
+                        <TouchableOpacity
+                          key={card.id}
+                          style={styles.starterCard}
+                          onPress={() => handleSend(card.prompt)}
+                          activeOpacity={0.75}
+                          disabled={isStreaming}
+                        >
+                          <View style={styles.starterCardHeader}>
+                            <View style={[styles.starterIconBadge, { backgroundColor: card.badgeBg }]}>
+                              <CardIcon size={16} color={card.accentColor} />
+                            </View>
+                            <ArrowRight size={14} color={THEME.colors.textMuted} />
+                          </View>
+                          <Text style={styles.starterCardTitle}>{card.title}</Text>
+                          <Text style={styles.starterCardDesc} numberOfLines={2}>
+                            {card.description}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )
+            )}
+
+            {/* Messages Flow */}
+            {messages.map((msg) => {
+              const isUser = msg.sender === 'user';
+              return (
                 <View
+                  key={msg.id}
                   style={[
-                    styles.messageBubble,
-                    isUser ? styles.bubbleUser : styles.bubbleAssistant,
+                    styles.messageRow,
+                    isUser ? styles.messageRowUser : styles.messageRowAssistant,
                   ]}
                 >
-                  {/* Rich Text Formatter */}
-                  <RichMessageContent
-                    text={msg.text}
-                    isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id}
-                  />
-
-                  {/* Interactive Budget Action Proposal Card */}
-                  {msg.proposal && (
-                    <View style={styles.proposalCard}>
-                      <View style={styles.proposalHeader}>
-                        <View style={styles.proposalHeaderIcon}>
-                          <TrendingUp size={15} color={THEME.colors.primary} />
-                        </View>
-                        <View style={styles.proposalHeaderTitles}>
-                          <Text style={styles.proposalTitle}>AI Budget Proposal</Text>
-                          <Text style={styles.proposalGroupScope}>{msg.proposal.groupName}</Text>
-                        </View>
-                      </View>
-
-                      <Text style={styles.proposalReasoning}>{msg.proposal.aiReasoning}</Text>
-
-                      <View style={styles.changesList}>
-                        {msg.proposal.categoryChanges.map((ch, idx) => (
-                          <View key={idx} style={styles.changeItem}>
-                            <Text style={styles.changeCategory}>{ch.name}</Text>
-                            <View style={styles.changeValues}>
-                              <Text style={styles.strikeText}>₹{ch.old.toLocaleString()}</Text>
-                              <Text style={styles.arrowSeparator}>➔</Text>
-                              <Text
-                                style={[
-                                  styles.newAmountText,
-                                  { color: ch.diff >= 0 ? THEME.colors.primaryLight : THEME.colors.negativeLight },
-                                ]}
-                              >
-                                ₹{ch.new.toLocaleString()}{' '}
-                                <Text style={styles.diffPill}>
-                                  ({ch.diff >= 0 ? `+₹${ch.diff}` : `-₹${Math.abs(ch.diff)}`})
-                                </Text>
-                              </Text>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-
-                      {msg.proposal.status === 'applied' ? (
-                        <View style={styles.appliedBanner}>
-                          <CheckCircle2 size={15} color={THEME.colors.primary} />
-                          <Text style={styles.appliedText}>Proposal Approved & Applied</Text>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.applyButton}
-                          onPress={() => handleApplyProposal(msg.proposal!.id)}
-                          activeOpacity={0.85}
-                        >
-                          <Text style={styles.applyButtonText}>Approve & Apply to Group Ledger</Text>
-                          <ArrowRight size={14} color="#09090B" />
-                        </TouchableOpacity>
-                      )}
+                  {!isUser && (
+                    <View style={styles.assistantAvatar}>
+                      <Bot size={15} color={THEME.colors.aiLight} />
                     </View>
                   )}
 
-                  {/* Message Footer / Copy Action */}
-                  <View style={styles.bubbleFooter}>
-                    <Text style={styles.timestampText}>{msg.timestamp}</Text>
-                    {!isUser && msg.text.trim().length > 0 && (
-                      <TouchableOpacity
-                        onPress={() => handleCopyMessage(msg.id, msg.text)}
-                        style={styles.copyAction}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        {copiedMsgId === msg.id ? (
-                          <View style={styles.copiedBadge}>
-                            <Check size={11} color={THEME.colors.primary} />
-                            <Text style={styles.copiedText}>Copied</Text>
+                  <View
+                    style={[
+                      styles.messageBubble,
+                      isUser ? styles.bubbleUser : styles.bubbleAssistant,
+                    ]}
+                  >
+                    {/* Rich Text Formatter */}
+                    <RichMessageContent
+                      text={msg.text}
+                      isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id}
+                    />
+
+                    {/* Interactive Budget Action Proposal Card */}
+                    {msg.proposal && (
+                      <View style={styles.proposalCard}>
+                        <View style={styles.proposalHeader}>
+                          <View style={styles.proposalHeaderIcon}>
+                            <TrendingUp size={15} color={THEME.colors.primary} />
+                          </View>
+                          <View style={styles.proposalHeaderTitles}>
+                            <Text style={styles.proposalTitle}>AI Budget Proposal</Text>
+                            <Text style={styles.proposalGroupScope}>{msg.proposal.groupName}</Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.proposalReasoning}>{msg.proposal.aiReasoning}</Text>
+
+                        <View style={styles.changesList}>
+                          {msg.proposal.categoryChanges.map((ch, idx) => (
+                            <View key={idx} style={styles.changeItem}>
+                              <Text style={styles.changeCategory}>{ch.name}</Text>
+                              <View style={styles.changeValues}>
+                                <Text style={styles.strikeText}>₹{ch.old.toLocaleString()}</Text>
+                                <Text style={styles.arrowSeparator}>➔</Text>
+                                <Text
+                                  style={[
+                                    styles.newAmountText,
+                                    { color: ch.diff >= 0 ? THEME.colors.primaryLight : THEME.colors.negativeLight },
+                                  ]}
+                                >
+                                  ₹{ch.new.toLocaleString()}{' '}
+                                  <Text style={styles.diffPill}>
+                                    ({ch.diff >= 0 ? `+₹${ch.diff}` : `-₹${Math.abs(ch.diff)}`})
+                                  </Text>
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+
+                        {msg.proposal.status === 'applied' ? (
+                          <View style={styles.appliedBanner}>
+                            <CheckCircle2 size={15} color={THEME.colors.primary} />
+                            <Text style={styles.appliedText}>Proposal Approved & Applied</Text>
                           </View>
                         ) : (
-                          <Copy size={12} color={THEME.colors.textMuted} />
+                          <TouchableOpacity
+                            style={styles.applyButton}
+                            onPress={() => handleApplyProposal(msg.proposal!.id)}
+                            activeOpacity={0.85}
+                          >
+                            <Text style={styles.applyButtonText}>Approve & Apply to Group Ledger</Text>
+                            <ArrowRight size={14} color="#09090B" />
+                          </TouchableOpacity>
                         )}
-                      </TouchableOpacity>
+                      </View>
                     )}
+
+                    {/* Message Footer / Copy Action */}
+                    <View style={styles.bubbleFooter}>
+                      <Text style={styles.timestampText}>{msg.timestamp}</Text>
+                      {!isUser && msg.text.trim().length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => handleCopyMessage(msg.id, msg.text)}
+                          style={styles.copyAction}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          {copiedMsgId === msg.id ? (
+                            <View style={styles.copiedBadge}>
+                              <Check size={11} color={THEME.colors.primary} />
+                              <Text style={styles.copiedText}>Copied</Text>
+                            </View>
+                          ) : (
+                            <Copy size={12} color={THEME.colors.textMuted} />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
+
+                  {isUser && (
+                    <View style={styles.userAvatar}>
+                      <User size={14} color={THEME.colors.text} />
+                    </View>
+                  )}
                 </View>
+              );
+            })}
 
-                {isUser && (
-                  <View style={styles.userAvatar}>
-                    <User size={14} color={THEME.colors.text} />
-                  </View>
-                )}
+            {/* Thinking / Streaming Indicator */}
+            {isStreaming && (
+              <View style={styles.thinkingContainer}>
+                <View style={styles.thinkingPill}>
+                  <ActivityIndicator size="small" color={THEME.colors.aiLight} />
+                  <Text style={styles.thinkingText}>
+                    {streamStage || 'Analyzing ledger records...'}
+                  </Text>
+                </View>
               </View>
-            );
-          })}
+            )}
+          </ScrollView>
 
-          {/* Thinking / Streaming Indicator */}
-          {isStreaming && (
-            <View style={styles.thinkingContainer}>
-              <View style={styles.thinkingPill}>
-                <ActivityIndicator size="small" color={THEME.colors.aiLight} />
-                <Text style={styles.thinkingText}>
-                  {streamStage || 'Analyzing ledger records...'}
-                </Text>
-              </View>
+          {/* ── Follow-Up Suggestion Chips (Above Input, hidden when typing/keyboard open) ── */}
+          {showFollowUpChips && (
+            <View style={styles.chipsWrapper}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsScrollContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                {followUpChips.map((chip, idx) => {
+                  const ChipIcon = chip.icon;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.chipButton}
+                      onPress={() => handleSend(chip.prompt)}
+                      activeOpacity={0.7}
+                    >
+                      <ChipIcon size={12} color={THEME.colors.aiLight} />
+                      <Text style={styles.chipText}>{chip.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  style={styles.chipDismissButton}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setArePillsDismissed(true);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <X size={12} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
+              </ScrollView>
             </View>
           )}
-        </ScrollView>
 
-        {/* ── Follow-Up Suggestion Chips (Above Input) ───────────────────── */}
-        {showFollowUpChips && (
-          <View style={styles.chipsWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsScrollContent}
-              keyboardShouldPersistTaps="handled"
-            >
-              {followUpChips.map((chip, idx) => {
-                const ChipIcon = chip.icon;
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    style={styles.chipButton}
-                    onPress={() => handleSend(chip.prompt)}
-                    activeOpacity={0.7}
-                  >
-                    <ChipIcon size={12} color={THEME.colors.aiLight} />
-                    <Text style={styles.chipText}>{chip.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity
-                style={styles.chipDismissButton}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setArePillsDismissed(true);
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <X size={12} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            </ScrollView>
+          {/* ── Input Bar Capsule ─────────────────────────────────────────── */}
+          <View
+            style={[
+              styles.inputContainer,
+              {
+                paddingBottom: isKeyboardOpen ? 6 : Math.max(insets.bottom, 12),
+              },
+            ]}
+          >
+            <View style={styles.inputCapsule}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ask about spending, debts, budgets..."
+                placeholderTextColor={THEME.colors.textMuted}
+                value={input}
+                onChangeText={setInput}
+                multiline
+                maxLength={800}
+                onFocus={() => scrollToEndThrottled()}
+              />
+
+              {input.length > 0 && !isStreaming && (
+                <TouchableOpacity
+                  onPress={() => setInput('')}
+                  style={styles.clearInputButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <X size={14} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
+              )}
+
+              {isStreaming ? (
+                <TouchableOpacity
+                  style={styles.stopButton}
+                  onPress={handleStop}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Stop generation"
+                >
+                  <Square size={13} color="#FFFFFF" fill="#FFFFFF" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.sendButton,
+                    !input.trim() && styles.sendButtonDisabled,
+                  ]}
+                  onPress={() => handleSend()}
+                  disabled={!input.trim()}
+                  activeOpacity={0.85}
+                >
+                  <Send
+                    size={15}
+                    color={input.trim() ? '#09090B' : THEME.colors.textMuted}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        )}
-
-        {/* ── Input Bar Capsule ─────────────────────────────────────────── */}
-        <View
-          style={[
-            styles.inputContainer,
-            {
-              paddingBottom: isKeyboardOpen ? 6 : Math.max(insets.bottom, 12),
-            },
-          ]}
-        >
-          <View style={styles.inputCapsule}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Ask about spending, debts, budgets..."
-              placeholderTextColor={THEME.colors.textMuted}
-              value={input}
-              onChangeText={setInput}
-              multiline
-              maxLength={800}
-            />
-
-            {input.length > 0 && !isStreaming && (
-              <TouchableOpacity
-                onPress={() => setInput('')}
-                style={styles.clearInputButton}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <X size={14} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            )}
-
-            {isStreaming ? (
-              <TouchableOpacity
-                style={styles.stopButton}
-                onPress={handleStop}
-                activeOpacity={0.85}
-                accessibilityLabel="Stop generation"
-              >
-                <Square size={13} color="#FFFFFF" fill="#FFFFFF" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[
-                  styles.sendButton,
-                  !input.trim() && styles.sendButtonDisabled,
-                ]}
-                onPress={() => handleSend()}
-                disabled={!input.trim()}
-                activeOpacity={0.85}
-              >
-                <Send
-                  size={15}
-                  color={input.trim() ? '#09090B' : THEME.colors.textMuted}
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
 
       {/* ── Financial Assistant Info Modal ─────────────────────────────── */}
@@ -875,6 +967,9 @@ const styles = StyleSheet.create({
   keyboardContainer: {
     flex: 1,
   },
+  innerContentWrapper: {
+    flex: 1,
+  },
   messagesScroll: {
     flex: 1,
   },
@@ -884,7 +979,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     gap: 14,
   },
-  // Welcome State
+  // Welcome State - Full Grid
   welcomeHeroContainer: {
     alignItems: 'center',
     paddingVertical: 16,
@@ -955,6 +1050,49 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     lineHeight: 15,
   },
+  // Welcome State - Compact Bar When Keyboard is Active
+  compactWelcomeContainer: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 6,
+    gap: 6,
+  },
+  compactWelcomeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  compactWelcomeTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  compactChipsRow: {
+    gap: 6,
+    paddingVertical: 2,
+  },
+  compactStarterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+  },
+  compactStarterChipText: {
+    fontSize: 11,
+    color: THEME.colors.text,
+    fontWeight: '600',
+  },
   // Messages Flow
   messageRow: {
     flexDirection: 'row',
@@ -993,19 +1131,29 @@ const styles = StyleSheet.create({
     maxWidth: '82%',
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: THEME.radius.lg,
+    borderRadius: 18,
   },
+  // User bubble: Sharp edge moved to TOP-RIGHT pointing to user avatar
   bubbleUser: {
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderBottomRightRadius: 4,
+    borderRadius: 18,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 18,
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
   },
+  // Assistant bubble: Sharp edge moved to TOP-LEFT pointing to bot avatar
   bubbleAssistant: {
     backgroundColor: THEME.colors.surface,
     borderWidth: 1,
     borderColor: 'rgba(139, 92, 246, 0.22)',
-    borderBottomLeftRadius: 4,
+    borderRadius: 18,
+    borderTopLeftRadius: 4,
+    borderBottomLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderBottomRightRadius: 18,
   },
   // Rich Markdown Text Formatting
   richContentContainer: {
