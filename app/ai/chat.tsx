@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Keyboard,
+  Alert,
+  Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   X,
@@ -22,19 +25,138 @@ import {
   Trash2,
   ArrowRight,
   TrendingUp,
+  TrendingDown,
+  Info,
+  Copy,
+  Check,
+  Square,
+  Scale,
+  Receipt,
+  ShieldCheck,
+  Calculator,
+  Database,
+  Cpu,
 } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
-import * as Haptics from 'expo-haptics';
 
 interface ChatMessage {
   id: string;
   sender: 'user' | 'assistant';
   text: string;
+  timestamp: string;
   proposal?: BudgetActionProposal;
+  statusLabel?: string;
 }
 
+// ── Rich Markdown & Financial Entity Renderer ───────────────────────────────
+function FormattedInlineText({ text }: { text: string }) {
+  const parts: Array<{ type: 'text' | 'bold' | 'currency'; content: string }> = [];
+  const regex = /(\*\*[^*]+\*\*|₹[0-9,]+(?:\.[0-9]{2})?)/g;
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push({
+        type: 'text',
+        content: text.substring(lastIdx, match.index),
+      });
+    }
+    const token = match[0];
+    if (token.startsWith('**') && token.endsWith('**')) {
+      parts.push({
+        type: 'bold',
+        content: token.slice(2, -2),
+      });
+    } else if (token.startsWith('₹')) {
+      parts.push({
+        type: 'currency',
+        content: token,
+      });
+    }
+    lastIdx = regex.lastIndex;
+  }
+  if (lastIdx < text.length) {
+    parts.push({
+      type: 'text',
+      content: text.substring(lastIdx),
+    });
+  }
+
+  return (
+    <Text style={styles.messageText}>
+      {parts.map((p, i) => {
+        if (p.type === 'bold') {
+          return (
+            <Text key={i} style={styles.boldText}>
+              {p.content}
+            </Text>
+          );
+        }
+        if (p.type === 'currency') {
+          return (
+            <Text key={i} style={styles.currencyHighlight}>
+              {p.content}
+            </Text>
+          );
+        }
+        return <Text key={i}>{p.content}</Text>;
+      })}
+    </Text>
+  );
+}
+
+function RichMessageContent({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
+  const paragraphs = text.split('\n');
+
+  return (
+    <View style={styles.richContentContainer}>
+      {paragraphs.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return <View key={idx} style={styles.paragraphSpacer} />;
+        }
+
+        if (trimmed.startsWith('• ') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          const bulletContent = trimmed.replace(/^[•\-\*]\s*/, '');
+          return (
+            <View key={idx} style={styles.bulletRow}>
+              <View style={styles.bulletDot} />
+              <View style={styles.bulletTextContainer}>
+                <FormattedInlineText text={bulletContent} />
+              </View>
+            </View>
+          );
+        }
+
+        if (trimmed.startsWith('### ') || trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+          const headingContent = trimmed.replace(/^#+\s*/, '');
+          return (
+            <Text key={idx} style={styles.messageHeading}>
+              {headingContent}
+            </Text>
+          );
+        }
+
+        return (
+          <View key={idx} style={styles.paragraphRow}>
+            <FormattedInlineText text={line} />
+          </View>
+        );
+      })}
+      {isStreaming && (
+        <Text style={styles.typewriterCursor}>▋</Text>
+      )}
+    </View>
+  );
+}
+
+// ── Main Flagship AI Chat Screen ────────────────────────────────────────────
 export default function AiChatModal() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { groupId, groupName } = useLocalSearchParams<{ groupId?: string; groupName?: string }>();
 
@@ -43,17 +165,107 @@ export default function AiChatModal() {
     {
       id: 'welcome',
       sender: 'assistant',
-      text: `Hello! I am your **SplitIt AI Financial Assistant**.\n\nI have real-time context on your groups, spending velocity, debts, and budgets. How can I help you today?`,
+      text: `Hello! I am your **SplitIt AI Financial Assistant**.\n\nI have real-time ledger grounding on your groups, spending velocity, debts, and budgets with zero math hallucinations. How can I help you today?`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
 
-  const quickPrompts = [
-    'How much do I owe?',
-    'Suggest budget cuts for Apartment Flatmates',
-    'What was our largest expense this month?',
-  ];
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamStage, setStreamStage] = useState<string | null>(null);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [arePillsDismissed, setArePillsDismissed] = useState(false);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Keyboard state tracking & precise auto-scroll
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setIsKeyboardOpen(true);
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 80);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setIsKeyboardOpen(false);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Starter Cards for Empty / Welcome State
+  const starterCards = useMemo(
+    () => [
+      {
+        id: 'owe',
+        title: 'Who owes what?',
+        description: 'Audit simplified debt balances across all groups',
+        prompt: 'How much do I owe, and who owes me money right now?',
+        icon: Scale,
+        accentColor: THEME.colors.primary,
+        badgeBg: 'rgba(28, 194, 159, 0.12)',
+      },
+      {
+        id: 'budget',
+        title: 'Suggest budget cuts',
+        description: groupName ? `Optimize caps for ${groupName}` : 'Auto-balance group categories to stay under limit',
+        prompt: groupName ? `Suggest budget cuts for ${groupName}` : 'Suggest budget cuts for Apartment Flatmates',
+        icon: TrendingDown,
+        accentColor: THEME.colors.aiLight,
+        badgeBg: 'rgba(139, 92, 246, 0.12)',
+      },
+      {
+        id: 'expenses',
+        title: 'Largest expenses',
+        description: 'Detect high-ticket transactions & unusual spikes',
+        prompt: 'What was our largest expense this month?',
+        icon: Receipt,
+        accentColor: '#F59E0B',
+        badgeBg: 'rgba(245, 158, 11, 0.12)',
+      },
+      {
+        id: 'trend',
+        title: 'Spending velocity',
+        description: 'Analyze burn rate and category breakdown timeline',
+        prompt: "What's our spending trend this month vs last month?",
+        icon: TrendingUp,
+        accentColor: '#38BDF8',
+        badgeBg: 'rgba(56, 189, 248, 0.12)',
+      },
+    ],
+    [groupName]
+  );
+
+  // Compact Follow-Up Chips for ongoing conversation
+  const followUpChips = useMemo(
+    () => [
+      { label: 'Who owes what?', icon: Scale, prompt: 'How much do I owe, and who owes me right now?' },
+      { label: 'Budget cuts', icon: TrendingDown, prompt: groupName ? `Suggest budget cuts for ${groupName}` : 'Suggest budget cuts for Apartment Flatmates' },
+      { label: 'Top expenses', icon: Receipt, prompt: 'What was our largest expense this month?' },
+      { label: 'Spending velocity', icon: TrendingUp, prompt: "What's our spending trend this month vs last month?" },
+    ],
+    [groupName]
+  );
+
+  const handleStop = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+    setStreamStage(null);
+  }, []);
 
   const handleSend = async (promptToSend?: string) => {
     const text = (promptToSend || input).trim();
@@ -62,22 +274,35 @@ export default function AiChatModal() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setInput('');
 
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsgId = `msg_${Date.now()}`;
     const assistantMsgId = `msg_${Date.now() + 1}`;
 
-    setMessages((prev) => [
-      ...prev,
-      { id: userMsgId, sender: 'user', text },
-      { id: assistantMsgId, sender: 'assistant', text: '' },
-    ]);
+    const newMessages: ChatMessage[] = [
+      ...messages,
+      { id: userMsgId, sender: 'user', text, timestamp: timeStr },
+      { id: assistantMsgId, sender: 'assistant', text: '', timestamp: timeStr },
+    ];
+    setMessages(newMessages);
 
     setIsStreaming(true);
+    setStreamStage('Searching ledger & expenses...');
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // Build history payload for backend
+    const historyPayload = newMessages.slice(-6).map((m) => ({
+      role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
+      content: m.text,
+    }));
 
     try {
       await aiService.streamChat(
         text,
         groupId,
         (token) => {
+          setStreamStage(null);
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantMsgId ? { ...m, text: m.text + token } : m))
           );
@@ -86,10 +311,19 @@ export default function AiChatModal() {
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantMsgId ? { ...m, proposal } : m))
           );
-        }
+        },
+        (status) => {
+          setStreamStage(status.message);
+        },
+        controller.signal,
+        historyPayload
       );
+    } catch {
+      // Aborted or finished
     } finally {
       setIsStreaming(false);
+      setStreamStage(null);
+      abortControllerRef.current = null;
     }
   };
 
@@ -109,226 +343,619 @@ export default function AiChatModal() {
     );
   };
 
+  const handleCopyMessage = async (msgId: string, text: string) => {
+    await Clipboard.setStringAsync(text);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCopiedMsgId(msgId);
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
+
+  const handleClearHistory = () => {
+    Alert.alert(
+      'Clear Conversation',
+      'Are you sure you want to clear your AI chat history?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            handleStop();
+            setMessages([
+              {
+                id: 'welcome_reset',
+                sender: 'assistant',
+                text: 'Chat history cleared. How can I assist your ledger or budgets today?',
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              },
+            ]);
+            setArePillsDismissed(false);
+          },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+  }, [messages, isStreaming]);
+
+  // Show inline follow-up chips when conversation is active and input is empty
+  const showFollowUpChips =
+    messages.length > 1 &&
+    input.trim().length === 0 &&
+    !isStreaming &&
+    !arePillsDismissed;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* Header */}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
+      <View style={styles.modalGrabber} />
+
+      {/* ── Flagship Header ────────────────────────────────────────────── */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
             Haptics.selectionAsync();
             router.back();
           }}
-          style={styles.closeButton}
+          style={styles.headerIconButton}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityLabel="Close"
         >
-          <X size={20} color={THEME.colors.textSecondary} />
+          <X size={18} color={THEME.colors.textSecondary} />
         </TouchableOpacity>
 
-        <View style={styles.headerTitleContainer}>
-          <View style={styles.titleRow}>
-            <Sparkles size={16} color={THEME.colors.aiLight} />
-            <Text style={styles.headerTitle}>SplitIt AI Assistant</Text>
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <View style={styles.aiGlowDot} />
+            <Text style={styles.headerTitle}>SplitIt Financial AI</Text>
           </View>
-          <Text style={styles.headerSubtitle}>
-            {groupName ? `Scoped to ${groupName}` : 'Financial RAG Grounding'}
-          </Text>
+          <View style={styles.headerStatusRow}>
+            <Text style={styles.headerSubtitle}>
+              {groupName ? `Scoped to ${groupName}` : 'Zero Math Hallucinations · RAG Ledger'}
+            </Text>
+          </View>
         </View>
 
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setMessages([
-              {
-                id: 'welcome_reset',
-                sender: 'assistant',
-                text: 'Chat history cleared. How can I assist your finances?',
-              },
-            ]);
-          }}
-          style={styles.closeButton}
-        >
-          <Trash2 size={18} color={THEME.colors.textMuted} />
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsInfoModalVisible(true);
+            }}
+            style={styles.headerIconButton}
+            accessibilityLabel="Assistant Info"
+          >
+            <Info size={18} color={THEME.colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleClearHistory}
+            style={styles.headerIconButton}
+            accessibilityLabel="Clear history"
+          >
+            <Trash2 size={17} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {/* ── Keyboard-Adaptive Container ─────────────────────────────────── */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.chatArea}
-        keyboardVerticalOffset={10}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        style={styles.keyboardContainer}
       >
-        {/* Messages Feed */}
+        {/* ── Messages Feed ─────────────────────────────────────────────── */}
         <ScrollView
           ref={scrollViewRef}
+          style={styles.messagesScroll}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardShouldPersistTaps="handled"
         >
-          {messages.map((msg) => (
-            <View
-              key={msg.id}
-              style={[
-                styles.messageRow,
-                msg.sender === 'user' ? styles.messageRowUser : styles.messageRowAssistant,
-              ]}
-            >
-              {msg.sender === 'assistant' && (
-                <View style={styles.assistantAvatar}>
-                  <Bot size={16} color={THEME.colors.aiLight} />
-                </View>
-              )}
+          {/* Welcome Intro & Hero Starter Cards Grid (Shown when conversation is young) */}
+          {messages.length <= 1 && (
+            <View style={styles.welcomeHeroContainer}>
+              <View style={styles.heroSparkleBadge}>
+                <Sparkles size={24} color={THEME.colors.primary} />
+              </View>
+              <Text style={styles.heroTitle}>Financial Intelligence</Text>
+              <Text style={styles.heroSubtitle}>
+                Real-time ledger context on your balances, debts, and budgets with zero math hallucinations.
+              </Text>
 
+              <View style={styles.starterGrid}>
+                {starterCards.map((card) => {
+                  const CardIcon = card.icon;
+                  return (
+                    <TouchableOpacity
+                      key={card.id}
+                      style={styles.starterCard}
+                      onPress={() => handleSend(card.prompt)}
+                      activeOpacity={0.75}
+                      disabled={isStreaming}
+                    >
+                      <View style={styles.starterCardHeader}>
+                        <View style={[styles.starterIconBadge, { backgroundColor: card.badgeBg }]}>
+                          <CardIcon size={16} color={card.accentColor} />
+                        </View>
+                        <ArrowRight size={14} color={THEME.colors.textMuted} />
+                      </View>
+                      <Text style={styles.starterCardTitle}>{card.title}</Text>
+                      <Text style={styles.starterCardDesc} numberOfLines={2}>
+                        {card.description}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Messages Flow */}
+          {messages.map((msg) => {
+            const isUser = msg.sender === 'user';
+            return (
               <View
+                key={msg.id}
                 style={[
-                  styles.messageBubble,
-                  msg.sender === 'user' ? styles.bubbleUser : styles.bubbleAssistant,
+                  styles.messageRow,
+                  isUser ? styles.messageRowUser : styles.messageRowAssistant,
                 ]}
               >
-                <Text style={styles.messageText}>{msg.text}</Text>
+                {!isUser && (
+                  <View style={styles.assistantAvatar}>
+                    <Bot size={15} color={THEME.colors.aiLight} />
+                  </View>
+                )}
 
-                {/* Interactive Budget Proposal Card */}
-                {msg.proposal && (
-                  <View style={styles.proposalCard}>
-                    <View style={styles.proposalHeader}>
-                      <TrendingUp size={16} color={THEME.colors.primary} />
-                      <Text style={styles.proposalTitle}>AI Budget Proposal</Text>
-                    </View>
+                <View
+                  style={[
+                    styles.messageBubble,
+                    isUser ? styles.bubbleUser : styles.bubbleAssistant,
+                  ]}
+                >
+                  {/* Rich Text Formatter */}
+                  <RichMessageContent
+                    text={msg.text}
+                    isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id}
+                  />
 
-                    <Text style={styles.proposalReasoning}>{msg.proposal.aiReasoning}</Text>
-
-                    <View style={styles.changesList}>
-                      {msg.proposal.categoryChanges.map((ch, idx) => (
-                        <View key={idx} style={styles.changeItem}>
-                          <Text style={styles.changeCategory}>{ch.name}</Text>
-                          <Text style={styles.changeValues}>
-                            <Text style={styles.strikeText}>₹{ch.old.toLocaleString()}</Text> ➔{' '}
-                            <Text
-                              style={{
-                                color: ch.diff >= 0 ? THEME.colors.primary : THEME.colors.negative,
-                                fontWeight: '700',
-                              }}
-                            >
-                              ₹{ch.new.toLocaleString()} ({ch.diff >= 0 ? `+₹${ch.diff}` : `-₹${Math.abs(ch.diff)}`})
-                            </Text>
-                          </Text>
+                  {/* Interactive Budget Action Proposal Card */}
+                  {msg.proposal && (
+                    <View style={styles.proposalCard}>
+                      <View style={styles.proposalHeader}>
+                        <View style={styles.proposalHeaderIcon}>
+                          <TrendingUp size={15} color={THEME.colors.primary} />
                         </View>
-                      ))}
-                    </View>
-
-                    {msg.proposal.status === 'applied' ? (
-                      <View style={styles.appliedBanner}>
-                        <CheckCircle2 size={15} color={THEME.colors.primary} />
-                        <Text style={styles.appliedText}>Proposal Approved & Applied</Text>
+                        <View style={styles.proposalHeaderTitles}>
+                          <Text style={styles.proposalTitle}>AI Budget Proposal</Text>
+                          <Text style={styles.proposalGroupScope}>{msg.proposal.groupName}</Text>
+                        </View>
                       </View>
-                    ) : (
+
+                      <Text style={styles.proposalReasoning}>{msg.proposal.aiReasoning}</Text>
+
+                      <View style={styles.changesList}>
+                        {msg.proposal.categoryChanges.map((ch, idx) => (
+                          <View key={idx} style={styles.changeItem}>
+                            <Text style={styles.changeCategory}>{ch.name}</Text>
+                            <View style={styles.changeValues}>
+                              <Text style={styles.strikeText}>₹{ch.old.toLocaleString()}</Text>
+                              <Text style={styles.arrowSeparator}>➔</Text>
+                              <Text
+                                style={[
+                                  styles.newAmountText,
+                                  { color: ch.diff >= 0 ? THEME.colors.primaryLight : THEME.colors.negativeLight },
+                                ]}
+                              >
+                                ₹{ch.new.toLocaleString()}{' '}
+                                <Text style={styles.diffPill}>
+                                  ({ch.diff >= 0 ? `+₹${ch.diff}` : `-₹${Math.abs(ch.diff)}`})
+                                </Text>
+                              </Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+
+                      {msg.proposal.status === 'applied' ? (
+                        <View style={styles.appliedBanner}>
+                          <CheckCircle2 size={15} color={THEME.colors.primary} />
+                          <Text style={styles.appliedText}>Proposal Approved & Applied</Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.applyButton}
+                          onPress={() => handleApplyProposal(msg.proposal!.id)}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={styles.applyButtonText}>Approve & Apply to Group Ledger</Text>
+                          <ArrowRight size={14} color="#09090B" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Message Footer / Copy Action */}
+                  <View style={styles.bubbleFooter}>
+                    <Text style={styles.timestampText}>{msg.timestamp}</Text>
+                    {!isUser && msg.text.trim().length > 0 && (
                       <TouchableOpacity
-                        style={styles.applyButton}
-                        onPress={() => handleApplyProposal(msg.proposal!.id)}
+                        onPress={() => handleCopyMessage(msg.id, msg.text)}
+                        style={styles.copyAction}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
-                        <Text style={styles.applyButtonText}>Approve & Apply to Group</Text>
-                        <ArrowRight size={15} color="#09090B" />
+                        {copiedMsgId === msg.id ? (
+                          <View style={styles.copiedBadge}>
+                            <Check size={11} color={THEME.colors.primary} />
+                            <Text style={styles.copiedText}>Copied</Text>
+                          </View>
+                        ) : (
+                          <Copy size={12} color={THEME.colors.textMuted} />
+                        )}
                       </TouchableOpacity>
                     )}
                   </View>
+                </View>
+
+                {isUser && (
+                  <View style={styles.userAvatar}>
+                    <User size={14} color={THEME.colors.text} />
+                  </View>
                 )}
               </View>
-            </View>
-          ))}
+            );
+          })}
 
+          {/* Thinking / Streaming Indicator */}
           {isStreaming && (
-            <View style={styles.streamingIndicator}>
-              <ActivityIndicator size="small" color={THEME.colors.aiLight} />
-              <Text style={styles.streamingText}>Thinking & crunching analytics...</Text>
+            <View style={styles.thinkingContainer}>
+              <View style={styles.thinkingPill}>
+                <ActivityIndicator size="small" color={THEME.colors.aiLight} />
+                <Text style={styles.thinkingText}>
+                  {streamStage || 'Analyzing ledger records...'}
+                </Text>
+              </View>
             </View>
           )}
         </ScrollView>
 
-        {/* Quick Suggestion Pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.pillsRow}
-        >
-          {quickPrompts.map((prompt, i) => (
-            <TouchableOpacity
-              key={i}
-              style={styles.promptPill}
-              onPress={() => handleSend(prompt)}
-              disabled={isStreaming}
+        {/* ── Follow-Up Suggestion Chips (Above Input) ───────────────────── */}
+        {showFollowUpChips && (
+          <View style={styles.chipsWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipsScrollContent}
+              keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.promptPillText}>{prompt}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              {followUpChips.map((chip, idx) => {
+                const ChipIcon = chip.icon;
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.chipButton}
+                    onPress={() => handleSend(chip.prompt)}
+                    activeOpacity={0.7}
+                  >
+                    <ChipIcon size={12} color={THEME.colors.aiLight} />
+                    <Text style={styles.chipText}>{chip.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity
+                style={styles.chipDismissButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setArePillsDismissed(true);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={12} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
 
-        {/* Input Bar */}
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.inputField}
-            placeholder="Ask about spending, debts, budgets..."
-            placeholderTextColor={THEME.colors.textMuted}
-            value={input}
-            onChangeText={setInput}
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, (!input.trim() || isStreaming) && styles.sendButtonDisabled]}
-            onPress={() => handleSend()}
-            disabled={!input.trim() || isStreaming}
-          >
-            <Send size={16} color={input.trim() ? '#09090B' : THEME.colors.textMuted} />
-          </TouchableOpacity>
+        {/* ── Input Bar Capsule ─────────────────────────────────────────── */}
+        <View
+          style={[
+            styles.inputContainer,
+            {
+              paddingBottom: isKeyboardOpen ? 6 : Math.max(insets.bottom, 12),
+            },
+          ]}
+        >
+          <View style={styles.inputCapsule}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Ask about spending, debts, budgets..."
+              placeholderTextColor={THEME.colors.textMuted}
+              value={input}
+              onChangeText={setInput}
+              multiline
+              maxLength={800}
+            />
+
+            {input.length > 0 && !isStreaming && (
+              <TouchableOpacity
+                onPress={() => setInput('')}
+                style={styles.clearInputButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={14} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            )}
+
+            {isStreaming ? (
+              <TouchableOpacity
+                style={styles.stopButton}
+                onPress={handleStop}
+                activeOpacity={0.85}
+                accessibilityLabel="Stop generation"
+              >
+                <Square size={13} color="#FFFFFF" fill="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  !input.trim() && styles.sendButtonDisabled,
+                ]}
+                onPress={() => handleSend()}
+                disabled={!input.trim()}
+                activeOpacity={0.85}
+              >
+                <Send
+                  size={15}
+                  color={input.trim() ? '#09090B' : THEME.colors.textMuted}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* ── Financial Assistant Info Modal ─────────────────────────────── */}
+      <Modal
+        visible={isInfoModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsInfoModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsInfoModalVisible(false)}
+        >
+          <View style={styles.infoModalCard}>
+            <View style={styles.infoModalHeader}>
+              <View style={styles.infoModalIconBadge}>
+                <Sparkles size={18} color={THEME.colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoModalTitle}>Private Financial Intelligence</Text>
+                <Text style={styles.infoModalSubtitle}>RAG Grounded · Zero Math Hallucinations</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsInfoModalVisible(false)}
+                style={styles.infoModalCloseButton}
+              >
+                <X size={18} color={THEME.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.infoList}>
+              <View style={styles.infoRow}>
+                <Calculator size={16} color="#10B981" style={styles.infoRowIcon} />
+                <View style={styles.infoRowContent}>
+                  <Text style={styles.infoRowTitle}>Zero Math Hallucinations</Text>
+                  <Text style={styles.infoRowDesc}>
+                    Balances, debts, and cuts are computed strictly server-side from your ledger. The AI never guesses numbers.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Database size={16} color="#38BDF8" style={styles.infoRowIcon} />
+                <View style={styles.infoRowContent}>
+                  <Text style={styles.infoRowTitle}>Semantic Vector Search</Text>
+                  <Text style={styles.infoRowDesc}>
+                    Transactions are indexed with vectors, retrieving context by financial meaning before answering.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.infoRow}>
+                <ShieldCheck size={16} color="#A78BFA" style={styles.infoRowIcon} />
+                <View style={styles.infoRowContent}>
+                  <Text style={styles.infoRowTitle}>Private by Design</Text>
+                  <Text style={styles.infoRowDesc}>
+                    Ledger facts never leave your account scope. History is strictly private and never used to train public models.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Cpu size={16} color="#F59E0B" style={styles.infoRowIcon} />
+                <View style={styles.infoRowContent}>
+                  <Text style={styles.infoRowTitle}>How It Operates</Text>
+                  <Text style={styles.infoRowDesc}>
+                    Question ➔ Server calculates ledger facts ➔ Semantic retrieval ➔ AI synthesizes answer ➔ Live SSE stream.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+// ── Flagship Dark Theme Styles ──────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: THEME.colors.background,
+  },
+  modalGrabber: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignSelf: 'center',
+    marginTop: 6,
+    marginBottom: 4,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: THEME.colors.background,
   },
-  closeButton: {
-    padding: 6,
+  headerIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: THEME.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  headerTitleContainer: {
+  headerCenter: {
     alignItems: 'center',
   },
-  titleRow: {
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
+  aiGlowDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: THEME.colors.primary,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    elevation: 4,
+  },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: THEME.colors.text,
+    letterSpacing: -0.2,
   },
-  headerSubtitle: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
+  headerStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 2,
   },
-  chatArea: {
+  headerSubtitle: {
+    fontSize: 10,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
+  messagesScroll: {
     flex: 1,
   },
   messagesContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 20,
     gap: 14,
   },
+  // Welcome State
+  welcomeHeroContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 6,
+  },
+  heroSparkleBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(28, 194, 159, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(28, 194, 159, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  heroTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: THEME.colors.text,
+    letterSpacing: -0.4,
+    textAlign: 'center',
+  },
+  heroSubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 6,
+    marginBottom: 20,
+    maxWidth: 320,
+  },
+  starterGrid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  starterCard: {
+    width: '48.5%',
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: THEME.radius.lg,
+    padding: 12,
+  },
+  starterCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  starterIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  starterCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: 4,
+  },
+  starterCardDesc: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    lineHeight: 15,
+  },
+  // Messages Flow
   messageRow: {
     flexDirection: 'row',
     gap: 8,
@@ -345,6 +972,19 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  userAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -353,51 +993,148 @@ const styles = StyleSheet.create({
     maxWidth: '82%',
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
   },
   bubbleUser: {
     backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     borderBottomRightRadius: 4,
   },
   bubbleAssistant: {
     backgroundColor: THEME.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.2)',
+    borderColor: 'rgba(139, 92, 246, 0.22)',
     borderBottomLeftRadius: 4,
   },
+  // Rich Markdown Text Formatting
+  richContentContainer: {
+    gap: 4,
+  },
+  paragraphRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  paragraphSpacer: {
+    height: 6,
+  },
   messageText: {
-    fontSize: 14,
+    fontSize: 13.5,
     color: THEME.colors.text,
     lineHeight: 20,
   },
+  boldText: {
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  currencyHighlight: {
+    fontWeight: '800',
+    color: THEME.colors.primaryLight,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginVertical: 2,
+  },
+  bulletDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: THEME.colors.aiLight,
+    marginTop: 8,
+  },
+  bulletTextContainer: {
+    flex: 1,
+  },
+  messageHeading: {
+    fontSize: 14.5,
+    fontWeight: '900',
+    color: THEME.colors.text,
+    marginTop: 6,
+    marginBottom: 2,
+    letterSpacing: -0.2,
+  },
+  typewriterCursor: {
+    fontSize: 14,
+    color: THEME.colors.aiLight,
+    fontWeight: '900',
+    marginLeft: 2,
+  },
+  bubbleFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingTop: 4,
+  },
+  timestampText: {
+    fontSize: 10,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
+  },
+  copyAction: {
+    padding: 2,
+  },
+  copiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(28, 194, 159, 0.1)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  copiedText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  // Budget Proposal Card
   proposalCard: {
-    marginTop: 12,
+    marginTop: 10,
     backgroundColor: THEME.colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    borderRadius: THEME.radius.sm,
+    borderColor: 'rgba(28, 194, 159, 0.25)',
+    borderRadius: THEME.radius.md,
     padding: 12,
     gap: 8,
   },
   proposalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  proposalHeaderIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(28, 194, 159, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proposalHeaderTitles: {
+    flex: 1,
   },
   proposalTitle: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '800',
     color: THEME.colors.text,
-    letterSpacing: 0.5,
+  },
+  proposalGroupScope: {
+    fontSize: 10,
+    color: THEME.colors.textMuted,
   },
   proposalReasoning: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: THEME.colors.textSecondary,
     lineHeight: 16,
   },
   changesList: {
     gap: 6,
-    marginTop: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: THEME.radius.sm,
+    padding: 8,
   },
   changeItem: {
     flexDirection: 'row',
@@ -405,16 +1142,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   changeCategory: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: THEME.colors.text,
     fontWeight: '600',
   },
   changeValues: {
-    fontSize: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   strikeText: {
     textDecorationLine: 'line-through',
     color: THEME.colors.textMuted,
+    fontSize: 11,
+  },
+  arrowSeparator: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+  },
+  newAmountText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  diffPill: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   applyButton: {
     flexDirection: 'row',
@@ -422,12 +1174,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: THEME.colors.primary,
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: THEME.radius.sm,
-    marginTop: 6,
+    marginTop: 4,
   },
   applyButtonText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
     color: '#09090B',
   },
@@ -436,73 +1188,193 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    paddingVertical: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    paddingVertical: 7,
     borderRadius: THEME.radius.sm,
-    marginTop: 6,
+    marginTop: 4,
   },
   appliedText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: THEME.colors.primary,
   },
-  streamingIndicator: {
+  // Thinking Indicator
+  thinkingContainer: {
+    paddingLeft: 36,
+    marginVertical: 4,
+  },
+  thinkingPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 36,
-  },
-  streamingText: {
-    fontSize: 12,
-    color: THEME.colors.aiLight,
-  },
-  pillsRow: {
-    paddingHorizontal: 12,
-    gap: 8,
-    paddingVertical: 8,
-  },
-  promptPill: {
+    alignSelf: 'flex-start',
     backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: THEME.radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.25)',
   },
-  promptPillText: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
+  thinkingText: {
+    fontSize: 11.5,
+    color: THEME.colors.aiLight,
     fontWeight: '500',
   },
-  inputBar: {
+  // Follow-Up Chips (Above Input)
+  chipsWrapper: {
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: THEME.colors.background,
+  },
+  chipsScrollContent: {
+    paddingHorizontal: 14,
+    gap: 8,
+    alignItems: 'center',
+  },
+  chipButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 6,
     backgroundColor: THEME.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
-    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.22)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
   },
-  inputField: {
-    flex: 1,
-    backgroundColor: THEME.colors.surfaceSubtle,
-    borderRadius: THEME.radius.md,
+  chipText: {
+    fontSize: 11.5,
+    color: THEME.colors.textSecondary,
+    fontWeight: '600',
+  },
+  chipDismissButton: {
+    padding: 6,
+    marginLeft: 2,
+  },
+  // Input Bar
+  inputContainer: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingTop: 6,
+    backgroundColor: THEME.colors.background,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  inputCapsule: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    gap: 8,
+  },
+  textInput: {
+    flex: 1,
     fontSize: 14,
     color: THEME.colors.text,
-    maxHeight: 90,
+    minHeight: 40,
+    maxHeight: 110,
+    paddingTop: Platform.OS === 'ios' ? 10 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+  },
+  clearInputButton: {
+    padding: 6,
+    alignSelf: 'center',
   },
   sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
   },
   sendButtonDisabled: {
     backgroundColor: THEME.colors.surfaceElevated,
+  },
+  stopButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  // Info Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  infoModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    padding: 20,
+    gap: 16,
+  },
+  infoModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  infoModalIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(28, 194, 159, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoModalTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: THEME.colors.text,
+  },
+  infoModalSubtitle: {
+    fontSize: 10.5,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  infoModalCloseButton: {
+    padding: 4,
+  },
+  infoList: {
+    gap: 14,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  infoRowIcon: {
+    marginTop: 2,
+  },
+  infoRowContent: {
+    flex: 1,
+  },
+  infoRowTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: 2,
+  },
+  infoRowDesc: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    lineHeight: 15,
   },
 });

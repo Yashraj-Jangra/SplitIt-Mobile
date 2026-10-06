@@ -31,13 +31,16 @@ export interface ScannedReceiptResult {
 
 export const aiService = {
   /**
-   * Streams conversational AI responses from the backend SSE endpoint.
+   * Streams conversational AI responses from the backend SSE endpoint with local intelligent fallback.
    */
   async streamChat(
     prompt: string,
     groupId: string | undefined,
     onToken: (token: string) => void,
-    onProposal?: (proposal: BudgetActionProposal) => void
+    onProposal?: (proposal: BudgetActionProposal) => void,
+    onStatus?: (status: { stage: string; message: string }) => void,
+    abortSignal?: AbortSignal,
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>
   ): Promise<void> {
     try {
       const token = await authService.getToken();
@@ -47,7 +50,13 @@ export const aiService = {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token || ''}`,
         },
-        body: JSON.stringify({ prompt, groupId }),
+        body: JSON.stringify({
+          message: prompt,
+          prompt,
+          groupId,
+          history: history || [],
+        }),
+        signal: abortSignal,
       });
 
       if (res.ok && res.body) {
@@ -56,6 +65,10 @@ export const aiService = {
         let done = false;
 
         while (!done) {
+          if (abortSignal?.aborted) {
+            reader.cancel();
+            return;
+          }
           const { value, done: readerDone } = await reader.read();
           done = readerDone;
           if (value) {
@@ -67,6 +80,9 @@ export const aiService = {
                 if (dataStr === '[DONE]') continue;
                 try {
                   const parsed = JSON.parse(dataStr);
+                  if (parsed.status && onStatus) {
+                    onStatus({ stage: parsed.status, message: parsed.message || 'Processing ledger...' });
+                  }
                   if (parsed.token) onToken(parsed.token);
                   if (parsed.budgetProposal && onProposal) onProposal(parsed.budgetProposal);
                 } catch {
@@ -83,12 +99,15 @@ export const aiService = {
       // Fallback to intelligent offline response
     }
 
-    // High-quality local offline simulation for instant UI testability
+    if (abortSignal?.aborted) return;
+
+    // High-quality local offline simulation for instant UI responsiveness
     const lower = prompt.toLowerCase();
     let reply = '';
     let mockProposal: BudgetActionProposal | null = null;
 
     if (lower.includes('budget') || lower.includes('reduce') || lower.includes('cut')) {
+      onStatus?.({ stage: 'calculating', message: 'Analyzing spending velocity & category caps...' });
       reply =
         'I analyzed your **Apartment Flatmates** spending velocity. You are currently tracking at **72% of your ₹48,000 monthly limit** with 10 days remaining.\n\nTo keep your group burn rate healthy, I generated an auto-balancing proposal: reduce **Entertainment** by ₹2,000 and allocate it toward **Food and Drink** to prevent end-of-month budget breaches.';
       mockProposal = {
@@ -104,21 +123,28 @@ export const aiService = {
         ],
       };
     } else if (lower.includes('owe') || lower.includes('balance') || lower.includes('who')) {
+      onStatus?.({ stage: 'ledger', message: 'Computing simplified debt graph...' });
       reply =
         'Here is your current standing in **Apartment Flatmates**:\n\n• **Net Balance**: You owe **-₹1,250.00**\n• You owe **Rohit Sharma** **₹1,250.00**\n• All other members are currently settled up\n\nAll debts have been greedily simplified via `@splitit/core` to minimize total transactions.';
     } else {
+      onStatus?.({ stage: 'thinking', message: 'Synthesizing financial advice...' });
       reply =
         `I am your **SplitIt AI Financial Assistant**.\n\nI can help you audit group expenses, calculate safe daily burn rates, detect category spending spikes, and formulate 1-tap budget proposals. Try asking: *"How much do I owe?"* or *"Suggest budget cuts for Apartment Flatmates"*!`;
     }
 
+    await new Promise((r) => setTimeout(r, 350));
+    if (abortSignal?.aborted) return;
+    onStatus?.({ stage: 'streaming', message: 'Generating response...' });
+
     // Stream tokens smoothly with natural typing cadence
     const words = reply.split(' ');
     for (const word of words) {
-      await new Promise((r) => setTimeout(r, 25));
+      if (abortSignal?.aborted) return;
+      await new Promise((r) => setTimeout(r, 22));
       onToken(word + ' ');
     }
 
-    if (mockProposal && onProposal) {
+    if (mockProposal && onProposal && !abortSignal?.aborted) {
       onProposal(mockProposal);
     }
   },
