@@ -13,7 +13,7 @@ import {
   Alert,
   Modal,
   Animated,
-  LayoutChangeEvent,
+  Easing,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -178,10 +178,10 @@ export default function AiChatModal() {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
 
-  // Height tracking to detect if the OS window automatically resizes on Android
-  const baseContainerHeightRef = useRef<number>(0);
-  const [isWindowAutoResized, setIsWindowAutoResized] = useState(false);
-  const keyboardAnim = useRef(new Animated.Value(0)).current;
+  // Dynamic smooth bottom padding animation synchronized with keyboard transitions
+  const closedBottomPadding = Math.max(insets.bottom, 12);
+  const openBottomPadding = Platform.OS === 'ios' ? 10 : 12;
+  const bottomPaddingAnim = useRef(new Animated.Value(closedBottomPadding)).current;
 
   const scrollViewRef = useRef<ScrollView>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -196,7 +196,14 @@ export default function AiChatModal() {
     }, 200);
   }, []);
 
-  // Bulletproof Keyboard Listener for both iOS and Android
+  // Ensure bottomPaddingAnim stays in sync if safe area insets change while keyboard is closed
+  useEffect(() => {
+    if (!isKeyboardOpen) {
+      bottomPaddingAnim.setValue(closedBottomPadding);
+    }
+  }, [closedBottomPadding, isKeyboardOpen, bottomPaddingAnim]);
+
+  // Smooth, synchronized Keyboard Listener for both iOS and Android
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -206,11 +213,11 @@ export default function AiChatModal() {
       setKeyboardHeight(height);
       setIsKeyboardOpen(true);
 
-      // On Android, if window doesn't resize automatically, lift by keyboard height
-      const targetOffset = Platform.OS === 'ios' ? 0 : (isWindowAutoResized ? 0 : height);
-      Animated.timing(keyboardAnim, {
-        toValue: targetOffset,
-        duration: Platform.OS === 'ios' ? (e?.duration || 250) : 120,
+      const duration = Platform.OS === 'ios' ? (e?.duration || 250) : 160;
+      Animated.timing(bottomPaddingAnim, {
+        toValue: openBottomPadding,
+        duration,
+        easing: Platform.OS === 'ios' ? Easing.bezier(0.25, 0.1, 0.25, 1) : Easing.out(Easing.ease),
         useNativeDriver: false,
       }).start();
 
@@ -221,9 +228,11 @@ export default function AiChatModal() {
       setKeyboardHeight(0);
       setIsKeyboardOpen(false);
 
-      Animated.timing(keyboardAnim, {
-        toValue: 0,
-        duration: Platform.OS === 'ios' ? (e?.duration || 250) : 120,
+      const duration = Platform.OS === 'ios' ? (e?.duration || 250) : 160;
+      Animated.timing(bottomPaddingAnim, {
+        toValue: closedBottomPadding,
+        duration,
+        easing: Platform.OS === 'ios' ? Easing.bezier(0.25, 0.1, 0.25, 1) : Easing.out(Easing.ease),
         useNativeDriver: false,
       }).start();
     };
@@ -235,28 +244,7 @@ export default function AiChatModal() {
       showSub.remove();
       hideSub.remove();
     };
-  }, [isWindowAutoResized, scrollToEndThrottled, keyboardAnim]);
-
-  // Measure container layout to detect OS window resize behavior
-  const handleContainerLayout = (e: LayoutChangeEvent) => {
-    const currentHeight = e.nativeEvent.layout.height;
-    if (!baseContainerHeightRef.current || (!isKeyboardOpen && currentHeight > baseContainerHeightRef.current)) {
-      baseContainerHeightRef.current = currentHeight;
-    }
-
-    if (isKeyboardOpen && baseContainerHeightRef.current > 0) {
-      // If layout height shrank by >120px, Android adjustResize already handled the window
-      if (currentHeight < baseContainerHeightRef.current - 120) {
-        setIsWindowAutoResized(true);
-        Animated.timing(keyboardAnim, { toValue: 0, duration: 60, useNativeDriver: false }).start();
-      } else {
-        setIsWindowAutoResized(false);
-        if (keyboardHeight > 0) {
-          Animated.timing(keyboardAnim, { toValue: keyboardHeight, duration: 60, useNativeDriver: false }).start();
-        }
-      }
-    }
-  };
+  }, [closedBottomPadding, openBottomPadding, scrollToEndThrottled, bottomPaddingAnim]);
 
   // Starter Cards for Empty / Welcome State
   const starterCards = useMemo(
@@ -445,7 +433,7 @@ export default function AiChatModal() {
     !isKeyboardOpen;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']} onLayout={handleContainerLayout}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
       <View style={styles.modalGrabber} />
 
@@ -500,10 +488,10 @@ export default function AiChatModal() {
       {/* ── Keyboard-Adaptive Container ─────────────────────────────────── */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 10 : 0}
+        keyboardVerticalOffset={0}
         style={styles.keyboardContainer}
       >
-        <Animated.View style={[styles.innerContentWrapper, { paddingBottom: keyboardAnim }]}>
+        <View style={styles.innerContentWrapper}>
           {/* ── Messages Feed ─────────────────────────────────────────────── */}
           <ScrollView
             ref={scrollViewRef}
@@ -752,11 +740,11 @@ export default function AiChatModal() {
           )}
 
           {/* ── Input Bar Capsule ─────────────────────────────────────────── */}
-          <View
+          <Animated.View
             style={[
               styles.inputContainer,
               {
-                paddingBottom: isKeyboardOpen ? 6 : Math.max(insets.bottom, 12),
+                paddingBottom: bottomPaddingAnim,
               },
             ]}
           >
@@ -808,8 +796,8 @@ export default function AiChatModal() {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        </View>
       </KeyboardAvoidingView>
 
       {/* ── Financial Assistant Info Modal ─────────────────────────────── */}
@@ -1406,7 +1394,7 @@ const styles = StyleSheet.create({
   // Input Bar
   inputContainer: {
     paddingHorizontal: 14,
-    paddingTop: 6,
+    paddingTop: 8,
     backgroundColor: THEME.colors.background,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
