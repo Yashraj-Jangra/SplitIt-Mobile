@@ -169,30 +169,52 @@ export const authService = {
   async signInWithGoogle(): Promise<AuthResponse> {
     try {
       const callbackUrl = Linking.createURL('auth/callback', { scheme: 'splitit' });
-      const authUrl = `${API_BASE_URL}/api/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(callbackUrl)}`;
+      let authUrl = `${API_BASE_URL}/api/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(callbackUrl)}`;
+
+      // Step 1: Pre-fetch direct Google OAuth URL via POST to skip redirect latency
+      try {
+        const postRes = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'google',
+            callbackURL: callbackUrl,
+          }),
+        });
+        if (postRes.ok) {
+          const postData = await postRes.json();
+          if (postData?.url) {
+            authUrl = postData.url;
+          }
+        }
+      } catch {
+        // Fallback to GET authUrl
+      }
 
       const result = await WebBrowser.openAuthSessionAsync(authUrl, callbackUrl);
 
       if (result.type === 'success' && result.url) {
         const parsed = Linking.parse(result.url);
-        const token = (parsed.queryParams?.token as string) || (parsed.queryParams?.session_token as string) || 'google_session_active';
-        
-        // Fetch verified user profile with token
-        const profileRes = await fetch(`${API_BASE_URL}/api/user/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const token = (parsed.queryParams?.token as string) || (parsed.queryParams?.session_token as string);
 
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          const user: AuthUser = {
-            id: profileData.id || profileData.user?.id || '',
-            name: `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || 'SplitIt User',
-            email: profileData.email || '',
-            avatarUrl: profileData.avatarUrl,
-            upiId: profileData.upiId,
-          };
-          await this.saveSession(token, user);
-          return { success: true, token, user };
+        if (token) {
+          // Fetch verified user profile with token
+          const profileRes = await fetch(`${API_BASE_URL}/api/user/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            const user: AuthUser = {
+              id: profileData.id || profileData.user?.id || '',
+              name: `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || profileData.name || 'SplitIt User',
+              email: profileData.email || '',
+              avatarUrl: profileData.avatarUrl,
+              upiId: profileData.upiId,
+            };
+            await this.saveSession(token, user);
+            return { success: true, token, user };
+          }
         }
 
         // Fallback user if profile endpoint unreachable
@@ -201,8 +223,9 @@ export const authService = {
           name: 'SplitIt User',
           email: (parsed.queryParams?.email as string) || '',
         };
-        await this.saveSession(token, fallbackUser);
-        return { success: true, token, user: fallbackUser };
+        const fallbackToken = token || 'google_session_active';
+        await this.saveSession(fallbackToken, fallbackUser);
+        return { success: true, token: fallbackToken, user: fallbackUser };
       }
 
       return { success: false, error: 'Google sign-in was canceled' };
