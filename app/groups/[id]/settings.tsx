@@ -143,7 +143,7 @@ export default function GroupSettingsScreen() {
         >
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Group Settings</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>Group Settings</Text>
         <TouchableOpacity
           onPress={handleSave}
           disabled={isSaving}
@@ -252,9 +252,12 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   headerTitle: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 16,
     fontWeight: '800',
     color: THEME.colors.text,
+    textAlign: 'left',
   },
   saveButton: {
     backgroundColor: THEME.colors.primary,

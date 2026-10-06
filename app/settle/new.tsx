@@ -155,8 +155,7 @@ export default function SettleUpModal() {
         >
           <X size={20} color={THEME.colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settle Up</Text>
-        <View style={{ width: 36 }} />
+        <Text style={styles.headerTitle} numberOfLines={1}>Settle Up</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -317,9 +316,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 17,
     fontWeight: '800',
     color: THEME.colors.text,
+    textAlign: 'left',
   },
   content: {
     paddingHorizontal: 12,

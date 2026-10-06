@@ -88,8 +88,7 @@ export default function NotificationPreferencesScreen() {
         >
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notification Settings</Text>
-        <View style={{ width: 38 }} />
+        <Text style={styles.headerTitle} numberOfLines={1}>Notification Settings</Text>
       </View>
 
       {savedBanner && (
@@ -297,9 +296,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surface,
   },
   headerTitle: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 17,
     fontWeight: '800',
     color: THEME.colors.text,
+    textAlign: 'left',
   },
   savedBanner: {
     flexDirection: 'row',

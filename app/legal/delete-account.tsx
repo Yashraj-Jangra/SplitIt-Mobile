@@ -84,8 +84,7 @@ export default function DeleteAccountScreen() {
         >
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Delete Account</Text>
-        <View style={{ width: 38 }} />
+        <Text style={styles.headerTitle} numberOfLines={1}>Delete Account</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -178,9 +177,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surface,
   },
   headerTitle: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 17,
     fontWeight: '800',
     color: THEME.colors.text,
+    textAlign: 'left',
   },
   content: {
     paddingHorizontal: 12,

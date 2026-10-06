@@ -142,7 +142,7 @@ export default function NotificationsCenterScreen() {
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>Notifications</Text>
 
         <View style={styles.headerRight}>
           {unreadCount > 0 && (
@@ -304,9 +304,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surface,
   },
   headerTitle: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 17,
     fontWeight: '800',
     color: THEME.colors.text,
+    textAlign: 'left',
   },
   headerRight: {
     flexDirection: 'row',

@@ -94,7 +94,7 @@ export default function SupportTicketsScreen() {
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Customer Support</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>Customer Support</Text>
 
         <TouchableOpacity
           onPress={() => {
@@ -221,9 +221,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surface,
   },
   headerTitle: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 17,
     fontWeight: '800',
     color: THEME.colors.text,
+    textAlign: 'left',
   },
   newButton: {
     flexDirection: 'row',

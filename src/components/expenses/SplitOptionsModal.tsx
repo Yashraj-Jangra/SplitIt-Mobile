@@ -536,7 +536,7 @@ export function SplitOptionsModal({
               <ArrowLeft size={22} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <Text style={styles.appBarTitle}>Adjust split</Text>
+            <Text style={styles.appBarTitle} numberOfLines={1}>Adjust split</Text>
 
             <TouchableOpacity onPress={handleConfirm} style={styles.navActionBtn} activeOpacity={0.7}>
               <Check size={24} color="#FFFFFF" strokeWidth={2.5} />
@@ -964,10 +964,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   appBarTitle: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.2,
+    textAlign: 'left',
   },
   tabBarContainer: {
     borderBottomWidth: 1,

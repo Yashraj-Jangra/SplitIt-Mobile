@@ -925,7 +925,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   headerCenter: {
-    alignItems: 'center',
+    flex: 1,
+    marginLeft: 12,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   headerTitleRow: {
     flexDirection: 'row',

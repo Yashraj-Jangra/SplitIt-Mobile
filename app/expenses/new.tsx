@@ -703,9 +703,7 @@ export default function NewExpenseModal() {
             )}
           </View>
 
-          {isEditMode ? (
-            <View style={styles.headerRightPlaceholder} />
-          ) : (
+          {!isEditMode && (
             <TouchableOpacity
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1292,12 +1290,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitleWrap: {
-    alignItems: 'center',
+    flex: 1,
+    marginLeft: 12,
+    alignItems: 'flex-start',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
     color: THEME.colors.text,
+    textAlign: 'left',
   },
   headerGroupBadge: {
     flexDirection: 'row',

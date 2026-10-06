@@ -89,8 +89,7 @@ export default function UpiQrModal() {
         >
           <X size={20} color={THEME.colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Scan UPI QR</Text>
-        <View style={{ width: 32 }} />
+        <Text style={styles.headerTitle} numberOfLines={1}>Scan UPI QR</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -186,9 +185,12 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   headerTitle: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 16,
     fontWeight: '800',
     color: THEME.colors.text,
+    textAlign: 'left',
   },
   content: {
     paddingHorizontal: 12,

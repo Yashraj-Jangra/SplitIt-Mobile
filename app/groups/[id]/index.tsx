@@ -788,7 +788,7 @@ export default function GroupDetailScreen() {
           <ArrowLeft size={18} color="#FFFFFF" />
         </TouchableOpacity>
 
-        {/* Centered Collapsed Title */}
+        {/* Left-Aligned Collapsed Title */}
         <Animated.View
           style={[
             styles.collapsedTitleWrap,
@@ -798,7 +798,7 @@ export default function GroupDetailScreen() {
             },
           ]}
         >
-          <TouchableOpacity onPress={scrollToTop} activeOpacity={0.7}>
+          <TouchableOpacity onPress={scrollToTop} activeOpacity={0.7} style={styles.collapsedTitleTouch}>
             <Text style={styles.collapsedTitleText} numberOfLines={1}>
               {group.name}
             </Text>
@@ -933,16 +933,21 @@ const styles = StyleSheet.create({
   },
   collapsedTitleWrap: {
     flex: 1,
-    paddingHorizontal: 10,
-    alignItems: 'center',
+    paddingLeft: 10,
+    paddingRight: 8,
+    alignItems: 'flex-start',
     justifyContent: 'center',
+  },
+  collapsedTitleTouch: {
+    maxWidth: '100%',
+    alignSelf: 'flex-start',
   },
   collapsedTitleText: {
     fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.2,
-    textAlign: 'center',
+    textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.85)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
