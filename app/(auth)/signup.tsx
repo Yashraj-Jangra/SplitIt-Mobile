@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Animated,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -19,6 +22,8 @@ import { useAuth } from '../../src/contexts/auth.context';
 import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import { GoogleLogo } from '../../src/components/brand/GoogleLogo';
 import * as Haptics from 'expo-haptics';
+
+const HERO_IMAGE_HEIGHT = 190;
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -32,6 +37,69 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
+  const confirmPasswordInputRef = useRef<TextInput>(null);
+  const keyboardAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      Animated.timing(keyboardAnim, {
+        toValue: 1,
+        duration: e?.duration || 260,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, (e) => {
+      Animated.timing(keyboardAnim, {
+        toValue: 0,
+        duration: e?.duration || 260,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [keyboardAnim]);
+
+  // Graceful sliding collapse interpolations
+  const heroHeight = keyboardAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [HERO_IMAGE_HEIGHT, 0],
+  });
+
+  const heroOpacity = keyboardAnim.interpolate({
+    inputRange: [0, 0.6, 1],
+    outputRange: [1, 0.2, 0],
+  });
+
+  const heroTranslateY = keyboardAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -32],
+  });
+
+  const heroMarginBottom = keyboardAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [18, 0],
+  });
+
+  // Compact brand row when keyboard is open
+  const compactHeaderHeight = keyboardAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 48],
+  });
+
+  const compactHeaderOpacity = keyboardAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
 
   const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password) {
@@ -91,189 +159,231 @@ export default function SignupScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Official Website Hero Banner */}
-          <View style={styles.heroImageContainer}>
-            <Image
-              source={{
-                uri: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80',
-              }}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
-            <View style={styles.imageOverlay} />
-            <View style={styles.heroBrandOverlay}>
-              <View style={styles.logoBadge}>
-                <BrandLogoImage size={56} />
-              </View>
-            </View>
-          </View>
-
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>
-              Join SplitIt to split bills effortlessly
-            </Text>
-          </View>
-
-          {/* Error Banner */}
-          {error && (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          {/* Google Quick Sign-up */}
-          <View style={styles.socialSection}>
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={handleGoogleSignup}
-              disabled={googleLoading}
-              activeOpacity={0.8}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Gracefully Sliding & Collapsing Hero Banner */}
+            <Animated.View
+              style={[
+                styles.heroImageContainer,
+                {
+                  height: heroHeight,
+                  opacity: heroOpacity,
+                  marginBottom: heroMarginBottom,
+                  transform: [{ translateY: heroTranslateY }],
+                },
+              ]}
             >
-              {googleLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <GoogleLogo size={20} />
-                  <Text style={styles.googleButtonText}>Continue with Google</Text>
-                </>
-              )}
-            </TouchableOpacity>
+              <Image
+                source={{
+                  uri: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80',
+                }}
+                style={styles.heroImage}
+                resizeMode="cover"
+              />
+              <View style={styles.imageOverlay} />
+              <View style={styles.heroBrandOverlay}>
+                <View style={styles.logoBadge}>
+                  <BrandLogoImage size={52} />
+                </View>
+              </View>
+            </Animated.View>
 
-            {Platform.OS === 'ios' && (
-              <TouchableOpacity
-                style={styles.appleButton}
-                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.appleButtonText}> Continue with Apple</Text>
-              </TouchableOpacity>
+            {/* Compact Brand Header (Fades in when hero slides away) */}
+            <Animated.View
+              style={[
+                styles.compactHeader,
+                {
+                  height: compactHeaderHeight,
+                  opacity: compactHeaderOpacity,
+                },
+              ]}
+            >
+              <BrandLogoImage size={28} />
+              <Text style={styles.compactHeaderTitle}>SplitIt</Text>
+            </Animated.View>
+
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.subtitle}>
+                Join SplitIt to split bills effortlessly
+              </Text>
+            </View>
+
+            {/* Error Banner */}
+            {error && (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
             )}
-          </View>
 
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with email</Text>
-            <View style={styles.dividerLine} />
-          </View>
+            {/* Registration Form (Primary Entry) */}
+            <View style={styles.form}>
+              {/* Name */}
+              <View style={styles.inputContainer}>
+                <User size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full Name"
+                  placeholderTextColor={THEME.colors.textMuted}
+                  value={name}
+                  onChangeText={(t) => {
+                    setName(t);
+                    if (error) setError(null);
+                  }}
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailInputRef.current?.focus()}
+                  blurOnSubmit={false}
+                />
+              </View>
 
-          {/* Registration Form */}
-          <View style={styles.form}>
-            {/* Name */}
-            <View style={styles.inputContainer}>
-              <User size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Full Name"
-                placeholderTextColor={THEME.colors.textMuted}
-                value={name}
-                onChangeText={(t) => {
-                  setName(t);
-                  if (error) setError(null);
-                }}
-              />
-            </View>
+              {/* Email */}
+              <View style={styles.inputContainer}>
+                <Mail size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  ref={emailInputRef}
+                  style={styles.input}
+                  placeholder="Email address"
+                  placeholderTextColor={THEME.colors.textMuted}
+                  value={email}
+                  onChangeText={(t) => {
+                    setEmail(t);
+                    if (error) setError(null);
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  blurOnSubmit={false}
+                />
+              </View>
 
-            {/* Email */}
-            <View style={styles.inputContainer}>
-              <Mail size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email address"
-                placeholderTextColor={THEME.colors.textMuted}
-                value={email}
-                onChangeText={(t) => {
-                  setEmail(t);
-                  if (error) setError(null);
-                }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
+              {/* Password */}
+              <View style={styles.inputContainer}>
+                <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  ref={passwordInputRef}
+                  style={styles.input}
+                  placeholder="Password (min. 8 characters)"
+                  placeholderTextColor={THEME.colors.textMuted}
+                  value={password}
+                  onChangeText={(t) => {
+                    setPassword(t);
+                    if (error) setError(null);
+                  }}
+                  secureTextEntry={!showPassword}
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                  blurOnSubmit={false}
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setShowPassword(!showPassword);
+                  }}
+                  style={styles.eyeButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color={THEME.colors.textMuted} />
+                  ) : (
+                    <Eye size={18} color={THEME.colors.textMuted} />
+                  )}
+                </TouchableOpacity>
+              </View>
 
-            {/* Password */}
-            <View style={styles.inputContainer}>
-              <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password (min. 8 characters)"
-                placeholderTextColor={THEME.colors.textMuted}
-                value={password}
-                onChangeText={(t) => {
-                  setPassword(t);
-                  if (error) setError(null);
-                }}
-                secureTextEntry={!showPassword}
-              />
+              {/* Confirm Password */}
+              <View style={styles.inputContainer}>
+                <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  ref={confirmPasswordInputRef}
+                  style={styles.input}
+                  placeholder="Confirm Password"
+                  placeholderTextColor={THEME.colors.textMuted}
+                  value={confirmPassword}
+                  onChangeText={(t) => {
+                    setConfirmPassword(t);
+                    if (error) setError(null);
+                  }}
+                  secureTextEntry={!showPassword}
+                  returnKeyType="go"
+                  onSubmitEditing={handleSignup}
+                />
+              </View>
+
+              {/* Submit Action */}
               <TouchableOpacity
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setShowPassword(!showPassword);
-                }}
-                style={styles.eyeButton}
+                style={styles.submitButton}
+                onPress={handleSignup}
+                disabled={loading}
+                activeOpacity={0.85}
               >
-                {showPassword ? (
-                  <EyeOff size={18} color={THEME.colors.textMuted} />
+                {loading ? (
+                  <ActivityIndicator size="small" color="#09090B" />
                 ) : (
-                  <Eye size={18} color={THEME.colors.textMuted} />
+                  <>
+                    <Text style={styles.submitButtonText}>Create Account</Text>
+                    <ArrowRight size={18} color="#09090B" />
+                  </>
                 )}
               </TouchableOpacity>
             </View>
 
-            {/* Confirm Password */}
-            <View style={styles.inputContainer}>
-              <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                placeholderTextColor={THEME.colors.textMuted}
-                value={confirmPassword}
-                onChangeText={(t) => {
-                  setConfirmPassword(t);
-                  if (error) setError(null);
-                }}
-                secureTextEntry={!showPassword}
-              />
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
             </View>
 
-            {/* Submit Action */}
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleSignup}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#09090B" />
-              ) : (
-                <>
-                  <Text style={styles.submitButtonText}>Create Account</Text>
-                  <ArrowRight size={18} color="#09090B" />
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+            {/* Google Quick Sign-up (Moved Below Form) */}
+            <View style={styles.socialSection}>
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleSignup}
+                disabled={googleLoading}
+                activeOpacity={0.8}
+              >
+                {googleLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <GoogleLogo size={20} />
+                    <Text style={styles.googleButtonText}>Continue with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-          {/* Switch to Login */}
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Already have an account?</Text>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.back();
-              }}
-            >
-              <Text style={styles.footerLink}> Log In</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={styles.appleButton}
+                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.appleButtonText}> Continue with Apple</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Switch to Login */}
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>Already have an account?</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.back();
+                }}
+              >
+                <Text style={styles.footerLink}> Log In</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -288,16 +398,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 36,
   },
   heroImageContainer: {
     width: '100%',
-    height: 180,
     borderRadius: THEME.radius.lg,
     overflow: 'hidden',
-    marginTop: 6,
-    marginBottom: 18,
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
@@ -329,12 +437,26 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
+  compactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  compactHeaderTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: THEME.colors.text,
+    letterSpacing: -0.5,
+  },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '900',
     color: THEME.colors.text,
     letterSpacing: -0.5,
@@ -359,73 +481,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  socialSection: {
-    gap: 10,
-    marginBottom: 20,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    paddingVertical: 13,
-    borderRadius: THEME.radius.md,
-    gap: 10,
-  },
-  appleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 13,
-    borderRadius: THEME.radius.md,
-  },
-  appleButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#000000',
-  },
-  googleIconBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleIconText: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#4285F4',
-  },
-  googleButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: THEME.colors.border,
-  },
-  dividerText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
   form: {
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -456,12 +514,63 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: THEME.radius.md,
     gap: 8,
-    marginTop: 8,
+    marginTop: 4,
   },
   submitButtonText: {
     fontSize: 15,
     fontWeight: '800',
     color: '#09090B',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: THEME.colors.border,
+  },
+  dividerText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  socialSection: {
+    gap: 10,
+    marginBottom: 22,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    paddingVertical: 13,
+    borderRadius: THEME.radius.md,
+    gap: 10,
+  },
+  googleButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 13,
+    borderRadius: THEME.radius.md,
+  },
+  appleButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
   },
   footerRow: {
     flexDirection: 'row',
