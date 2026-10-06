@@ -643,6 +643,7 @@ export const expenseService = {
       category?: string;
       masterCategory?: string;
       notes?: string;
+      date?: string;
       splitType?: string;
       payers?: Array<{ userId: string; amount: number }>;
       participants?: Array<{ userId: string; amountOwed: number; share?: number }>;

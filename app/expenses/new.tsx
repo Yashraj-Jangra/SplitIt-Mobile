@@ -43,6 +43,21 @@ import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/ex
 import { useNetwork } from '../../src/contexts/network.context';
 import * as Haptics from 'expo-haptics';
 
+interface FormSnapshot {
+  amount: string;
+  description: string;
+  category: string;
+  masterCategory: string;
+  notes: string;
+  date: string;
+  groupId: string;
+  payerType: 'single' | 'multiple';
+  singlePayerId: string;
+  multiPayers: MultiPayerEntry[];
+  splitMode: SplitType;
+  participants: SplitParticipantItem[];
+}
+
 export default function NewExpenseModal() {
   const router = useRouter();
   const { requireOnline } = useNetwork();
@@ -51,7 +66,14 @@ export default function NewExpenseModal() {
     description?: string;
     category?: string;
     groupId?: string;
+    expenseId?: string;
   }>();
+
+  const isEditMode = Boolean(params.expenseId);
+  const expenseId = params.expenseId;
+  const oldAmountRef = React.useRef<number>(0);
+  const [initialSnapshot, setInitialSnapshot] = useState<FormSnapshot | null>(null);
+  const [isLoadingExisting, setIsLoadingExisting] = useState<boolean>(isEditMode);
 
   const [categories, setCategories] = useState<Record<string, MasterCategory>>(() =>
     settingsService.getCachedExpenseCategories()
@@ -123,41 +145,160 @@ export default function NewExpenseModal() {
     }
   };
 
-  // Load user groups and participants dynamically + default group handling
+  // Load user groups and participants dynamically + edit mode hydration
   useEffect(() => {
+    let isMounted = true;
     const init = async () => {
       try {
         const user = await authService.getCachedUser();
         const curId = user?.id || 'u1';
-        setCurrentUserId(curId);
-        setSinglePayerId(curId);
+        if (isMounted) {
+          setCurrentUserId(curId);
+          setSinglePayerId(curId);
+        }
 
         const allGroups = await groupService.getUserGroups();
-        setGroups(allGroups);
+        if (isMounted) setGroups(allGroups);
 
-        const savedDefault = await groupService.getDefaultGroupId();
-        setDefaultGroupIdState(savedDefault);
+        if (isEditMode && expenseId) {
+          setIsLoadingExisting(true);
+          // Try fast cache hydration first
+          const cached = await expenseService.getCachedExpenseDetails(expenseId);
+          let exp = cached;
+          if (!exp) {
+            exp = await expenseService.getExpenseDetails(expenseId, params.groupId);
+          }
 
-        let targetGroupId = params.groupId;
+          if (exp && isMounted) {
+            const targetGroupId = exp.groupId || params.groupId || '';
+            setSelectedGroupId(targetGroupId);
+            oldAmountRef.current = exp.amount;
+            setAmount(String(exp.amount));
+            setDescription(exp.title);
+            setNotes(exp.notes || '');
+            if (exp.notes) setShowNotesInput(true);
 
-        // If not opened from a specific group, check for saved default group
-        if (!targetGroupId && savedDefault && allGroups.some((g) => g.id === savedDefault)) {
-          targetGroupId = savedDefault;
+            if (exp.rawDate || exp.date) {
+              const parsedDate = new Date(exp.rawDate || exp.date);
+              if (!isNaN(parsedDate.getTime())) setExpenseDate(parsedDate);
+            }
+
+            const subCat = exp.category?.sub || 'Other';
+            const masterCat =
+              exp.category?.master || settingsService.getMasterCategory(subCat) || 'Food and Drink';
+            setCategory(subCat);
+            setMasterCategory(masterCat);
+            setUserOverriddenCategory(true);
+
+            // Fetch group details for group members
+            let groupMemberList: Array<{ id: string; name: string; avatarUrl?: string }> = [];
+            if (targetGroupId) {
+              try {
+                const gDetails = await groupService.getGroupDetails(targetGroupId);
+                if (gDetails?.members?.length) groupMemberList = gDetails.members;
+              } catch {
+                // Ignore group load error
+              }
+            }
+
+            if (groupMemberList.length === 0 && exp.participants?.length > 0) {
+              groupMemberList = exp.participants.map((p) => ({
+                id: p.userId,
+                name: p.name,
+                avatarUrl: p.avatarUrl,
+              }));
+            }
+
+            const normSplit: SplitType =
+              exp.splitType === 'shares'
+                ? 'by_shares'
+                : exp.splitType === 'percentage'
+                ? 'by_percentage'
+                : (exp.splitType as SplitType) || 'equally';
+            setSplitMode(normSplit);
+
+            const mappedParticipants: SplitParticipantItem[] = groupMemberList.map((m) => {
+              const matched = exp.participants.find((p) => p.userId === m.id);
+              return {
+                id: m.id,
+                name: m.name,
+                avatarUrl:
+                  m.avatarUrl ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
+                selected: !!matched,
+                shares: 1,
+                percentage: 0,
+                exactAmount: matched?.amountOwed || 0,
+              };
+            });
+            setParticipants(mappedParticipants);
+
+            let pType: 'single' | 'multiple' = 'single';
+            let sPayerId = curId;
+            let mPayers: MultiPayerEntry[] = [];
+
+            if (exp.payers && exp.payers.length > 1) {
+              pType = 'multiple';
+              sPayerId = exp.payers[0]?.userId || curId;
+              mPayers = exp.payers.map((p) => ({ userId: p.userId, amount: p.amount }));
+            } else if (exp.payers && exp.payers.length === 1) {
+              pType = 'single';
+              sPayerId = exp.payers[0].userId;
+              mPayers = [{ userId: exp.payers[0].userId, amount: exp.amount }];
+            } else {
+              pType = 'single';
+              sPayerId = exp.paidById || curId;
+              mPayers = [];
+            }
+
+            setPayerType(pType);
+            setSinglePayerId(sPayerId);
+            setMultiPayers(mPayers);
+
+            setInitialSnapshot({
+              amount: String(exp.amount),
+              description: exp.title,
+              category: subCat,
+              masterCategory: masterCat,
+              notes: exp.notes || '',
+              date: (exp.rawDate || exp.date)
+                ? new Date(exp.rawDate || exp.date).toDateString()
+                : new Date().toDateString(),
+              groupId: targetGroupId,
+              payerType: pType,
+              singlePayerId: sPayerId,
+              multiPayers: mPayers.map((p) => ({ ...p })),
+              splitMode: normSplit,
+              participants: mappedParticipants.map((p) => ({ ...p })),
+            });
+          }
+          setIsLoadingExisting(false);
+        } else {
+          // Normal Create Mode initialization
+          const savedDefault = await groupService.getDefaultGroupId();
+          if (isMounted) setDefaultGroupIdState(savedDefault);
+
+          let targetGroupId = params.groupId;
+          if (!targetGroupId && savedDefault && allGroups.some((g) => g.id === savedDefault)) {
+            targetGroupId = savedDefault;
+          }
+
+          if (targetGroupId) {
+            if (isMounted) setSelectedGroupId(targetGroupId);
+            await loadGroupMembers(targetGroupId);
+          } else if (allGroups.length > 0) {
+            if (isMounted) setShowGroupModal(true);
+          }
         }
-
-        if (targetGroupId) {
-          setSelectedGroupId(targetGroupId);
-          await loadGroupMembers(targetGroupId);
-        } else if (allGroups.length > 0) {
-          // If no group is passed and no default is set, prompt user to pick group
-          setShowGroupModal(true);
-        }
-      } catch {
-        // Keep default state
+      } catch (err) {
+        if (isMounted) setIsLoadingExisting(false);
       }
     };
     init();
-  }, [params.groupId]);
+    return () => {
+      isMounted = false;
+    };
+  }, [expenseId, params.groupId]);
 
   // Fetch dynamic categories from website settings on mount
   useEffect(() => {
@@ -307,7 +448,7 @@ export default function NewExpenseModal() {
     Haptics.selectionAsync();
     setSelectedGroupId(groupId);
 
-    if (isDefaultGroupChecked) {
+    if (isDefaultGroupChecked && !isEditMode) {
       await groupService.setDefaultGroupId(groupId);
       setDefaultGroupIdState(groupId);
     }
@@ -316,8 +457,64 @@ export default function NewExpenseModal() {
     setShowGroupModal(false);
   };
 
+  const hasChanges = useMemo(() => {
+    if (!isEditMode) return true;
+    if (!initialSnapshot) return false;
+
+    if (amount.trim() !== initialSnapshot.amount.trim()) return true;
+    if (description.trim() !== initialSnapshot.description.trim()) return true;
+    if (category !== initialSnapshot.category) return true;
+    if (masterCategory !== initialSnapshot.masterCategory) return true;
+    if (notes.trim() !== initialSnapshot.notes.trim()) return true;
+    if (expenseDate.toDateString() !== initialSnapshot.date) return true;
+    if (selectedGroupId !== initialSnapshot.groupId) return true;
+    if (payerType !== initialSnapshot.payerType) return true;
+    if (splitMode !== initialSnapshot.splitMode) return true;
+
+    if (payerType === 'single') {
+      if (singlePayerId !== initialSnapshot.singlePayerId) return true;
+    } else {
+      const curActive = multiPayers.filter((p) => (p.amount || 0) > 0);
+      const initActive = initialSnapshot.multiPayers.filter((p) => (p.amount || 0) > 0);
+      if (curActive.length !== initActive.length) return true;
+      for (const cp of curActive) {
+        const ip = initActive.find((p) => p.userId === cp.userId);
+        if (!ip || Math.abs((ip.amount || 0) - (cp.amount || 0)) > 0.01) return true;
+      }
+    }
+
+    if (participants.length !== initialSnapshot.participants.length) return true;
+    for (const cp of participants) {
+      const ip = initialSnapshot.participants.find((p) => p.id === cp.id);
+      if (!ip) return true;
+      if (cp.selected !== ip.selected) return true;
+      if (cp.selected) {
+        if (splitMode === 'unequally' && Math.abs((cp.exactAmount || 0) - (ip.exactAmount || 0)) > 0.01) return true;
+        if (splitMode === 'by_percentage' && Math.abs((cp.percentage || 0) - (ip.percentage || 0)) > 0.01) return true;
+        if (splitMode === 'by_shares' && (cp.shares || 1) !== (ip.shares || 1)) return true;
+      }
+    }
+
+    return false;
+  }, [
+    isEditMode,
+    initialSnapshot,
+    amount,
+    description,
+    category,
+    masterCategory,
+    notes,
+    expenseDate,
+    selectedGroupId,
+    payerType,
+    singlePayerId,
+    multiPayers,
+    splitMode,
+    participants,
+  ]);
+
   const handleSave = async () => {
-    if (!requireOnline('create an expense')) return;
+    if (!requireOnline(isEditMode ? 'edit this expense' : 'create an expense')) return;
     if (!description.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Missing Description', 'Please enter a description for this expense.');
@@ -391,25 +588,49 @@ export default function NewExpenseModal() {
         share: p.shares || 1,
       }));
 
-      const res = await expenseService.createExpense({
-        groupId: selectedGroupId,
-        amount: numAmount,
-        description: description.trim(),
-        category,
-        masterCategory,
-        splitType: splitMode,
-        notes: notes.trim() || undefined,
-        date: expenseDate.toISOString(),
-        payers: payersPayload,
-        participants: participantsPayload,
-      });
+      if (isEditMode && expenseId) {
+        const res = await expenseService.updateExpense(expenseId, {
+          groupId: selectedGroupId,
+          amount: numAmount,
+          oldAmount: oldAmountRef.current,
+          description: description.trim(),
+          category,
+          masterCategory,
+          splitType: splitMode,
+          notes: notes.trim() || undefined,
+          date: expenseDate.toISOString(),
+          payers: payersPayload,
+          participants: participantsPayload,
+        });
 
-      if (res.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.back();
+        if (res.success) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.back();
+        } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Error', res.error || 'Failed to update expense.');
+        }
       } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Error', res.error || 'Failed to record expense.');
+        const res = await expenseService.createExpense({
+          groupId: selectedGroupId,
+          amount: numAmount,
+          description: description.trim(),
+          category,
+          masterCategory,
+          splitType: splitMode,
+          notes: notes.trim() || undefined,
+          date: expenseDate.toISOString(),
+          payers: payersPayload,
+          participants: participantsPayload,
+        });
+
+        if (res.success) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.back();
+        } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Error', res.error || 'Failed to record expense.');
+        }
       }
     } catch (e: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -418,6 +639,17 @@ export default function NewExpenseModal() {
       setIsSaving(false);
     }
   };
+
+  if (isLoadingExisting) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <Text style={styles.loadingText}>Loading expense details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -440,7 +672,9 @@ export default function NewExpenseModal() {
 
           {/* Group display in header */}
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Add an expense</Text>
+            <Text style={styles.headerTitle}>
+              {isEditMode ? 'Edit expense' : 'Add an expense'}
+            </Text>
             {activeGroup ? (
               <TouchableOpacity
                 onPress={() => {
@@ -469,17 +703,21 @@ export default function NewExpenseModal() {
             )}
           </View>
 
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/ai/scanner');
-            }}
-            style={styles.scanBtn}
-            activeOpacity={0.8}
-          >
-            <Camera size={14} color={THEME.colors.primary} />
-            <Text style={styles.scanBtnText}>Scan</Text>
-          </TouchableOpacity>
+          {isEditMode ? (
+            <View style={styles.headerRightPlaceholder} />
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/ai/scanner');
+              }}
+              style={styles.scanBtn}
+              activeOpacity={0.8}
+            >
+              <Camera size={14} color={THEME.colors.primary} />
+              <Text style={styles.scanBtnText}>Scan</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Scrollable Form Body */}
@@ -702,22 +940,50 @@ export default function NewExpenseModal() {
 
         {/* Floating Bottom Sticky Action Button */}
         <View style={styles.bottomBar}>
+          {isEditMode && !hasChanges && (
+            <View style={styles.unchangedPillWrap}>
+              <View style={styles.unchangedDot} />
+              <Text style={styles.unchangedPillText}>Expense details unchanged</Text>
+            </View>
+          )}
+
           <TouchableOpacity
             style={[
               styles.recordBtn,
               (!description.trim() || numAmount <= 0 || isSaving) && styles.recordBtnDisabled,
+              isEditMode && !hasChanges && styles.recordBtnUnchanged,
             ]}
             onPress={handleSave}
-            disabled={!description.trim() || numAmount <= 0 || isSaving}
+            disabled={!description.trim() || numAmount <= 0 || isSaving || (isEditMode && !hasChanges)}
             activeOpacity={0.85}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#000000" />
+              <ActivityIndicator
+                size="small"
+                color={isEditMode && !hasChanges ? THEME.colors.textMuted : '#000000'}
+              />
             ) : (
               <>
-                <Check size={18} color="#000000" strokeWidth={2.5} />
-                <Text style={styles.recordBtnText}>
-                  {numAmount > 0 ? `Record ₹${numAmount.toLocaleString('en-IN')} Expense` : 'Enter Amount to Save'}
+                <Check
+                  size={18}
+                  color={isEditMode && !hasChanges ? THEME.colors.textMuted : '#000000'}
+                  strokeWidth={2.5}
+                />
+                <Text
+                  style={[
+                    styles.recordBtnText,
+                    isEditMode && !hasChanges && styles.recordBtnTextUnchanged,
+                  ]}
+                >
+                  {isEditMode
+                    ? !hasChanges
+                      ? 'No changes to save'
+                      : numAmount > 0
+                      ? `Save Changes (₹${numAmount.toLocaleString('en-IN')})`
+                      : 'Save Changes'
+                    : numAmount > 0
+                    ? `Record ₹${numAmount.toLocaleString('en-IN')} Expense`
+                    : 'Enter Amount to Save'}
                 </Text>
               </>
             )}
@@ -1372,9 +1638,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
+  headerRightPlaceholder: {
+    width: 36,
+    height: 36,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: THEME.colors.textMuted,
+  },
   recordBtnDisabled: {
     backgroundColor: THEME.colors.surfaceElevated,
     opacity: 0.5,
+  },
+  recordBtnUnchanged: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    opacity: 0.8,
+  },
+  recordBtnTextUnchanged: {
+    color: THEME.colors.textMuted,
+    fontWeight: '600',
+  },
+  unchangedPillWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  unchangedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.textMuted,
+  },
+  unchangedPillText: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
   },
   recordBtnText: {
     fontSize: 15,

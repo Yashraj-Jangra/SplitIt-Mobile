@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
   ArrowLeft,
   Camera,
@@ -50,9 +50,7 @@ import { groupService } from '../../src/services/group.service';
 import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon } from '../../src/utils/category-icons';
-import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
-import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
-import { MasterCategory, validateSplit, calculateSplitAmounts, SplitType } from '@splitit/core';
+import { MasterCategory } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
 import { useNetwork } from '../../src/contexts/network.context';
 import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBreakdownSkeleton';
@@ -122,30 +120,9 @@ export default function ExpenseDetailScreen() {
     settingsService.getCachedExpenseCategories()
   );
 
-  // Edit Modal State
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState(params.title || '');
-  const [editAmount, setEditAmount] = useState(params.amount || '');
-  const [editCategory, setEditCategory] = useState(params.category || 'Dining Out');
-  const [editMasterCategory, setEditMasterCategory] = useState(() =>
-    settingsService.getMasterCategory(params.category || 'Dining Out') || 'Food and Drink'
-  );
-  const [selectedEditMaster, setSelectedEditMaster] = useState('Food and Drink');
-  const [editNotes, setEditNotes] = useState('');
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
-
   // Group Members & Auth User
   const [groupMembers, setGroupMembers] = useState<Array<{ id: string; name: string; avatarUrl?: string }>>([]);
   const [currentUserId, setCurrentUserId] = useState('u1');
-
-  // Edit Payer & Split state
-  const [editPayerType, setEditPayerType] = useState<'single' | 'multiple'>('single');
-  const [editSinglePayerId, setEditSinglePayerId] = useState('payer');
-  const [editMultiPayers, setEditMultiPayers] = useState<MultiPayerEntry[]>([]);
-  const [editSplitMode, setEditSplitMode] = useState<SplitType>('equally');
-  const [editParticipants, setEditParticipants] = useState<SplitParticipantItem[]>([]);
-  const [showEditPayerModal, setShowEditPayerModal] = useState(false);
-  const [showEditSplitModal, setShowEditSplitModal] = useState(false);
 
   // Receipt Modal State
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -166,14 +143,6 @@ export default function ExpenseDetailScreen() {
           if (g?.members) setGroupMembers(g.members);
         });
       }
-      setEditTitle(data.title);
-      setEditAmount(String(data.amount));
-      setEditCategory(data?.category?.sub || 'Other');
-      const resolvedMaster =
-        data?.category?.master || settingsService.getMasterCategory(data?.category?.sub || 'Other');
-      setEditMasterCategory(resolvedMaster);
-      setSelectedEditMaster(resolvedMaster);
-      setEditNotes(data.notes || '');
     } finally {
       setLoading(false);
     }
@@ -209,6 +178,12 @@ export default function ExpenseDetailScreen() {
     fetchExpense();
   }, [expenseId, groupId]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchExpense();
+    }, [expenseId, groupId])
+  );
+
   const handleDelete = () => {
     if (!requireOnline('delete an expense')) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -234,188 +209,13 @@ export default function ExpenseDetailScreen() {
   const handleOpenEdit = () => {
     if (!requireOnline('edit this expense')) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (expense) {
-      setEditTitle(expense.title);
-      setEditAmount(String(expense.amount));
-      const sub = expense?.category?.sub || 'Other';
-      const master =
-        expense?.category?.master || settingsService.getMasterCategory(sub) || 'Food and Drink';
-      setEditCategory(sub);
-      setEditMasterCategory(master);
-      setSelectedEditMaster(master);
-      setEditNotes(expense.notes || '');
-
-      const payers = expense.payers || [];
-      if (payers.length > 1) {
-        setEditPayerType('multiple');
-        setEditMultiPayers(payers.map((p) => ({ userId: p.userId, amount: p.amount })));
-        setEditSinglePayerId(payers[0]?.userId || 'payer');
-      } else if (payers.length === 1) {
-        setEditPayerType('single');
-        setEditSinglePayerId(payers[0].userId);
-        setEditMultiPayers([{ userId: payers[0].userId, amount: expense.amount }]);
-      } else {
-        setEditPayerType('single');
-        setEditSinglePayerId(expense.paidById || 'payer');
-        setEditMultiPayers([]);
-      }
-
-      const normalizedSplit: SplitType =
-        expense.splitType === 'shares'
-          ? 'by_shares'
-          : expense.splitType === 'percentage'
-          ? 'by_percentage'
-          : (expense.splitType as SplitType) || 'equally';
-      setEditSplitMode(normalizedSplit);
-
-      const memberList: Array<{ id: string; name: string; avatarUrl?: string }> =
-        groupMembers.length > 0
-          ? groupMembers
-          : expense.participants.map((p) => ({ id: p.userId, name: p.name, avatarUrl: p.avatarUrl }));
-
-      setEditParticipants(
-        memberList.map((m) => {
-          const matched = expense.participants.find((p) => p.userId === m.id);
-          return {
-            id: m.id,
-            name: m.name,
-            avatarUrl: m.avatarUrl,
-            selected: !!matched,
-            amountOwed: matched?.amountOwed || 0,
-            shares: 1,
-            percentage: 0,
-            exactAmount: matched?.amountOwed || 0,
-          };
-        })
-      );
-    }
-    setIsEditModalOpen(true);
-  };
-
-  const editPaidByText = useMemo(() => {
-    if (editPayerType === 'single') {
-      if (editSinglePayerId === currentUserId) return 'You';
-      const member = groupMembers.find((m) => m.id === editSinglePayerId);
-      return member ? member.name : expense?.paidByName || 'Member';
-    }
-    const count = editMultiPayers.filter((p) => p.amount > 0).length;
-    return count > 1 ? `${count} people` : count === 1 ? '1 person' : 'Multiple people';
-  }, [editPayerType, editSinglePayerId, currentUserId, groupMembers, editMultiPayers, expense?.paidByName]);
-
-  const editSplitText = useMemo(() => {
-    switch (editSplitMode) {
-      case 'equally':
-        return 'Split equally';
-      case 'unequally':
-        return 'Split unequally';
-      case 'by_percentage':
-        return 'Split by percentage';
-      case 'by_shares':
-        return 'Split by shares';
-      default:
-        return 'Split equally';
-    }
-  }, [editSplitMode]);
-
-  const handleSaveEdit = async () => {
-    if (!requireOnline('save changes to this expense')) return;
-    if (!editTitle.trim() || !editAmount.trim() || isSavingEdit) return;
-    const newAmt = parseFloat(editAmount);
-    if (isNaN(newAmt) || newAmt <= 0) return;
-
-    setIsSavingEdit(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    const oldAmt = expense?.amount || newAmt;
-    const targetGroupId = expense?.groupId || groupId;
-    const resolvedMaster =
-      editMasterCategory || settingsService.getMasterCategory(editCategory, categories);
-
-    const selectedEditParts = editParticipants.filter((p) => p.selected);
-    const effectivePayerId = editPayerType === 'single' ? editSinglePayerId : currentUserId;
-    const splitResults = calculateSplitAmounts(
-      newAmt,
-      editParticipants.map((p) => ({
-        userId: p.id,
-        selected: p.selected,
-        shares: p.shares || 1,
-        percentage: p.percentage || 0,
-        amountOwed: p.exactAmount || 0,
-      })),
-      editSplitMode,
-      effectivePayerId
-    );
-    const splitMap = Object.fromEntries(splitResults.map((r) => [r.userId, r.amountOwed]));
-
-    const participantsPayload = selectedEditParts.map((p) => ({
-      userId: p.id,
-      amountOwed: splitMap[p.id] ?? (p.exactAmount || newAmt / Math.max(1, selectedEditParts.length)),
-      share: p.shares || 1,
-    }));
-
-    const payersPayload =
-      editPayerType === 'single'
-        ? [{ userId: editSinglePayerId, amount: newAmt }]
-        : editMultiPayers.filter((p) => p.amount > 0).map((p) => ({ userId: p.userId, amount: p.amount }));
-
-    const validation = validateSplit({
-      totalAmount: newAmt,
-      splitType: editSplitMode,
-      participants: editParticipants.map((p) => ({
-        userId: p.id,
-        selected: p.selected,
-        shares: p.shares || 1,
-        percentage: p.percentage || 0,
-        amountOwed: p.exactAmount || 0,
-      })),
-      multiPayerAmounts: editPayerType === 'multiple' ? editMultiPayers.map((p) => p.amount || 0) : undefined,
+    router.push({
+      pathname: '/expenses/new',
+      params: {
+        expenseId,
+        groupId: expense?.groupId || groupId,
+      },
     });
-
-    if (validation) {
-      setIsSavingEdit(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      if (validation.field === 'payers') {
-        Alert.alert(
-          'Unbalanced Payers',
-          `The total paid (₹${validation.totalPaid.toFixed(2)}) must equal the expense amount (₹${validation.totalAmount.toFixed(2)}).`
-        );
-      } else if (validation.field === 'participants') {
-        if (validation.kind === 'amounts') {
-          Alert.alert(
-            'Unbalanced Split',
-            `The total owed (₹${validation.totalOwed.toFixed(2)}) must equal the expense amount (₹${validation.totalAmount.toFixed(2)}).`
-          );
-        } else if (validation.kind === 'percentage') {
-          Alert.alert(
-            'Invalid Percentage',
-            `The sum of percentages (${validation.totalPercentage.toFixed(2)}%) must equal 100%.`
-          );
-        }
-      }
-      return;
-    }
-
-    const res = await expenseService.updateExpense(expenseId, {
-      groupId: targetGroupId,
-      amount: newAmt,
-      oldAmount: oldAmt,
-      description: editTitle.trim(),
-      category: editCategory,
-      masterCategory: resolvedMaster,
-      notes: editNotes.trim(),
-      splitType: editSplitMode,
-      payers: payersPayload,
-      participants: participantsPayload,
-    });
-
-    setIsSavingEdit(false);
-    if (res.success) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setIsEditModalOpen(false);
-      fetchExpense();
-    } else {
-      Alert.alert('Update Failed', res.error || 'Could not update expense.');
-    }
   };
 
   const handleSendComment = async () => {
@@ -789,195 +589,7 @@ export default function ExpenseDetailScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* Edit Expense Modal */}
-      <Modal
-        visible={isEditModalOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsEditModalOpen(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
-        >
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Expense</Text>
-              <TouchableOpacity
-                onPress={() => setIsEditModalOpen(false)}
-                style={styles.modalCloseBtn}
-              >
-                <X size={20} color={THEME.colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
 
-            <ScrollView contentContainerStyle={styles.modalBody}>
-              <View style={styles.modalInputGroup}>
-                <Text style={styles.modalLabel}>TITLE</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editTitle}
-                  onChangeText={setEditTitle}
-                  placeholder="Expense description"
-                  placeholderTextColor={THEME.colors.textMuted}
-                />
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={styles.modalLabel}>AMOUNT (₹)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editAmount}
-                  onChangeText={setEditAmount}
-                  keyboardType="numeric"
-                  placeholder="0.00"
-                  placeholderTextColor={THEME.colors.textMuted}
-                />
-              </View>
-
-              <View style={styles.modalRowGroup}>
-                <View style={[styles.modalInputGroup, { flex: 1, marginRight: 6 }]}>
-                  <Text style={styles.modalLabel}>PAID BY</Text>
-                  <TouchableOpacity
-                    style={styles.modalSelectTrigger}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setShowEditPayerModal(true);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.modalSelectTriggerText} numberOfLines={1}>
-                      {editPaidByText}
-                    </Text>
-                    <ChevronDown size={14} color={THEME.colors.textMuted} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={[styles.modalInputGroup, { flex: 1, marginLeft: 6 }]}>
-                  <Text style={styles.modalLabel}>SPLIT</Text>
-                  <TouchableOpacity
-                    style={styles.modalSelectTrigger}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setShowEditSplitModal(true);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.modalSelectTriggerText} numberOfLines={1}>
-                      {editSplitText}
-                    </Text>
-                    <ChevronDown size={14} color={THEME.colors.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={styles.modalLabel}>CATEGORY</Text>
-                {/* Horizontal master category scroller */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
-                >
-                  {Object.keys(categories).map((master) => {
-                    const isMasterActive = selectedEditMaster === master;
-                    return (
-                      <TouchableOpacity
-                        key={master}
-                        onPress={() => {
-                          Haptics.selectionAsync();
-                          setSelectedEditMaster(master);
-                        }}
-                        style={[
-                          styles.catMasterPill,
-                          isMasterActive && styles.catMasterPillActive,
-                        ]}
-                      >
-                        <CategoryIcon
-                          masterCategory={master}
-                          size={13}
-                          color={isMasterActive ? '#10B981' : '#9CA3AF'}
-                        />
-                        <Text
-                          style={[
-                            styles.catMasterPillText,
-                            isMasterActive && styles.catMasterPillTextActive,
-                          ]}
-                        >
-                          {master}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-
-                {/* Sub-category chips for the selected master category */}
-                <View style={styles.categoryPills}>
-                  {Object.keys(categories[selectedEditMaster]?.subCategories || {}).map((sub) => {
-                    const isSelected = editCategory === sub;
-                    return (
-                      <TouchableOpacity
-                        key={sub}
-                        onPress={() => {
-                          Haptics.selectionAsync();
-                          setEditCategory(sub);
-                          setEditMasterCategory(selectedEditMaster);
-                        }}
-                        style={[
-                          styles.catPill,
-                          isSelected && styles.catPillActive,
-                        ]}
-                      >
-                        <CategoryIcon
-                          subCategory={sub}
-                          masterCategory={selectedEditMaster}
-                          size={13}
-                          color={isSelected ? '#10B981' : '#9CA3AF'}
-                        />
-                        <Text
-                          style={[
-                            styles.catPillText,
-                            isSelected && styles.catPillTextActive,
-                          ]}
-                        >
-                          {sub}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={styles.modalLabel}>NOTES (OPTIONAL)</Text>
-                <TextInput
-                  style={[styles.modalInput, styles.modalInputMulti]}
-                  value={editNotes}
-                  onChangeText={setEditNotes}
-                  placeholder="Add notes..."
-                  placeholderTextColor={THEME.colors.textMuted}
-                  multiline
-                />
-              </View>
-
-              <TouchableOpacity
-                onPress={handleSaveEdit}
-                disabled={isSavingEdit}
-                style={[styles.modalSaveButton, isSavingEdit && { opacity: 0.6 }]}
-              >
-                {isSavingEdit ? (
-                  <ActivityIndicator size="small" color="#09090B" />
-                ) : (
-                  <>
-                    <Check size={18} color="#09090B" />
-                    <Text style={styles.modalSaveButtonText}>Save Changes</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {/* Receipt Viewer Modal */}
       <Modal
@@ -1013,45 +625,6 @@ export default function ExpenseDetailScreen() {
         </View>
       </Modal>
 
-      {/* Sub-Modal: Edit Payer Picker */}
-      <PayerSelectModal
-        visible={showEditPayerModal}
-        onClose={() => setShowEditPayerModal(false)}
-        members={
-          groupMembers.length > 0
-            ? groupMembers
-            : editParticipants.map((p) => ({
-                id: p.id,
-                name: p.name,
-                avatarUrl: p.avatarUrl,
-              }))
-        }
-        currentUserId={currentUserId}
-        totalAmount={parseFloat(editAmount) || expense?.amount || 0}
-        initialPayerType={editPayerType}
-        initialSinglePayerId={editSinglePayerId}
-        initialMultiPayers={editMultiPayers}
-        onConfirm={(result) => {
-          setEditPayerType(result.payerType);
-          setEditSinglePayerId(result.singlePayerId);
-          setEditMultiPayers(result.multiPayers);
-        }}
-      />
-
-      {/* Sub-Modal: Edit Split Options Picker */}
-      <SplitOptionsModal
-        visible={showEditSplitModal}
-        onClose={() => setShowEditSplitModal(false)}
-        totalAmount={parseFloat(editAmount) || expense?.amount || 0}
-        currentUserId={currentUserId}
-        payerId={editPayerType === 'single' ? editSinglePayerId : currentUserId}
-        initialSplitType={editSplitMode}
-        participants={editParticipants}
-        onConfirm={(result) => {
-          setEditSplitMode(result.splitType);
-          setEditParticipants(result.participants);
-        }}
-      />
     </SafeAreaView>
   );
 }
