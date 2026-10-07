@@ -26,8 +26,8 @@ import * as Haptics from 'expo-haptics';
 
 export default function SupportTicketsScreen() {
   const router = useRouter();
-  const [tickets, setTickets] = useState<SupportTicketItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tickets, setTickets] = useState<SupportTicketItem[]>(() => supportService.getInMemoryTickets());
+  const [loading, setLoading] = useState(() => supportService.getInMemoryTickets().length === 0);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadTickets = async () => {

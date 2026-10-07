@@ -88,7 +88,16 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
   },
 };
 
+let _cachedNotifications: InAppNotification[] = [];
+
 export const notificationService = {
+  /**
+   * Synchronous accessor for in-memory cached notifications (prevents screen blanking).
+   */
+  getInMemoryNotifications(): InAppNotification[] {
+    return _cachedNotifications;
+  },
+
   /**
    * Configure notification handlers and default Android channel
    */
@@ -201,14 +210,19 @@ export const notificationService = {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) return data;
+        if (Array.isArray(data)) {
+          _cachedNotifications = data;
+          return data;
+        }
       }
     } catch {
       // Fall through to cached / offline list
     }
 
+    if (_cachedNotifications.length > 0) return _cachedNotifications;
+
     // High quality offline fallback items
-    return [
+    const fallback: InAppNotification[] = [
       {
         id: 'notif_1',
         type: 'expense_added',
@@ -246,6 +260,9 @@ export const notificationService = {
         data: { ticketId: 'SP-104' },
       },
     ];
+
+    _cachedNotifications = fallback;
+    return fallback;
   },
 
   /**

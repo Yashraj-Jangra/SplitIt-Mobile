@@ -3,12 +3,16 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { enableFreeze } from 'react-native-screens';
 import { THEME } from '../src/constants/theme';
 import { AuthProvider, useAuth } from '../src/contexts/auth.context';
 import { NetworkProvider } from '../src/contexts/network.context';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { notificationService } from '../src/services/notification.service';
 import { useEffect } from 'react';
+
+// Disarm react-freeze global suspense unmounts so background screens never suspend with null fallback
+enableFreeze(false);
 
 const splitItNavTheme: Theme = {
   ...DarkTheme,
@@ -68,7 +72,7 @@ function NavigationGate() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: THEME.colors.background },
-          animation: 'ios_from_right',
+          animation: 'slide_from_right',
           freezeOnBlur: false,
         }}
       >

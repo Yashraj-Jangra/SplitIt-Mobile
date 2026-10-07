@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "splitit",
     "userInterfaceStyle": "dark",
+    "backgroundColor": "#09090B",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -33,6 +34,7 @@
     "android": {
       "package": "com.splitit.app",
       "versionCode": 1,
+      "backgroundColor": "#09090B",
       "permissions": [
         "INTERNET",
         "CAMERA",

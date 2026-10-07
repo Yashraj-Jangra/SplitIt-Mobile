@@ -44,12 +44,22 @@ export interface AuthResponse {
   error?: string;
 }
 
+let _cachedUser: AuthUser | null = null;
+
 export const authService = {
+  /**
+   * Synchronous accessor for in-memory cached user (prevents layout flashing).
+   */
+  getInMemoryUser(): AuthUser | null {
+    return _cachedUser;
+  },
+
   /**
    * Save session token and user info securely in Keychain / Keystore.
    */
   async saveSession(token: string, user: AuthUser): Promise<void> {
     try {
+      _cachedUser = user;
       await SecureStore.setItemAsync(TOKEN_KEY, token);
       await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
     } catch {
@@ -72,9 +82,14 @@ export const authService = {
    * Retrieve active user profile from SecureStore.
    */
   async getCachedUser(): Promise<AuthUser | null> {
+    if (_cachedUser) return _cachedUser;
     try {
       const raw = await SecureStore.getItemAsync(USER_KEY);
-      return raw ? JSON.parse(raw) : null;
+      if (raw) {
+        _cachedUser = JSON.parse(raw);
+        return _cachedUser;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -85,6 +100,7 @@ export const authService = {
    */
   async clearSession(): Promise<void> {
     try {
+      _cachedUser = null;
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       await SecureStore.deleteItemAsync(USER_KEY);
     } catch {

@@ -30,16 +30,24 @@ import { BalanceHistoryGraph } from '../../src/components/dashboard/BalanceHisto
 import { BalanceSkeleton } from '../../src/components/skeletons/BalanceSkeleton';
 import { TransactionRowSkeleton } from '../../src/components/skeletons/TransactionRowSkeleton';
 import { useNetwork } from '../../src/contexts/network.context';
+import { useAuth } from '../../src/contexts/auth.context';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { isOnline, requireOnline } = useNetwork();
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [groups, setGroups] = useState<GroupListItem[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>([]);
-  const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user: authUser } = useAuth();
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authUser || authService.getInMemoryUser());
+  const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
+  const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
+  const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(() => balanceService.getInMemoryUserBalanceSummary());
+  const [loading, setLoading] = useState(() => {
+    return (
+      groupService.getInMemoryGroups().length === 0 &&
+      expenseService.getInMemoryUserExpenses().length === 0 &&
+      !balanceService.getInMemoryUserBalanceSummary()
+    );
+  });
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
@@ -63,6 +71,7 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    if (authUser && !currentUser) setCurrentUser(authUser);
     // 0ms Fast Tick: Hydrate immediately from persistent offline storage
     Promise.all([
       authService.getCachedUser(),
@@ -74,12 +83,12 @@ export default function HomeScreen() {
       if (cachedGroups && cachedGroups.length > 0) setGroups(cachedGroups);
       if (cachedTx && cachedTx.length > 0) setRecentTransactions(cachedTx);
       if (cachedSummary) setBalanceSummary(cachedSummary);
-      if (cachedGroups.length > 0 || cachedTx.length > 0 || cachedSummary) {
+      if ((cachedGroups && cachedGroups.length > 0) || (cachedTx && cachedTx.length > 0) || cachedSummary) {
         setLoading(false);
       }
     });
     loadData();
-  }, []);
+  }, [authUser]);
 
   const onRefresh = () => {
     setRefreshing(true);

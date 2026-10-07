@@ -24,7 +24,16 @@ export interface SupportTicketItem {
   messages: TicketMessage[];
 }
 
+let _cachedTickets: SupportTicketItem[] = [];
+
 export const supportService = {
+  /**
+   * Synchronous accessor for in-memory cached tickets (prevents screen blanking).
+   */
+  getInMemoryTickets(): SupportTicketItem[] {
+    return _cachedTickets;
+  },
+
   /**
    * Fetch all support tickets for the current authenticated user
    */
@@ -38,11 +47,16 @@ export const supportService = {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) return data;
+        if (Array.isArray(data)) {
+          _cachedTickets = data;
+          return data;
+        }
       }
     } catch {
       // Offline fallback to demo tickets
     }
+
+    if (_cachedTickets.length > 0) return _cachedTickets;
 
     // High quality offline demo tickets
     return [

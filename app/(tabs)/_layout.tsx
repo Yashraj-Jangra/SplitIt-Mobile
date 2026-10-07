@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 export default function TabsLayout() {
   return (
     <Tabs
+      detachInactiveScreens={false}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

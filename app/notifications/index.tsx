@@ -31,9 +31,9 @@ import * as Haptics from 'expo-haptics';
 
 export default function NotificationsCenterScreen() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<InAppNotification[]>([]);
+  const [notifications, setNotifications] = useState<InAppNotification[]>(() => notificationService.getInMemoryNotifications());
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => notificationService.getInMemoryNotifications().length === 0);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadNotifications = async () => {

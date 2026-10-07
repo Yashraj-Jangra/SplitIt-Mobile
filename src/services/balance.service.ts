@@ -20,13 +20,28 @@ export interface UserBalanceSummary {
   maxBalance: number;
 }
 
+let _cachedBalanceSummary: UserBalanceSummary | null = null;
+
 export const balanceService = {
+  /**
+   * Synchronous accessor for in-memory cached balance summary (prevents back-navigation blanking).
+   */
+  getInMemoryUserBalanceSummary(): UserBalanceSummary | null {
+    return _cachedBalanceSummary;
+  },
+
   /**
    * Fast tick lookup of balance summary from persistent offline storage (0ms cold boot).
    */
   async getCachedUserBalanceSummary(): Promise<UserBalanceSummary | null> {
+    if (_cachedBalanceSummary) return _cachedBalanceSummary;
     try {
-      return await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY);
+      const fromStorage = await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY);
+      if (fromStorage) {
+        _cachedBalanceSummary = fromStorage;
+        return fromStorage;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -195,11 +210,15 @@ export const balanceService = {
         maxBalance: history.maxBalance,
       };
 
+      _cachedBalanceSummary = result;
       await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY, result);
       return result;
     } catch {
       const cached = await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY);
-      if (cached) return cached;
+      if (cached) {
+        _cachedBalanceSummary = cached;
+        return cached;
+      }
 
       // Safe fallback
       const defaultHistory = calculateBalanceHistory([], 30);
