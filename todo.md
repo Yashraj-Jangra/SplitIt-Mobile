@@ -58,6 +58,17 @@
   - **Stack Animation**: Standardized `animation: 'slide_from_right'` with `freezeOnBlur: false` in `app/_layout.tsx`.
 - **Add Expense FAB App Morph Animation (Commit `350990a`)**:
   - Implemented smooth circular-reveal / sheet-morph animation expanding directly from the group FAB into the add expense screen.
+- **Fixed Android Screen Blackout on Back Navigation Transitions**:
+  - **Deep-Dive Root Cause Discovery**:
+    - **Native Fragment Teardown in `ScreenStack.kt`**: Discovered that on Android, `react-native-screens`'s `ScreenStack` inspects whether the top screen is translucent (`isTranslucent()`). For standard push routes (e.g. `groups/[id]`), `isTranslucent()` is `false`, prompting `ScreenStack.kt` to execute `transaction.remove(wrapper.fragment)`, actively unmounting and destroying the underlying `(tabs)` view tree.
+    - **Re-Inflation Delay vs UI Thread Transition**: Upon back navigation/pop, `(tabs)` is re-added via `transaction.add()`. In Fabric / New Architecture, mounting and measuring the view tree takes 100-200ms on the UI thread, during which the fragment has no rendered draw buffer.
+    - **`slide_from_right` Animation Gap**: Android's `rns_slide_in_from_left.xml` animation translates the incoming screen from `-100%` to `0%` while the outgoing screen slides to `+100%`. This exposes the un-rendered canvas behind `ScreenStack` for 400ms.
+    - **Theme & Window Background Discrepancy**: `app.json` had `"backgroundColor": "#09090B"`, whereas the app's obsidian charcoal canvas is `THEME.colors.background` (`#131417`). The underlying window surface painted as pure pitch black.
+  - **Comprehensive Multi-Layer Architectural Fix**:
+    - **Platform-Adaptive Transition (`app/_layout.tsx`)**: Replaced `animation: 'slide_from_right'` with `animation: Platform.OS === 'android' ? 'fade' : 'default'`. On Android, this uses `rns_fade_in` (150ms) without any horizontal translation gap or window void exposure, keeping transitions smooth and continuous. On iOS, native `UINavigationController` parallax slide is preserved.
+    - **Uncollapsable Navigation Root (`app/_layout.tsx`)**: Wrapped the root `<Stack>` in `<View style={styles.navContainer} collapsable={false}>` with `backgroundColor: THEME.colors.background`. Prevents Android view flattening/collapsing from dropping frames during fragment transactions.
+    - **Window Surface Theme Alignment (`app.json`)**: Aligned `"backgroundColor": "#131417"` across root, splash, Android package, and adaptive icon definitions in `app.json`.
+    - **Platform-Adaptive Modal Presentations (`app/_layout.tsx`)**: Configured `presentation: Platform.OS === 'android' ? 'card' : 'modal'` for modals (`expenses/[id]`, `groups/new`, `settle/new`, `settle/qr`, `ai/chat`, `ai/scanner`, `support/new`, `legal/delete-account`). Prevents Android `ScreenStackFragment` from running broken modal dismiss transitions while maintaining native iOS sheet presentations.
 
 ## Next Steps & Planned Work
 - [ ] Test transition smoothness across high-refresh-rate physical Android & iOS devices.

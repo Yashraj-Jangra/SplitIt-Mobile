@@ -2,7 +2,7 @@ import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, Theme } from '
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
 import { enableFreeze } from 'react-native-screens';
 import { THEME } from '../src/constants/theme';
 import { AuthProvider, useAuth } from '../src/contexts/auth.context';
@@ -68,127 +68,137 @@ function NavigationGate() {
 
   return (
     <ThemeProvider value={splitItNavTheme}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: THEME.colors.background },
-          animation: 'slide_from_right',
-          freezeOnBlur: false,
-        }}
-      >
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="groups/[id]/index" options={{ headerShown: false }} />
-        <Stack.Screen name="groups/[id]/settings" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="expenses/new"
-          options={{
-            presentation: 'transparentModal',
-            animation: 'none',
+      <View style={styles.navContainer} collapsable={false}>
+        <Stack
+          screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: 'transparent' },
+            contentStyle: { backgroundColor: THEME.colors.background },
+            animation: Platform.OS === 'android' ? 'fade' : 'default',
+            freezeOnBlur: false,
           }}
-        />
-        <Stack.Screen
-          name="expenses/[id]"
-          options={{
-            presentation: 'modal',
-            headerShown: false,
-          }}
-        />
-      <Stack.Screen
-        name="groups/new"
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="groups/[id]/search"
-        options={{
-          headerShown: false,
-          animation: 'fade',
-        }}
-      />
-      <Stack.Screen
-        name="settle/new"
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="settle/qr"
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="ai/chat"
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="ai/scanner"
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="notifications/index"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="notifications/preferences"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="support/index"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="support/new"
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="support/[id]"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="legal/privacy"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="legal/terms"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="legal/delete-account"
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      </Stack>
+        >
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="groups/[id]/index" options={{ headerShown: false }} />
+          <Stack.Screen name="groups/[id]/settings" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="expenses/new"
+            options={{
+              presentation: 'transparentModal',
+              animation: 'none',
+              headerShown: false,
+              contentStyle: { backgroundColor: 'transparent' },
+            }}
+          />
+          <Stack.Screen
+            name="expenses/[id]"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="groups/new"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="groups/[id]/search"
+            options={{
+              headerShown: false,
+              animation: 'fade',
+            }}
+          />
+          <Stack.Screen
+            name="settle/new"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="settle/qr"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="ai/chat"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="ai/scanner"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="notifications/index"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="notifications/preferences"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="support/index"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="support/new"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="support/[id]"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="legal/privacy"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="legal/terms"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="legal/delete-account"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+        </Stack>
+      </View>
     </ThemeProvider>
   );
 }
@@ -211,6 +221,10 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+  },
+  navContainer: {
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
