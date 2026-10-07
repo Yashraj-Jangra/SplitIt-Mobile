@@ -184,11 +184,17 @@ export default function NewExpenseModal() {
   );
 
   // Form State
+  const initialCategory = useMemo(() => {
+    if (!params.category) return 'Other';
+    if (params.category.toLowerCase() === 'others') return 'Other';
+    return params.category;
+  }, [params.category]);
+
   const [amount, setAmount] = useState(params.amount || '');
   const [description, setDescription] = useState(params.description || '');
-  const [category, setCategory] = useState(params.category || 'Dining Out');
+  const [category, setCategory] = useState(initialCategory);
   const [masterCategory, setMasterCategory] = useState(() =>
-    settingsService.getMasterCategory(params.category || 'Dining Out') || 'Food and Drink'
+    settingsService.getMasterCategory(initialCategory) || 'Uncategorized'
   );
 
   const [expenseDate, setExpenseDate] = useState<Date>(new Date());
@@ -287,9 +293,10 @@ export default function NewExpenseModal() {
               if (!isNaN(parsedDate.getTime())) setExpenseDate(parsedDate);
             }
 
-            const subCat = exp.category?.sub || 'Other';
+            const rawSub = exp.category?.sub || 'Other';
+            const subCat = rawSub.toLowerCase() === 'others' ? 'Other' : rawSub;
             const masterCat =
-              exp.category?.master || settingsService.getMasterCategory(subCat) || 'Food and Drink';
+              exp.category?.master || settingsService.getMasterCategory(subCat) || 'Uncategorized';
             setCategory(subCat);
             setMasterCategory(masterCat);
             setUserOverriddenCategory(true);
@@ -417,14 +424,19 @@ export default function NewExpenseModal() {
 
   // AI Classification on description change using active categories
   useEffect(() => {
-    if (description.trim().length >= 3 && !userOverriddenCategory) {
-      const predicted = settingsService.classifyExpense(description, categories);
-      if (predicted && predicted.sub) {
-        setCategory(predicted.sub);
-        setMasterCategory(predicted.master);
+    if (!userOverriddenCategory) {
+      if (description.trim().length >= 3) {
+        const predicted = settingsService.classifyExpense(description, categories);
+        if (predicted && predicted.sub) {
+          setCategory(predicted.sub);
+          setMasterCategory(predicted.master);
+        }
+      } else if (description.trim().length === 0) {
+        setCategory(initialCategory);
+        setMasterCategory(settingsService.getMasterCategory(initialCategory) || 'Uncategorized');
       }
     }
-  }, [description, userOverriddenCategory, categories]);
+  }, [description, userOverriddenCategory, categories, initialCategory]);
 
   const predictedCategory = useMemo(() => {
     if (description.trim().length >= 3) {
@@ -1291,18 +1303,20 @@ export default function NewExpenseModal() {
                     if (master.toLowerCase().includes(q)) return true;
                     const subNames = Object.keys(masterCategoryData.subCategories || {});
                     return subNames.some((sub) => {
-                      if (sub.toLowerCase().includes(q)) return true;
+                      const lowerSub = sub.toLowerCase();
+                      if (lowerSub.includes(q) || (lowerSub === 'other' && q.startsWith('other'))) return true;
                       const kw = masterCategoryData.subCategories[sub]?.keywords || [];
-                      return kw.some((k) => k.toLowerCase().includes(q));
+                      return kw.some((k) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()));
                     });
                   })
                   .map(([master, masterCategoryData]) => {
                     const q = categorySearch.toLowerCase().trim();
                     const subNames = Object.keys(masterCategoryData.subCategories || {}).filter((sub) => {
                       if (!q || master.toLowerCase().includes(q)) return true;
-                      if (sub.toLowerCase().includes(q)) return true;
+                      const lowerSub = sub.toLowerCase();
+                      if (lowerSub.includes(q) || (lowerSub === 'other' && q.startsWith('other'))) return true;
                       const kw = masterCategoryData.subCategories[sub]?.keywords || [];
-                      return kw.some((k) => k.toLowerCase().includes(q));
+                      return kw.some((k) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()));
                     });
 
                     if (subNames.length === 0) return null;
