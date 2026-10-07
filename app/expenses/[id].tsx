@@ -49,7 +49,7 @@ import {
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
-import { expenseService, ExpenseDetailModel, ExpenseHistoryLog } from '../../src/services/expense.service';
+import { expenseService, ExpenseDetailModel, ExpenseHistoryLog, deduplicateExpenseLogs } from '../../src/services/expense.service';
 import { groupService } from '../../src/services/group.service';
 import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
@@ -353,7 +353,8 @@ export default function ExpenseDetailScreen() {
       : primaryPayerName;
   const dateFormatted = expense?.date || params.date || 'Today';
   const participants = expense?.participants || [];
-  const logs = expense?.logs || [];
+  const rawLogs = expense?.logs || [];
+  const logs = useMemo(() => deduplicateExpenseLogs(rawLogs), [rawLogs]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

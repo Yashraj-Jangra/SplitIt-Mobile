@@ -1,6 +1,14 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Fix Duplicate Creation History in Expense Info Details**:
+  - **Identified Root Cause**: In `expense.service.ts`'s `getExpenseDetails()`, `parsedLogs` mapped real audit history from `/api/history` (which already included the backend's `expense_created` event), then unconditionally ran `parsedLogs.unshift({...})` for a synthetic creation log. This resulted in two "Created" entries in the history audit timeline.
+  - **Audit Log Deduplication Helper (`src/services/expense.service.ts`)**:
+    - Created `deduplicateExpenseLogs()` function guaranteeing exactly one `expense_created` entry is retained across the entire timeline (prioritizing the authentic server log with accurate creator profile and description over synthetic fallbacks).
+    - Added guard `const hasCreatedLog = parsedLogs.some((l) => l.type === 'expense_created')` so the fallback creator log is appended only when the backend history lacks creation records.
+    - Sanitized cached expense logs in `getCachedExpenseDetails()` and offline fallbacks, preventing stale cached duplicates from resurfacing.
+  - **Screen-Level Defensive Deduplication (`app/expenses/[id].tsx`)**:
+    - Wrapped `expense?.logs` with `useMemo(() => deduplicateExpenseLogs(rawLogs), [rawLogs])` to guarantee that neither network-delivered nor cached records ever render duplicate creation history entries.
 - **Notifications Screen & System Redesign Matching Website**:
   - **Category Tabs & Live Unread Badges (`app/notifications/index.tsx`)**:
     - Replaced the simple 2-chip filter with 5 category tabs matching the web app: `All`, `Expenses`, `Payments`, `Reminders`, and `System & Help`.

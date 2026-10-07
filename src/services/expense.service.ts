@@ -99,6 +99,41 @@ const _commentsCache = new Map<string, ExpenseHistoryLog[]>();
 let _cachedUserExpenses: UserTransactionItem[] = [];
 const _cachedExpenseDetailsMap = new Map<string, ExpenseDetailModel>();
 
+/**
+ * Deduplicate expense history audit logs.
+ * Guarantees exactly one 'expense_created' log is retained (preferring the authoritative backend log over synthetic fallbacks)
+ * and eliminates duplicate log IDs.
+ */
+export function deduplicateExpenseLogs(logs: ExpenseHistoryLog[]): ExpenseHistoryLog[] {
+  if (!logs || logs.length === 0) return [];
+
+  const hasRealCreatedLog = logs.some(
+    (l) => l.type === 'expense_created' && !l.id?.startsWith('created_') && !l.id?.startsWith('log_init_')
+  );
+
+  const seenIds = new Set<string>();
+  let seenCreated = false;
+
+  return logs.filter((log) => {
+    if (log.id) {
+      if (seenIds.has(log.id)) return false;
+      seenIds.add(log.id);
+    }
+
+    if (log.type === 'expense_created') {
+      if (hasRealCreatedLog && (log.id?.startsWith('created_') || log.id?.startsWith('log_init_'))) {
+        return false;
+      }
+      if (seenCreated) {
+        return false;
+      }
+      seenCreated = true;
+    }
+
+    return true;
+  });
+}
+
 export const expenseService = {
   /**
    * Synchronous accessor for in-memory cached user transactions (prevents back-navigation blanking).
@@ -136,11 +171,18 @@ export const expenseService = {
    */
   async getCachedExpenseDetails(expenseId: string): Promise<ExpenseDetailModel | null> {
     if (_cachedExpenseDetailsMap.has(expenseId)) {
-      return _cachedExpenseDetailsMap.get(expenseId)!;
+      const cached = _cachedExpenseDetailsMap.get(expenseId)!;
+      if (cached.logs) {
+        cached.logs = deduplicateExpenseLogs(cached.logs);
+      }
+      return cached;
     }
     try {
       const fromStorage = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
       if (fromStorage) {
+        if (fromStorage.logs) {
+          fromStorage.logs = deduplicateExpenseLogs(fromStorage.logs);
+        }
         _cachedExpenseDetailsMap.set(expenseId, fromStorage);
         return fromStorage;
       }
@@ -450,27 +492,30 @@ export const expenseService = {
             };
           });
 
-          // Add creator log if not present
-          const createdDate = e.createdAt ? new Date(e.createdAt) : (e.date ? new Date(e.date) : new Date());
-          parsedLogs.unshift({
-            id: `created_${e.id}`,
-            type: 'expense_created',
-            actorName: e.expenseCreator?.firstName
-              ? `${e.expenseCreator.firstName} ${e.expenseCreator.lastName || ''}`.trim()
-              : 'You',
-            actorAvatar: e.expenseCreator?.avatarUrl,
-            timestamp: createdDate.toLocaleDateString('en-IN', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            }),
-            timeAgo: createdDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
-            description: `Created this expense for ₹${Number(e.amount || 0).toFixed(2)}`,
-          });
+          // Add creator log only if not already present in parsed history logs
+          const hasCreatedLog = parsedLogs.some((l) => l.type === 'expense_created');
+          if (!hasCreatedLog) {
+            const createdDate = e.createdAt ? new Date(e.createdAt) : (e.date ? new Date(e.date) : new Date());
+            parsedLogs.push({
+              id: `created_${e.id}`,
+              type: 'expense_created',
+              actorName: e.expenseCreator?.firstName
+                ? `${e.expenseCreator.firstName} ${e.expenseCreator.lastName || ''}`.trim()
+                : 'You',
+              actorAvatar: e.expenseCreator?.avatarUrl,
+              timestamp: createdDate.toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              }),
+              timeAgo: createdDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+              description: `Created this expense for ₹${Number(e.amount || 0).toFixed(2)}`,
+            });
+          }
 
-          // Append any in-session comments
+          // Append any in-session comments and deduplicate logs
           const comments = _commentsCache.get(expenseId) || [];
-          const allLogs = [...parsedLogs, ...comments];
+          const allLogs = deduplicateExpenseLogs([...parsedLogs, ...comments]);
 
           // Resolve group name if not on expense object
           let resolvedGroupName = e.groupName;
@@ -540,6 +585,9 @@ export const expenseService = {
     // Check offline storage before falling back to defaults
     const cachedExpense = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
     if (cachedExpense) {
+      if (cachedExpense.logs) {
+        cachedExpense.logs = deduplicateExpenseLogs(cachedExpense.logs);
+      }
       _cachedExpenseDetailsMap.set(expenseId, cachedExpense);
       return cachedExpense;
     }
