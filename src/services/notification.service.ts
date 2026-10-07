@@ -32,9 +32,22 @@ export interface InAppNotification {
   id: string;
   type: string;
   title: string;
-  message: string;
-  read: boolean;
+  message?: string;
+  body?: string;
+  read?: boolean;
+  isRead?: boolean;
   createdAt: string;
+  actorId?: string;
+  actor?: {
+    uid?: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+    email?: string;
+  };
+  groupId?: string;
+  expenseId?: string;
+  settlementId?: string;
   data?: {
     groupId?: string;
     expenseId?: string;
@@ -211,8 +224,18 @@ export const notificationService = {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          _cachedNotifications = data;
-          return data;
+          const normalized: InAppNotification[] = data.map((item: any) => ({
+            ...item,
+            body: item.body || item.message || '',
+            message: item.message || item.body || '',
+            isRead: item.isRead !== undefined ? !!item.isRead : !!item.read,
+            read: item.isRead !== undefined ? !!item.isRead : !!item.read,
+            groupId: item.groupId || item.data?.groupId,
+            expenseId: item.expenseId || item.data?.expenseId,
+            settlementId: item.settlementId || item.data?.settlementId,
+          }));
+          _cachedNotifications = normalized;
+          return normalized;
         }
       }
     } catch {
@@ -221,43 +244,93 @@ export const notificationService = {
 
     if (_cachedNotifications.length > 0) return _cachedNotifications;
 
-    // High quality offline fallback items
+    // High quality offline fallback items aligned with website notification catalog
     const fallback: InAppNotification[] = [
       {
         id: 'notif_1',
         type: 'expense_added',
         title: 'New Expense Added',
+        body: 'Rohit added "High-speed Fiber Internet" (₹1,499.00) in Apartment Flatmates',
         message: 'Rohit added "High-speed Fiber Internet" (₹1,499.00) in Apartment Flatmates',
         read: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        data: { groupId: '1' },
+        isRead: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+        actor: { firstName: 'Rohit', lastName: 'Sharma' },
+        groupId: '1',
+        expenseId: 'e1',
+        data: { groupId: '1', expenseId: 'e1' },
       },
       {
         id: 'notif_2',
-        type: 'budget_alert',
-        title: 'Budget Velocity Alert ⚠️',
-        message: 'Apartment Flatmates has reached 72% of monthly budget limit with 10 days left',
+        type: 'settlement_added',
+        title: 'Payment Received',
+        body: 'Priya settled ₹1,500.00 with you via UPI in Apartment Flatmates',
+        message: 'Priya settled ₹1,500.00 with you via UPI in Apartment Flatmates',
         read: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-        data: { groupId: '1' },
+        isRead: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+        actor: { firstName: 'Priya', lastName: 'Patel' },
+        groupId: '1',
+        settlementId: 's1',
+        data: { groupId: '1', settlementId: 's1' },
       },
       {
         id: 'notif_3',
-        type: 'settlement_added',
-        title: 'Settlement Recorded',
-        message: 'Priya settled ₹1,500.00 with you via UPI',
-        read: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        type: 'budget_alert',
+        title: 'Budget Approaching Limit ⚠️',
+        body: 'Apartment Flatmates has reached 75% of monthly spending target with 10 days left',
+        message: 'Apartment Flatmates has reached 75% of monthly spending target with 10 days left',
+        read: false,
+        isRead: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+        groupId: '1',
         data: { groupId: '1' },
       },
       {
         id: 'notif_4',
+        type: 'payment_reminder',
+        title: 'Payment Reminder',
+        body: 'Aman requested settlement of ₹450.00 for Weekend Dinner in Apartment Flatmates',
+        message: 'Aman requested settlement of ₹450.00 for Weekend Dinner in Apartment Flatmates',
+        read: true,
+        isRead: true,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
+        actor: { firstName: 'Aman', lastName: 'Verma' },
+        groupId: '1',
+        data: { groupId: '1' },
+      },
+      {
+        id: 'notif_5',
+        type: 'budget_exceeded',
+        title: 'Budget Exceeded 🚨',
+        body: 'Monthly dining budget exceeded by ₹2,400.00 in Apartment Flatmates',
+        message: 'Monthly dining budget exceeded by ₹2,400.00 in Apartment Flatmates',
+        read: false,
+        isRead: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 28).toISOString(),
+        groupId: '1',
+        data: { groupId: '1' },
+      },
+      {
+        id: 'notif_6',
         type: 'support_reply',
         title: 'Support Ticket Update',
+        body: 'Agent replied to Ticket #SP-104: "UPI QR verification is resolved"',
         message: 'Agent replied to Ticket #SP-104: "UPI QR verification is resolved"',
         read: true,
+        isRead: true,
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
         data: { ticketId: 'SP-104' },
+      },
+      {
+        id: 'notif_7',
+        type: 'broadcast_announcement',
+        title: 'SplitIt 2.0 Released 🎉',
+        body: 'Enjoy real-time settlements, category analytics, and AI receipt scanning in SplitIt.',
+        message: 'Enjoy real-time settlements, category analytics, and AI receipt scanning in SplitIt.',
+        read: true,
+        isRead: true,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
       },
     ];
 
@@ -271,7 +344,7 @@ export const notificationService = {
   async markNotificationRead(id: string): Promise<boolean> {
     try {
       const token = await authService.getToken();
-      const res = await fetch(`${API_BASE_URL}/api/notifications/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

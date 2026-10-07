@@ -1,7 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
-- **Group Activity & Expense History Minimal Sleek Redesign Matching Website**:
+- **Notifications Screen & System Redesign Matching Website**:
+  - **Category Tabs & Live Unread Badges (`app/notifications/index.tsx`)**:
+    - Replaced the simple 2-chip filter with 5 category tabs matching the web app: `All`, `Expenses`, `Payments`, `Reminders`, and `System & Help`.
+    - Integrated live unread badge pills per tab colored by category (Teal for All, Blue for Expenses, Green for Payments, Amber for Reminders, Purple for System & Help).
+    - Added header unread pill badge (`{unreadCount} unread`) and subtitle matching the web layout.
+  - **Minimalist Hairline Container & Left Accent Borders**:
+    - Replaced isolated bulky cards with a unified card container and hairline dividers (`borderBottomWidth: 1`, `borderBottomColor: THEME.colors.hairline`).
+    - Implemented 4px solid left accent borders for unread notifications with exact color mapping: Blue (`#3B82F6`) for expenses, Green (`#10B981`) for settlements/payments, Orange (`#F97316`) for member updates, Amber (`#F59E0B`) for budget alerts & inactivity, Rose (`#F43F5E`) for budget exceeded, Cyan (`#06B6D4`) for support replies, Purple (`#A855F7`) for announcements, and Red (`#EF4444`) for critical broadcasts.
+    - Added actor avatars with fallback initials and circular icon badges for system alerts.
+    - Added inline checkmark "Mark as read" button on unread items allowing instant single mark-read without leaving the screen.
+    - Added pulsating unread indicator dots.
+    - Implemented deep-link routing matching `getNotificationUrl` on web (`/expenses/[id]`, `/groups/[id]`, `/support/[id]`).
+  - **Notification Service Alignment (`src/services/notification.service.ts`)**:
+    - Enhanced `InAppNotification` model with `actor`, `body`, `isRead`, and entity ID fields.
+    - Normalized incoming notification payloads to bridge web `NotificationV2` and mobile fields.
+    - Corrected single mark-as-read endpoint to `/api/notifications/${id}/read` with PATCH.
+    - Enriched offline fallback dataset with realistic multi-category notifications and actor objects.
   - **Group Activity Tab Redesign (`src/components/groups/GroupHistoryTab.tsx` & `app/groups/[id]/index.tsx`)**:
     - Replaced heavy boxed card layout with minimal hairline-divided list rows (`borderBottomWidth: StyleSheet.hairlineWidth`) matching the website.
     - Implemented exact icon and color scheme: Emerald for additions/creations (`#10B981`, `Plus`, `Handshake`, `UserPlus`), Blue for updates (`#3B82F6`, `Pencil`), Red for deletions (`#EF4444`, `Trash2`, `UserMinus`), Purple for restorations (`#A855F7`, `RotateCcw`), and Electric Purple for SplitIt AI (`Bot`).
