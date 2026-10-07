@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
   ArrowLeft,
   Settings,
@@ -72,6 +72,12 @@ export default function GroupDetailScreen() {
   const tabIndicatorAnim = useRef(new Animated.Value(0)).current;
   const tabContentAnim = useRef(new Animated.Value(1)).current;
   const fabAnim = useRef(new Animated.Value(1)).current;
+  const fabPressAnim = useRef(new Animated.Value(0)).current;
+  const fabButtonRef = useRef<any>(null);
+  const fabCoordsRef = useRef({
+    x: Dimensions.get('window').width - 46,
+    y: Dimensions.get('window').height - 64,
+  });
 
   const stickyThreshold = SCROLL_DISTANCE + statStripHeight;
 
@@ -145,11 +151,52 @@ export default function GroupDetailScreen() {
     setActiveTab(tab);
   };
 
-  const handleAddExpense = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const targetId = Array.isArray(id) ? id[0] : (id || '');
-    router.push(`/expenses/new?groupId=${targetId}`);
+  const onFabLayout = () => {
+    fabButtonRef.current?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
+      if (width > 0 && height > 0) {
+        fabCoordsRef.current = {
+          x: x + width / 2,
+          y: y + height / 2,
+        };
+      }
+    });
   };
+
+  const handleAddExpense = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Spring trigger on FAB: slight scale pulse & 45deg rotation
+    Animated.spring(fabPressAnim, {
+      toValue: 1,
+      tension: 100,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+
+    const targetId = Array.isArray(id) ? id[0] : (id || '');
+    router.push({
+      pathname: '/expenses/new',
+      params: {
+        groupId: targetId,
+        origin: 'fab',
+        fabX: Math.round(fabCoordsRef.current.x).toString(),
+        fabY: Math.round(fabCoordsRef.current.y).toString(),
+      },
+    });
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      // Smoothly reset FAB press animation when returning
+      Animated.spring(fabPressAnim, {
+        toValue: 0,
+        tension: 80,
+        friction: 7,
+        useNativeDriver: true,
+      }).start();
+      loadGroup();
+    }, [targetId])
+  );
 
   const onTabBarLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
@@ -864,7 +911,7 @@ export default function GroupDetailScreen() {
         {renderTabBar()}
       </Animated.View>
 
-      {/* Floating Add Expense Action Button (Smooth spring fade & scale) */}
+      {/* Floating Add Expense Action Button (Smooth spring fade & scale + app-launch burst) */}
       <Animated.View
         pointerEvents={activeTab === 'expenses' ? 'auto' : 'none'}
         style={[
@@ -875,12 +922,54 @@ export default function GroupDetailScreen() {
           },
         ]}
       >
+        {/* Expanding emerald pulse aura on tap */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.fabPulseRing,
+            {
+              transform: [
+                {
+                  scale: fabPressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 2.2],
+                  }),
+                },
+              ],
+              opacity: fabPressAnim.interpolate({
+                inputRange: [0, 0.2, 1],
+                outputRange: [0, 0.45, 0],
+              }),
+            },
+          ]}
+        />
         <TouchableOpacity
+          ref={fabButtonRef}
+          onLayout={onFabLayout}
           style={styles.fab}
           onPress={handleAddExpense}
           activeOpacity={0.85}
         >
-          <Plus size={22} color="#000000" strokeWidth={2.5} />
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  rotate: fabPressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '45deg'],
+                  }),
+                },
+                {
+                  scale: fabPressAnim.interpolate({
+                    inputRange: [0, 0.4, 1],
+                    outputRange: [1, 0.88, 1.05],
+                  }),
+                },
+              ],
+            }}
+          >
+            <Plus size={22} color="#000000" strokeWidth={2.5} />
+          </Animated.View>
         </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>
@@ -1460,5 +1549,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
+  },
+  fabPulseRing: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 26,
+    backgroundColor: THEME.colors.primary,
+    zIndex: -1,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Animated,
+  Easing,
+  Dimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -67,9 +71,109 @@ export default function NewExpenseModal() {
     category?: string;
     groupId?: string;
     expenseId?: string;
+    origin?: string;
+    fabX?: string;
+    fabY?: string;
   }>();
 
   const isEditMode = Boolean(params.expenseId);
+  const isFromFab = params.origin === 'fab' || (Boolean(params.groupId) && !params.expenseId);
+
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+  const screenCenterX = SCREEN_WIDTH / 2;
+  const screenCenterY = SCREEN_HEIGHT / 2;
+  const fabCenterX = params.fabX ? parseFloat(params.fabX) : (SCREEN_WIDTH - 46);
+  const fabCenterY = params.fabY ? parseFloat(params.fabY) : (SCREEN_HEIGHT - 64);
+  const deltaX = fabCenterX - screenCenterX;
+  const deltaY = fabCenterY - screenCenterY;
+
+  const startScaleX = 52 / SCREEN_WIDTH;
+  const startScaleY = 52 / SCREEN_HEIGHT;
+
+  const expandAnim = useRef(new Animated.Value(0)).current;
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    Animated.spring(expandAnim, {
+      toValue: 1,
+      damping: 24,
+      stiffness: 240,
+      mass: 0.8,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handleClose = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    Haptics.selectionAsync();
+    Animated.timing(expandAnim, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.bezier(0.32, 0, 0.67, 0),
+      useNativeDriver: true,
+    }).start(() => {
+      router.back();
+    });
+  }, [isClosing]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleClose();
+      return true;
+    };
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backSub.remove();
+  }, [handleClose]);
+
+  // Backdrop opacity
+  const backdropOpacity = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.65],
+  });
+
+  // Container scale and translation
+  const containerScaleX = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isFromFab ? startScaleX : 0.94, 1],
+  });
+
+  const containerScaleY = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isFromFab ? startScaleY : 0.94, 1],
+  });
+
+  const containerTranslateX = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isFromFab ? deltaX : 0, 0],
+  });
+
+  const containerTranslateY = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isFromFab ? deltaY : (SCREEN_HEIGHT * 0.12), 0],
+  });
+
+  const containerOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.05, 1],
+    outputRange: [0, 1, 1],
+  });
+
+  // Content fade and gentle slide
+  const contentOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.35, 1],
+    outputRange: [0, 0.2, 1],
+  });
+
+  const contentTranslateY = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [16, 0],
+  });
+
+  // Emerald flash overlay that fades out as card expands
+  const emeraldAuraOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.25, 0.7, 1],
+    outputRange: [0.85, 0.4, 0, 0],
+  });
   const expenseId = params.expenseId;
   const oldAmountRef = React.useRef<number>(0);
   const [initialSnapshot, setInitialSnapshot] = useState<FormSnapshot | null>(null);
@@ -605,7 +709,7 @@ export default function NewExpenseModal() {
 
         if (res.success) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          router.back();
+          handleClose();
         } else {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           Alert.alert('Error', res.error || 'Failed to update expense.');
@@ -626,7 +730,7 @@ export default function NewExpenseModal() {
 
         if (res.success) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          router.back();
+          handleClose();
         } else {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           Alert.alert('Error', res.error || 'Failed to record expense.');
@@ -642,33 +746,71 @@ export default function NewExpenseModal() {
 
   if (isLoadingExisting) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
-          <Text style={styles.loadingText}>Loading expense details...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.rootWrapper}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={THEME.colors.primary} />
+            <Text style={styles.loadingText}>Loading expense details...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.keyboardContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <View style={styles.rootWrapper}>
+      {/* Semi-transparent dark backdrop */}
+      <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
+
+      {/* Morphing container that expands from the + button */}
+      <Animated.View
+        style={[
+          styles.expandingContainer,
+          {
+            opacity: containerOpacity,
+            transform: [
+              { translateX: containerTranslateX },
+              { translateY: containerTranslateY },
+              { scaleX: containerScaleX },
+              { scaleY: containerScaleY },
+            ],
+          },
+        ]}
       >
-        {/* Sleek Minimal Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.selectionAsync();
-              router.back();
-            }}
-            style={styles.closeBtn}
-            activeOpacity={0.7}
+        {/* Emerald flash overlay that fades out during launch */}
+        {isFromFab && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.emeraldFlashOverlay,
+              { opacity: emeraldAuraOpacity },
+            ]}
+          />
+        )}
+
+        <SafeAreaView style={styles.innerSafeArea} edges={['top', 'bottom']}>
+          <Animated.View
+            style={[
+              styles.contentWrap,
+              {
+                opacity: contentOpacity,
+                transform: [{ translateY: contentTranslateY }],
+              },
+            ]}
           >
-            <X size={20} color={THEME.colors.textSecondary} />
-          </TouchableOpacity>
+            <KeyboardAvoidingView
+              style={styles.keyboardContainer}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+              {/* Sleek Minimal Header */}
+              <View style={styles.header}>
+                <TouchableOpacity
+                  onPress={handleClose}
+                  style={styles.closeBtn}
+                  activeOpacity={0.7}
+                >
+                  <X size={20} color={THEME.colors.textSecondary} />
+                </TouchableOpacity>
 
           {/* Group display in header */}
           <View style={styles.headerTitleWrap}>
@@ -1260,12 +1402,49 @@ export default function NewExpenseModal() {
             </View>
           </TouchableOpacity>
         </Modal>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            </KeyboardAvoidingView>
+          </Animated.View>
+        </SafeAreaView>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  rootWrapper: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000',
+  },
+  expandingContainer: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+    overflow: 'hidden',
+    borderRadius: Platform.OS === 'ios' ? 36 : 24,
+  },
+  emeraldFlashOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: THEME.colors.primary,
+    zIndex: 99,
+  },
+  innerSafeArea: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  contentWrap: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background,

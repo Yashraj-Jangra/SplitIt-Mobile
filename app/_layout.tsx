@@ -79,8 +79,10 @@ function NavigationGate() {
         <Stack.Screen
           name="expenses/new"
           options={{
-            presentation: 'modal',
+            presentation: 'transparentModal',
+            animation: 'none',
             headerShown: false,
+            contentStyle: { backgroundColor: 'transparent' },
           }}
         />
         <Stack.Screen
