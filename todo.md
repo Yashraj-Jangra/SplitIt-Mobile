@@ -1,6 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Group Activity & Expense History Minimal Sleek Redesign Matching Website**:
+  - **Group Activity Tab Redesign (`src/components/groups/GroupHistoryTab.tsx` & `app/groups/[id]/index.tsx`)**:
+    - Replaced heavy boxed card layout with minimal hairline-divided list rows (`borderBottomWidth: StyleSheet.hairlineWidth`) matching the website.
+    - Implemented exact icon and color scheme: Emerald for additions/creations (`#10B981`, `Plus`, `Handshake`, `UserPlus`), Blue for updates (`#3B82F6`, `Pencil`), Red for deletions (`#EF4444`, `Trash2`, `UserMinus`), Purple for restorations (`#A855F7`, `RotateCcw`), and Electric Purple for SplitIt AI (`Bot`).
+    - Added deleted expense tracking with strikethrough text formatting on descriptions and `(for MMM d)` date annotation.
+    - Added "Take there" view button (`ArrowRight`) navigating directly to `/expenses/[id]`.
+    - Added Restore button (`RotateCcw`) calling backend restore endpoint with optimistic offline fallback, haptics, and automatic refresh.
+    - Added Admin-only Delete button strictly visible to `role === 'admin'`; completely hidden and guarded against non-admin execution.
+    - Added expandable accordion for granular field changes with complex split/payer parsing via `@splitit/core`'s `parseComplexChange`.
+  - **Expense Info History Section Redesign (`app/expenses/[id].tsx`)**:
+    - Removed bulky div/card styling (`logCard`), replacing with clean hairline divider rows (`borderBottomWidth: StyleSheet.hairlineWidth`, `borderBottomColor: 'rgba(255, 255, 255, 0.08)'`).
+    - Added clean "History" section divider and header, matching website styling.
+    - Aligned status badge pills, actor attribution, and granular strikethrough diffs (`#EF4444` to `#10B981`) with website color codes.
+  - **Service & Backend Integration (`src/services/group.service.ts` & `src/services/auth.service.ts`)**:
+    - Added `role` to `AuthUser` and mapped role across sign-in providers.
+    - Added `HistoryEventItem` interface and history mapping in `getGroupDetails`.
+    - Added `getGroupHistory`, `restoreExpense`, `restoreSettlement`, and `deleteHistoryEvent` methods with role checks.
 - **Prevent Undefined Participant Owes & Add Loading Split State**:
   - Gated split breakdown rendering with `areParticipantsValid`, preventing premature display of unpopulated participant debt rows.
   - Replaced notice text with clear "Loading split..." indicator alongside animated skeleton breakdown.

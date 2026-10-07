@@ -33,6 +33,7 @@ import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRin
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../../src/utils/category-icons';
 import { TransactionRowSkeleton } from '../../../src/components/skeletons/TransactionRowSkeleton';
+import { GroupHistoryTab } from '../../../src/components/groups/GroupHistoryTab';
 import * as Haptics from 'expo-haptics';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
@@ -692,59 +693,17 @@ export default function GroupDetailScreen() {
         {/* TAB 4: ACTIVITY AUDIT FEED */}
         {activeTab === 'activity' && (
           <View style={styles.tabSection}>
-            {activities.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Receipt size={32} color={THEME.colors.textMuted} />
-                <Text style={styles.emptyTitle}>No activity yet</Text>
-                <Text style={styles.emptySubtitle}>Recent expenses, settlements, and updates will appear here.</Text>
-              </View>
-            ) : (
-              activities.map((act) => (
-                <View key={act.id} style={styles.activityCard}>
-                  <View style={styles.activityIconBadge}>
-                    {act.type === 'budget_updated' ? (
-                      <Bot size={16} color={THEME.colors.aiLight} />
-                    ) : act.type === 'settlement' ? (
-                      <Handshake size={16} color={THEME.colors.primary} />
-                    ) : (
-                      <Receipt size={16} color={THEME.colors.textSecondary} />
-                    )}
-                  </View>
-                  <View style={styles.activityDetails}>
-                    <Text style={styles.activityDescription}>
-                      <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{act.actorName}</Text> {act.description}
-                    </Text>
-                    <Text style={styles.activityTime}>{act.timeAgo}</Text>
-
-                    {/* Granular Budget Diff Box */}
-                    {act.diffData && (
-                      <View style={styles.diffBox}>
-                        {act.diffData.monthlyBudgetUnchanged && (
-                          <View style={styles.diffUnchangedRow}>
-                            <CheckCircle2 size={13} color={THEME.colors.primary} />
-                            <Text style={styles.diffUnchangedText}>
-                              Total monthly budget was not changed (₹35,000)
-                            </Text>
-                          </View>
-                        )}
-                        {act.diffData.categoryChanges?.map((ch, i) => (
-                          <Text key={i} style={styles.diffChangeText}>
-                            • {ch.name}:{' '}
-                            <Text style={{ textDecorationLine: 'line-through', color: THEME.colors.textMuted }}>
-                              ₹{ch.old.toLocaleString()}
-                            </Text>{' '}
-                            ➔{' '}
-                            <Text style={{ color: THEME.colors.primary, fontWeight: '700' }}>
-                              ₹{ch.new.toLocaleString()}
-                            </Text>
-                          </Text>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ))
-            )}
+            <GroupHistoryTab
+              groupId={targetId}
+              history={group?.history}
+              onRefresh={loadGroup}
+              onViewExpense={(expenseId) => {
+                router.push({
+                  pathname: '/expenses/[id]',
+                  params: { id: expenseId, groupId: targetId },
+                });
+              }}
+            />
           </View>
         )}
         </Animated.View>

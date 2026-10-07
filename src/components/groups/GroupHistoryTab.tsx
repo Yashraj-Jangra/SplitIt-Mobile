@@ -1,0 +1,816 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import {
+  Plus,
+  Handshake,
+  UserPlus,
+  Pencil,
+  Wallet,
+  Bot,
+  Trash2,
+  UserMinus,
+  RotateCcw,
+  Clock,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  AlertTriangle,
+  History as HistoryIcon,
+} from 'lucide-react-native';
+import { parseComplexChange, ParsedChange } from '@splitit/core';
+import { HistoryEventItem, groupService } from '../../services/group.service';
+import { authService, AuthUser } from '../../services/auth.service';
+import { useAuth } from '../../contexts/auth.context';
+import { THEME } from '../../constants/theme';
+
+interface GroupHistoryTabProps {
+  groupId: string;
+  history?: HistoryEventItem[];
+  onViewExpense?: (expenseId: string) => void;
+  onRefresh?: () => void;
+}
+
+function formatRelativeTime(dateInput: string | Date | number): string {
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return 'Recently';
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  if (diffMs < 0) return 'Just now';
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
+
+function formatExactDate(dateInput: string | Date | number): string {
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-IN', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function formatExpenseDate(dateInput: any): string | null {
+  if (!dateInput) return null;
+  const d = dateInput.toDate && typeof dateInput.toDate === 'function'
+    ? dateInput.toDate()
+    : new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
+
+function renderEventIcon(event: HistoryEventItem) {
+  const isAi = event.eventType === 'budget_updated' && Boolean(event.data?.aiInitiated);
+  if (isAi) {
+    return <Bot size={15} color="#A855F7" />;
+  }
+
+  switch (event.eventType) {
+    case 'expense_created':
+    case 'group_created':
+      return <Plus size={15} color="#10B981" />;
+    case 'settlement_created':
+      return <Handshake size={15} color="#10B981" />;
+    case 'member_added':
+      return <UserPlus size={15} color="#10B981" />;
+    case 'expense_updated':
+    case 'settlement_updated':
+    case 'group_updated':
+      return <Pencil size={15} color="#3B82F6" />;
+    case 'budget_updated':
+      return <Wallet size={15} color="#10B981" />;
+    case 'expense_deleted':
+    case 'settlement_deleted':
+      return <Trash2 size={15} color="#EF4444" />;
+    case 'member_removed':
+      return <UserMinus size={15} color="#EF4444" />;
+    case 'expense_restored':
+    case 'settlement_restored':
+      return <RotateCcw size={15} color="#A855F7" />;
+    default:
+      return <Clock size={15} color="#9CA3AF" />;
+  }
+}
+
+function ComplexChangeDetailRow({ change }: { change: ParsedChange }) {
+  switch (change.type) {
+    case 'changed':
+      return (
+        <View style={styles.complexChangedRow}>
+          <Text style={styles.complexName}>{change.name}: </Text>
+          <Text style={styles.diffFromStrikethrough}>{change.from}</Text>
+          <ArrowRight size={11} color="#6B7280" />
+          <Text style={styles.diffToGreen}>{change.to}</Text>
+        </View>
+      );
+    case 'added':
+      return (
+        <View style={styles.complexActionRow}>
+          <UserPlus size={12} color="#10B981" />
+          <Text style={styles.addedText}>
+            Added <Text style={styles.complexName}>{change.name}</Text> ({change.detail})
+          </Text>
+        </View>
+      );
+    case 'removed':
+      return (
+        <View style={styles.complexActionRow}>
+          <UserMinus size={12} color="#EF4444" />
+          <Text style={styles.removedText}>
+            Removed <Text style={styles.complexName}>{change.name}</Text> ({change.detail})
+          </Text>
+        </View>
+      );
+    default:
+      return (
+        <View style={styles.complexActionRow}>
+          <ArrowRight size={11} color="#6B7280" />
+          <Text style={styles.unknownText}>{change.text}</Text>
+        </View>
+      );
+  }
+}
+
+export function GroupHistoryTab({
+  groupId,
+  history = [],
+  onViewExpense,
+  onRefresh,
+}: GroupHistoryTabProps) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => user || authService.getInMemoryUser());
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    if (user) {
+      setCurrentUser(user);
+    } else {
+      authService.getCachedUser().then((u) => {
+        if (u) setCurrentUser(u);
+      });
+    }
+  }, [user]);
+
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Compute set of currently deleted expense IDs (not restored)
+  const deletedExpenseIds = useMemo(() => {
+    const deletedIds = new Set<string>();
+    history.forEach((event) => {
+      if (event.eventType === 'expense_deleted' && event.data?.expenseId && !event.restored) {
+        deletedIds.add(event.data.expenseId);
+      }
+    });
+    return deletedIds;
+  }, [history]);
+
+  const toggleAccordion = (eventId: string) => {
+    Haptics.selectionAsync();
+    setExpandedEvents((prev) => ({
+      ...prev,
+      [eventId]: !prev[eventId],
+    }));
+  };
+
+  const handleRestore = async (event: HistoryEventItem) => {
+    try {
+      setRestoringId(event.id);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      if (event.eventType === 'expense_deleted') {
+        await groupService.restoreExpense(event.id, currentUser?.id || 'u1');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Expense Restored', 'The expense has been successfully restored.');
+      } else if (event.eventType === 'settlement_deleted') {
+        await groupService.restoreSettlement(event.id, currentUser?.id || 'u1');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Settlement Restored', 'The settlement has been successfully restored.');
+      }
+      onRefresh?.();
+    } catch (err: any) {
+      Alert.alert('Restore Failed', err.message || 'Could not restore the item.');
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const handleDelete = (event: HistoryEventItem) => {
+    if (!isAdmin) {
+      Alert.alert('Unauthorized', 'Only administrators can delete history audit records.');
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Alert.alert(
+      'Delete History Event?',
+      'This is for admin use only. This action is permanent and will remove this event from the audit trail. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingId(event.id);
+              await groupService.deleteHistoryEvent(event.id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert('Deleted', 'History event has been permanently deleted.');
+              onRefresh?.();
+            } catch (err: any) {
+              Alert.alert('Delete Failed', err.message || 'Could not delete history event.');
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleNavigateToExpense = (expenseId: string) => {
+    Haptics.selectionAsync();
+    if (onViewExpense) {
+      onViewExpense(expenseId);
+    } else {
+      router.push({
+        pathname: '/expenses/[id]',
+        params: { id: expenseId, groupId },
+      });
+    }
+  };
+
+  return (
+    <View style={styles.cardContainer}>
+      {/* Header matching website Group History card header */}
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderTitleRow}>
+          <HistoryIcon size={18} color="#10B981" />
+          <Text style={styles.cardTitle}>Group History</Text>
+        </View>
+        <Text style={styles.cardDescription}>
+          An audit log of all activities within this group.
+        </Text>
+      </View>
+
+      {/* Hairline Divided Minimal List */}
+      <View style={styles.listContainer}>
+        {history.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <HistoryIcon size={36} color="#6B7280" />
+            <Text style={styles.emptyTitle}>No history recorded yet for this group.</Text>
+          </View>
+        ) : (
+          history.map((event, index) => {
+            const isLast = index === history.length - 1;
+            const isDeleted =
+              (event.eventType === 'expense_created' || event.eventType === 'expense_updated') &&
+              Boolean(event.data?.expenseId && deletedExpenseIds.has(event.data.expenseId));
+
+            const isAiBudget =
+              event.eventType === 'budget_updated' && Boolean(event.data?.aiInitiated);
+
+            const expenseDate =
+              event.data?.date && event.eventType.startsWith('expense_')
+                ? formatExpenseDate(event.data.date)
+                : null;
+
+            // Determine viewable expense ID
+            let viewableExpenseId: string | null = null;
+            if (
+              (event.eventType === 'expense_created' || event.eventType === 'expense_updated') &&
+              event.data?.expenseId
+            ) {
+              viewableExpenseId = event.data.expenseId;
+            } else if (event.eventType === 'expense_restored' && event.data?.newExpenseId) {
+              viewableExpenseId = event.data.newExpenseId;
+            }
+            if (isDeleted) {
+              viewableExpenseId = null;
+            }
+
+            const canRestore =
+              (event.eventType === 'expense_deleted' || event.eventType === 'settlement_deleted') &&
+              !event.restored;
+
+            // STRICT ADMIN ONLY GUARD: normal users cannot see and won't trigger delete
+            const canDelete = isAdmin;
+
+            const isUpdateWithDetails =
+              (event.eventType === 'expense_updated' ||
+                event.eventType === 'group_updated' ||
+                event.eventType === 'settlement_updated' ||
+                event.eventType === 'budget_updated') &&
+              event.data?.changes &&
+              event.data.changes.length > 0;
+
+            const isExpanded = Boolean(expandedEvents[event.id]);
+            const isItemRestoring = restoringId === event.id;
+            const isItemDeleting = deletingId === event.id;
+
+            return (
+              <View
+                key={event.id || index}
+                style={[styles.eventRow, !isLast && styles.eventRowBorder]}
+              >
+                {/* Main Row Content */}
+                <View style={styles.mainRow}>
+                  {/* Left Event Icon */}
+                  <View style={styles.iconSlot}>{renderEventIcon(event)}</View>
+
+                  {/* Middle Text Column */}
+                  <View style={styles.infoCol}>
+                    <View style={styles.descriptionRow}>
+                      <Text
+                        style={[
+                          styles.eventDescriptionText,
+                          isDeleted && styles.strikethroughText,
+                        ]}
+                      >
+                        {event.description}
+                        {expenseDate && (
+                          <Text style={styles.expenseDateSuffix}> (for {expenseDate})</Text>
+                        )}
+                      </Text>
+
+                      {isAiBudget && (
+                        <View style={styles.aiBadgePill}>
+                          <Bot size={10} color="#C084FC" />
+                          <Text style={styles.aiBadgeText}>SplitIt AI</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Timestamp Subtitle */}
+                    <Text style={styles.timestampText}>
+                      {formatRelativeTime(event.timestamp)}
+                      <Text style={styles.exactTimeSuffix}>
+                        {' '}({formatExactDate(event.timestamp)})
+                      </Text>
+                    </Text>
+                  </View>
+
+                  {/* Right Action Buttons */}
+                  <View style={styles.actionButtonsRow}>
+                    {/* Take There / View Expense Button */}
+                    {viewableExpenseId && (
+                      <TouchableOpacity
+                        style={styles.iconActionBtn}
+                        onPress={() => handleNavigateToExpense(viewableExpenseId!)}
+                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                        activeOpacity={0.7}
+                      >
+                        <ArrowRight size={15} color="#D1D5DB" />
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Restore Button */}
+                    {canRestore && (
+                      <TouchableOpacity
+                        style={styles.restoreActionBtn}
+                        onPress={() => handleRestore(event)}
+                        disabled={isItemRestoring}
+                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                        activeOpacity={0.7}
+                      >
+                        {isItemRestoring ? (
+                          <ActivityIndicator size="small" color="#A855F7" />
+                        ) : (
+                          <RotateCcw size={14} color="#A855F7" />
+                        )}
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Delete Button (Strictly Admin Only) */}
+                    {canDelete && (
+                      <TouchableOpacity
+                        style={styles.deleteActionBtn}
+                        onPress={() => handleDelete(event)}
+                        disabled={isItemDeleting}
+                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                        activeOpacity={0.7}
+                      >
+                        {isItemDeleting ? (
+                          <ActivityIndicator size="small" color="#EF4444" />
+                        ) : (
+                          <Trash2 size={14} color="#EF4444" />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
+                {/* Granular Accordion Details */}
+                {isUpdateWithDetails && (
+                  <View style={styles.detailsContainer}>
+                    <TouchableOpacity
+                      style={styles.accordionToggleBtn}
+                      onPress={() => toggleAccordion(event.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.accordionToggleText}>
+                        Show details ({event.data.changes.length} change
+                        {event.data.changes.length > 1 ? 's' : ''})
+                      </Text>
+                      {isExpanded ? (
+                        <ChevronUp size={12} color="#9CA3AF" />
+                      ) : (
+                        <ChevronDown size={12} color="#9CA3AF" />
+                      )}
+                    </TouchableOpacity>
+
+                    {isExpanded && (
+                      <View style={styles.accordionContent}>
+                        {/* Budget Unchanged Banner */}
+                        {event.eventType === 'budget_updated' &&
+                          event.data?.monthlyBudgetUnchanged && (
+                            <View style={styles.budgetUnchangedBanner}>
+                              <CheckCircle2 size={13} color="#10B981" />
+                              <Text style={styles.budgetUnchangedBannerText}>
+                                Total monthly budget was not changed (₹
+                                {(event.data?.currentMonthlyLimit || 0).toLocaleString('en-IN')})
+                              </Text>
+                            </View>
+                          )}
+
+                        {/* Budget Disabled Banner */}
+                        {event.eventType === 'budget_updated' &&
+                          event.data?.newStatus === 'disabled' && (
+                            <View style={styles.budgetDisabledBanner}>
+                              <AlertTriangle size={13} color="#F59E0B" />
+                              <Text style={styles.budgetDisabledBannerText}>
+                                Group budget tracking has been disabled.
+                              </Text>
+                            </View>
+                          )}
+
+                        {/* Changes List */}
+                        <View style={styles.changesList}>
+                          {event.data.changes.map((change: any, chIdx: number) => {
+                            if (change.type === 'added') {
+                              return (
+                                <View key={chIdx} style={styles.changeActionRow}>
+                                  <Plus size={12} color="#10B981" />
+                                  <Text style={styles.changeAddedText}>
+                                    Added <Text style={styles.changeFieldLabel}>{change.field}:</Text>{' '}
+                                    {change.to}
+                                  </Text>
+                                </View>
+                              );
+                            }
+
+                            if (change.type === 'removed') {
+                              return (
+                                <View key={chIdx} style={styles.changeActionRow}>
+                                  <Trash2 size={12} color="#EF4444" />
+                                  <Text style={styles.changeRemovedText}>
+                                    Removed <Text style={styles.changeFieldLabel}>{change.field}:</Text>{' '}
+                                    was {change.from}
+                                  </Text>
+                                </View>
+                              );
+                            }
+
+                            const isComplex =
+                              (change.field === 'Payers' || change.field === 'Split') &&
+                              Boolean(change.from);
+                            const parsedChanges: ParsedChange[] = isComplex
+                              ? parseComplexChange(change.from)
+                              : [];
+
+                            return (
+                              <View key={chIdx} style={styles.changeItemBlock}>
+                                <Text style={styles.changeFieldLabel}>{change.field}:</Text>
+                                {isComplex ? (
+                                  <View style={styles.complexNestedBlock}>
+                                    {parsedChanges.map((p, pIdx) => (
+                                      <ComplexChangeDetailRow key={pIdx} change={p} />
+                                    ))}
+                                  </View>
+                                ) : change.to ? (
+                                  <View style={styles.simpleDiffRow}>
+                                    <Text style={styles.diffFromStrikethrough}>{change.from}</Text>
+                                    <ArrowRight size={11} color="#6B7280" />
+                                    <Text style={styles.diffToGreen}>{change.to}</Text>
+                                  </View>
+                                ) : (
+                                  <Text style={styles.simpleFromOnly}>{change.from}</Text>
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  cardContainer: {
+    backgroundColor: '#18181B',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  cardHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 3,
+  },
+  cardHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  cardDescription: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  listContainer: {
+    paddingVertical: 2,
+  },
+  emptyContainer: {
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 10,
+  },
+  emptyTitle: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  eventRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  eventRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  mainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconSlot: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoCol: {
+    flex: 1,
+    gap: 3,
+  },
+  descriptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  eventDescriptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F3F4F6',
+    lineHeight: 18,
+  },
+  strikethroughText: {
+    textDecorationLine: 'line-through',
+    color: '#6B7280',
+  },
+  expenseDateSuffix: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#9CA3AF',
+  },
+  aiBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(168, 85, 247, 0.12)',
+    borderColor: 'rgba(168, 85, 247, 0.25)',
+    borderWidth: 1,
+    borderRadius: THEME.radius.full,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  aiBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#C084FC',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  timestampText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+  exactTimeSuffix: {
+    color: '#6B7280',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconActionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  restoreActionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(168, 85, 247, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.25)',
+  },
+  deleteActionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  detailsContainer: {
+    marginTop: 6,
+    paddingLeft: 36,
+  },
+  accordionToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+  },
+  accordionToggleText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+  accordionContent: {
+    marginTop: 6,
+    gap: 8,
+  },
+  budgetUnchangedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  budgetUnchangedBannerText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10B981',
+    flex: 1,
+  },
+  budgetDisabledBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  budgetDisabledBannerText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#F59E0B',
+    flex: 1,
+  },
+  changesList: {
+    gap: 6,
+  },
+  changeActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  changeAddedText: {
+    fontSize: 11,
+    color: '#10B981',
+  },
+  changeRemovedText: {
+    fontSize: 11,
+    color: '#EF4444',
+  },
+  changeItemBlock: {
+    gap: 3,
+  },
+  changeFieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E5E7EB',
+  },
+  simpleDiffRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  diffFromStrikethrough: {
+    fontSize: 11,
+    color: '#EF4444',
+    textDecorationLine: 'line-through',
+  },
+  diffToGreen: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  simpleFromOnly: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+  complexNestedBlock: {
+    borderLeftWidth: 2,
+    borderLeftColor: 'rgba(255, 255, 255, 0.1)',
+    paddingLeft: 8,
+    marginLeft: 2,
+    gap: 4,
+    marginTop: 2,
+  },
+  complexChangedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  complexName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#D1D5DB',
+  },
+  complexActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  addedText: {
+    fontSize: 11,
+    color: '#10B981',
+  },
+  removedText: {
+    fontSize: 11,
+    color: '#EF4444',
+  },
+  unknownText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+});

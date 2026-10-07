@@ -71,6 +71,25 @@ export interface GroupActivityItem {
   };
 }
 
+export interface HistoryEventItem {
+  id: string;
+  groupId: string;
+  eventType: string;
+  timestamp: string;
+  actor: {
+    uid: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    avatarUrl?: string;
+    role?: string;
+    name?: string;
+  };
+  description: string;
+  data?: any;
+  restored?: boolean;
+}
+
 export interface GroupListItem {
   id: string;
   name: string;
@@ -98,6 +117,7 @@ export interface GroupDetailData {
   simplifiedDebts: SimplifiedDebt[];
   budget: GroupBudget;
   activities: GroupActivityItem[];
+  history?: HistoryEventItem[];
 }
 
 let _cachedGroups: GroupListItem[] = [];
@@ -489,17 +509,39 @@ export const groupService = {
             categories,
           };
 
-          // Map activities
+          // Map activities (backward compatibility)
           const activities: GroupActivityItem[] = Array.isArray(historyData)
             ? historyData.slice(0, 30).map((h: any) => ({
                 id: h.id || `act_${Math.random()}`,
-                type: h.type || 'expense_created',
+                type: h.type || h.eventType || 'expense_created',
                 actorName: h.actor?.firstName
                   ? `${h.actor.firstName} ${h.actor.lastName || ''}`.trim()
                   : h.actor?.name || 'Someone',
                 description: h.description || 'Activity recorded',
-                timeAgo: h.createdAt ? new Date(h.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'Recently',
+                timeAgo: h.createdAt || h.timestamp ? new Date(h.createdAt || h.timestamp).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'Recently',
                 diffData: h.data?.diffData,
+              }))
+            : [];
+
+          // Map full HistoryEvent items matching website
+          const history: HistoryEventItem[] = Array.isArray(historyData)
+            ? historyData.map((h: any) => ({
+                id: h.id || `hist_${Math.random()}`,
+                groupId: h.groupId || groupId,
+                eventType: h.eventType || h.type || 'expense_created',
+                timestamp: h.timestamp || h.createdAt || new Date().toISOString(),
+                actor: {
+                  uid: h.actor?.uid || h.actor?.id || h.actorId || '',
+                  firstName: h.actor?.firstName,
+                  lastName: h.actor?.lastName,
+                  email: h.actor?.email,
+                  avatarUrl: h.actor?.avatarUrl,
+                  role: h.actor?.role,
+                  name: h.actor?.name || (h.actor?.firstName ? `${h.actor.firstName} ${h.actor.lastName || ''}`.trim() : 'Member'),
+                },
+                description: h.description || 'Activity recorded',
+                data: h.data || {},
+                restored: Boolean(h.restored),
               }))
             : [];
 
@@ -517,6 +559,7 @@ export const groupService = {
             simplifiedDebts,
             budget,
             activities,
+            history,
           };
 
           // Cache group details offline and in-memory
@@ -735,6 +778,69 @@ export const groupService = {
           timeAgo: '2h ago',
         },
       ],
+      history: [
+        {
+          id: 'hist_exp_1',
+          groupId: matching.id || groupId,
+          eventType: 'expense_created',
+          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+          actor: { uid: 'u1', name: 'You', firstName: 'You', role: 'user' },
+          description: `You added "${groupExpenses[0]?.title || 'Expense'}"`,
+          data: {
+            expenseId: groupExpenses[0]?.id || 'exp_1',
+            date: new Date().toISOString(),
+          },
+          restored: false,
+        },
+        {
+          id: 'hist_exp_2',
+          groupId: matching.id || groupId,
+          eventType: 'expense_updated',
+          timestamp: new Date(Date.now() - 3600000 * 6).toISOString(),
+          actor: { uid: 'u2', name: 'Rohit Sharma', firstName: 'Rohit', lastName: 'Sharma', role: 'user' },
+          description: `Rohit Sharma updated "${groupExpenses[1]?.title || 'Expense'}"`,
+          data: {
+            expenseId: groupExpenses[1]?.id || 'exp_2',
+            date: new Date(Date.now() - 86400000).toISOString(),
+            changes: [
+              { field: 'Amount', from: '₹1,200', to: '₹1,499', type: 'changed' },
+              { field: 'Split', from: "changed Rohit's share from ₹600 to ₹750; added Priya who paid ₹0", type: 'changed' },
+            ],
+          },
+          restored: false,
+        },
+        {
+          id: 'hist_exp_3',
+          groupId: matching.id || groupId,
+          eventType: 'budget_updated',
+          timestamp: new Date(Date.now() - 3600000 * 18).toISOString(),
+          actor: { uid: 'system', name: 'SplitIt AI', firstName: 'SplitIt', role: 'admin' },
+          description: 'SplitIt AI optimized group category budget thresholds',
+          data: {
+            aiInitiated: true,
+            monthlyBudgetUnchanged: true,
+            currentMonthlyLimit: 30000,
+            changes: [
+              { field: 'Food & Drink', from: '₹18,000', to: '₹20,000', type: 'changed' },
+              { field: 'Housing', from: '₹32,000', to: '₹30,000', type: 'changed' },
+            ],
+          },
+          restored: false,
+        },
+        {
+          id: 'hist_exp_del',
+          groupId: matching.id || groupId,
+          eventType: 'expense_deleted',
+          timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
+          actor: { uid: 'u1', name: 'You', firstName: 'You', role: 'user' },
+          description: 'You deleted "Snacks & Evening Drinks"',
+          data: {
+            expenseId: 'del_mock_99',
+            date: new Date(Date.now() - 86400000 * 2).toISOString(),
+          },
+          restored: false,
+        },
+      ],
     };
 
     _groupDetailsMap.set(groupId, fallbackResult);
@@ -906,6 +1012,190 @@ export const groupService = {
       }
     } catch {
       // SecureStore error fallback
+    }
+  },
+
+  /**
+   * Retrieve group history audit events matching the website
+   */
+  async getGroupHistory(groupId: string): Promise<HistoryEventItem[]> {
+    const token = await authService.getToken();
+    try {
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        headers.Cookie = `better-auth.session_token=${token}`;
+      }
+      const res = await fetch(`${API_BASE_URL}/api/history?groupId=${groupId}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          return data.map((h: any) => ({
+            id: h.id || `hist_${Math.random()}`,
+            groupId: h.groupId || groupId,
+            eventType: h.eventType || h.type || 'expense_created',
+            timestamp: h.timestamp || h.createdAt || new Date().toISOString(),
+            actor: {
+              uid: h.actor?.uid || h.actor?.id || h.actorId || '',
+              firstName: h.actor?.firstName,
+              lastName: h.actor?.lastName,
+              email: h.actor?.email,
+              avatarUrl: h.actor?.avatarUrl,
+              role: h.actor?.role,
+              name: h.actor?.name || (h.actor?.firstName ? `${h.actor.firstName} ${h.actor.lastName || ''}`.trim() : 'Member'),
+            },
+            description: h.description || '',
+            data: h.data || {},
+            restored: Boolean(h.restored),
+          }));
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    const cachedDetail = _groupDetailsMap.get(groupId);
+    return cachedDetail?.history || [];
+  },
+
+  /**
+   * Restore a deleted expense via the history restore API
+   */
+  async restoreExpense(historyEventId: string, actorId: string): Promise<string | null> {
+    const token = await authService.getToken();
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        headers.Cookie = `better-auth.session_token=${token}`;
+      }
+      const res = await fetch(`${API_BASE_URL}/api/history/restore`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ eventId: historyEventId, type: 'expense' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.id || null;
+      }
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to restore expense');
+    } catch (err: any) {
+      // Optimistic offline update for seamless user experience
+      for (const [gId, detail] of _groupDetailsMap.entries()) {
+        if (detail.history) {
+          const event = detail.history.find((e) => e.id === historyEventId);
+          if (event) {
+            event.restored = true;
+            detail.history.unshift({
+              id: `restored_${Date.now()}`,
+              groupId: gId,
+              eventType: 'expense_restored',
+              timestamp: new Date().toISOString(),
+              actor: { uid: actorId, name: 'You', firstName: 'You' },
+              description: `Restored: ${event.description.replace(/^Deleted:?\s*/i, '')}`,
+              data: { newExpenseId: event.data?.expenseId || `restored_exp_${Date.now()}` },
+              restored: false,
+            });
+            await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId), detail);
+            return event.data?.expenseId || 'restored_ok';
+          }
+        }
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Restore a deleted settlement via the history restore API
+   */
+  async restoreSettlement(historyEventId: string, actorId: string): Promise<string | null> {
+    const token = await authService.getToken();
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        headers.Cookie = `better-auth.session_token=${token}`;
+      }
+      const res = await fetch(`${API_BASE_URL}/api/history/restore`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ eventId: historyEventId, type: 'settlement' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.id || null;
+      }
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to restore settlement');
+    } catch (err: any) {
+      // Optimistic offline update
+      for (const [gId, detail] of _groupDetailsMap.entries()) {
+        if (detail.history) {
+          const event = detail.history.find((e) => e.id === historyEventId);
+          if (event) {
+            event.restored = true;
+            detail.history.unshift({
+              id: `restored_${Date.now()}`,
+              groupId: gId,
+              eventType: 'settlement_restored',
+              timestamp: new Date().toISOString(),
+              actor: { uid: actorId, name: 'You', firstName: 'You' },
+              description: `Restored settlement`,
+              data: { newSettlementId: `restored_set_${Date.now()}` },
+              restored: false,
+            });
+            await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId), detail);
+            return 'restored_settlement_ok';
+          }
+        }
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Delete history event permanently (strictly admin-only, client and server guarded)
+   */
+  async deleteHistoryEvent(historyEventId: string): Promise<void> {
+    const currentUser = await authService.getCachedUser();
+    if (currentUser?.role !== 'admin') {
+      throw new Error('Unauthorized: Only administrators can delete history events.');
+    }
+
+    const token = await authService.getToken();
+    try {
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        headers.Cookie = `better-auth.session_token=${token}`;
+      }
+      const res = await fetch(`${API_BASE_URL}/api/history/${historyEventId}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to delete history event');
+      }
+    } catch (err: any) {
+      if (err.message?.includes('Unauthorized')) throw err;
+      // Optimistic offline update if server unreachable
+      for (const [gId, detail] of _groupDetailsMap.entries()) {
+        if (detail.history) {
+          detail.history = detail.history.filter((e) => e.id !== historyEventId);
+          await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId), detail);
+        }
+      }
     }
   },
 };

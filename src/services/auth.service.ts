@@ -35,6 +35,7 @@ export interface AuthUser {
   email: string;
   avatarUrl?: string;
   upiId?: string;
+  role?: string;
 }
 
 export interface AuthResponse {
@@ -133,6 +134,7 @@ export const authService = {
         name: data.user?.name || data.user?.firstName || 'User',
         email: data.user?.email || email,
         avatarUrl: data.user?.image || undefined,
+        role: data.user?.role || data.session?.user?.role || 'user',
       };
 
       await this.saveSession(token, user);
@@ -227,6 +229,7 @@ export const authService = {
               email: profileData.email || '',
               avatarUrl: profileData.avatarUrl,
               upiId: profileData.upiId,
+              role: profileData.role || profileData.user?.role || 'user',
             };
             await this.saveSession(token, user);
             return { success: true, token, user };

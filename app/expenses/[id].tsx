@@ -44,6 +44,8 @@ import {
   ImageIcon,
   AlertCircle,
   RefreshCw,
+  RotateCcw,
+  Plus,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
@@ -523,24 +525,26 @@ export default function ExpenseDetailScreen() {
             )}
           </View>
 
-          {/* Activity & History Audit Logs Section */}
+          {/* History Audit Logs Section - Matching Website Minimal Hairline Style */}
           <View style={styles.logsSection}>
-            <Text style={styles.logsSectionHeader}>ACTIVITY & AUDIT LOGS</Text>
+            <View style={styles.historySectionDivider} />
+            <Text style={styles.logsSectionHeader}>History</Text>
 
             <View style={styles.logsList}>
               {logs.map((log, index) => {
+                const isLast = index === logs.length - 1;
                 const isCreated = log.type === 'expense_created';
                 const isComment = log.type === 'comment';
                 const isDeleted = log.type === 'expense_deleted';
                 const isRestored = log.type === 'expense_restored';
 
                 return (
-                  <View key={log.id || index} style={styles.logCard}>
+                  <View key={log.id || index} style={[styles.logRow, !isLast && styles.logRowBorder]}>
                     <View style={styles.logHeaderRow}>
                       <View style={styles.logBadgeContainer}>
                         {isCreated && (
                           <View style={[styles.logTypePill, styles.pillCreated]}>
-                            <Sparkles size={11} color="#10B981" />
+                            <Plus size={11} color="#10B981" />
                             <Text style={[styles.logTypePillText, { color: '#10B981' }]}>Created</Text>
                           </View>
                         )}
@@ -552,20 +556,20 @@ export default function ExpenseDetailScreen() {
                         )}
                         {isDeleted && (
                           <View style={[styles.logTypePill, styles.pillDeleted]}>
-                            <Trash2 size={11} color="#F43F5E" />
-                            <Text style={[styles.logTypePillText, { color: '#F43F5E' }]}>Deleted</Text>
+                            <Trash2 size={11} color="#EF4444" />
+                            <Text style={[styles.logTypePillText, { color: '#EF4444' }]}>Deleted</Text>
                           </View>
                         )}
                         {isRestored && (
                           <View style={[styles.logTypePill, styles.pillRestored]}>
-                            <Sparkles size={11} color="#A855F7" />
+                            <RotateCcw size={11} color="#A855F7" />
                             <Text style={[styles.logTypePillText, { color: '#A855F7' }]}>Restored</Text>
                           </View>
                         )}
                         {!isCreated && !isComment && !isDeleted && !isRestored && (
                           <View style={[styles.logTypePill, styles.pillUpdated]}>
-                            <Pencil size={11} color="#38BDF8" />
-                            <Text style={[styles.logTypePillText, { color: '#38BDF8' }]}>Updated</Text>
+                            <Pencil size={11} color="#3B82F6" />
+                            <Text style={[styles.logTypePillText, { color: '#3B82F6' }]}>Updated</Text>
                           </View>
                         )}
                       </View>
@@ -605,7 +609,7 @@ export default function ExpenseDetailScreen() {
                               </View>
                             ) : ch.type === 'removed' ? (
                               <View style={styles.changeActionRow}>
-                                <UserMinus size={11} color="#F43F5E" />
+                                <UserMinus size={11} color="#EF4444" />
                                 <Text style={styles.changeRemovedText}>
                                   Removed {ch.detail}
                                 </Text>
@@ -985,25 +989,30 @@ const styles = StyleSheet.create({
 
   // Activity & Audit Logs Section
   logsSection: {
-    marginTop: 10,
-    gap: 12,
+    marginTop: 18,
+    gap: 4,
+  },
+  historySectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 6,
   },
   logsSectionHeader: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#6B7280',
-    letterSpacing: 1.2,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    marginBottom: 2,
   },
   logsList: {
-    gap: 10,
+    gap: 0,
   },
-  logCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 12,
-    gap: 6,
+  logRow: {
+    paddingVertical: 12,
+    gap: 5,
+  },
+  logRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   logHeaderRow: {
     flexDirection: 'row',
@@ -1026,13 +1035,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
   },
   pillUpdated: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
   },
   pillComment: {
     backgroundColor: 'rgba(96, 165, 250, 0.15)',
   },
   pillDeleted: {
-    backgroundColor: 'rgba(244, 63, 94, 0.15)',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
   },
   pillRestored: {
     backgroundColor: 'rgba(168, 85, 247, 0.15)',
@@ -1096,7 +1105,7 @@ const styles = StyleSheet.create({
   },
   changeFrom: {
     fontSize: 11,
-    color: '#F43F5E',
+    color: '#EF4444',
     textDecorationLine: 'line-through',
   },
   changeTo: {
@@ -1116,7 +1125,7 @@ const styles = StyleSheet.create({
   },
   changeRemovedText: {
     fontSize: 11,
-    color: '#F43F5E',
+    color: '#EF4444',
     fontWeight: '600',
   },
   changeGeneric: {
