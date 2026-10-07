@@ -365,35 +365,39 @@ export const expenseService = {
           }
 
           const payers = (e.payers || []).map((p: any) => {
-            const uid = p.user?.uid || p.userId || 'u';
+            const uid = p.user?.uid || p.user?.id || p.userId || p.id || 'u';
+            const rawName = p.name || p.user?.name || (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : undefined);
             const name = uid === currentUserId
               ? 'You'
-              : (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : p.user?.name || 'Member');
+              : (rawName && rawName !== 'undefined' ? rawName : 'Member');
             return {
               userId: uid,
               name,
-              avatarUrl: p.user?.avatarUrl,
-              amount: Number(p.amount || 0),
+              avatarUrl: p.user?.avatarUrl || p.avatarUrl,
+              amount: typeof p.amount === 'number' && !isNaN(p.amount) ? p.amount : Number(p.amount || 0),
             };
           });
 
           const primaryPayer = payers[0] || {
             userId: e.expenseCreatorId || currentUserId,
-            name: e.expenseCreator?.firstName ? `${e.expenseCreator.firstName} ${e.expenseCreator.lastName || ''}`.trim() : 'You',
+            name: e.expenseCreator?.firstName
+              ? `${e.expenseCreator.firstName} ${e.expenseCreator.lastName || ''}`.trim()
+              : (e.paidByName && e.paidByName !== 'undefined' ? e.paidByName : 'You'),
             avatarUrl: e.expenseCreator?.avatarUrl,
             amount: Number(e.amount || 0),
           };
 
           const participants = (e.participants || []).map((p: any) => {
-            const uid = p.user?.uid || p.userId || 'u';
+            const uid = p.user?.uid || p.user?.id || p.userId || p.id || 'u';
+            const rawName = p.name || p.user?.name || (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : undefined);
             const name = uid === currentUserId
               ? 'You'
-              : (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : p.user?.name || 'Member');
+              : (rawName && rawName !== 'undefined' ? rawName : 'Member');
             return {
               userId: uid,
               name,
-              avatarUrl: p.user?.avatarUrl,
-              amountOwed: Number(p.amountOwed || 0),
+              avatarUrl: p.user?.avatarUrl || p.avatarUrl,
+              amountOwed: typeof p.amountOwed === 'number' && !isNaN(p.amountOwed) ? p.amountOwed : Number(p.amountOwed || 0),
               isCurrentUser: uid === currentUserId,
             };
           });
@@ -570,19 +574,22 @@ export const expenseService = {
             paidByAvatar: groupDetails.members.find((m) => m.id === matchedExpense.paidById)?.avatarUrl,
             payers: [
               {
-                userId: matchedExpense.paidById,
-                name: matchedExpense.paidByName,
-                avatarUrl: groupDetails.members.find((m) => m.id === matchedExpense.paidById)?.avatarUrl,
-                amount: defaultAmount,
+                userId: matchedExpense.paidById || 'payer',
+                name: matchedExpense.paidByName && matchedExpense.paidByName !== 'undefined' ? matchedExpense.paidByName : 'Member',
+                avatarUrl: groupDetails.members?.find((m) => m.id === matchedExpense.paidById)?.avatarUrl,
+                amount: typeof defaultAmount === 'number' && !isNaN(defaultAmount) ? defaultAmount : 0,
               },
             ],
-            participants: groupDetails.members.map((m) => ({
-              userId: m.id,
-              name: m.name,
-              avatarUrl: m.avatarUrl,
-              amountOwed: share,
-              isCurrentUser: m.id === currentUserId,
-            })),
+            participants: (groupDetails.members || []).map((m) => {
+              const mName = m.name && m.name !== 'undefined' ? m.name : (m.id === currentUserId ? 'You' : 'Member');
+              return {
+                userId: m.id,
+                name: mName,
+                avatarUrl: m.avatarUrl,
+                amountOwed: share,
+                isCurrentUser: m.id === currentUserId,
+              };
+            }),
             creator: {
               id: matchedExpense.paidById,
               name: matchedExpense.paidByName,

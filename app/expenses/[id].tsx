@@ -42,6 +42,8 @@ import {
   MessageSquare,
   FileText,
   ImageIcon,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
@@ -50,7 +52,12 @@ import { groupService } from '../../src/services/group.service';
 import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon } from '../../src/utils/category-icons';
-import { MasterCategory } from '@splitit/core';
+import {
+  MasterCategory,
+  areParticipantsValid,
+  formatParticipantOwedText,
+  formatPayerText,
+} from '@splitit/core';
 import * as Haptics from 'expo-haptics';
 import { useNetwork } from '../../src/contexts/network.context';
 import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBreakdownSkeleton';
@@ -72,7 +79,8 @@ export default function ExpenseDetailScreen() {
   const rawGroupId = Array.isArray(params.groupId) ? params.groupId[0] : (params.groupId || '');
   const [groupId, setGroupId] = useState(rawGroupId);
   const inMem = expenseService.getInMemoryExpenseDetails(expenseId);
-  const [hasSplitLoaded, setHasSplitLoaded] = useState(() => !!inMem?.participants?.length);
+  const [hasSplitLoaded, setHasSplitLoaded] = useState(() => areParticipantsValid(inMem?.participants));
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [expense, setExpense] = useState<ExpenseDetailModel | null>(() => {
     if (inMem) return inMem;
@@ -133,17 +141,31 @@ export default function ExpenseDetailScreen() {
 
   const fetchExpense = async () => {
     try {
+      setLoadError(null);
       const data = await expenseService.getExpenseDetails(expenseId, groupId || undefined);
+      if (!data) {
+        if (!expense && !params.title) {
+          setLoadError('Expense could not be found or loaded.');
+        }
+        return;
+      }
       setExpense(data);
-      if (data?.participants && data.participants.length > 0) {
+      if (areParticipantsValid(data.participants)) {
         setHasSplitLoaded(true);
       }
       const targetGId = data.groupId || groupId;
       if (targetGId) {
         if (!groupId) setGroupId(targetGId);
-        groupService.getGroupDetails(targetGId).then((g) => {
-          if (g?.members) setGroupMembers(g.members);
-        });
+        groupService
+          .getGroupDetails(targetGId)
+          .then((g) => {
+            if (g?.members) setGroupMembers(g.members);
+          })
+          .catch(() => {});
+      }
+    } catch (err: any) {
+      if (!expense && !params.title) {
+        setLoadError(err?.message || 'Failed to load expense details.');
       }
     } finally {
       setLoading(false);
@@ -171,7 +193,7 @@ export default function ExpenseDetailScreen() {
     expenseService.getCachedExpenseDetails(expenseId).then((cached) => {
       if (cached) {
         setExpense(cached);
-        if (cached.participants && cached.participants.length > 0) {
+        if (areParticipantsValid(cached.participants)) {
           setHasSplitLoaded(true);
         }
         setLoading(false);
@@ -278,12 +300,56 @@ export default function ExpenseDetailScreen() {
     );
   }
 
+  if (!loading && !expense && loadError) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.headerBand}>
+          <View style={styles.headerNav}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync();
+                router.back();
+              }}
+              style={styles.navButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ArrowLeft size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.errorStateContainer}>
+          <AlertCircle size={44} color={THEME.colors.negative} />
+          <Text style={styles.errorTitle}>Unable to Load Expense</Text>
+          <Text style={styles.errorMessage}>{loadError}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setLoading(true);
+              fetchExpense();
+            }}
+          >
+            <RefreshCw size={15} color="#09090B" style={{ marginRight: 8 }} />
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const title = expense?.title || params.title || 'Dinner';
   const amount = expense?.amount || parseFloat(params.amount || '450') || 450;
   const currencySymbol = '₹';
-  const creatorName = expense?.creator?.name || expense?.paidByName || params.paidByName || 'Member';
-  const dateFormatted = expense?.date || params.date || '3 Mar 2026';
-  const primaryPayerName = expense?.paidByName || params.paidByName || 'Member';
+  const primaryPayerName =
+    expense?.paidByName && expense.paidByName !== 'undefined'
+      ? expense.paidByName
+      : params.paidByName && params.paidByName !== 'undefined'
+      ? params.paidByName
+      : 'Member';
+  const creatorName =
+    expense?.creator?.name && expense.creator.name !== 'undefined'
+      ? expense.creator.name
+      : primaryPayerName;
+  const dateFormatted = expense?.date || params.date || 'Today';
   const participants = expense?.participants || [];
   const logs = expense?.logs || [];
 
@@ -396,7 +462,7 @@ export default function ExpenseDetailScreen() {
                       )}
                     </View>
                     <Text style={styles.payerLabel}>
-                      {p.name || 'Member'} paid {currencySymbol}{p.amount.toFixed(2)}
+                      {formatPayerText(p.name, p.amount, currencySymbol)}
                     </Text>
                   </View>
                 ))}
@@ -411,16 +477,17 @@ export default function ExpenseDetailScreen() {
                   )}
                 </View>
                 <Text style={styles.payerLabel}>
-                  {primaryPayerName} paid {currencySymbol}{amount.toFixed(2)}
+                  {formatPayerText(primaryPayerName, amount, currencySymbol)}
                 </Text>
               </View>
             )}
 
             {/* Tree Branch Container */}
-            {!hasSplitLoaded ? (
+            {!hasSplitLoaded || !areParticipantsValid(participants) ? (
               <View style={styles.splitSkeletonBlock}>
                 <View style={styles.splitLoadingNotice}>
-                  <Text style={styles.splitLoadingNoticeText}>Calculating split breakdown...</Text>
+                  <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
+                  <Text style={styles.splitLoadingNoticeText}>Loading split...</Text>
                 </View>
                 <SplitBreakdownSkeleton count={3} />
               </View>
@@ -428,9 +495,7 @@ export default function ExpenseDetailScreen() {
               <View style={styles.treeBranchesWrapper}>
                 {participants.map((p, index) => {
                   const isLast = index === participants.length - 1;
-                  const owedText = p.isCurrentUser
-                    ? `You owe ${currencySymbol}${p.amountOwed.toFixed(2)}`
-                    : `${p.name} owes ${currencySymbol}${p.amountOwed.toFixed(2)}`;
+                  const owedText = formatParticipantOwedText(p, currencySymbol, groupMembers, currentUserId);
 
                   return (
                     <View key={p.userId || index} style={styles.treeBranchRow}>
@@ -445,7 +510,7 @@ export default function ExpenseDetailScreen() {
                         <Text
                           style={[
                             styles.branchText,
-                            p.isCurrentUser && styles.branchTextSelf,
+                            (p.isCurrentUser || p.userId === currentUserId) && styles.branchTextSelf,
                           ]}
                         >
                           {owedText}
@@ -872,15 +937,50 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
   },
   splitLoadingNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 6,
     paddingLeft: 4,
   },
   splitLoadingNoticeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#71717A',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+  },
+  errorStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginTop: 8,
+  },
+  errorMessage: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: THEME.radius.md,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: '#09090B',
+    fontWeight: '700',
+    fontSize: 13,
   },
 
   // Activity & Audit Logs Section

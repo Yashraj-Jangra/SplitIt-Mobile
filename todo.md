@@ -1,6 +1,12 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Prevent Undefined Participant Owes & Add Loading Split State**:
+  - Gated split breakdown rendering with `areParticipantsValid`, preventing premature display of unpopulated participant debt rows.
+  - Replaced notice text with clear "Loading split..." indicator alongside animated skeleton breakdown.
+  - Guarded participant name resolution via `resolveParticipantName` and `formatParticipantOwedText`, ensuring `'undefined owes ₹...'` can never be generated even with missing/corrupted data.
+  - Added dedicated error state view with retry and navigation fallback if expense fails to load.
+  - Added 18 unit tests in `src/__tests__/split-utils.test.ts` covering split validation, name resolution, and text formatting.
 - **Default Category Set to Other/Uncategorized**:
   - Replaced hardcoded `'Dining Out'` / `'Food and Drink'` initial state in `app/expenses/new.tsx` with `'Other'` / `'Uncategorized'`, matching the web application default.
   - Normalized `'Others'` alias to `'Other'` across `@splitit/core` and web/mobile helper functions.

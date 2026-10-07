@@ -592,8 +592,8 @@ export default function GroupDetailScreen() {
                       </View>
                       <View style={styles.debtTextCol}>
                         <Text style={styles.debtPrimaryText}>
-                          <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.fromName}</Text> owes{' '}
-                          <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.toName}</Text>
+                          <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.fromName || 'Member'}</Text> owes{' '}
+                          <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.toName || 'Member'}</Text>
                         </Text>
                         <Text style={styles.debtAmount}>₹{debt.amount.toLocaleString()}</Text>
                       </View>
