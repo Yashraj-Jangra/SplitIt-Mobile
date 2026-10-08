@@ -161,6 +161,21 @@ export const groupService = {
     try {
       const fromStorage = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
       if (fromStorage) {
+        if (!fromStorage.history) fromStorage.history = [];
+        if (!fromStorage.budget) {
+          fromStorage.budget = {
+            enabled: false,
+            totalMonthlyLimit: 0,
+            totalSpent: 0,
+            currency: 'INR',
+            daysRemaining: 10,
+            safeDailyAllowance: 0,
+            categories: [],
+          };
+        }
+        if (!fromStorage.simplifiedDebts) fromStorage.simplifiedDebts = [];
+        if (!fromStorage.members) fromStorage.members = [];
+        if (!fromStorage.expenses) fromStorage.expenses = [];
         _groupDetailsMap.set(groupId, fromStorage);
         return fromStorage;
       }

@@ -33,6 +33,11 @@ import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRin
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../../src/utils/category-icons';
 import { TransactionRowSkeleton } from '../../../src/components/skeletons/TransactionRowSkeleton';
+import {
+  ExpensesTabSkeleton,
+  BalancesTabSkeleton,
+  BudgetTabSkeleton,
+} from '../../../src/components/skeletons/GroupTabSkeleton';
 import { GroupHistoryTab } from '../../../src/components/groups/GroupHistoryTab';
 import * as Haptics from 'expo-haptics';
 
@@ -55,6 +60,12 @@ export default function GroupDetailScreen() {
 
   const [group, setGroup] = useState<GroupDetailData | null>(() => groupService.getInMemoryGroupDetail(targetId));
   const [activeTab, setActiveTab] = useState<TabType>('expenses');
+  const [visitedTabs, setVisitedTabs] = useState<Record<TabType, boolean>>({
+    expenses: true,
+    balances: false,
+    budget: false,
+    activity: false,
+  });
   const [loading, setLoading] = useState(!group);
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
@@ -101,7 +112,27 @@ export default function GroupDetailScreen() {
   };
 
   useEffect(() => {
+    // 0ms instant sync if in-memory cache has this targetId
+    const inMem = groupService.getInMemoryGroupDetail(targetId);
+    if (inMem) {
+      setGroup(inMem);
+      setLoading(false);
+    } else {
+      setGroup(null);
+      setLoading(true);
+    }
+
+    setVisitedTabs({
+      expenses: true,
+      balances: false,
+      budget: false,
+      activity: false,
+    });
+    setActiveTab('expenses');
+    tabIndicatorAnim.setValue(0);
+    tabContentAnim.setValue(1);
     setVisibleExpenseCount(PAGE_SIZE);
+
     // 0ms fast tick: hydrate from persistent offline storage
     groupService.getCachedGroupDetails(targetId).then((cached) => {
       if (cached) {
@@ -133,11 +164,12 @@ export default function GroupDetailScreen() {
       mass: 0.6,
     }).start();
 
-    // 2. Snappy micro-transition for tab content (never goes blank)
-    tabContentAnim.setValue(0.7);
+    // 2. Snappy micro-transition: reset to 0.4 and animate to 1
+    // The previous tab is immediately hidden via display: 'none', preventing any ghosting of the old tab
+    tabContentAnim.setValue(0.4);
     Animated.timing(tabContentAnim, {
       toValue: 1,
-      duration: 120,
+      duration: 140,
       useNativeDriver: true,
     }).start();
 
@@ -149,6 +181,7 @@ export default function GroupDetailScreen() {
       tension: 80,
     }).start();
 
+    setVisitedTabs((prev) => (prev[tab] ? prev : { ...prev, [tab]: true }));
     setActiveTab(tab);
   };
 
@@ -371,6 +404,7 @@ export default function GroupDetailScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <Text style={styles.loadingText}>Loading circle...</Text>
         </View>
       </SafeAreaView>
     );
@@ -479,223 +513,239 @@ export default function GroupDetailScreen() {
           ]}
         >
         {/* TAB 1: EXPENSES */}
-        {activeTab === 'expenses' && (
-          <View style={styles.tabSection}>
-            {/* Expenses Apple-Wallet Style Ledger */}
-            <View style={styles.ledgerStream}>
-              {expenses.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Receipt size={32} color={THEME.colors.textMuted} />
-                  <Text style={styles.emptyTitle}>No expenses recorded</Text>
-                  <Text style={styles.emptySubtitle}>
-                    Tap "+ Add" to record your first expense in this group!
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  {visibleExpenses.map((exp, index) => {
-                    const isLast =
-                      index === visibleExpenses.length - 1 &&
-                      visibleExpenseCount >= expenses.length &&
-                      !isLoadingMoreExpenses;
+        {visitedTabs.expenses && (
+          <View style={[styles.tabSection, activeTab !== 'expenses' && styles.tabHidden]}>
+            {loading && expenses.length === 0 ? (
+              <ExpensesTabSkeleton count={4} />
+            ) : (
+              <View style={styles.ledgerStream}>
+                {expenses.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Receipt size={32} color={THEME.colors.textMuted} />
+                    <Text style={styles.emptyTitle}>No expenses recorded</Text>
+                    <Text style={styles.emptySubtitle}>
+                      Tap "+ Add" to record your first expense in this group!
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    {visibleExpenses.map((exp, index) => {
+                      const isLast =
+                        index === visibleExpenses.length - 1 &&
+                        visibleExpenseCount >= expenses.length &&
+                        !isLoadingMoreExpenses;
 
-                    return (
-                      <TouchableOpacity
-                        key={exp.id}
-                        style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
-                        onPress={() => {
-                          Haptics.selectionAsync();
-                          router.push({
-                            pathname: '/expenses/[id]',
-                            params: {
-                              id: exp.id,
-                              groupId: targetId,
-                              title: exp.title,
-                              amount: String(exp.amount),
-                              paidByName: exp.paidByName || 'Member',
-                              date: exp.date,
-                              category: exp.category?.sub || exp.category?.master || 'Other',
-                            },
-                          });
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.categoryGlyph}>
-                          <CategoryIcon
-                            subCategory={exp.category?.sub}
-                            masterCategory={exp.category?.master}
-                            size={16}
-                            color={THEME.colors.textSecondary}
-                          />
-                        </View>
+                      return (
+                        <TouchableOpacity
+                          key={exp.id}
+                          style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                          onPress={() => {
+                            Haptics.selectionAsync();
+                            router.push({
+                              pathname: '/expenses/[id]',
+                              params: {
+                                id: exp.id,
+                                groupId: targetId,
+                                title: exp.title,
+                                amount: String(exp.amount),
+                                paidByName: exp.paidByName || 'Member',
+                                date: exp.date,
+                                category: exp.category?.sub || exp.category?.master || 'Other',
+                              },
+                            });
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.categoryGlyph}>
+                            <CategoryIcon
+                              subCategory={exp.category?.sub}
+                              masterCategory={exp.category?.master}
+                              size={16}
+                              color={THEME.colors.textSecondary}
+                            />
+                          </View>
 
-                        <View style={styles.ledgerDetails}>
-                          <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
-                            {exp.title}
-                          </Text>
-                          <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
-                            {exp.paidByName || 'Member'} paid • {exp.date}
-                          </Text>
-                        </View>
+                          <View style={styles.ledgerDetails}>
+                            <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
+                              {exp.title}
+                            </Text>
+                            <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
+                              {exp.paidByName || 'Member'} paid • {exp.date}
+                            </Text>
+                          </View>
 
-                        <ExpenseImpactCol expense={exp} />
-                      </TouchableOpacity>
-                    );
-                  })}
+                          <ExpenseImpactCol expense={exp} />
+                        </TouchableOpacity>
+                      );
+                    })}
 
-                  {/* Progressive Loading Shimmer Indicator */}
-                  {isLoadingMoreExpenses && (
-                    <View style={styles.progressiveLoaderContainer}>
-                      <TransactionRowSkeleton count={2} />
-                    </View>
-                  )}
-
-                  {/* End of list completion footer */}
-                  {expenses.length > PAGE_SIZE &&
-                    visibleExpenseCount >= expenses.length &&
-                    !isLoadingMoreExpenses && (
-                      <View style={styles.endOfListFooter}>
-                        <Text style={styles.endOfListText}>
-                          • All {expenses.length} expenses loaded •
-                        </Text>
+                    {/* Progressive Loading Shimmer Indicator */}
+                    {isLoadingMoreExpenses && (
+                      <View style={styles.progressiveLoaderContainer}>
+                        <TransactionRowSkeleton count={2} />
                       </View>
                     )}
-                </>
-              )}
-            </View>
+
+                    {/* End of list completion footer */}
+                    {expenses.length > PAGE_SIZE &&
+                      visibleExpenseCount >= expenses.length &&
+                      !isLoadingMoreExpenses && (
+                        <View style={styles.endOfListFooter}>
+                          <Text style={styles.endOfListText}>
+                            • All {expenses.length} expenses loaded •
+                          </Text>
+                        </View>
+                      )}
+                  </>
+                )}
+              </View>
+            )}
           </View>
         )}
 
         {/* TAB 2: BALANCES & SIMPLIFIED DEBTS */}
-        {activeTab === 'balances' && (
-          <View style={styles.tabSection}>
-            <View style={styles.simplifiedHeaderCard}>
-              <Sparkles size={15} color={THEME.colors.primary} />
-              <Text style={styles.simplifiedHeaderText}>
-                Simplified Debts: Circular IOUs collapsed into minimum direct payments.
-              </Text>
-            </View>
-
-            {/* Debt Cards */}
-            <View style={styles.debtsList}>
-              {simplifiedDebts.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Handshake size={32} color={THEME.colors.primary} />
-                  <Text style={styles.emptyTitle}>All settled up!</Text>
-                  <Text style={styles.emptySubtitle}>No pending repayments needed between group members.</Text>
-                </View>
-              ) : (
-                simplifiedDebts.map((debt, index) => (
-                  <View key={index} style={styles.debtCard}>
-                    <View style={styles.debtInfoRow}>
-                      <View style={styles.debtAvatar}>
-                        <Text style={styles.avatarLetter}>{(debt.fromName || 'M').charAt(0)}</Text>
-                      </View>
-                      <View style={styles.debtTextCol}>
-                        <Text style={styles.debtPrimaryText}>
-                          <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.fromName || 'Member'}</Text> owes{' '}
-                          <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.toName || 'Member'}</Text>
-                        </Text>
-                        <Text style={styles.debtAmount}>₹{debt.amount.toLocaleString()}</Text>
-                      </View>
-                      {debt.toName === 'You' && (
-                        <TouchableOpacity
-                          style={styles.settleButton}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            router.push({
-                              pathname: '/settle/new',
-                              params: {
-                                groupId: group.id,
-                                debtorId: debt.fromUserId,
-                                debtorName: debt.fromName,
-                                creditorId: debt.toUserId,
-                                creditorName: debt.toName,
-                                amount: debt.amount.toString(),
-                                upiId: members.find((m) => m.id === debt.toUserId)?.upiId || 'rohit@okhdfc',
-                              },
-                            });
-                          }}
-                        >
-                          <Zap size={13} color="#000000" strokeWidth={2.5} />
-                          <Text style={styles.settleButtonText}>Settle</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                ))
-              )}
-            </View>
-
-            {/* Member Standings */}
-            <View style={styles.standingsCard}>
-              <Text style={styles.sectionHeaderTitle}>MEMBER STANDINGS</Text>
-              {members.map((m) => (
-                <View key={m.id} style={styles.standingRow}>
-                  <Text style={styles.standingName}>{m.name}</Text>
-                  <Text
-                    style={[
-                      styles.standingAmount,
-                      { color: (m.netBalance || 0) >= 0 ? THEME.colors.primary : THEME.colors.negative },
-                    ]}
-                  >
-                    {(m.netBalance || 0) >= 0 ? `+₹${m.netBalance || 0}` : `-₹${Math.abs(m.netBalance || 0)}`}
+        {visitedTabs.balances && (
+          <View style={[styles.tabSection, activeTab !== 'balances' && styles.tabHidden]}>
+            {loading && members.length === 0 ? (
+              <BalancesTabSkeleton />
+            ) : (
+              <>
+                <View style={styles.simplifiedHeaderCard}>
+                  <Sparkles size={15} color={THEME.colors.primary} />
+                  <Text style={styles.simplifiedHeaderText}>
+                    Simplified Debts: Circular IOUs collapsed into minimum direct payments.
                   </Text>
                 </View>
-              ))}
-            </View>
+
+                {/* Debt Cards */}
+                <View style={styles.debtsList}>
+                  {simplifiedDebts.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                      <Handshake size={32} color={THEME.colors.primary} />
+                      <Text style={styles.emptyTitle}>All settled up!</Text>
+                      <Text style={styles.emptySubtitle}>No pending repayments needed between group members.</Text>
+                    </View>
+                  ) : (
+                    simplifiedDebts.map((debt, index) => (
+                      <View key={index} style={styles.debtCard}>
+                        <View style={styles.debtInfoRow}>
+                          <View style={styles.debtAvatar}>
+                            <Text style={styles.avatarLetter}>{(debt.fromName || 'M').charAt(0)}</Text>
+                          </View>
+                          <View style={styles.debtTextCol}>
+                            <Text style={styles.debtPrimaryText}>
+                              <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.fromName || 'Member'}</Text> owes{' '}
+                              <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.toName || 'Member'}</Text>
+                            </Text>
+                            <Text style={styles.debtAmount}>₹{debt.amount.toLocaleString()}</Text>
+                          </View>
+                          {debt.toName === 'You' && (
+                            <TouchableOpacity
+                              style={styles.settleButton}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                router.push({
+                                  pathname: '/settle/new',
+                                  params: {
+                                    groupId: group.id,
+                                    debtorId: debt.fromUserId,
+                                    debtorName: debt.fromName,
+                                    creditorId: debt.toUserId,
+                                    creditorName: debt.toName,
+                                    amount: debt.amount.toString(),
+                                    upiId: members.find((m) => m.id === debt.toUserId)?.upiId || 'rohit@okhdfc',
+                                  },
+                                });
+                              }}
+                            >
+                              <Zap size={13} color="#000000" strokeWidth={2.5} />
+                              <Text style={styles.settleButtonText}>Settle</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+
+                {/* Member Standings */}
+                <View style={styles.standingsCard}>
+                  <Text style={styles.sectionHeaderTitle}>MEMBER STANDINGS</Text>
+                  {members.map((m) => (
+                    <View key={m.id} style={styles.standingRow}>
+                      <Text style={styles.standingName}>{m.name}</Text>
+                      <Text
+                        style={[
+                          styles.standingAmount,
+                          { color: (m.netBalance || 0) >= 0 ? THEME.colors.primary : THEME.colors.negative },
+                        ]}
+                      >
+                        {(m.netBalance || 0) >= 0 ? `+₹${m.netBalance || 0}` : `-₹${Math.abs(m.netBalance || 0)}`}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         )}
 
         {/* TAB 3: BUDGET & PACING */}
-        {activeTab === 'budget' && (
-          <View style={styles.tabSection}>
-            <View style={styles.budgetCard}>
-              <BudgetPacingRing
-                totalSpent={budget.totalSpent || 0}
-                totalLimit={budget.totalMonthlyLimit || 0}
-                daysRemaining={budget.daysRemaining || 0}
-                safeDailyAllowance={budget.safeDailyAllowance || 0}
-              />
-            </View>
-
-            {/* Category Allocations */}
-            <View style={styles.categoryAllocationsCard}>
-              <Text style={styles.sectionHeaderTitle}>CATEGORY BREAKDOWN</Text>
-              {(budget.categories || []).length === 0 ? (
-                <View style={{ paddingVertical: 14, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 12, color: THEME.colors.textMuted }}>No category limits configured</Text>
+        {visitedTabs.budget && (
+          <View style={[styles.tabSection, activeTab !== 'budget' && styles.tabHidden]}>
+            {loading && !budget.totalMonthlyLimit && budget.totalSpent === 0 ? (
+              <BudgetTabSkeleton />
+            ) : (
+              <>
+                <View style={styles.budgetCard}>
+                  <BudgetPacingRing
+                    totalSpent={budget.totalSpent || 0}
+                    totalLimit={budget.totalMonthlyLimit || 0}
+                    daysRemaining={budget.daysRemaining || 0}
+                    safeDailyAllowance={budget.safeDailyAllowance || 0}
+                  />
                 </View>
-              ) : (
-                budget.categories.map((cat, idx) => {
-                  const limit = cat.limit || 1;
-                  const spent = cat.spent || 0;
-                  const percent = Math.min(100, Math.round((spent / limit) * 100));
-                  return (
-                    <View key={idx} style={styles.catRow}>
-                      <View style={styles.catLabelRow}>
-                        <Text style={styles.catName}>{cat.name}</Text>
-                        <Text style={styles.catNumbers}>
-                          ₹{spent.toLocaleString()} / ₹{limit.toLocaleString()} ({percent}%)
-                        </Text>
-                      </View>
-                      <View style={styles.catBarBackground}>
-                        <View style={[styles.catBarFill, { width: `${percent}%`, backgroundColor: cat.color || THEME.colors.primary }]} />
-                      </View>
+
+                {/* Category Allocations */}
+                <View style={styles.categoryAllocationsCard}>
+                  <Text style={styles.sectionHeaderTitle}>CATEGORY BREAKDOWN</Text>
+                  {(budget.categories || []).length === 0 ? (
+                    <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 12, color: THEME.colors.textMuted }}>No category limits configured</Text>
                     </View>
-                  );
-                })
-              )}
-            </View>
+                  ) : (
+                    budget.categories.map((cat, idx) => {
+                      const limit = cat.limit || 1;
+                      const spent = cat.spent || 0;
+                      const percent = Math.min(100, Math.round((spent / limit) * 100));
+                      return (
+                        <View key={idx} style={styles.catRow}>
+                          <View style={styles.catLabelRow}>
+                            <Text style={styles.catName}>{cat.name}</Text>
+                            <Text style={styles.catNumbers}>
+                              ₹{spent.toLocaleString()} / ₹{limit.toLocaleString()} ({percent}%)
+                            </Text>
+                          </View>
+                          <View style={styles.catBarBackground}>
+                            <View style={[styles.catBarFill, { width: `${percent}%`, backgroundColor: cat.color || THEME.colors.primary }]} />
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              </>
+            )}
           </View>
         )}
 
         {/* TAB 4: ACTIVITY AUDIT FEED */}
-        {activeTab === 'activity' && (
-          <View style={styles.tabSection}>
+        {visitedTabs.activity && (
+          <View style={[styles.tabSection, activeTab !== 'activity' && styles.tabHidden]}>
             <GroupHistoryTab
               groupId={targetId}
               history={group?.history}
+              loading={loading && (!group?.history || group.history.length === 0)}
               onRefresh={loadGroup}
               onViewExpense={(expenseId) => {
                 router.push({
@@ -944,6 +994,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.3,
   },
 
   // Collapsing Hero Header
@@ -1195,6 +1252,9 @@ const styles = StyleSheet.create({
   },
   tabSection: {
     gap: 14,
+  },
+  tabHidden: {
+    display: 'none',
   },
 
   // Ledger Stream

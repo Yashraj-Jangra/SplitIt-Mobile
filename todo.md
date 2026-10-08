@@ -1,6 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Fix Group Tab Transition Ghosting & Add Shimmer Skeletons (`app/groups/[id]/index.tsx`, `GroupTabSkeleton.tsx`, `GroupHistoryTab.tsx`, `group.service.ts`)**:
+  - **Eliminated Old Tab Ghosting During Transition**:
+    - Identified that `tabContentAnim.setValue(0.7)` was keeping the old tab content visible at 70% opacity while the spring indicator moved, giving the appearance of lingering on the old page while React mounted the new tab.
+    - Updated micro-transition: reset `tabContentAnim.setValue(0.4)` and smoothly animated to 1 over 140ms, while immediately toggling previous tab to `display: 'none'`, physically preventing any ghosting of old content.
+  - **Persistent Warm Tabs (`visitedTabs`)**:
+    - Replaced unconditional `{activeTab === tab && ...}` unmounting/remounting with a `visitedTabs` keep-alive cache pattern using `display: activeTab === tab ? 'flex' : 'none'`.
+    - Once rendered, tabs remain warm in the native view hierarchy—switching between already-visited tabs is 0ms instant with zero mounting re-calculations or re-parsing.
+  - **Immediate Group Sync on ID Change**:
+    - Added synchronous in-memory sync in `useEffect([targetId])` resetting `visitedTabs` to 'expenses' and clearing `group` if not in-memory, preventing older group data from lingering when navigating between different groups.
+  - **Rich Shimmer Skeletons For All Tabs (`src/components/skeletons/GroupTabSkeleton.tsx`)**:
+    - Created dedicated shimmer skeletons for all 4 tabs: `ExpensesTabSkeleton` (transaction ledger rows), `BalancesTabSkeleton` (simplified debts & member standings), `BudgetTabSkeleton` (circular ring & category allocation bars), and `ActivityTabSkeleton` (audit feed timeline).
+    - Integrated skeleton fallbacks across all tabs when data is loading (`loading && ...`), eliminating empty flash states ("No expenses recorded", "All settled up!") on cold fetch.
+  - **Defensive Cache Hydration (`src/services/group.service.ts`)**:
+    - Guaranteed default initialized arrays (`history`, `budget`, `simplifiedDebts`, `members`, `expenses`) when reading cached group details from storage.
 - **Full Width Group Stats Strip Under Hero Banner (`app/groups/[id]/index.tsx`)**:
   - **Eliminated Outer Inset**: Removed `paddingHorizontal: 10` from `scrollContent` on `<Animated.ScrollView>`, allowing the 3-stat strip (`SPENT`, `YOUR NET`, `BUDGET`) immediately below the hero image banner to extend edge-to-edge full width (100%) flush beneath the banner.
   - **Preserved Tab Section & In-Flow Alignment**: Added `paddingHorizontal: 10` to `tabSectionWrapper` to keep tab contents (Expenses ledger, Balances, Budget, Activity) padded with the intended 10px margin.

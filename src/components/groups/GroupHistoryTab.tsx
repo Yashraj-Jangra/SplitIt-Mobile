@@ -33,9 +33,12 @@ import { authService, AuthUser } from '../../services/auth.service';
 import { useAuth } from '../../contexts/auth.context';
 import { THEME } from '../../constants/theme';
 
+import { ActivityTabSkeleton } from '../skeletons/GroupTabSkeleton';
+
 interface GroupHistoryTabProps {
   groupId: string;
   history?: HistoryEventItem[];
+  loading?: boolean;
   onViewExpense?: (expenseId: string) => void;
   onRefresh?: () => void;
 }
@@ -153,6 +156,7 @@ function ComplexChangeDetailRow({ change }: { change: ParsedChange }) {
 export function GroupHistoryTab({
   groupId,
   history = [],
+  loading = false,
   onViewExpense,
   onRefresh,
 }: GroupHistoryTabProps) {
@@ -276,7 +280,9 @@ export function GroupHistoryTab({
 
       {/* Hairline Divided Minimal List */}
       <View style={styles.listContainer}>
-        {history.length === 0 ? (
+        {loading && history.length === 0 ? (
+          <ActivityTabSkeleton />
+        ) : history.length === 0 ? (
           <View style={styles.emptyContainer}>
             <HistoryIcon size={36} color="#6B7280" />
             <Text style={styles.emptyTitle}>No history recorded yet for this group.</Text>
