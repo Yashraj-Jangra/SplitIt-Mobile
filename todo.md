@@ -123,7 +123,7 @@
 
 ## Production Rules System (Established)
 
-A comprehensive 9-category production rules system was created in `.agents/rules/`:
+A comprehensive 10-category production rules system was created in `.agents/rules/`:
 - `theming.md` — Zero hardcoded colors, dark-mode only, typography/spacing scales, animation standards, haptics
 - `keyboard.md` — KeyboardAvoidingView, input types, return key chaining, accessory toolbar docking
 - `testing.md` — Pre-commit gates (tsc + lint + jest), coverage targets, test infrastructure
