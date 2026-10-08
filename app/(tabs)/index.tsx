@@ -286,7 +286,7 @@ export default function HomeScreen() {
             onPress={handleAddExpense}
             activeOpacity={0.85}
           >
-            <Plus size={18} color="#000000" strokeWidth={2.5} />
+            <Plus size={18} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
             <Text style={styles.primaryActionText}>Add Expense</Text>
           </TouchableOpacity>
 
@@ -295,7 +295,7 @@ export default function HomeScreen() {
             onPress={handleSettleUp}
             activeOpacity={0.85}
           >
-            <Handshake size={18} color="#FFFFFF" strokeWidth={2} />
+            <Handshake size={18} color={THEME.colors.text} strokeWidth={2} />
             <Text style={styles.secondaryActionText}>Settle Up</Text>
           </TouchableOpacity>
         </View>
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   primaryActionText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#000000',
+    color: THEME.colors.primaryForeground,
   },
   secondaryActionBtn: {
     flex: 1,
@@ -750,11 +750,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#0D0A14',
+    backgroundColor: THEME.colors.aiSurface,
     padding: 14,
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.22)',
+    borderColor: THEME.colors.aiBorder,
   },
   aiInsightIconWrap: {
     width: 36,

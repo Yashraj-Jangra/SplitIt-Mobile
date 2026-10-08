@@ -11,6 +11,7 @@ export const THEME = {
     hairline: 'rgba(255, 255, 255, 0.06)',
     hairlineLight: 'rgba(255, 255, 255, 0.12)',
     primary: '#1CC29F', // Iconic Splitwise Teal / Mint
+    primaryForeground: '#09090B', // Dark contrast text/icon on top of primary
     primaryLight: '#3FE3BF',
     primaryMuted: 'rgba(28, 194, 159, 0.14)',
     negative: '#F43F5E', // Clean Rose
@@ -37,6 +38,8 @@ export const THEME = {
     ai: '#8B5CF6', // Electric Violet
     aiLight: '#A78BFA',
     aiMuted: 'rgba(139, 92, 246, 0.14)',
+    aiSurface: '#0D0A14',
+    aiBorder: 'rgba(139, 92, 246, 0.22)',
     text: '#FFFFFF', // High-contrast crisp white
     textSecondary: '#9CA3AF', // Zinc 400
     textMuted: '#6B7280', // Zinc 500

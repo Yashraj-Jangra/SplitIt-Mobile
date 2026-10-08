@@ -324,11 +324,11 @@ export default function SignupScreen() {
                 activeOpacity={0.85}
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color="#09090B" />
+                  <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
                 ) : (
                   <>
                     <Text style={styles.submitButtonText}>Create Account</Text>
-                    <ArrowRight size={18} color="#09090B" />
+                    <ArrowRight size={18} color={THEME.colors.primaryForeground} />
                   </>
                 )}
               </TouchableOpacity>
@@ -350,7 +350,7 @@ export default function SignupScreen() {
                 activeOpacity={0.8}
               >
                 {googleLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={THEME.colors.text} />
                 ) : (
                   <>
                     <GoogleLogo size={20} />
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
   },
   dividerRow: {
     flexDirection: 'row',
@@ -563,14 +563,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.palette.white,
     paddingVertical: 13,
     borderRadius: THEME.radius.md,
   },
   appleButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#000000',
+    color: THEME.colors.palette.black,
   },
   footerRow: {
     flexDirection: 'row',

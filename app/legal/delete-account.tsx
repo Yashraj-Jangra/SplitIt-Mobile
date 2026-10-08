@@ -141,10 +141,10 @@ export default function DeleteAccountScreen() {
           disabled={!isConfirmed || isDeleting}
         >
           {isDeleting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={THEME.colors.text} />
           ) : (
             <>
-              <Trash2 size={18} color="#FFFFFF" />
+              <Trash2 size={18} color={THEME.colors.text} />
               <Text style={styles.deleteButtonText}>Permanently Delete My Account</Text>
             </>
           )}
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   warningSubtitle: {
     fontSize: 12,
-    color: '#FECDD3',
+    color: THEME.colors.negativeLight,
     lineHeight: 18,
   },
   sectionTitle: {
@@ -284,6 +284,6 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
 });

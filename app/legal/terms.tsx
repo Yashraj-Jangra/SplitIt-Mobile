@@ -37,7 +37,7 @@ export default function TermsOfServiceScreen() {
         </Text>
 
         <View style={styles.disclaimerCard}>
-          <AlertTriangle size={20} color="#F59E0B" />
+          <AlertTriangle size={20} color={THEME.colors.warning} />
           <Text style={styles.disclaimerText}>
             <Text style={styles.bold}>Non-Escrow Utility Notice:</Text> SplitIt is an expense ledger, calculation engine, and group budgeting tool. SplitIt does not hold user funds, act as an escrow agent, or process banking transactions directly.
           </Text>
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   disclaimerText: {
     flex: 1,
     fontSize: 12,
-    color: '#FEF3C7',
+    color: THEME.colors.warningLight,
     lineHeight: 18,
   },
   subheading: {
@@ -149,6 +149,6 @@ const styles = StyleSheet.create({
   },
   bold: {
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
 });

@@ -102,7 +102,7 @@ export default function GroupsScreen() {
           }}
           activeOpacity={0.8}
         >
-          <Plus size={18} color="#000000" strokeWidth={2.5} />
+          <Plus size={18} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
 
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   groupNameText: {
     fontSize: 19,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     letterSpacing: -0.4,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1.5,
-    borderColor: '#000000',
+    borderColor: THEME.colors.palette.black,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -556,6 +556,6 @@ const styles = StyleSheet.create({
   emptyCtaText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#000000',
+    color: THEME.colors.primaryForeground,
   },
 });
