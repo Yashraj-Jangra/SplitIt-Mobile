@@ -121,7 +121,76 @@
     - **Window Surface Theme Alignment (`app.json`)**: Aligned `"backgroundColor": "#131417"` across root, splash, Android package, and adaptive icon definitions in `app.json`.
     - **Platform-Adaptive Modal Presentations (`app/_layout.tsx`)**: Configured `presentation: Platform.OS === 'android' ? 'card' : 'modal'` for modals (`expenses/[id]`, `groups/new`, `settle/new`, `settle/qr`, `ai/chat`, `ai/scanner`, `support/new`, `legal/delete-account`). Prevents Android `ScreenStackFragment` from running broken modal dismiss transitions while maintaining native iOS sheet presentations.
 
+## Production Rules System (Established)
+
+A comprehensive 9-category production rules system was created in `.agents/rules/`:
+- `theming.md` — Zero hardcoded colors, dark-mode only, typography/spacing scales, animation standards, haptics
+- `keyboard.md` — KeyboardAvoidingView, input types, return key chaining, accessory toolbar docking
+- `testing.md` — Pre-commit gates (tsc + lint + jest), coverage targets, test infrastructure
+- `performance.md` — Reanimated-only animations, memoization, FlatList tuning, 60fps target
+- `crash-prevention.md` — Error boundaries, async error handling, null safety, offline resilience
+- `dependencies.md` — Expo install only, version pinning, SDK hygiene, upgrade discipline
+- `architecture.md` — Directory structure, route file rules, service layer, TypeScript strictness
+- `accessibility.md` — Touch targets, screen reader labels, dynamic font scaling, contrast
+- `responsive.md` — Safe areas, flex layouts, orientation lock, device size handling
+- `state-management.md` — Service + cache pattern, context rules, optimistic updates
+
+The master `AGENTS.md` was fully rewritten to reference all rule files.
+
+## Cleanup: Hardcoded Colors Migration
+
+**Priority: High** — 35+ files contain hardcoded hex values (`#XXXXXX`, `rgba(...)`) outside of `src/constants/theme.ts`. These must be migrated to use `THEME.colors.*` tokens.
+
+### Files Requiring Migration (src/)
+- [ ] `src/utils/category-icons.tsx`
+- [ ] `src/services/group.service.ts`
+- [ ] `src/services/notification.service.ts`
+- [ ] `src/components/skeletons/TransactionRowSkeleton.tsx`
+- [ ] `src/components/skeletons/SplitBreakdownSkeleton.tsx`
+- [ ] `src/components/skeletons/BalanceSkeleton.tsx`
+- [ ] `src/components/groups/GroupHistoryTab.tsx`
+- [ ] `src/components/expenses/ExpenseImpactCol.tsx`
+- [ ] `src/components/dashboard/BalanceHistoryGraph.tsx`
+- [ ] `src/components/expenses/ExpenseAbstractHeader.tsx`
+- [ ] `src/components/expenses/SplitOptionsModal.tsx`
+- [ ] `src/components/expenses/PayerSelectModal.tsx`
+- [ ] `src/components/common/OfflineBanner.tsx`
+- [ ] `src/components/brand/GoogleLogo.tsx`
+
+### Files Requiring Migration (app/)
+- [ ] `app/support/[id].tsx`
+- [ ] `app/support/new.tsx`
+- [ ] `app/support/index.tsx`
+- [ ] `app/settle/qr.tsx`
+- [ ] `app/settle/new.tsx`
+- [ ] `app/notifications/preferences.tsx`
+- [ ] `app/notifications/index.tsx`
+- [ ] `app/legal/terms.tsx`
+- [ ] `app/legal/delete-account.tsx`
+- [ ] `app/groups/[id]/settings.tsx`
+- [ ] `app/groups/[id]/index.tsx`
+- [ ] `app/groups/new.tsx`
+- [ ] `app/expenses/[id].tsx`
+- [ ] `app/expenses/new.tsx`
+- [ ] `app/ai/scanner.tsx`
+- [ ] `app/ai/chat.tsx`
+- [ ] `app/(tabs)/index.tsx`
+- [ ] `app/(tabs)/groups.tsx`
+- [ ] `app/(auth)/signup.tsx`
+- [ ] `app/(auth)/login.tsx`
+
+### Migration Strategy
+1. Add missing semantic tokens to `THEME.colors` (success, danger, warning, info, notification namespace).
+2. Add `THEME.typography.size` and `THEME.typography.weight` scales.
+3. Add `THEME.spacing` scale.
+4. Migrate files one-by-one, replacing hardcoded values with theme tokens.
+5. Run `npx tsc --noEmit` after each file to verify.
+6. Commit in logical batches (e.g., all skeletons, all expense screens, etc.).
+
 ## Next Steps & Planned Work
+- [ ] **Execute hardcoded color migration** (see above — 35+ files).
+- [ ] **Set up Jest test infrastructure** (`jest-expo`, `@testing-library/react-native`).
+- [ ] **Add ErrorBoundary components** (root-level + screen-level).
 - [ ] Test transition smoothness across high-refresh-rate physical Android & iOS devices.
 - [ ] Evaluate offline mutations queue sync resilience on intermittent network reconnections.
 - [ ] Verify receipt scanner camera permission handling in development builds.
