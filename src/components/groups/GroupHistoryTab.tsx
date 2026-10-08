@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,12 +33,15 @@ import { authService, AuthUser } from '../../services/auth.service';
 import { useAuth } from '../../contexts/auth.context';
 import { THEME } from '../../constants/theme';
 
-import { ActivityTabSkeleton } from '../skeletons/GroupTabSkeleton';
+import { ActivityTabSkeleton, ActivityRowSkeleton } from '../skeletons/GroupTabSkeleton';
 
 interface GroupHistoryTabProps {
   groupId: string;
   history?: HistoryEventItem[];
   loading?: boolean;
+  visibleCount?: number;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
   onViewExpense?: (expenseId: string) => void;
   onRefresh?: () => void;
 }
@@ -153,10 +156,282 @@ function ComplexChangeDetailRow({ change }: { change: ParsedChange }) {
   }
 }
 
+interface AccordionChangeItemProps {
+  change: any;
+}
+
+const AccordionChangeItem = React.memo(function AccordionChangeItem({
+  change,
+}: AccordionChangeItemProps) {
+  if (change.type === 'added') {
+    return (
+      <View style={styles.changeActionRow}>
+        <Plus size={12} color="#10B981" />
+        <Text style={styles.changeAddedText}>
+          Added <Text style={styles.changeFieldLabel}>{change.field}:</Text>{' '}
+          {change.to}
+        </Text>
+      </View>
+    );
+  }
+
+  if (change.type === 'removed') {
+    return (
+      <View style={styles.changeActionRow}>
+        <Trash2 size={12} color="#EF4444" />
+        <Text style={styles.changeRemovedText}>
+          Removed <Text style={styles.changeFieldLabel}>{change.field}:</Text>{' '}
+          was {change.from}
+        </Text>
+      </View>
+    );
+  }
+
+  const isComplex =
+    (change.field === 'Payers' || change.field === 'Split') &&
+    Boolean(change.from);
+  const parsedChanges: ParsedChange[] = useMemo(() => {
+    return isComplex ? parseComplexChange(change.from) : [];
+  }, [isComplex, change.from]);
+
+  return (
+    <View style={styles.changeItemBlock}>
+      <Text style={styles.changeFieldLabel}>{change.field}:</Text>
+      {isComplex ? (
+        <View style={styles.complexNestedBlock}>
+          {parsedChanges.map((p, pIdx) => (
+            <ComplexChangeDetailRow key={pIdx} change={p} />
+          ))}
+        </View>
+      ) : change.to ? (
+        <View style={styles.simpleDiffRow}>
+          <Text style={styles.diffFromStrikethrough}>{change.from}</Text>
+          <ArrowRight size={11} color="#6B7280" />
+          <Text style={styles.diffToGreen}>{change.to}</Text>
+        </View>
+      ) : (
+        <Text style={styles.simpleFromOnly}>{change.from}</Text>
+      )}
+    </View>
+  );
+});
+
+interface HistoryEventRowProps {
+  event: HistoryEventItem;
+  isLast: boolean;
+  isDeleted: boolean;
+  isAdmin: boolean;
+  isExpanded: boolean;
+  isItemRestoring: boolean;
+  isItemDeleting: boolean;
+  onToggleAccordion: (eventId: string) => void;
+  onRestore: (event: HistoryEventItem) => void;
+  onDelete: (event: HistoryEventItem) => void;
+  onNavigateToExpense: (expenseId: string) => void;
+}
+
+const HistoryEventRow = React.memo(function HistoryEventRow({
+  event,
+  isLast,
+  isDeleted,
+  isAdmin,
+  isExpanded,
+  isItemRestoring,
+  isItemDeleting,
+  onToggleAccordion,
+  onRestore,
+  onDelete,
+  onNavigateToExpense,
+}: HistoryEventRowProps) {
+  const isAiBudget =
+    event.eventType === 'budget_updated' && Boolean(event.data?.aiInitiated);
+
+  const expenseDate =
+    event.data?.date && event.eventType.startsWith('expense_')
+      ? formatExpenseDate(event.data.date)
+      : null;
+
+  let viewableExpenseId: string | null = null;
+  if (
+    (event.eventType === 'expense_created' || event.eventType === 'expense_updated') &&
+    event.data?.expenseId
+  ) {
+    viewableExpenseId = event.data.expenseId;
+  } else if (event.eventType === 'expense_restored' && event.data?.newExpenseId) {
+    viewableExpenseId = event.data.newExpenseId;
+  }
+  if (isDeleted) {
+    viewableExpenseId = null;
+  }
+
+  const canRestore =
+    (event.eventType === 'expense_deleted' || event.eventType === 'settlement_deleted') &&
+    !event.restored;
+
+  const canDelete = isAdmin;
+
+  const isUpdateWithDetails =
+    (event.eventType === 'expense_updated' ||
+      event.eventType === 'group_updated' ||
+      event.eventType === 'settlement_updated' ||
+      event.eventType === 'budget_updated') &&
+    event.data?.changes &&
+    event.data.changes.length > 0;
+
+  return (
+    <View style={[styles.eventRow, !isLast && styles.eventRowBorder]}>
+      {/* Main Row Content */}
+      <View style={styles.mainRow}>
+        {/* Left Event Icon */}
+        <View style={styles.iconSlot}>{renderEventIcon(event)}</View>
+
+        {/* Middle Text Column */}
+        <View style={styles.infoCol}>
+          <View style={styles.descriptionRow}>
+            <Text
+              style={[
+                styles.eventDescriptionText,
+                isDeleted && styles.strikethroughText,
+              ]}
+            >
+              {event.description}
+              {expenseDate && (
+                <Text style={styles.expenseDateSuffix}> (for {expenseDate})</Text>
+              )}
+            </Text>
+
+            {isAiBudget && (
+              <View style={styles.aiBadgePill}>
+                <Bot size={10} color="#C084FC" />
+                <Text style={styles.aiBadgeText}>SplitIt AI</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Timestamp Subtitle */}
+          <Text style={styles.timestampText}>
+            {formatRelativeTime(event.timestamp)}
+            <Text style={styles.exactTimeSuffix}>
+              {' '}({formatExactDate(event.timestamp)})
+            </Text>
+          </Text>
+        </View>
+
+        {/* Right Action Buttons */}
+        <View style={styles.actionButtonsRow}>
+          {/* Take There / View Expense Button */}
+          {viewableExpenseId && (
+            <TouchableOpacity
+              style={styles.iconActionBtn}
+              onPress={() => onNavigateToExpense(viewableExpenseId!)}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              activeOpacity={0.7}
+            >
+              <ArrowRight size={15} color="#D1D5DB" />
+            </TouchableOpacity>
+          )}
+
+          {/* Restore Button */}
+          {canRestore && (
+            <TouchableOpacity
+              style={styles.restoreActionBtn}
+              onPress={() => onRestore(event)}
+              disabled={isItemRestoring}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              activeOpacity={0.7}
+            >
+              {isItemRestoring ? (
+                <ActivityIndicator size="small" color="#A855F7" />
+              ) : (
+                <RotateCcw size={14} color="#A855F7" />
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* Delete Button (Strictly Admin Only) */}
+          {canDelete && (
+            <TouchableOpacity
+              style={styles.deleteActionBtn}
+              onPress={() => onDelete(event)}
+              disabled={isItemDeleting}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              activeOpacity={0.7}
+            >
+              {isItemDeleting ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <Trash2 size={14} color="#EF4444" />
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Granular Accordion Details */}
+      {isUpdateWithDetails && (
+        <View style={styles.detailsContainer}>
+          <TouchableOpacity
+            style={styles.accordionToggleBtn}
+            onPress={() => onToggleAccordion(event.id)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.accordionToggleText}>
+              Show details ({event.data.changes.length} change
+              {event.data.changes.length > 1 ? 's' : ''})
+            </Text>
+            {isExpanded ? (
+              <ChevronUp size={12} color="#9CA3AF" />
+            ) : (
+              <ChevronDown size={12} color="#9CA3AF" />
+            )}
+          </TouchableOpacity>
+
+          {isExpanded && (
+            <View style={styles.accordionContent}>
+              {/* Budget Unchanged Banner */}
+              {event.eventType === 'budget_updated' &&
+                event.data?.monthlyBudgetUnchanged && (
+                  <View style={styles.budgetUnchangedBanner}>
+                    <CheckCircle2 size={13} color="#10B981" />
+                    <Text style={styles.budgetUnchangedBannerText}>
+                      Total monthly budget was not changed (₹
+                      {(event.data?.currentMonthlyLimit || 0).toLocaleString('en-IN')})
+                    </Text>
+                  </View>
+                )}
+
+              {/* Budget Disabled Banner */}
+              {event.eventType === 'budget_updated' &&
+                event.data?.newStatus === 'disabled' && (
+                  <View style={styles.budgetDisabledBanner}>
+                    <AlertTriangle size={13} color="#F59E0B" />
+                    <Text style={styles.budgetDisabledBannerText}>
+                      Group budget tracking has been disabled.
+                    </Text>
+                  </View>
+                )}
+
+              {/* Changes List */}
+              <View style={styles.changesList}>
+                {event.data.changes.map((change: any, chIdx: number) => (
+                  <AccordionChangeItem key={chIdx} change={change} />
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+});
+
 export function GroupHistoryTab({
   groupId,
   history = [],
   loading = false,
+  visibleCount,
+  isLoadingMore = false,
+  onLoadMore,
   onViewExpense,
   onRefresh,
 }: GroupHistoryTabProps) {
@@ -190,15 +465,15 @@ export function GroupHistoryTab({
     return deletedIds;
   }, [history]);
 
-  const toggleAccordion = (eventId: string) => {
+  const toggleAccordion = useCallback((eventId: string) => {
     Haptics.selectionAsync();
     setExpandedEvents((prev) => ({
       ...prev,
       [eventId]: !prev[eventId],
     }));
-  };
+  }, []);
 
-  const handleRestore = async (event: HistoryEventItem) => {
+  const handleRestore = useCallback(async (event: HistoryEventItem) => {
     try {
       setRestoringId(event.id);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -218,9 +493,9 @@ export function GroupHistoryTab({
     } finally {
       setRestoringId(null);
     }
-  };
+  }, [currentUser?.id, onRefresh]);
 
-  const handleDelete = (event: HistoryEventItem) => {
+  const handleDelete = useCallback((event: HistoryEventItem) => {
     if (!isAdmin) {
       Alert.alert('Unauthorized', 'Only administrators can delete history audit records.');
       return;
@@ -251,9 +526,9 @@ export function GroupHistoryTab({
         },
       ]
     );
-  };
+  }, [isAdmin, onRefresh]);
 
-  const handleNavigateToExpense = (expenseId: string) => {
+  const handleNavigateToExpense = useCallback((expenseId: string) => {
     Haptics.selectionAsync();
     if (onViewExpense) {
       onViewExpense(expenseId);
@@ -263,7 +538,14 @@ export function GroupHistoryTab({
         params: { id: expenseId, groupId },
       });
     }
-  };
+  }, [onViewExpense, router, groupId]);
+
+  const visibleEvents = useMemo(
+    () => history.slice(0, visibleCount ?? history.length),
+    [history, visibleCount]
+  );
+  const hasMore = (visibleCount ?? history.length) < history.length;
+  const remainingCount = Math.max(0, history.length - (visibleCount ?? history.length));
 
   return (
     <View style={styles.cardContainer}>
@@ -288,252 +570,58 @@ export function GroupHistoryTab({
             <Text style={styles.emptyTitle}>No history recorded yet for this group.</Text>
           </View>
         ) : (
-          history.map((event, index) => {
-            const isLast = index === history.length - 1;
-            const isDeleted =
-              (event.eventType === 'expense_created' || event.eventType === 'expense_updated') &&
-              Boolean(event.data?.expenseId && deletedExpenseIds.has(event.data.expenseId));
+          <>
+            {visibleEvents.map((event, index) => {
+              const isLast = index === visibleEvents.length - 1 && !isLoadingMore && !hasMore;
+              const isDeleted =
+                (event.eventType === 'expense_created' || event.eventType === 'expense_updated') &&
+                Boolean(event.data?.expenseId && deletedExpenseIds.has(event.data.expenseId));
 
-            const isAiBudget =
-              event.eventType === 'budget_updated' && Boolean(event.data?.aiInitiated);
+              return (
+                <HistoryEventRow
+                  key={event.id || index}
+                  event={event}
+                  isLast={isLast}
+                  isDeleted={isDeleted}
+                  isAdmin={isAdmin}
+                  isExpanded={Boolean(expandedEvents[event.id])}
+                  isItemRestoring={restoringId === event.id}
+                  isItemDeleting={deletingId === event.id}
+                  onToggleAccordion={toggleAccordion}
+                  onRestore={handleRestore}
+                  onDelete={handleDelete}
+                  onNavigateToExpense={handleNavigateToExpense}
+                />
+              );
+            })}
 
-            const expenseDate =
-              event.data?.date && event.eventType.startsWith('expense_')
-                ? formatExpenseDate(event.data.date)
-                : null;
-
-            // Determine viewable expense ID
-            let viewableExpenseId: string | null = null;
-            if (
-              (event.eventType === 'expense_created' || event.eventType === 'expense_updated') &&
-              event.data?.expenseId
-            ) {
-              viewableExpenseId = event.data.expenseId;
-            } else if (event.eventType === 'expense_restored' && event.data?.newExpenseId) {
-              viewableExpenseId = event.data.newExpenseId;
-            }
-            if (isDeleted) {
-              viewableExpenseId = null;
-            }
-
-            const canRestore =
-              (event.eventType === 'expense_deleted' || event.eventType === 'settlement_deleted') &&
-              !event.restored;
-
-            // STRICT ADMIN ONLY GUARD: normal users cannot see and won't trigger delete
-            const canDelete = isAdmin;
-
-            const isUpdateWithDetails =
-              (event.eventType === 'expense_updated' ||
-                event.eventType === 'group_updated' ||
-                event.eventType === 'settlement_updated' ||
-                event.eventType === 'budget_updated') &&
-              event.data?.changes &&
-              event.data.changes.length > 0;
-
-            const isExpanded = Boolean(expandedEvents[event.id]);
-            const isItemRestoring = restoringId === event.id;
-            const isItemDeleting = deletingId === event.id;
-
-            return (
-              <View
-                key={event.id || index}
-                style={[styles.eventRow, !isLast && styles.eventRowBorder]}
-              >
-                {/* Main Row Content */}
-                <View style={styles.mainRow}>
-                  {/* Left Event Icon */}
-                  <View style={styles.iconSlot}>{renderEventIcon(event)}</View>
-
-                  {/* Middle Text Column */}
-                  <View style={styles.infoCol}>
-                    <View style={styles.descriptionRow}>
-                      <Text
-                        style={[
-                          styles.eventDescriptionText,
-                          isDeleted && styles.strikethroughText,
-                        ]}
-                      >
-                        {event.description}
-                        {expenseDate && (
-                          <Text style={styles.expenseDateSuffix}> (for {expenseDate})</Text>
-                        )}
-                      </Text>
-
-                      {isAiBudget && (
-                        <View style={styles.aiBadgePill}>
-                          <Bot size={10} color="#C084FC" />
-                          <Text style={styles.aiBadgeText}>SplitIt AI</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Timestamp Subtitle */}
-                    <Text style={styles.timestampText}>
-                      {formatRelativeTime(event.timestamp)}
-                      <Text style={styles.exactTimeSuffix}>
-                        {' '}({formatExactDate(event.timestamp)})
-                      </Text>
-                    </Text>
-                  </View>
-
-                  {/* Right Action Buttons */}
-                  <View style={styles.actionButtonsRow}>
-                    {/* Take There / View Expense Button */}
-                    {viewableExpenseId && (
-                      <TouchableOpacity
-                        style={styles.iconActionBtn}
-                        onPress={() => handleNavigateToExpense(viewableExpenseId!)}
-                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                        activeOpacity={0.7}
-                      >
-                        <ArrowRight size={15} color="#D1D5DB" />
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Restore Button */}
-                    {canRestore && (
-                      <TouchableOpacity
-                        style={styles.restoreActionBtn}
-                        onPress={() => handleRestore(event)}
-                        disabled={isItemRestoring}
-                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                        activeOpacity={0.7}
-                      >
-                        {isItemRestoring ? (
-                          <ActivityIndicator size="small" color="#A855F7" />
-                        ) : (
-                          <RotateCcw size={14} color="#A855F7" />
-                        )}
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Delete Button (Strictly Admin Only) */}
-                    {canDelete && (
-                      <TouchableOpacity
-                        style={styles.deleteActionBtn}
-                        onPress={() => handleDelete(event)}
-                        disabled={isItemDeleting}
-                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                        activeOpacity={0.7}
-                      >
-                        {isItemDeleting ? (
-                          <ActivityIndicator size="small" color="#EF4444" />
-                        ) : (
-                          <Trash2 size={14} color="#EF4444" />
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-
-                {/* Granular Accordion Details */}
-                {isUpdateWithDetails && (
-                  <View style={styles.detailsContainer}>
-                    <TouchableOpacity
-                      style={styles.accordionToggleBtn}
-                      onPress={() => toggleAccordion(event.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.accordionToggleText}>
-                        Show details ({event.data.changes.length} change
-                        {event.data.changes.length > 1 ? 's' : ''})
-                      </Text>
-                      {isExpanded ? (
-                        <ChevronUp size={12} color="#9CA3AF" />
-                      ) : (
-                        <ChevronDown size={12} color="#9CA3AF" />
-                      )}
-                    </TouchableOpacity>
-
-                    {isExpanded && (
-                      <View style={styles.accordionContent}>
-                        {/* Budget Unchanged Banner */}
-                        {event.eventType === 'budget_updated' &&
-                          event.data?.monthlyBudgetUnchanged && (
-                            <View style={styles.budgetUnchangedBanner}>
-                              <CheckCircle2 size={13} color="#10B981" />
-                              <Text style={styles.budgetUnchangedBannerText}>
-                                Total monthly budget was not changed (₹
-                                {(event.data?.currentMonthlyLimit || 0).toLocaleString('en-IN')})
-                              </Text>
-                            </View>
-                          )}
-
-                        {/* Budget Disabled Banner */}
-                        {event.eventType === 'budget_updated' &&
-                          event.data?.newStatus === 'disabled' && (
-                            <View style={styles.budgetDisabledBanner}>
-                              <AlertTriangle size={13} color="#F59E0B" />
-                              <Text style={styles.budgetDisabledBannerText}>
-                                Group budget tracking has been disabled.
-                              </Text>
-                            </View>
-                          )}
-
-                        {/* Changes List */}
-                        <View style={styles.changesList}>
-                          {event.data.changes.map((change: any, chIdx: number) => {
-                            if (change.type === 'added') {
-                              return (
-                                <View key={chIdx} style={styles.changeActionRow}>
-                                  <Plus size={12} color="#10B981" />
-                                  <Text style={styles.changeAddedText}>
-                                    Added <Text style={styles.changeFieldLabel}>{change.field}:</Text>{' '}
-                                    {change.to}
-                                  </Text>
-                                </View>
-                              );
-                            }
-
-                            if (change.type === 'removed') {
-                              return (
-                                <View key={chIdx} style={styles.changeActionRow}>
-                                  <Trash2 size={12} color="#EF4444" />
-                                  <Text style={styles.changeRemovedText}>
-                                    Removed <Text style={styles.changeFieldLabel}>{change.field}:</Text>{' '}
-                                    was {change.from}
-                                  </Text>
-                                </View>
-                              );
-                            }
-
-                            const isComplex =
-                              (change.field === 'Payers' || change.field === 'Split') &&
-                              Boolean(change.from);
-                            const parsedChanges: ParsedChange[] = isComplex
-                              ? parseComplexChange(change.from)
-                              : [];
-
-                            return (
-                              <View key={chIdx} style={styles.changeItemBlock}>
-                                <Text style={styles.changeFieldLabel}>{change.field}:</Text>
-                                {isComplex ? (
-                                  <View style={styles.complexNestedBlock}>
-                                    {parsedChanges.map((p, pIdx) => (
-                                      <ComplexChangeDetailRow key={pIdx} change={p} />
-                                    ))}
-                                  </View>
-                                ) : change.to ? (
-                                  <View style={styles.simpleDiffRow}>
-                                    <Text style={styles.diffFromStrikethrough}>{change.from}</Text>
-                                    <ArrowRight size={11} color="#6B7280" />
-                                    <Text style={styles.diffToGreen}>{change.to}</Text>
-                                  </View>
-                                ) : (
-                                  <Text style={styles.simpleFromOnly}>{change.from}</Text>
-                                )}
-                              </View>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                )}
+            {isLoadingMore && (
+              <View style={styles.progressiveLoaderContainer}>
+                <ActivityRowSkeleton count={2} />
               </View>
-            );
-          })
+            )}
+
+            {!isLoadingMore && hasMore && onLoadMore && (
+              <TouchableOpacity
+                style={styles.loadMoreButton}
+                onPress={onLoadMore}
+                activeOpacity={0.7}
+              >
+                <Clock size={14} color={THEME.colors.primary} />
+                <Text style={styles.loadMoreButtonText}>
+                  Load older activity ({remainingCount} remaining)
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {!hasMore && history.length > 10 && (
+              <View style={styles.endOfListFooter}>
+                <Text style={styles.endOfListText}>
+                  All {history.length} activity events loaded
+                </Text>
+              </View>
+            )}
+          </>
         )}
       </View>
     </View>
@@ -818,5 +906,37 @@ const styles = StyleSheet.create({
   unknownText: {
     fontSize: 11,
     color: '#9CA3AF',
+  },
+  progressiveLoaderContainer: {
+    paddingVertical: 10,
+  },
+  endOfListFooter: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endOfListText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+    letterSpacing: 0.3,
+  },
+  loadMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    marginVertical: 10,
+    marginHorizontal: 12,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  loadMoreButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.primary,
   },
 });

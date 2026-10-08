@@ -164,6 +164,27 @@ export function ActivityTabSkeleton() {
   );
 }
 
+export function ActivityRowSkeleton({ count = 2 }: { count?: number }) {
+  const pulse = useSkeletonPulse();
+
+  return (
+    <View style={styles.activityList}>
+      {Array.from({ length: count }).map((_, idx) => {
+        const isLast = idx === count - 1;
+        return (
+          <View key={idx} style={[styles.activityRow, !isLast && styles.rowBorder]}>
+            <Animated.View style={[styles.activityIconCircle, { opacity: pulse }]} />
+            <View style={styles.activityTextCol}>
+              <Animated.View style={[styles.activityEventLine, { opacity: pulse }]} />
+              <Animated.View style={[styles.activityTimeLine, { opacity: pulse }]} />
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export function GroupTabSkeleton({
   tab,
 }: {

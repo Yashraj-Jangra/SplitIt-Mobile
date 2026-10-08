@@ -1,6 +1,16 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Group Activity Tab Progressive Loading & Rendering Optimization (`app/groups/[id]/index.tsx`, `GroupHistoryTab.tsx`, `GroupTabSkeleton.tsx`)**:
+  - **Progressive Batch Loading**:
+    - Implemented windowed batching (initial 15 items, +15 on infinite scroll) for group audit activity events matching the expenses tab behavior.
+    - Added `visibleActivityCount` and `isLoadingMoreActivities` state in `app/groups/[id]/index.tsx`, triggered automatically near scroll threshold in `handleScroll`.
+    - Integrated `ActivityRowSkeleton` shimmer placeholders while loading subsequent batches and an accessible fallback button (`Load older activity (X remaining)`).
+    - Added "All X activity events loaded" subtle footer indicator when the entire audit history has been reached.
+  - **Render Performance & Memoization**:
+    - Extracted and memoized `HistoryEventRow` and `AccordionChangeItem` via `React.memo` to eliminate unnecessary re-renders of the large activity timeline.
+    - Isolated expensive `parseComplexChange` calculations inside a memoized hook per change item.
+    - Wrapped `toggleAccordion`, `handleRestore`, `handleDelete`, and `handleNavigateToExpense` in `useCallback` to prevent cascading child re-renders.
 - **Fix Group Tab Transition Ghosting & Add Shimmer Skeletons (`app/groups/[id]/index.tsx`, `GroupTabSkeleton.tsx`, `GroupHistoryTab.tsx`, `group.service.ts`)**:
   - **Eliminated Old Tab Ghosting During Transition**:
     - Identified that `tabContentAnim.setValue(0.7)` was keeping the old tab content visible at 70% opacity while the spring indicator moved, giving the appearance of lingering on the old page while React mounted the new tab.

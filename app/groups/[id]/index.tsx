@@ -70,9 +70,11 @@ export default function GroupDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
 
-  // Progressive infinite scroll for expense records
+  // Progressive infinite scroll for expense and activity records
   const [visibleExpenseCount, setVisibleExpenseCount] = useState(PAGE_SIZE);
   const [isLoadingMoreExpenses, setIsLoadingMoreExpenses] = useState(false);
+  const [visibleActivityCount, setVisibleActivityCount] = useState(PAGE_SIZE);
+  const [isLoadingMoreActivities, setIsLoadingMoreActivities] = useState(false);
 
   const initialTabBarWidth = Dimensions.get('window').width - 20;
   const [tabBarWidth, setTabBarWidth] = useState(initialTabBarWidth);
@@ -132,6 +134,7 @@ export default function GroupDetailScreen() {
     tabIndicatorAnim.setValue(0);
     tabContentAnim.setValue(1);
     setVisibleExpenseCount(PAGE_SIZE);
+    setVisibleActivityCount(PAGE_SIZE);
 
     // 0ms fast tick: hydrate from persistent offline storage
     groupService.getCachedGroupDetails(targetId).then((cached) => {
@@ -146,6 +149,7 @@ export default function GroupDetailScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     setVisibleExpenseCount(PAGE_SIZE);
+    setVisibleActivityCount(PAGE_SIZE);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     loadGroup();
   };
@@ -323,18 +327,31 @@ export default function GroupDetailScreen() {
     }, 180);
   }, [isLoadingMoreExpenses, visibleExpenseCount, expenses.length]);
 
+  const loadMoreActivities = useCallback(() => {
+    const totalActivities = group?.history?.length || 0;
+    if (isLoadingMoreActivities || visibleActivityCount >= totalActivities) return;
+    setIsLoadingMoreActivities(true);
+    setTimeout(() => {
+      setVisibleActivityCount((prev) => Math.min(totalActivities, prev + PAGE_SIZE));
+      setIsLoadingMoreActivities(false);
+    }, 180);
+  }, [isLoadingMoreActivities, visibleActivityCount, group?.history?.length]);
+
   const handleScroll = useCallback(
     (event: any) => {
-      if (activeTab !== 'expenses') return;
       const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
       if (
         contentSize.height > 0 &&
         layoutMeasurement.height + contentOffset.y >= contentSize.height - 350
       ) {
-        loadMoreExpenses();
+        if (activeTab === 'expenses') {
+          loadMoreExpenses();
+        } else if (activeTab === 'activity') {
+          loadMoreActivities();
+        }
       }
     },
-    [activeTab, loadMoreExpenses]
+    [activeTab, loadMoreExpenses, loadMoreActivities]
   );
 
   // Header Animations (100% Native Driver Hardware Accelerated)
@@ -746,6 +763,9 @@ export default function GroupDetailScreen() {
               groupId={targetId}
               history={group?.history}
               loading={loading && (!group?.history || group.history.length === 0)}
+              visibleCount={visibleActivityCount}
+              isLoadingMore={isLoadingMoreActivities}
+              onLoadMore={loadMoreActivities}
               onRefresh={loadGroup}
               onViewExpense={(expenseId) => {
                 router.push({
