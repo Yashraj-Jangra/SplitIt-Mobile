@@ -1086,10 +1086,11 @@ const styles = StyleSheet.create({
 
   // Minimalist Stat Strip (Borderless Typographic Row)
   statStrip: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     backgroundColor: THEME.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.hairline,
@@ -1185,11 +1186,11 @@ const styles = StyleSheet.create({
   // Tab Content Stream
   tabSectionWrapper: {
     width: '100%',
+    paddingHorizontal: 10,
   },
 
   // Content Scroll
   scrollContent: {
-    paddingHorizontal: 10,
     paddingBottom: 100,
   },
   tabSection: {

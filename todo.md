@@ -1,6 +1,10 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Full Width Group Stats Strip Under Hero Banner (`app/groups/[id]/index.tsx`)**:
+  - **Eliminated Outer Inset**: Removed `paddingHorizontal: 10` from `scrollContent` on `<Animated.ScrollView>`, allowing the 3-stat strip (`SPENT`, `YOUR NET`, `BUDGET`) immediately below the hero image banner to extend edge-to-edge full width (100%) flush beneath the banner.
+  - **Preserved Tab Section & In-Flow Alignment**: Added `paddingHorizontal: 10` to `tabSectionWrapper` to keep tab contents (Expenses ledger, Balances, Budget, Activity) padded with the intended 10px margin.
+  - **Fixed Tab Bar Sub-Pixel Match**: Now `tabBarInFlowContainer` and `fixedTabBarContainer` share the exact same 100% width and `paddingHorizontal: 10`, eliminating any horizontal jump or misalignment when scrolling past sticky threshold.
 - **Expense Details Screen Redesign with Abstract Vector Header & Open Editorial Layout**:
   - **Generative Abstract Vector Header (`src/components/expenses/ExpenseAbstractHeader.tsx`)**:
     - Replaced the flat `#26332C` green bar and circular seam badge with an atmospheric SVG canvas featuring generative topographic bezier contours, geometric orbital rings, and dynamic category-colored radial glow.
