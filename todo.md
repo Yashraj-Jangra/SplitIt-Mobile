@@ -1,6 +1,21 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Expense Details Screen Redesign with Abstract Vector Header & Open Editorial Layout**:
+  - **Generative Abstract Vector Header (`src/components/expenses/ExpenseAbstractHeader.tsx`)**:
+    - Replaced the flat `#26332C` green bar and circular seam badge with an atmospheric SVG canvas featuring generative topographic bezier contours, geometric orbital rings, and dynamic category-colored radial glow.
+    - Integrated frosted glass navigation and action buttons (`ArrowLeft`, `Camera`, `Trash2`, `Pencil`).
+    - Designed an illuminated category orb floating at the center of orbital rings with glowing squircle ring and sleek category tag pill.
+  - **Open Editorial Layout ("No Div Design") (`app/expenses/[id].tsx`)**:
+    - Replaced nested boxy cards with high-contrast, editorial typography: massive amount with colored currency symbol and muted cents (`₹450.00`).
+    - Replaced the old bulky notes box with a sleek quote block featuring a category-tinted vertical accent bar.
+    - Designed a quick receipt photo banner card with instant preview access.
+  - **Settlement & Debt Ledger Flow**:
+    - Replaced crude directory-style tree branch lines (`└──`) with a clean continuous hairline timeline ledger.
+    - Payer row highlighted with avatar ring and green `PAID` status pill.
+    - Participant rows connected by timeline dot nodes (`#1CC29F` for user), displaying clean avatar circles, member names with `YOU` badge, and color-coded debt impact pills (`You owe ₹X` in rose, `Gets back ₹X` in emerald).
+  - **Refined Activity & Audit History**:
+    - Hairline-divided timeline with event count pill and inline diff chips.
 - **Fix Duplicate Creation History in Expense Info Details**:
   - **Identified Root Cause**: In `expense.service.ts`'s `getExpenseDetails()`, `parsedLogs` mapped real audit history from `/api/history` (which already included the backend's `expense_created` event), then unconditionally ran `parsedLogs.unshift({...})` for a synthetic creation log. This resulted in two "Created" entries in the history audit timeline.
   - **Audit Log Deduplication Helper (`src/services/expense.service.ts`)**:

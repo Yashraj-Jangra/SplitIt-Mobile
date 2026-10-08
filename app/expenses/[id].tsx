@@ -53,7 +53,8 @@ import { expenseService, ExpenseDetailModel, ExpenseHistoryLog, deduplicateExpen
 import { groupService } from '../../src/services/group.service';
 import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
-import { CategoryIcon } from '../../src/utils/category-icons';
+import { CategoryIcon, getCategoryColor } from '../../src/utils/category-icons';
+import { ExpenseAbstractHeader } from '../../src/components/expenses/ExpenseAbstractHeader';
 import {
   MasterCategory,
   areParticipantsValid,
@@ -305,19 +306,17 @@ export default function ExpenseDetailScreen() {
   if (!loading && !expense && loadError) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.headerBand}>
-          <View style={styles.headerNav}>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.selectionAsync();
-                router.back();
-              }}
-              style={styles.navButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <ArrowLeft size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.headerNav}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.selectionAsync();
+              router.back();
+            }}
+            style={styles.frostedIconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ArrowLeft size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
         <View style={styles.errorStateContainer}>
           <AlertCircle size={44} color={THEME.colors.negative} />
@@ -338,8 +337,8 @@ export default function ExpenseDetailScreen() {
     );
   }
 
-  const title = expense?.title || params.title || 'Dinner';
-  const amount = expense?.amount || parseFloat(params.amount || '450') || 450;
+  const title = expense?.title || params.title || 'Expense';
+  const amount = expense?.amount || parseFloat(params.amount || '0') || 0;
   const currencySymbol = '₹';
   const primaryPayerName =
     expense?.paidByName && expense.paidByName !== 'undefined'
@@ -356,49 +355,81 @@ export default function ExpenseDetailScreen() {
   const rawLogs = expense?.logs || [];
   const logs = useMemo(() => deduplicateExpenseLogs(rawLogs), [rawLogs]);
 
+  const primaryPayer = expense?.payers?.[0] || {
+    userId: expense?.paidById || 'payer',
+    name: primaryPayerName,
+    avatarUrl: expense?.paidByAvatar,
+    amount: amount,
+  };
+
+  const categoryColor = useMemo(
+    () => getCategoryColor(expense?.category?.master, expense?.category?.sub),
+    [expense?.category]
+  );
+
+  const amountParts = useMemo(() => {
+    const fixed = Number(amount || 0).toFixed(2);
+    const [whole, decimal] = fixed.split('.');
+    return { whole, decimal: decimal || '00' };
+  }, [amount]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* Top Banner & Header Bar */}
-      <View style={styles.headerBand}>
+      {/* Top Generative Vector Abstract Header */}
+      <ExpenseAbstractHeader categoryColor={categoryColor} height={215}>
         <View style={styles.headerNav}>
           <TouchableOpacity
             onPress={() => {
               Haptics.selectionAsync();
               router.back();
             }}
-            style={styles.navButton}
+            style={styles.frostedIconButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <ArrowLeft size={22} color="#FFFFFF" />
+            <ArrowLeft size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
+          <View style={styles.navGroupBadge}>
+            <Text style={styles.navGroupText} numberOfLines={1}>
+              {expense?.groupName || 'Expense'}
+            </Text>
+          </View>
+
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={handleReceiptAction} style={styles.navButton}>
-              <Camera size={21} color="#FFFFFF" />
+            <TouchableOpacity onPress={handleReceiptAction} style={styles.frostedIconButton}>
+              <Camera size={18} color={expense?.receiptImageUrl ? '#10B981' : '#FFFFFF'} />
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleDelete} style={styles.navButton}>
-              <Trash2 size={21} color="#FFFFFF" />
+            <TouchableOpacity onPress={handleDelete} style={styles.frostedIconButton}>
+              <Trash2 size={18} color="#EF4444" />
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleOpenEdit} style={styles.navButton}>
-              <Pencil size={21} color="#FFFFFF" />
+            <TouchableOpacity onPress={handleOpenEdit} style={styles.frostedIconButton}>
+              <Pencil size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Circular Category Badge Overlapping Seam */}
-        <View style={styles.categoryBadgeOuter}>
-          <View style={styles.categoryBadgeInner}>
-            <CategoryIcon
-              subCategory={expense?.category?.sub}
-              masterCategory={expense?.category?.master}
-              size={26}
-              color="#09090B"
-            />
+        {/* Floating Illuminated Category Orb with Orbital Rings */}
+        <View style={styles.heroOrbContainer}>
+          <View style={[styles.heroOrbRing, { borderColor: `${categoryColor}45` }]}>
+            <View style={styles.heroOrbInner}>
+              <CategoryIcon
+                subCategory={expense?.category?.sub}
+                masterCategory={expense?.category?.master}
+                size={28}
+                color={categoryColor}
+              />
+            </View>
+          </View>
+          <View style={[styles.categoryTagPill, { borderColor: `${categoryColor}30` }]}>
+            <View style={[styles.categoryTagDot, { backgroundColor: categoryColor }]} />
+            <Text style={styles.categoryTagText}>
+              {expense?.category?.sub || 'Other'}
+            </Text>
           </View>
         </View>
-      </View>
+      </ExpenseAbstractHeader>
 
       <KeyboardAvoidingView
         style={styles.flexOne}
@@ -409,111 +440,182 @@ export default function ExpenseDetailScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero Expense Information */}
+          {/* Hero Typography: Title & High-Impact Amount */}
           <View style={styles.heroSection}>
-            <Text style={styles.heroTitle}>{title}</Text>
-            <Text style={styles.heroAmount}>
-              {currencySymbol}{amount.toFixed(2)}
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              Added by {creatorName} on {dateFormatted}
+            <Text style={styles.heroTitle} numberOfLines={2}>
+              {title}
             </Text>
 
-            <View style={styles.categoryPillRow}>
-              <View style={styles.categoryBadgePill}>
-                <CategoryIcon
-                  subCategory={expense?.category?.sub}
-                  masterCategory={expense?.category?.master}
-                  size={12}
-                  color={THEME.colors.primaryLight}
-                />
-                <Text style={styles.categoryBadgePillText}>
-                  {expense?.category?.sub || 'Other'}
-                  {expense?.category?.master && expense?.category?.master !== 'Uncategorized' && expense?.category?.master !== expense?.category?.sub
-                    ? ` • ${expense?.category?.master}`
-                    : ''}
-                </Text>
-              </View>
+            <View style={styles.heroAmountRow}>
+              <Text style={[styles.heroCurrencySymbol, { color: categoryColor }]}>
+                {currencySymbol}
+              </Text>
+              <Text style={styles.heroAmountWhole}>{amountParts.whole}</Text>
+              <Text style={styles.heroAmountDecimal}>.{amountParts.decimal}</Text>
             </View>
 
+            <View style={styles.heroMetaRow}>
+              <Calendar size={13} color="#71717A" />
+              <Text style={styles.heroMetaText}>{dateFormatted}</Text>
+              <Text style={styles.heroMetaDot}>•</Text>
+              <Text style={styles.heroMetaText}>Added by {creatorName}</Text>
+            </View>
+
+            {/* Editorial Quote Notes (No Div Design) */}
             {expense?.notes ? (
-              <View style={styles.notesBox}>
-                <FileText size={13} color={THEME.colors.textMuted} />
-                <Text style={styles.notesText}>{expense.notes}</Text>
+              <View style={[styles.editorialNotesBlock, { borderLeftColor: categoryColor }]}>
+                <Text style={styles.editorialNotesText}>"{expense.notes}"</Text>
               </View>
             ) : null}
           </View>
 
-          {/* Connected Payer & Split Tree */}
-          <View style={styles.splitTreeCard}>
-            {/* Payer Root Row */}
-            {expense?.payers && expense.payers.length > 1 ? (
-              <View style={styles.multiPayersBlock}>
-                <View style={styles.multiPayersHeader}>
-                  <Users size={13} color={THEME.colors.primary} />
-                  <Text style={styles.multiPayersHeaderText}>
-                    Paid by {expense.payers.length} people
-                  </Text>
+          {/* Quick Receipt Attached Banner (if attached) */}
+          {expense?.receiptImageUrl ? (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleReceiptAction}
+              style={styles.receiptAttachedBanner}
+            >
+              <View style={styles.receiptAttachedLeft}>
+                <View style={styles.receiptIconPill}>
+                  <ImageIcon size={15} color="#10B981" />
                 </View>
+                <View>
+                  <Text style={styles.receiptAttachedTitle}>Receipt Photo Attached</Text>
+                  <Text style={styles.receiptAttachedSubtitle}>Tap to inspect full resolution</Text>
+                </View>
+              </View>
+              <ArrowRight size={15} color="#71717A" />
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Settlement Ledger Flow (Open Editorial Layout - Zero Box Design) */}
+          <View style={styles.ledgerSection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>SETTLEMENT LEDGER</Text>
+              <View style={styles.splitTypeBadge}>
+                <Text style={styles.splitTypeText}>
+                  {expense?.splitType ? expense.splitType.replace('_', ' ') : 'equally'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Payer Primary Ledger Row */}
+            <View style={styles.payerLedgerRow}>
+              <View style={[styles.payerAvatarRing, { borderColor: `${categoryColor}55` }]}>
+                {expense?.paidByAvatar ? (
+                  <Image source={{ uri: expense.paidByAvatar }} style={styles.avatarImg} />
+                ) : (
+                  <Text style={[styles.avatarInitial, { color: categoryColor }]}>
+                    {primaryPayerName.charAt(0).toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.payerInfoCol}>
+                <Text style={styles.payerNameText}>{primaryPayerName}</Text>
+                <Text style={styles.payerSubText}>
+                  {expense?.payers && expense.payers.length > 1
+                    ? `Paid by ${expense.payers.length} people`
+                    : 'Paid full amount'}
+                </Text>
+              </View>
+              <View style={styles.paidBadgePill}>
+                <Check size={11} color="#10B981" />
+                <Text style={styles.paidBadgeText}>PAID {currencySymbol}{amount.toFixed(2)}</Text>
+              </View>
+            </View>
+
+            {/* Multi-Payers Sub-List (if multiple payers) */}
+            {expense?.payers && expense.payers.length > 1 ? (
+              <View style={styles.multiPayersSubList}>
                 {expense.payers.map((p, idx) => (
-                  <View key={p.userId || idx} style={styles.payerRow}>
-                    <View style={styles.payerAvatar}>
-                      {p.avatarUrl ? (
-                        <Image source={{ uri: p.avatarUrl }} style={styles.avatarImg} />
-                      ) : (
-                        <Text style={styles.avatarInitial}>{(p.name || 'M').charAt(0)}</Text>
-                      )}
-                    </View>
-                    <Text style={styles.payerLabel}>
-                      {formatPayerText(p.name, p.amount, currencySymbol)}
+                  <View key={p.userId || idx} style={styles.multiPayerRow}>
+                    <Text style={styles.multiPayerName}>{p.name}</Text>
+                    <Text style={styles.multiPayerAmount}>
+                      {currencySymbol}{Number(p.amount || 0).toFixed(2)}
                     </Text>
                   </View>
                 ))}
               </View>
-            ) : (
-              <View style={styles.payerRow}>
-                <View style={styles.payerAvatar}>
-                  {expense?.paidByAvatar ? (
-                    <Image source={{ uri: expense.paidByAvatar }} style={styles.avatarImg} />
-                  ) : (
-                    <Text style={styles.avatarInitial}>{primaryPayerName.charAt(0)}</Text>
-                  )}
-                </View>
-                <Text style={styles.payerLabel}>
-                  {formatPayerText(primaryPayerName, amount, currencySymbol)}
-                </Text>
-              </View>
-            )}
+            ) : null}
 
-            {/* Tree Branch Container */}
+            {/* Continuous Hairline Ledger connecting to participants */}
             {!hasSplitLoaded || !areParticipantsValid(participants) ? (
               <View style={styles.splitSkeletonBlock}>
                 <View style={styles.splitLoadingNotice}>
                   <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
-                  <Text style={styles.splitLoadingNoticeText}>Loading split...</Text>
+                  <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
                 </View>
                 <SplitBreakdownSkeleton count={3} />
               </View>
             ) : (
-              <View style={styles.treeBranchesWrapper}>
+              <View style={styles.participantsLedgerList}>
                 {participants.map((p, index) => {
                   const isLast = index === participants.length - 1;
+                  const isUser = p.isCurrentUser || p.userId === currentUserId;
                   const owedText = formatParticipantOwedText(p, currencySymbol, groupMembers, currentUserId);
+                  const isPayer = p.userId === (expense?.paidById || primaryPayer.userId);
 
                   return (
-                    <View key={p.userId || index} style={styles.treeBranchRow}>
-                      {/* Visual Branch Line Connector */}
-                      <View style={styles.branchVisual}>
-                        <View style={[styles.branchVerticalLine, isLast && styles.branchVerticalHalf]} />
-                        <View style={styles.branchHorizontalLine} />
+                    <View key={p.userId || index} style={[styles.participantRow, !isLast && styles.participantRowBorder]}>
+                      {/* Timeline Dot Node */}
+                      <View style={styles.timelineNodeCol}>
+                        <View
+                          style={[
+                            styles.timelineDot,
+                            isUser ? { backgroundColor: THEME.colors.primary, borderColor: `${THEME.colors.primary}50` } : null,
+                          ]}
+                        />
+                        {!isLast && <View style={styles.timelineConnectorLine} />}
                       </View>
 
-                      {/* Participant Debt Text */}
-                      <View style={styles.branchContent}>
+                      {/* Participant Avatar */}
+                      <View style={[styles.participantAvatar, isUser && styles.participantAvatarUser]}>
+                        {p.avatarUrl ? (
+                          <Image source={{ uri: p.avatarUrl }} style={styles.avatarImg} />
+                        ) : (
+                          <Text style={[styles.participantAvatarInitial, isUser && { color: THEME.colors.primary }]}>
+                            {(p.name || 'M').charAt(0).toUpperCase()}
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Participant Name & Status */}
+                      <View style={styles.participantNameCol}>
+                        <View style={styles.participantNameRow}>
+                          <Text style={[styles.participantName, isUser && styles.participantNameUser]}>
+                            {p.name}
+                          </Text>
+                          {isUser && (
+                            <View style={styles.youBadge}>
+                              <Text style={styles.youBadgeText}>YOU</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.participantShareDetail}>
+                          Share: {currencySymbol}{Number(p.amountOwed || 0).toFixed(2)}
+                        </Text>
+                      </View>
+
+                      {/* Debt / Impact Pill */}
+                      <View
+                        style={[
+                          styles.debtStatusPill,
+                          isUser && Number(p.amountOwed || 0) > 0 && !isPayer
+                            ? styles.debtPillOwes
+                            : isUser && isPayer
+                            ? styles.debtPillGetsBack
+                            : styles.debtPillNeutral,
+                        ]}
+                      >
                         <Text
                           style={[
-                            styles.branchText,
-                            (p.isCurrentUser || p.userId === currentUserId) && styles.branchTextSelf,
+                            styles.debtStatusText,
+                            isUser && Number(p.amountOwed || 0) > 0 && !isPayer
+                              ? styles.debtTextOwes
+                              : isUser && isPayer
+                              ? styles.debtTextGetsBack
+                              : styles.debtTextNeutral,
                           ]}
                         >
                           {owedText}
@@ -526,10 +628,16 @@ export default function ExpenseDetailScreen() {
             )}
           </View>
 
-          {/* History Audit Logs Section - Matching Website Minimal Hairline Style */}
-          <View style={styles.logsSection}>
-            <View style={styles.historySectionDivider} />
-            <Text style={styles.logsSectionHeader}>History</Text>
+          {/* Activity & History Section */}
+          <View style={styles.historySection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>ACTIVITY & AUDIT LOGS</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>
+                  {logs.length} {logs.length === 1 ? 'event' : 'events'}
+                </Text>
+              </View>
+            </View>
 
             <View style={styles.logsList}>
               {logs.map((log, index) => {
@@ -545,31 +653,31 @@ export default function ExpenseDetailScreen() {
                       <View style={styles.logBadgeContainer}>
                         {isCreated && (
                           <View style={[styles.logTypePill, styles.pillCreated]}>
-                            <Plus size={11} color="#10B981" />
+                            <Plus size={10} color="#10B981" />
                             <Text style={[styles.logTypePillText, { color: '#10B981' }]}>Created</Text>
                           </View>
                         )}
                         {isComment && (
                           <View style={[styles.logTypePill, styles.pillComment]}>
-                            <MessageSquare size={11} color="#60A5FA" />
+                            <MessageSquare size={10} color="#60A5FA" />
                             <Text style={[styles.logTypePillText, { color: '#60A5FA' }]}>Comment</Text>
                           </View>
                         )}
                         {isDeleted && (
                           <View style={[styles.logTypePill, styles.pillDeleted]}>
-                            <Trash2 size={11} color="#EF4444" />
+                            <Trash2 size={10} color="#EF4444" />
                             <Text style={[styles.logTypePillText, { color: '#EF4444' }]}>Deleted</Text>
                           </View>
                         )}
                         {isRestored && (
                           <View style={[styles.logTypePill, styles.pillRestored]}>
-                            <RotateCcw size={11} color="#A855F7" />
+                            <RotateCcw size={10} color="#A855F7" />
                             <Text style={[styles.logTypePillText, { color: '#A855F7' }]}>Restored</Text>
                           </View>
                         )}
                         {!isCreated && !isComment && !isDeleted && !isRestored && (
                           <View style={[styles.logTypePill, styles.pillUpdated]}>
-                            <Pencil size={11} color="#3B82F6" />
+                            <Pencil size={10} color="#3B82F6" />
                             <Text style={[styles.logTypePillText, { color: '#3B82F6' }]}>Updated</Text>
                           </View>
                         )}
@@ -589,7 +697,7 @@ export default function ExpenseDetailScreen() {
                       </View>
                     ) : null}
 
-                    {/* Parsed Granular Changes */}
+                    {/* Granular Changes */}
                     {log.changes && log.changes.length > 0 ? (
                       <View style={styles.changesList}>
                         {log.changes.map((ch, chIdx) => (
@@ -598,22 +706,18 @@ export default function ExpenseDetailScreen() {
                             {ch.type === 'changed' ? (
                               <View style={styles.changeDiffRow}>
                                 <Text style={styles.changeFrom}>{ch.from}</Text>
-                                <ArrowRight size={11} color={THEME.colors.textMuted} />
+                                <ArrowRight size={10} color={THEME.colors.textMuted} />
                                 <Text style={styles.changeTo}>{ch.to}</Text>
                               </View>
                             ) : ch.type === 'added' ? (
                               <View style={styles.changeActionRow}>
-                                <UserPlus size={11} color="#10B981" />
-                                <Text style={styles.changeAddedText}>
-                                  Added {ch.detail}
-                                </Text>
+                                <UserPlus size={10} color="#10B981" />
+                                <Text style={styles.changeAddedText}>Added {ch.detail}</Text>
                               </View>
                             ) : ch.type === 'removed' ? (
                               <View style={styles.changeActionRow}>
-                                <UserMinus size={11} color="#EF4444" />
-                                <Text style={styles.changeRemovedText}>
-                                  Removed {ch.detail}
-                                </Text>
+                                <UserMinus size={10} color="#EF4444" />
+                                <Text style={styles.changeRemovedText}>Removed {ch.detail}</Text>
                               </View>
                             ) : (
                               <Text style={styles.changeGeneric}>{ch.from}</Text>
@@ -654,7 +758,7 @@ export default function ExpenseDetailScreen() {
               {isSendingComment ? (
                 <ActivityIndicator size="small" color="#10B981" />
               ) : (
-                <Send size={18} color={commentInput.trim() ? '#10B981' : THEME.colors.textMuted} />
+                <Send size={16} color={commentInput.trim() ? '#10B981' : THEME.colors.textMuted} />
               )}
             </TouchableOpacity>
           </View>
@@ -704,11 +808,11 @@ export default function ExpenseDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121214',
+    backgroundColor: '#121215',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#121214',
+    backgroundColor: '#121215',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -716,227 +820,434 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Top Accent Header Band
-  headerBand: {
-    backgroundColor: '#26332C', // Sage-tinted dark header band matching reference
-    paddingTop: 8,
-    paddingBottom: 28,
-    position: 'relative',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-  },
+  // Abstract Vector Header & Nav Bar
   headerNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    height: 44,
+    paddingTop: 8,
+    height: 52,
   },
-  navButton: {
-    padding: 6,
+  frostedIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navGroupBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    maxWidth: 200,
+  },
+  navGroupText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E4E4E7',
+    letterSpacing: 0.2,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 10,
   },
 
-  // Overlapping Category Badge
-  categoryBadgeOuter: {
-    position: 'absolute',
-    bottom: -28,
-    left: 24,
-    zIndex: 10,
+  // Floating Illuminated Category Orb with Orbital Rings
+  heroOrbContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 12,
+    paddingBottom: 16,
   },
-  categoryBadgeInner: {
+  heroOrbRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(24, 25, 30, 0.7)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  heroOrbInner: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 2,
-    borderColor: '#121214',
+    backgroundColor: '#18191E',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 8,
+  },
+  categoryTagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(24, 25, 30, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 4.5,
+    borderRadius: THEME.radius.full,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  categoryTagDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  categoryTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F4F4F5',
+    letterSpacing: 0.3,
   },
 
   // Scroll Content
   scrollContent: {
-    paddingTop: 36,
+    paddingTop: 8,
     paddingHorizontal: 20,
-    paddingBottom: 24,
-    gap: 20,
+    paddingBottom: 40,
+    gap: 22,
   },
 
-  // Hero Section
+  // Hero Section - Clean High-Impact Typography
   heroSection: {
-    paddingTop: 4,
-    gap: 4,
+    alignItems: 'center',
+    gap: 6,
   },
   heroTitle: {
     fontSize: 24,
     fontWeight: '800',
     color: '#FFFFFF',
+    textAlign: 'center',
     letterSpacing: -0.3,
+    paddingHorizontal: 16,
   },
-  heroAmount: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  heroSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#9CA3AF',
+  heroAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
     marginTop: 2,
   },
-  categoryPillRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
+  heroCurrencySymbol: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginRight: 2,
   },
-  categoryBadgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+  heroAmountWhole: {
+    fontSize: 44,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1.2,
   },
-  categoryBadgePillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#D1D5DB',
+  heroAmountDecimal: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#A1A1AA',
   },
-  notesBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: THEME.radius.md,
-    marginTop: 8,
-  },
-  notesText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#D1D5DB',
-    lineHeight: 17,
-  },
-
-  // Connected Payer & Split Tree Structure
-  splitTreeCard: {
-    marginTop: 6,
-  },
-  multiPayersBlock: {
-    gap: 8,
-  },
-  multiPayersHeader: {
+  heroMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-    marginBottom: 4,
+    marginTop: 4,
   },
-  multiPayersHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.primaryLight,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+  heroMetaText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#71717A',
   },
-  payerRow: {
+  heroMetaDot: {
+    fontSize: 12,
+    color: '#52525B',
+  },
+  editorialNotesBlock: {
+    borderLeftWidth: 3,
+    paddingLeft: 14,
+    paddingVertical: 4,
+    width: '100%',
+    maxWidth: 360,
+    marginTop: 8,
+  },
+  editorialNotesText: {
+    fontSize: 13,
+    color: '#D4D4D8',
+    lineHeight: 19,
+    fontStyle: 'italic',
+  },
+
+  // Quick Receipt Attached Banner
+  receiptAttachedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  receiptAttachedLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  receiptIconPill: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptAttachedTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  receiptAttachedSubtitle: {
+    fontSize: 11,
+    color: '#71717A',
+    marginTop: 1,
+  },
+
+  // Open Editorial Ledger (Zero Div / Box Design)
+  ledgerSection: {
     gap: 14,
   },
-  payerAvatar: {
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#71717A',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  splitTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  splitTypeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    textTransform: 'capitalize',
+  },
+  payerLedgerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 6,
+  },
+  payerAvatarRing: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#27272A',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#1F2024',
+    overflow: 'hidden',
   },
   avatarImg: {
     width: '100%',
     height: '100%',
   },
   avatarInitial: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
+  },
+  payerInfoCol: {
+    flex: 1,
+    gap: 2,
+  },
+  payerNameText: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  payerLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F9FAFB',
-    letterSpacing: -0.2,
+  payerSubText: {
+    fontSize: 12,
+    color: '#71717A',
   },
-
-  // Tree Branches
-  treeBranchesWrapper: {
-    marginLeft: 21, // Centers branch vertical line precisely below avatar center
-    paddingTop: 2,
-  },
-  treeBranchRow: {
+  paidBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 38,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
   },
-  branchVisual: {
-    width: 20,
-    height: 38,
-    position: 'relative',
-    justifyContent: 'center',
+  paidBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#10B981',
+    letterSpacing: 0.5,
   },
-  branchVerticalLine: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+
+  multiPayersSubList: {
+    paddingLeft: 56,
+    gap: 6,
+    paddingBottom: 4,
   },
-  branchVerticalHalf: {
-    bottom: '50%', // Terminates at horizontal branch for the last participant
+  multiPayerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  branchHorizontalLine: {
-    position: 'absolute',
-    left: 0,
-    width: 16,
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  branchContent: {
-    paddingLeft: 10,
-    flex: 1,
-  },
-  branchText: {
-    fontSize: 14,
-    fontWeight: '500',
+  multiPayerName: {
+    fontSize: 12,
     color: '#9CA3AF',
   },
-  branchTextSelf: {
-    color: '#E5E7EB',
+  multiPayerAmount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D4D4D8',
+  },
+
+  // Participants Ledger List with Timeline Connectors
+  participantsLedgerList: {
+    gap: 0,
+    marginTop: 2,
+  },
+  participantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+  },
+  participantRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  timelineNodeCol: {
+    width: 14,
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  timelineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#3F3F46',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    zIndex: 2,
+  },
+  timelineConnectorLine: {
+    position: 'absolute',
+    top: '50%',
+    bottom: -12,
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  participantAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#27272A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  participantAvatarUser: {
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+  },
+  participantAvatarInitial: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#E4E4E7',
+  },
+  participantNameCol: {
+    flex: 1,
+    gap: 1,
+  },
+  participantNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  participantName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E4E4E7',
+  },
+  participantNameUser: {
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  youBadge: {
+    backgroundColor: 'rgba(28, 194, 159, 0.15)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  youBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: THEME.colors.primary,
+    letterSpacing: 0.5,
+  },
+  participantShareDetail: {
+    fontSize: 11,
+    color: '#71717A',
+  },
+
+  debtStatusPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+  },
+  debtPillOwes: {
+    backgroundColor: 'rgba(251, 113, 133, 0.12)',
+  },
+  debtPillGetsBack: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+  },
+  debtPillNeutral: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  debtStatusText: {
+    fontSize: 11,
     fontWeight: '700',
   },
+  debtTextOwes: {
+    color: '#FB7185',
+  },
+  debtTextGetsBack: {
+    color: '#10B981',
+  },
+  debtTextNeutral: {
+    color: '#9CA3AF',
+  },
+
   splitSkeletonBlock: {
     paddingVertical: 10,
     paddingLeft: 6,
@@ -988,32 +1299,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // Activity & Audit Logs Section
-  logsSection: {
-    marginTop: 18,
-    gap: 4,
+  // Activity & History Section
+  historySection: {
+    gap: 10,
+    marginTop: 8,
   },
-  historySectionDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 6,
+  countBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
-  logsSectionHeader: {
-    fontSize: 13,
+  countBadgeText: {
+    fontSize: 10,
     fontWeight: '700',
-    color: '#9CA3AF',
-    marginBottom: 2,
+    color: '#71717A',
   },
   logsList: {
     gap: 0,
   },
   logRow: {
     paddingVertical: 12,
-    gap: 5,
+    gap: 4,
   },
   logRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   logHeaderRow: {
     flexDirection: 'row',
@@ -1028,24 +1339,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
     borderRadius: THEME.radius.full,
   },
   pillCreated: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
   pillUpdated: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
   },
   pillComment: {
-    backgroundColor: 'rgba(96, 165, 250, 0.15)',
+    backgroundColor: 'rgba(96, 165, 250, 0.12)',
   },
   pillDeleted: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
   },
   pillRestored: {
-    backgroundColor: 'rgba(168, 85, 247, 0.15)',
+    backgroundColor: 'rgba(168, 85, 247, 0.12)',
   },
   logTypePillText: {
     fontSize: 10,
@@ -1053,28 +1364,30 @@ const styles = StyleSheet.create({
   },
   logTimeText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#71717A',
   },
   logActorLine: {
     fontSize: 12,
     color: '#9CA3AF',
+    marginTop: 1,
   },
   logActorName: {
     fontWeight: '700',
-    color: '#E5E7EB',
+    color: '#E4E4E7',
   },
   logDescriptionText: {
     fontSize: 12,
-    color: '#D1D5DB',
+    color: '#D4D4D8',
+    lineHeight: 17,
   },
   commentBubble: {
     backgroundColor: 'rgba(96, 165, 250, 0.08)',
-    borderLeftWidth: 3,
+    borderLeftWidth: 2.5,
     borderLeftColor: '#60A5FA',
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 6,
-    marginTop: 2,
+    marginTop: 4,
   },
   commentBodyText: {
     fontSize: 13,
@@ -1084,9 +1397,7 @@ const styles = StyleSheet.create({
   changesList: {
     gap: 4,
     marginTop: 4,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    paddingTop: 4,
   },
   changeItemRow: {
     flexDirection: 'row',
@@ -1097,7 +1408,7 @@ const styles = StyleSheet.create({
   changeFieldLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#E5E7EB',
+    color: '#A1A1AA',
   },
   changeDiffRow: {
     flexDirection: 'row',
@@ -1138,14 +1449,14 @@ const styles = StyleSheet.create({
   bottomCommentDock: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#121214',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#101114',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1C1C20',
+    backgroundColor: '#1A1B20',
     borderRadius: THEME.radius.full,
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -1159,11 +1470,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   sendButton: {
-    padding: 6,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
+
 
   // Edit Modal Styles
   modalBackdrop: {
