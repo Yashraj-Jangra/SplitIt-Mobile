@@ -533,13 +533,13 @@ export function SplitOptionsModal({
           {/* Splitwise App Bar: ← Back | Adjust split | ✓ Confirm */}
           <View style={styles.appBar}>
             <TouchableOpacity onPress={onClose} style={styles.navActionBtn} activeOpacity={0.7}>
-              <ArrowLeft size={22} color="#FFFFFF" />
+              <ArrowLeft size={22} color={THEME.colors.text} />
             </TouchableOpacity>
 
             <Text style={styles.appBarTitle} numberOfLines={1}>Adjust split</Text>
 
             <TouchableOpacity onPress={handleConfirm} style={styles.navActionBtn} activeOpacity={0.7}>
-              <Check size={24} color="#FFFFFF" strokeWidth={2.5} />
+              <Check size={24} color={THEME.colors.text} strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
 
@@ -657,7 +657,7 @@ export function SplitOptionsModal({
                             onPress={() => toggleSelectMember(p.id)}
                             activeOpacity={0.7}
                           >
-                            {isSelected && <Check size={13} color="#FFFFFF" strokeWidth={3} />}
+                            {isSelected && <Check size={13} color={THEME.colors.text} strokeWidth={3} />}
                           </TouchableOpacity>
 
                           {/* 2. Avatar */}
@@ -742,7 +742,7 @@ export function SplitOptionsModal({
                                       !isSelected && styles.cleanTextInputLocked,
                                     ]}
                                     placeholder="0.00"
-                                    placeholderTextColor="#6B7280"
+                                    placeholderTextColor={THEME.colors.textMuted}
                                     keyboardType="decimal-pad"
                                     value={isSelected ? (exactInputs[p.id] || '') : '0.00'}
                                     editable={isSelected}
@@ -764,7 +764,7 @@ export function SplitOptionsModal({
                                       !isSelected && styles.cleanTextInputLocked,
                                     ]}
                                     placeholder="0.00"
-                                    placeholderTextColor="#6B7280"
+                                    placeholderTextColor={THEME.colors.textMuted}
                                     keyboardType="decimal-pad"
                                     value={isSelected ? (percentageInputs[p.id] || '') : '0.00'}
                                     editable={isSelected}
@@ -803,7 +803,7 @@ export function SplitOptionsModal({
                                       }));
                                     }}
                                   >
-                                    <Minus size={13} color={isSelected ? '#FFFFFF' : '#6B7280'} />
+                                    <Minus size={13} color={isSelected ? THEME.colors.text : THEME.colors.textMuted} />
                                   </TouchableOpacity>
 
                                   <Text
@@ -830,7 +830,7 @@ export function SplitOptionsModal({
                                       }));
                                     }}
                                   >
-                                    <Plus size={13} color={isSelected ? '#FFFFFF' : '#6B7280'} />
+                                    <Plus size={13} color={isSelected ? THEME.colors.text : THEME.colors.textMuted} />
                                   </TouchableOpacity>
                                 </View>
                               )}
@@ -849,7 +849,7 @@ export function SplitOptionsModal({
           <View style={styles.splitwiseBottomBar}>
             {errorMessage && (
               <View style={styles.errorStrip}>
-                <AlertCircle size={13} color="#F43F5E" />
+                <AlertCircle size={13} color={THEME.colors.negative} />
                 <Text style={styles.errorStripText}>{errorMessage}</Text>
               </View>
             )}
@@ -931,7 +931,7 @@ export function SplitOptionsModal({
                   ]}
                 >
                   {selectedCount === items.length && (
-                    <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                    <Check size={14} color={THEME.colors.text} strokeWidth={3} />
                   )}
                 </View>
               </TouchableOpacity>
@@ -955,8 +955,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: THEME.spacing.lg,
+    paddingVertical: THEME.spacing.md,
   },
   navActionBtn: {
     padding: 6,
@@ -965,16 +965,16 @@ const styles = StyleSheet.create({
   },
   appBarTitle: {
     flex: 1,
-    marginLeft: 12,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    marginLeft: THEME.spacing.md,
+    fontSize: THEME.typography.size.title,
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.text,
     letterSpacing: -0.2,
     textAlign: 'left',
   },
   tabBarContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: THEME.colors.hairline,
     position: 'relative',
   },
   tabRow: {
@@ -983,22 +983,22 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: THEME.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#9CA3AF',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.textSecondary,
   },
   tabLabelActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: THEME.colors.text,
+    fontWeight: THEME.typography.weight.bold,
   },
   tabUnderline: {
     height: 3,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.text,
     borderRadius: 1.5,
     position: 'absolute',
     bottom: 0,
@@ -1011,32 +1011,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   verticalListContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
+    paddingHorizontal: THEME.spacing.lg,
+    paddingTop: THEME.spacing.md,
+    paddingBottom: THEME.spacing['2xl'],
   },
   modeHeaderBanner: {
-    marginBottom: 16,
+    marginBottom: THEME.spacing.lg,
     paddingHorizontal: 4,
   },
   modeBannerTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.text,
     marginBottom: 3,
   },
   modeBannerSubtitle: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     lineHeight: 18,
   },
   participantRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: THEME.spacing.md,
     paddingVertical: 10,
     marginVertical: 3,
-    borderRadius: 14,
+    borderRadius: THEME.radius.lg - 2,
     borderWidth: 1,
     borderColor: 'transparent',
     backgroundColor: 'transparent',
@@ -1049,22 +1049,22 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#6B7280',
+    borderColor: THEME.colors.textMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: THEME.spacing.md,
   },
   squareCheckboxChecked: {
-    backgroundColor: '#1CC29F',
-    borderColor: '#1CC29F',
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
   },
   avatarWrap: {
     width: 38,
     height: 38,
     borderRadius: 19,
     overflow: 'hidden',
-    backgroundColor: '#2A2B2E',
-    marginRight: 12,
+    backgroundColor: THEME.colors.surfacePill,
+    marginRight: THEME.spacing.md,
   },
   avatarImg: {
     width: '100%',
@@ -1074,12 +1074,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2A2B2E',
+    backgroundColor: THEME.colors.surfacePill,
   },
   avatarInitial: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.text,
   },
   memberInfo: {
     flex: 1,
@@ -1087,26 +1087,26 @@ const styles = StyleSheet.create({
   },
   memberName: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.text,
   },
   memberNameMuted: {
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   memberSubline: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     marginTop: 2,
   },
   memberSublineHighlight: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#1CC29F',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.primary,
     marginTop: 2,
   },
   memberSublineMuted: {
     fontSize: 12,
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
     marginTop: 2,
   },
   equalRightStatus: {
@@ -1115,13 +1115,13 @@ const styles = StyleSheet.create({
   },
   equalShareText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#1CC29F',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.primary,
   },
   equalShareTextMuted: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.textMuted,
   },
   inputWrap: {
     marginLeft: 8,
@@ -1130,85 +1130,85 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1.5,
-    borderBottomColor: '#1CC29F',
+    borderBottomColor: THEME.colors.primary,
     paddingHorizontal: 4,
     paddingVertical: 4,
     minWidth: 85,
   },
   exactInputBoxLocked: {
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: THEME.colors.hairlineLight,
     opacity: 0.5,
   },
   currencyPrefix: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#1CC29F',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.primary,
     marginRight: 4,
   },
   currencyPrefixLocked: {
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   percentSuffix: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#1CC29F',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.primary,
     marginLeft: 4,
   },
   percentSuffixLocked: {
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   cleanTextInput: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.text,
     padding: 0,
     textAlign: 'right',
   },
   cleanTextInputLocked: {
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   stepperWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#222427',
-    borderRadius: 8,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: THEME.radius.sm,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: THEME.colors.hairlineLight,
     height: 34,
     paddingHorizontal: 4,
     gap: 8,
   },
   stepperWrapLocked: {
     opacity: 0.4,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: THEME.colors.hairline,
   },
   stepperActionBtn: {
     width: 26,
     height: 26,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: THEME.radius.xs,
+    backgroundColor: THEME.colors.hairlineLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepperActionBtnDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: THEME.colors.skeleton.surface,
   },
   stepperCountText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.text,
     minWidth: 18,
     textAlign: 'center',
   },
   stepperCountTextLocked: {
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   splitwiseBottomBar: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: THEME.colors.hairline,
     backgroundColor: THEME.colors.background,
-    paddingHorizontal: 20,
+    paddingHorizontal: THEME.spacing.xl,
     paddingVertical: 14,
   },
   errorStrip: {
@@ -1219,8 +1219,8 @@ const styles = StyleSheet.create({
   },
   errorStripText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#F43F5E',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.negative,
   },
   bottomStatRow: {
     flexDirection: 'row',
@@ -1232,25 +1232,25 @@ const styles = StyleSheet.create({
   },
   bottomMainStat: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.text,
   },
   bottomSubStat: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: THEME.typography.weight.semibold,
     marginTop: 2,
   },
   textMint: {
-    color: '#1CC29F',
+    color: THEME.colors.primary,
   },
   textWarning: {
-    color: '#F59E0B',
+    color: THEME.colors.warning,
   },
   bottomDivider: {
     width: 1,
     height: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginHorizontal: 16,
+    backgroundColor: THEME.colors.hairlineLight,
+    marginHorizontal: THEME.spacing.lg,
   },
   allToggleBtn: {
     flexDirection: 'row',
@@ -1261,7 +1261,7 @@ const styles = StyleSheet.create({
   },
   allToggleLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.text,
   },
 });

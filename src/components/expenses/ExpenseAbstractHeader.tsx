@@ -11,6 +11,7 @@ import Svg, {
   Ellipse,
   G,
 } from 'react-native-svg';
+import { THEME } from '../../constants/theme';
 
 interface ExpenseAbstractHeaderProps {
   categoryColor: string;
@@ -26,7 +27,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
  * Uses harmonious bezier contours, ambient category glow, and geometric orbital rings.
  */
 export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
-  categoryColor = '#1CC29F',
+  categoryColor = THEME.colors.primary,
   height = 230,
   style,
   children,
@@ -47,9 +48,9 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
         <Defs>
           {/* Base Obsidian Charcoal Gradient */}
           <LinearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="#17181D" stopOpacity="1" />
-            <Stop offset="50%" stopColor="#131417" stopOpacity="1" />
-            <Stop offset="100%" stopColor="#101114" stopOpacity="1" />
+            <Stop offset="0%" stopColor={THEME.colors.surfaceSubtle} stopOpacity="1" />
+            <Stop offset="50%" stopColor={THEME.colors.background} stopOpacity="1" />
+            <Stop offset="100%" stopColor={THEME.colors.background} stopOpacity="1" />
           </LinearGradient>
 
           {/* Dynamic Ambient Category Glow */}
@@ -57,7 +58,7 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
             <Stop offset="0%" stopColor={categoryColor} stopOpacity="0.36" />
             <Stop offset="35%" stopColor={categoryColor} stopOpacity="0.14" />
             <Stop offset="75%" stopColor={categoryColor} stopOpacity="0.03" />
-            <Stop offset="100%" stopColor="#101114" stopOpacity="0" />
+            <Stop offset="100%" stopColor={THEME.colors.background} stopOpacity="0" />
           </RadialGradient>
 
           {/* Wave Gradient 1 - Category Tinted */}
@@ -70,17 +71,17 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
 
           {/* Wave Gradient 2 - Silver Light Tinted */}
           <LinearGradient id="waveGradSilver" x1="0" y1="0" x2="1" y2="0">
-            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.02" />
-            <Stop offset="40%" stopColor="#FFFFFF" stopOpacity="0.22" />
-            <Stop offset="70%" stopColor="#FFFFFF" stopOpacity="0.18" />
-            <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.02" />
+            <Stop offset="0%" stopColor={THEME.colors.palette.white} stopOpacity="0.02" />
+            <Stop offset="40%" stopColor={THEME.colors.palette.white} stopOpacity="0.22" />
+            <Stop offset="70%" stopColor={THEME.colors.palette.white} stopOpacity="0.18" />
+            <Stop offset="100%" stopColor={THEME.colors.palette.white} stopOpacity="0.02" />
           </LinearGradient>
 
           {/* Seamless Bottom Vignette Fade into Screen Canvas */}
           <LinearGradient id="bottomVignette" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="#101114" stopOpacity="0" />
-            <Stop offset="65%" stopColor="#101114" stopOpacity="0.5" />
-            <Stop offset="100%" stopColor="#101114" stopOpacity="1" />
+            <Stop offset="0%" stopColor={THEME.colors.background} stopOpacity="0" />
+            <Stop offset="65%" stopColor={THEME.colors.background} stopOpacity="0.5" />
+            <Stop offset="100%" stopColor={THEME.colors.background} stopOpacity="1" />
           </LinearGradient>
         </Defs>
 
@@ -165,7 +166,7 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
             rx="140"
             ry="112"
             fill="none"
-            stroke="#FFFFFF"
+            stroke={THEME.colors.palette.white}
             strokeWidth="0.6"
             strokeDasharray="4 8"
             opacity="0.12"
@@ -186,11 +187,11 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
         <G>
           <Circle cx="64" cy="42" r="2.2" fill={categoryColor} opacity="0.65" />
           <Circle cx="145" cy="112" r="1.8" fill={categoryColor} opacity="0.75" />
-          <Circle cx="255" cy="74" r="2.0" fill="#FFFFFF" opacity="0.8" />
+          <Circle cx="255" cy="74" r="2.0" fill={THEME.colors.palette.white} opacity="0.8" />
           <Circle cx="330" cy="40" r="2.4" fill={categoryColor} opacity="0.55" />
-          <Circle cx="100" cy="142" r="1.5" fill="#FFFFFF" opacity="0.45" />
+          <Circle cx="100" cy="142" r="1.5" fill={THEME.colors.palette.white} opacity="0.45" />
           <Circle cx="295" cy="158" r="2.2" fill={categoryColor} opacity="0.5" />
-          <Circle cx="365" cy="105" r="1.6" fill="#FFFFFF" opacity="0.35" />
+          <Circle cx="365" cy="105" r="1.6" fill={THEME.colors.palette.white} opacity="0.35" />
           <Circle cx="30" cy="180" r="1.8" fill={categoryColor} opacity="0.4" />
         </G>
 

@@ -131,13 +131,13 @@ export function formatExpenseAmounts(props: ExpenseImpactProps) {
 
   if (props.userShareText) {
     shareText = props.userShareText;
-    shareColor = status === 'lent' ? '#22C55E' : status === 'owe' ? '#EF4444' : THEME.colors.textMuted;
+    shareColor = status === 'lent' ? THEME.colors.success : status === 'owe' ? THEME.colors.negative : THEME.colors.textMuted;
   } else if (status === 'lent') {
     shareText = `You lent ${formatMoney(net, currencySymbol)}`;
-    shareColor = '#22C55E'; // Website Tailwind text-green-500
+    shareColor = THEME.colors.success;
   } else if (status === 'owe') {
     shareText = `You owe ${formatMoney(net, currencySymbol)}`;
-    shareColor = '#EF4444'; // Website Tailwind text-red-500
+    shareColor = THEME.colors.negative;
   } else if (status === 'no_balance') {
     shareText = 'no balance';
     shareColor = THEME.colors.textMuted;
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   totalAmount: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     letterSpacing: -0.2,
     textAlign: 'right',
   },

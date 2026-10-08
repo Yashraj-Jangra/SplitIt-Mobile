@@ -87,33 +87,33 @@ function formatExpenseDate(dateInput: any): string | null {
 function renderEventIcon(event: HistoryEventItem) {
   const isAi = event.eventType === 'budget_updated' && Boolean(event.data?.aiInitiated);
   if (isAi) {
-    return <Bot size={15} color="#A855F7" />;
+    return <Bot size={15} color={THEME.colors.ai} />;
   }
 
   switch (event.eventType) {
     case 'expense_created':
     case 'group_created':
-      return <Plus size={15} color="#10B981" />;
+      return <Plus size={15} color={THEME.colors.success} />;
     case 'settlement_created':
-      return <Handshake size={15} color="#10B981" />;
+      return <Handshake size={15} color={THEME.colors.success} />;
     case 'member_added':
-      return <UserPlus size={15} color="#10B981" />;
+      return <UserPlus size={15} color={THEME.colors.success} />;
     case 'expense_updated':
     case 'settlement_updated':
     case 'group_updated':
-      return <Pencil size={15} color="#3B82F6" />;
+      return <Pencil size={15} color={THEME.colors.info} />;
     case 'budget_updated':
-      return <Wallet size={15} color="#10B981" />;
+      return <Wallet size={15} color={THEME.colors.success} />;
     case 'expense_deleted':
     case 'settlement_deleted':
-      return <Trash2 size={15} color="#EF4444" />;
+      return <Trash2 size={15} color={THEME.colors.critical} />;
     case 'member_removed':
-      return <UserMinus size={15} color="#EF4444" />;
+      return <UserMinus size={15} color={THEME.colors.critical} />;
     case 'expense_restored':
     case 'settlement_restored':
-      return <RotateCcw size={15} color="#A855F7" />;
+      return <RotateCcw size={15} color={THEME.colors.palette.purple} />;
     default:
-      return <Clock size={15} color="#9CA3AF" />;
+      return <Clock size={15} color={THEME.colors.textSecondary} />;
   }
 }
 
@@ -124,14 +124,14 @@ function ComplexChangeDetailRow({ change }: { change: ParsedChange }) {
         <View style={styles.complexChangedRow}>
           <Text style={styles.complexName}>{change.name}: </Text>
           <Text style={styles.diffFromStrikethrough}>{change.from}</Text>
-          <ArrowRight size={11} color="#6B7280" />
+          <ArrowRight size={11} color={THEME.colors.textMuted} />
           <Text style={styles.diffToGreen}>{change.to}</Text>
         </View>
       );
     case 'added':
       return (
         <View style={styles.complexActionRow}>
-          <UserPlus size={12} color="#10B981" />
+          <UserPlus size={12} color={THEME.colors.success} />
           <Text style={styles.addedText}>
             Added <Text style={styles.complexName}>{change.name}</Text> ({change.detail})
           </Text>
@@ -140,7 +140,7 @@ function ComplexChangeDetailRow({ change }: { change: ParsedChange }) {
     case 'removed':
       return (
         <View style={styles.complexActionRow}>
-          <UserMinus size={12} color="#EF4444" />
+          <UserMinus size={12} color={THEME.colors.critical} />
           <Text style={styles.removedText}>
             Removed <Text style={styles.complexName}>{change.name}</Text> ({change.detail})
           </Text>
@@ -149,7 +149,7 @@ function ComplexChangeDetailRow({ change }: { change: ParsedChange }) {
     default:
       return (
         <View style={styles.complexActionRow}>
-          <ArrowRight size={11} color="#6B7280" />
+          <ArrowRight size={11} color={THEME.colors.textMuted} />
           <Text style={styles.unknownText}>{change.text}</Text>
         </View>
       );
@@ -166,7 +166,7 @@ const AccordionChangeItem = React.memo(function AccordionChangeItem({
   if (change.type === 'added') {
     return (
       <View style={styles.changeActionRow}>
-        <Plus size={12} color="#10B981" />
+        <Plus size={12} color={THEME.colors.success} />
         <Text style={styles.changeAddedText}>
           Added <Text style={styles.changeFieldLabel}>{change.field}:</Text>{' '}
           {change.to}
@@ -178,7 +178,7 @@ const AccordionChangeItem = React.memo(function AccordionChangeItem({
   if (change.type === 'removed') {
     return (
       <View style={styles.changeActionRow}>
-        <Trash2 size={12} color="#EF4444" />
+        <Trash2 size={12} color={THEME.colors.critical} />
         <Text style={styles.changeRemovedText}>
           Removed <Text style={styles.changeFieldLabel}>{change.field}:</Text>{' '}
           was {change.from}
@@ -206,7 +206,7 @@ const AccordionChangeItem = React.memo(function AccordionChangeItem({
       ) : change.to ? (
         <View style={styles.simpleDiffRow}>
           <Text style={styles.diffFromStrikethrough}>{change.from}</Text>
-          <ArrowRight size={11} color="#6B7280" />
+          <ArrowRight size={11} color={THEME.colors.textMuted} />
           <Text style={styles.diffToGreen}>{change.to}</Text>
         </View>
       ) : (
@@ -302,7 +302,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
 
             {isAiBudget && (
               <View style={styles.aiBadgePill}>
-                <Bot size={10} color="#C084FC" />
+                <Bot size={10} color={THEME.colors.aiLight} />
                 <Text style={styles.aiBadgeText}>SplitIt AI</Text>
               </View>
             )}
@@ -327,7 +327,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
               activeOpacity={0.7}
             >
-              <ArrowRight size={15} color="#D1D5DB" />
+              <ArrowRight size={15} color={THEME.colors.textSecondary} />
             </TouchableOpacity>
           )}
 
@@ -341,9 +341,9 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               activeOpacity={0.7}
             >
               {isItemRestoring ? (
-                <ActivityIndicator size="small" color="#A855F7" />
+                <ActivityIndicator size="small" color={THEME.colors.palette.purple} />
               ) : (
-                <RotateCcw size={14} color="#A855F7" />
+                <RotateCcw size={14} color={THEME.colors.palette.purple} />
               )}
             </TouchableOpacity>
           )}
@@ -358,9 +358,9 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               activeOpacity={0.7}
             >
               {isItemDeleting ? (
-                <ActivityIndicator size="small" color="#EF4444" />
+                <ActivityIndicator size="small" color={THEME.colors.critical} />
               ) : (
-                <Trash2 size={14} color="#EF4444" />
+                <Trash2 size={14} color={THEME.colors.critical} />
               )}
             </TouchableOpacity>
           )}
@@ -380,9 +380,9 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               {event.data.changes.length > 1 ? 's' : ''})
             </Text>
             {isExpanded ? (
-              <ChevronUp size={12} color="#9CA3AF" />
+              <ChevronUp size={12} color={THEME.colors.textSecondary} />
             ) : (
-              <ChevronDown size={12} color="#9CA3AF" />
+              <ChevronDown size={12} color={THEME.colors.textSecondary} />
             )}
           </TouchableOpacity>
 
@@ -392,7 +392,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               {event.eventType === 'budget_updated' &&
                 event.data?.monthlyBudgetUnchanged && (
                   <View style={styles.budgetUnchangedBanner}>
-                    <CheckCircle2 size={13} color="#10B981" />
+                    <CheckCircle2 size={13} color={THEME.colors.success} />
                     <Text style={styles.budgetUnchangedBannerText}>
                       Total monthly budget was not changed (₹
                       {(event.data?.currentMonthlyLimit || 0).toLocaleString('en-IN')})
@@ -404,7 +404,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               {event.eventType === 'budget_updated' &&
                 event.data?.newStatus === 'disabled' && (
                   <View style={styles.budgetDisabledBanner}>
-                    <AlertTriangle size={13} color="#F59E0B" />
+                    <AlertTriangle size={13} color={THEME.colors.warning} />
                     <Text style={styles.budgetDisabledBannerText}>
                       Group budget tracking has been disabled.
                     </Text>
@@ -552,7 +552,7 @@ export function GroupHistoryTab({
       {/* Header matching website Group History card header */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderTitleRow}>
-          <HistoryIcon size={18} color="#10B981" />
+          <HistoryIcon size={18} color={THEME.colors.success} />
           <Text style={styles.cardTitle}>Group History</Text>
         </View>
         <Text style={styles.cardDescription}>
@@ -566,7 +566,7 @@ export function GroupHistoryTab({
           <ActivityTabSkeleton />
         ) : history.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <HistoryIcon size={36} color="#6B7280" />
+            <HistoryIcon size={36} color={THEME.colors.textMuted} />
             <Text style={styles.emptyTitle}>No history recorded yet for this group.</Text>
           </View>
         ) : (
@@ -630,62 +630,62 @@ export function GroupHistoryTab({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: '#18181B',
-    borderRadius: 16,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: THEME.colors.border,
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: THEME.spacing.xl,
   },
   cardHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: THEME.spacing.lg,
+    paddingTop: THEME.spacing.lg,
+    paddingBottom: THEME.spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: THEME.colors.hairline,
     gap: 3,
   },
   cardHeaderTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: THEME.spacing.sm,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: THEME.typography.size.subtitle,
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.text,
     letterSpacing: -0.2,
   },
   cardDescription: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: THEME.typography.size.caption,
+    color: THEME.colors.textSecondary,
   },
   listContainer: {
     paddingVertical: 2,
   },
   emptyContainer: {
     paddingVertical: 36,
-    paddingHorizontal: 20,
+    paddingHorizontal: THEME.spacing.xl,
     alignItems: 'center',
     gap: 10,
   },
   emptyTitle: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     textAlign: 'center',
   },
   eventRow: {
-    paddingHorizontal: 16,
+    paddingHorizontal: THEME.spacing.lg,
     paddingVertical: 13,
   },
   eventRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: THEME.colors.hairline,
   },
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: THEME.spacing.md,
   },
   iconSlot: {
     width: 24,
@@ -704,24 +704,24 @@ const styles = StyleSheet.create({
   },
   eventDescriptionText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#F3F4F6',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.text,
     lineHeight: 18,
   },
   strikethroughText: {
     textDecorationLine: 'line-through',
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   expenseDateSuffix: {
     fontSize: 11,
-    fontWeight: '400',
-    color: '#9CA3AF',
+    fontWeight: THEME.typography.weight.normal,
+    color: THEME.colors.textSecondary,
   },
   aiBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(168, 85, 247, 0.12)',
+    backgroundColor: THEME.colors.aiMuted,
     borderColor: 'rgba(168, 85, 247, 0.25)',
     borderWidth: 1,
     borderRadius: THEME.radius.full,
@@ -730,17 +730,17 @@ const styles = StyleSheet.create({
   },
   aiBadgeText: {
     fontSize: 9,
-    fontWeight: '700',
-    color: '#C084FC',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.aiLight,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   timestampText: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   exactTimeSuffix: {
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   actionButtonsRow: {
     flexDirection: 'row',
@@ -750,30 +750,30 @@ const styles = StyleSheet.create({
   iconActionBtn: {
     width: 30,
     height: 30,
-    borderRadius: 8,
+    borderRadius: THEME.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: THEME.colors.skeleton.surface,
   },
   restoreActionBtn: {
     width: 30,
     height: 30,
-    borderRadius: 8,
+    borderRadius: THEME.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(168, 85, 247, 0.12)',
+    backgroundColor: THEME.colors.aiMuted,
     borderWidth: 1,
     borderColor: 'rgba(168, 85, 247, 0.25)',
   },
   deleteActionBtn: {
     width: 30,
     height: 30,
-    borderRadius: 8,
+    borderRadius: THEME.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: THEME.colors.dangerMuted,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderColor: 'rgba(244, 63, 94, 0.25)',
   },
   detailsContainer: {
     marginTop: 6,
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
   },
   accordionToggleText: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   accordionContent: {
     marginTop: 6,
@@ -797,34 +797,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: THEME.colors.successMuted,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: THEME.colors.successBorder,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    borderRadius: 8,
+    borderRadius: THEME.radius.sm,
   },
   budgetUnchangedBannerText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#10B981',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.success,
     flex: 1,
   },
   budgetDisabledBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: THEME.colors.warningMuted,
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.2)',
     paddingHorizontal: 10,
     paddingVertical: 7,
-    borderRadius: 8,
+    borderRadius: THEME.radius.sm,
   },
   budgetDisabledBannerText: {
     fontSize: 11,
-    fontWeight: '500',
-    color: '#F59E0B',
+    fontWeight: THEME.typography.weight.medium,
+    color: THEME.colors.warning,
     flex: 1,
   },
   changesList: {
@@ -837,19 +837,19 @@ const styles = StyleSheet.create({
   },
   changeAddedText: {
     fontSize: 11,
-    color: '#10B981',
+    color: THEME.colors.success,
   },
   changeRemovedText: {
     fontSize: 11,
-    color: '#EF4444',
+    color: THEME.colors.critical,
   },
   changeItemBlock: {
     gap: 3,
   },
   changeFieldLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#E5E7EB',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.text,
   },
   simpleDiffRow: {
     flexDirection: 'row',
@@ -859,21 +859,21 @@ const styles = StyleSheet.create({
   },
   diffFromStrikethrough: {
     fontSize: 11,
-    color: '#EF4444',
+    color: THEME.colors.critical,
     textDecorationLine: 'line-through',
   },
   diffToGreen: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#10B981',
+    fontWeight: THEME.typography.weight.bold,
+    color: THEME.colors.success,
   },
   simpleFromOnly: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   complexNestedBlock: {
     borderLeftWidth: 2,
-    borderLeftColor: 'rgba(255, 255, 255, 0.1)',
+    borderLeftColor: THEME.colors.hairlineLight,
     paddingLeft: 8,
     marginLeft: 2,
     gap: 4,
@@ -887,8 +887,8 @@ const styles = StyleSheet.create({
   },
   complexName: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#D1D5DB',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.textSecondary,
   },
   complexActionRow: {
     flexDirection: 'row',
@@ -897,15 +897,15 @@ const styles = StyleSheet.create({
   },
   addedText: {
     fontSize: 11,
-    color: '#10B981',
+    color: THEME.colors.success,
   },
   removedText: {
     fontSize: 11,
-    color: '#EF4444',
+    color: THEME.colors.critical,
   },
   unknownText: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   progressiveLoaderContainer: {
     paddingVertical: 10,
@@ -917,8 +917,8 @@ const styles = StyleSheet.create({
   },
   endOfListText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.textMuted,
     letterSpacing: 0.3,
   },
   loadMoreButton: {
@@ -930,13 +930,13 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     marginHorizontal: 12,
     borderRadius: THEME.radius.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: THEME.colors.skeleton.surface,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
   },
   loadMoreButtonText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: THEME.typography.weight.semibold,
     color: THEME.colors.primary,
   },
 });

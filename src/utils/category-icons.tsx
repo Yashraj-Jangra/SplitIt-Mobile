@@ -26,6 +26,7 @@ import {
   Settings,
 } from 'lucide-react-native';
 import { settingsService } from '../services/settings.service';
+import { THEME } from '../constants/theme';
 
 /**
  * Maps standard icon strings stored in category definitions (matching website)
@@ -88,19 +89,19 @@ export const MASTER_CATEGORY_ICONS: Record<
  * Exact parity with the website theme.
  */
 export const MASTER_CATEGORY_COLORS: Record<string, string> = {
-  'Food and Drink': '#3B82F6',
-  'Transportation': '#8B5CF6',
-  'Housing': '#10B981',
-  'Utilities': '#F59E0B',
-  'Entertainment': '#EC4899',
-  'Shopping': '#06B6D4',
-  'Health and Wellness': '#EF4444',
-  'Personal Care': '#A855F7',
-  'Education': '#6366F1',
-  'Gifts and Donations': '#EAB308',
-  'Travel': '#14B8A6',
-  'Uncategorized': '#64748B',
-  'Other': '#64748B',
+  'Food and Drink': THEME.colors.categories.food,
+  'Transportation': THEME.colors.categories.transportation,
+  'Housing': THEME.colors.categories.housing,
+  'Utilities': THEME.colors.categories.utilities,
+  'Entertainment': THEME.colors.categories.entertainment,
+  'Shopping': THEME.colors.categories.shopping,
+  'Health and Wellness': THEME.colors.categories.health,
+  'Personal Care': THEME.colors.categories.personal,
+  'Education': THEME.colors.categories.education,
+  'Gifts and Donations': THEME.colors.categories.gifts,
+  'Travel': THEME.colors.categories.travel,
+  'Uncategorized': THEME.colors.categories.uncategorized,
+  'Other': THEME.colors.categories.other,
 };
 
 /**
@@ -133,7 +134,7 @@ export function getCategoryIconComponent(
 export function getCategoryColor(masterCategory?: string, subCategory?: string): string {
   const master =
     masterCategory || (subCategory ? settingsService.getMasterCategory(subCategory) : 'Uncategorized');
-  return MASTER_CATEGORY_COLORS[master] || '#64748B';
+  return MASTER_CATEGORY_COLORS[master] || THEME.colors.categories.other;
 }
 
 export interface CategoryIconProps {
@@ -148,7 +149,7 @@ export const CategoryIcon: React.FC<CategoryIconProps> = ({
   subCategory,
   masterCategory,
   size = 18,
-  color = '#FFFFFF',
+  color = THEME.colors.text,
   strokeWidth = 2,
 }) => {
   const IconComponent = getCategoryIconComponent(subCategory, masterCategory);

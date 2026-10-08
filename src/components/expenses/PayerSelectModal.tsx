@@ -339,13 +339,13 @@ export function PayerSelectModal({
           {/* Top Bar: ← Back | Who paid? | ✓ Confirm */}
           <View style={styles.appBar}>
             <TouchableOpacity onPress={onClose} style={styles.navActionBtn} activeOpacity={0.7}>
-              <ArrowLeft size={22} color="#FFFFFF" />
+              <ArrowLeft size={22} color={THEME.colors.text} />
             </TouchableOpacity>
 
             <Text style={styles.appBarTitle} numberOfLines={1}>Who paid?</Text>
 
             <TouchableOpacity onPress={handleConfirm} style={styles.navActionBtn} activeOpacity={0.7}>
-              <Check size={24} color="#FFFFFF" strokeWidth={2.5} />
+              <Check size={24} color={THEME.colors.text} strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
 
@@ -432,7 +432,7 @@ export function PayerSelectModal({
 
                       {isSelected && (
                         <View style={styles.checkIndicator}>
-                          <Check size={18} color="#1CC29F" strokeWidth={2.5} />
+                          <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />
                         </View>
                       )}
                     </TouchableOpacity>
@@ -450,7 +450,7 @@ export function PayerSelectModal({
                   onPress={handleSplitPaidEqually}
                   activeOpacity={0.7}
                 >
-                  <Sparkles size={12} color="#1CC29F" />
+                  <Sparkles size={12} color={THEME.colors.primary} />
                   <Text style={styles.splitEquallyText}>Split paid equally</Text>
                 </TouchableOpacity>
 
@@ -473,7 +473,7 @@ export function PayerSelectModal({
                       ]}
                     >
                       {selectedPayersCount === members.length && (
-                        <Check size={11} color="#FFFFFF" strokeWidth={3} />
+                        <Check size={11} color={THEME.colors.text} strokeWidth={3} />
                       )}
                     </View>
                   </TouchableOpacity>
@@ -513,7 +513,7 @@ export function PayerSelectModal({
                         onPress={() => toggleSelectPayer(m.id)}
                         activeOpacity={0.7}
                       >
-                        {isSelected && <Check size={13} color="#FFFFFF" strokeWidth={3} />}
+                        {isSelected && <Check size={13} color={THEME.colors.text} strokeWidth={3} />}
                       </TouchableOpacity>
 
                       {/* Avatar */}
@@ -585,7 +585,7 @@ export function PayerSelectModal({
                               !isSelected && styles.currencyTextInputLocked,
                             ]}
                             placeholder="0.00"
-                            placeholderTextColor="#6B7280"
+                            placeholderTextColor={THEME.colors.textMuted}
                             keyboardType="decimal-pad"
                             value={isSelected ? val : '0.00'}
                             editable={isSelected}
@@ -605,7 +605,7 @@ export function PayerSelectModal({
             <View style={styles.bottomBar}>
               {errorMessage && (
                 <View style={styles.errorStrip}>
-                  <AlertCircle size={13} color="#F43F5E" />
+                  <AlertCircle size={13} color={THEME.colors.negative} />
                   <Text style={styles.errorStripText}>{errorMessage}</Text>
                 </View>
               )}
@@ -671,13 +671,13 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     letterSpacing: -0.2,
     textAlign: 'left',
   },
   tabBarContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: THEME.colors.hairline,
     position: 'relative',
   },
   tabRow: {
@@ -693,15 +693,15 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   tabLabelActive: {
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     fontWeight: '700',
   },
   tabUnderline: {
     height: 3,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.text,
     borderRadius: 1.5,
     position: 'absolute',
     bottom: 0,
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     overflow: 'hidden',
-    backgroundColor: '#2A2B2E',
+    backgroundColor: THEME.colors.surfacePill,
     marginRight: 12,
   },
   avatarImg: {
@@ -749,12 +749,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2A2B2E',
+    backgroundColor: THEME.colors.surfacePill,
   },
   avatarInitial: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   memberInfo: {
     flex: 1,
@@ -763,25 +763,25 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   memberNameMuted: {
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   memberSubline: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     marginTop: 2,
   },
   memberSublineMuted: {
     fontSize: 12,
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
     marginTop: 2,
   },
   livePctText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1CC29F',
+    color: THEME.colors.primary,
     marginTop: 2,
   },
   checkIndicator: {
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: THEME.colors.hairline,
   },
   splitEquallyChip: {
     flexDirection: 'row',
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
   splitEquallyText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1CC29F',
+    color: THEME.colors.primary,
   },
   multiHelperRight: {
     flexDirection: 'row',
@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
   },
   totalRequiredText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   allToggleBtn: {
     flexDirection: 'row',
@@ -826,19 +826,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: THEME.colors.hairline,
   },
   allToggleLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   squareCheckboxSmall: {
     width: 17,
     height: 17,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: '#6B7280',
+    borderColor: THEME.colors.textMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -861,14 +861,14 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#6B7280',
+    borderColor: THEME.colors.textMuted,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   squareCheckboxChecked: {
-    backgroundColor: '#1CC29F',
-    borderColor: '#1CC29F',
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
   },
   inputActionWrap: {
     flexDirection: 'row',
@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: THEME.colors.hairlineLight,
   },
   quickAllChipDisabled: {
     opacity: 0.3,
@@ -887,47 +887,47 @@ const styles = StyleSheet.create({
   quickAllText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   quickAllTextDisabled: {
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   currencyUnderlineBox: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1.5,
-    borderBottomColor: '#1CC29F',
+    borderBottomColor: THEME.colors.primary,
     minWidth: 85,
     paddingVertical: 4,
     paddingHorizontal: 2,
   },
   currencyUnderlineBoxLocked: {
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: THEME.colors.hairlineLight,
     opacity: 0.5,
   },
   currencyPrefix: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1CC29F',
+    color: THEME.colors.primary,
     marginRight: 4,
   },
   currencyPrefixLocked: {
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   currencyTextInput: {
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     padding: 0,
     textAlign: 'right',
   },
   currencyTextInputLocked: {
-    color: '#6B7280',
+    color: THEME.colors.textMuted,
   },
   bottomBar: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: THEME.colors.hairline,
     backgroundColor: THEME.colors.background,
     paddingHorizontal: 20,
     paddingVertical: 14,
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
   errorStripText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#F43F5E',
+    color: THEME.colors.negative,
   },
   bottomStatRow: {
     flexDirection: 'row',
@@ -951,7 +951,7 @@ const styles = StyleSheet.create({
   bottomMainStat: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   bottomSubStat: {
     fontSize: 13,
@@ -959,13 +959,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   textMint: {
-    color: '#1CC29F',
+    color: THEME.colors.primary,
   },
   textWarning: {
-    color: '#F59E0B',
+    color: THEME.colors.warning,
   },
   confirmMultipleBtn: {
-    backgroundColor: '#1CC29F',
+    backgroundColor: THEME.colors.primary,
     paddingHorizontal: 22,
     paddingVertical: 10,
     borderRadius: 10,
@@ -976,6 +976,6 @@ const styles = StyleSheet.create({
   confirmBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#000000',
+    color: THEME.colors.palette.black,
   },
 });

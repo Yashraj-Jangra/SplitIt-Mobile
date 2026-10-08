@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
 import { authService, API_BASE_URL } from './auth.service';
+import { THEME } from '../constants/theme';
 
 const DEVICE_ID_KEY = 'splitit_device_id';
 
@@ -133,7 +134,7 @@ export const notificationService = {
           name: 'SplitIt Notifications',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#10B981',
+          lightColor: THEME.colors.primary,
           sound: 'default',
         });
       }

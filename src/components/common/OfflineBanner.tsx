@@ -77,12 +77,12 @@ export function OfflineBanner() {
       <View style={[styles.pill, justReconnected && styles.pillOnline]}>
         {justReconnected ? (
           <>
-            <Check size={13} color="#10B981" strokeWidth={2.5} />
+            <Check size={13} color={THEME.colors.success} strokeWidth={2.5} />
             <Text style={[styles.text, styles.textOnline]}>Back online · Syncing</Text>
           </>
         ) : (
           <>
-            <WifiOff size={13} color="#EF4444" strokeWidth={2.2} />
+            <WifiOff size={13} color={THEME.colors.critical} strokeWidth={2.2} />
             <Text style={styles.text}>Offline Mode · Read Only</Text>
           </>
         )}
@@ -103,30 +103,30 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#1E232B',
+    gap: THEME.spacing.xs + 2,
+    paddingHorizontal: THEME.spacing.md - 2,
+    paddingVertical: THEME.spacing.xs + 2,
+    borderRadius: THEME.radius.xl,
+    backgroundColor: THEME.colors.skeleton.card,
     borderWidth: 1,
-    borderColor: '#374151',
-    shadowColor: '#000',
+    borderColor: THEME.colors.borderSubtle,
+    shadowColor: THEME.colors.palette.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 6,
   },
   pillOnline: {
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    backgroundColor: '#12251D',
+    borderColor: THEME.colors.successBorder,
+    backgroundColor: THEME.colors.successSubtle,
   },
   text: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#E5E7EB',
+    fontSize: THEME.typography.size.caption,
+    fontWeight: THEME.typography.weight.semibold,
+    color: THEME.colors.text,
     letterSpacing: -0.2,
   },
   textOnline: {
-    color: '#34D399',
+    color: THEME.colors.successLight,
   },
 });

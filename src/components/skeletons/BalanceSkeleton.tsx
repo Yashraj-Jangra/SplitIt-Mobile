@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import { THEME } from '../../constants/theme';
 
 export function BalanceSkeleton() {
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
@@ -37,35 +38,35 @@ export function BalanceSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: '#1E232B',
+    padding: THEME.spacing.xl,
+    borderRadius: THEME.radius.xl,
+    backgroundColor: THEME.colors.skeleton.card,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: THEME.colors.hairline,
     alignItems: 'center',
-    gap: 12,
+    gap: THEME.spacing.md,
   },
   labelLine: {
     width: 90,
     height: 12,
-    borderRadius: 6,
-    backgroundColor: '#374151',
+    borderRadius: THEME.radius.xs,
+    backgroundColor: THEME.colors.skeleton.highlight,
   },
   heroAmount: {
     width: 160,
     height: 38,
-    borderRadius: 10,
-    backgroundColor: '#374151',
+    borderRadius: THEME.radius.md - 2,
+    backgroundColor: THEME.colors.skeleton.highlight,
   },
   pillRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginTop: 8,
+    gap: THEME.spacing.lg,
+    marginTop: THEME.spacing.sm,
   },
   pill: {
     width: 100,
     height: 24,
-    borderRadius: 12,
-    backgroundColor: '#2D3748',
+    borderRadius: THEME.radius.md,
+    backgroundColor: THEME.colors.skeleton.base,
   },
 });

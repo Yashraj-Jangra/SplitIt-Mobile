@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import { THEME } from '../../constants/theme';
 
 export function SplitBreakdownSkeleton({ count = 3 }: { count?: number }) {
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
@@ -41,42 +42,42 @@ export function SplitBreakdownSkeleton({ count = 3 }: { count?: number }) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 4,
-    gap: 12,
+    paddingVertical: THEME.spacing.xs,
+    gap: THEME.spacing.md,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: THEME.spacing.xs + 2,
+    paddingHorizontal: THEME.spacing.sm,
   },
   avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#374151',
+    backgroundColor: THEME.colors.skeleton.highlight,
   },
   textCol: {
     flex: 1,
-    marginLeft: 12,
-    gap: 6,
+    marginLeft: THEME.spacing.md,
+    gap: THEME.spacing.xs + 2,
   },
   nameLine: {
     width: '45%',
     height: 13,
-    borderRadius: 6,
-    backgroundColor: '#374151',
+    borderRadius: THEME.radius.xs,
+    backgroundColor: THEME.colors.skeleton.highlight,
   },
   subLine: {
     width: '30%',
     height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2D3748',
+    borderRadius: THEME.radius.xs - 1,
+    backgroundColor: THEME.colors.skeleton.base,
   },
   amountPill: {
     width: 64,
     height: 20,
-    borderRadius: 10,
-    backgroundColor: '#374151',
+    borderRadius: THEME.radius.md - 2,
+    backgroundColor: THEME.colors.skeleton.highlight,
   },
 });

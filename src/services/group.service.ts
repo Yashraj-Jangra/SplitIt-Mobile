@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { authService, API_BASE_URL } from './auth.service';
 import { settingsService } from './settings.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
+import { THEME } from '../constants/theme';
 
 const DEFAULT_GROUP_STORAGE_KEY = 'splitit_default_group_id';
 
@@ -506,7 +507,14 @@ export const groupService = {
 
           const catLimits = b?.categoryLimits || {};
           const catKeys = Object.keys(catLimits);
-          const colors = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
+          const colors = [
+            THEME.colors.palette.emerald,
+            THEME.colors.palette.blue,
+            THEME.colors.palette.purple,
+            THEME.colors.palette.amber,
+            THEME.colors.palette.pink,
+            THEME.colors.palette.cyan,
+          ];
           const categories = catKeys.map((name, i) => ({
             name,
             limit: Number(catLimits[name] || 0),
@@ -779,9 +787,9 @@ export const groupService = {
         daysRemaining: 10,
         safeDailyAllowance: 1250,
         categories: [
-          { name: 'Food and Drink', limit: 20000, spent: 14000, color: '#10B981' },
-          { name: 'Housing', limit: 30000, spent: 28000, color: '#3B82F6' },
-          { name: 'Utilities', limit: 5000, spent: 2500, color: '#F59E0B' },
+          { name: 'Food and Drink', limit: 20000, spent: 14000, color: THEME.colors.categories.food },
+          { name: 'Housing', limit: 30000, spent: 28000, color: THEME.colors.categories.housing },
+          { name: 'Utilities', limit: 5000, spent: 2500, color: THEME.colors.categories.utilities },
         ],
       },
       activities: [
