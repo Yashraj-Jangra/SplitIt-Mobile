@@ -137,60 +137,86 @@ A comprehensive 10-category production rules system was created in `.agents/rule
 
 The master `AGENTS.md` was fully rewritten to reference all rule files.
 
-## Cleanup: Hardcoded Colors Migration
+- **Codebase-Wide Zero Hardcoded Colors Migration (`src/constants/theme.ts`, `src/`, `app/`)**:
+  - **Single Source of Truth (`src/constants/theme.ts`)**:
+    - Expanded `THEME.colors` with semantic aliases (`success`, `danger`, `warning`, `info`, `critical`, `primaryForeground`), `notification` namespace, category color tokens, skeleton palette, brand colors (Google), and general palette.
+    - Added structured tokens for `typography.size`, `typography.weight`, `spacing`, and `animation.spring`/`timing`.
+  - **Zero Hardcoded Colors Enforced**:
+    - Migrated all 14 `src/` services, utils, skeletons, and domain components:
+      - `src/utils/category-icons.tsx`
+      - `src/services/group.service.ts`
+      - `src/services/notification.service.ts`
+      - `src/components/skeletons/TransactionRowSkeleton.tsx`
+      - `src/components/skeletons/SplitBreakdownSkeleton.tsx`
+      - `src/components/skeletons/BalanceSkeleton.tsx`
+      - `src/components/groups/GroupHistoryTab.tsx`
+      - `src/components/expenses/ExpenseImpactCol.tsx`
+      - `src/components/dashboard/BalanceHistoryGraph.tsx`
+      - `src/components/expenses/ExpenseAbstractHeader.tsx`
+      - `src/components/expenses/SplitOptionsModal.tsx`
+      - `src/components/expenses/PayerSelectModal.tsx`
+      - `src/components/common/OfflineBanner.tsx`
+      - `src/components/brand/GoogleLogo.tsx`
+    - Migrated all 20 `app/` screen routes:
+      - `app/support/[id].tsx`, `app/support/new.tsx`, `app/support/index.tsx`
+      - `app/settle/qr.tsx`, `app/settle/new.tsx`
+      - `app/notifications/preferences.tsx`, `app/notifications/index.tsx`
+      - `app/legal/terms.tsx`, `app/legal/delete-account.tsx`
+      - `app/groups/[id]/settings.tsx`, `app/groups/[id]/index.tsx`, `app/groups/new.tsx`
+      - `app/expenses/[id].tsx`, `app/expenses/new.tsx`
+      - `app/ai/scanner.tsx`, `app/ai/chat.tsx`
+      - `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`
+      - `app/(auth)/signup.tsx`, `app/(auth)/login.tsx`
+  - **Verification**:
+    - `git grep -n -E "#[0-9a-fA-F]{3,8}"` confirms **0 hardcoded hex colors** across both `src/` and `app/` outside `src/constants/theme.ts`.
+    - `npx tsc --noEmit` passed with 0 errors across all files.
 
-**Priority: High** — 35+ files contain hardcoded hex values (`#XXXXXX`, `rgba(...)`) outside of `src/constants/theme.ts`. These must be migrated to use `THEME.colors.*` tokens.
+## Cleanup: Hardcoded Colors Migration (COMPLETED)
 
-### Files Requiring Migration (src/)
-- [ ] `src/utils/category-icons.tsx`
-- [ ] `src/services/group.service.ts`
-- [ ] `src/services/notification.service.ts`
-- [ ] `src/components/skeletons/TransactionRowSkeleton.tsx`
-- [ ] `src/components/skeletons/SplitBreakdownSkeleton.tsx`
-- [ ] `src/components/skeletons/BalanceSkeleton.tsx`
-- [ ] `src/components/groups/GroupHistoryTab.tsx`
-- [ ] `src/components/expenses/ExpenseImpactCol.tsx`
-- [ ] `src/components/dashboard/BalanceHistoryGraph.tsx`
-- [ ] `src/components/expenses/ExpenseAbstractHeader.tsx`
-- [ ] `src/components/expenses/SplitOptionsModal.tsx`
-- [ ] `src/components/expenses/PayerSelectModal.tsx`
-- [ ] `src/components/common/OfflineBanner.tsx`
-- [ ] `src/components/brand/GoogleLogo.tsx`
+All 34+ files have been migrated to `THEME.colors.*` tokens. Single source of truth is established in `src/constants/theme.ts`.
 
-### Files Requiring Migration (app/)
-- [ ] `app/support/[id].tsx`
-- [ ] `app/support/new.tsx`
-- [ ] `app/support/index.tsx`
-- [ ] `app/settle/qr.tsx`
-- [ ] `app/settle/new.tsx`
-- [ ] `app/notifications/preferences.tsx`
-- [ ] `app/notifications/index.tsx`
-- [ ] `app/legal/terms.tsx`
-- [ ] `app/legal/delete-account.tsx`
-- [ ] `app/groups/[id]/settings.tsx`
-- [ ] `app/groups/[id]/index.tsx`
-- [ ] `app/groups/new.tsx`
-- [ ] `app/expenses/[id].tsx`
-- [ ] `app/expenses/new.tsx`
-- [ ] `app/ai/scanner.tsx`
-- [ ] `app/ai/chat.tsx`
-- [ ] `app/(tabs)/index.tsx`
-- [ ] `app/(tabs)/groups.tsx`
-- [ ] `app/(auth)/signup.tsx`
-- [ ] `app/(auth)/login.tsx`
+### Files Migrated (src/)
+- [x] `src/utils/category-icons.tsx`
+- [x] `src/services/group.service.ts`
+- [x] `src/services/notification.service.ts`
+- [x] `src/components/skeletons/TransactionRowSkeleton.tsx`
+- [x] `src/components/skeletons/SplitBreakdownSkeleton.tsx`
+- [x] `src/components/skeletons/BalanceSkeleton.tsx`
+- [x] `src/components/groups/GroupHistoryTab.tsx`
+- [x] `src/components/expenses/ExpenseImpactCol.tsx`
+- [x] `src/components/dashboard/BalanceHistoryGraph.tsx`
+- [x] `src/components/expenses/ExpenseAbstractHeader.tsx`
+- [x] `src/components/expenses/SplitOptionsModal.tsx`
+- [x] `src/components/expenses/PayerSelectModal.tsx`
+- [x] `src/components/common/OfflineBanner.tsx`
+- [x] `src/components/brand/GoogleLogo.tsx`
 
-### Migration Strategy
-1. Add missing semantic tokens to `THEME.colors` (success, danger, warning, info, notification namespace).
-2. Add `THEME.typography.size` and `THEME.typography.weight` scales.
-3. Add `THEME.spacing` scale.
-4. Migrate files one-by-one, replacing hardcoded values with theme tokens.
-5. Run `npx tsc --noEmit` after each file to verify.
-6. Commit in logical batches (e.g., all skeletons, all expense screens, etc.).
+### Files Migrated (app/)
+- [x] `app/support/[id].tsx`
+- [x] `app/support/new.tsx`
+- [x] `app/support/index.tsx`
+- [x] `app/settle/qr.tsx`
+- [x] `app/settle/new.tsx`
+- [x] `app/notifications/preferences.tsx`
+- [x] `app/notifications/index.tsx`
+- [x] `app/legal/terms.tsx`
+- [x] `app/legal/delete-account.tsx`
+- [x] `app/groups/[id]/settings.tsx`
+- [x] `app/groups/[id]/index.tsx`
+- [x] `app/groups/new.tsx`
+- [x] `app/expenses/[id].tsx`
+- [x] `app/expenses/new.tsx`
+- [x] `app/ai/scanner.tsx`
+- [x] `app/ai/chat.tsx`
+- [x] `app/(tabs)/index.tsx`
+- [x] `app/(tabs)/groups.tsx`
+- [x] `app/(auth)/signup.tsx`
+- [x] `app/(auth)/login.tsx`
 
 ## Next Steps & Planned Work
-- [ ] **Execute hardcoded color migration** (see above — 35+ files).
-- [ ] **Set up Jest test infrastructure** (`jest-expo`, `@testing-library/react-native`).
-- [ ] **Add ErrorBoundary components** (root-level + screen-level).
+- [ ] **Set up Jest test infrastructure** (`jest-expo`, `@testing-library/react-native`) and configure pre-commit test runner.
+- [ ] **Add ErrorBoundary components** (root-level in `app/_layout.tsx` + screen-level error boundaries).
+- [ ] **Keyboard compatibility audit**: Verify `KeyboardAvoidingView`, `keyboardType`, and return key chaining across all form screens per `.agents/rules/keyboard.md`.
 - [ ] Test transition smoothness across high-refresh-rate physical Android & iOS devices.
 - [ ] Evaluate offline mutations queue sync resilience on intermittent network reconnections.
 - [ ] Verify receipt scanner camera permission handling in development builds.
