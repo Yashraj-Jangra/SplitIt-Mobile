@@ -191,7 +191,7 @@ export default function ReceiptScannerScreen() {
               router.back();
             }}
           >
-            <X size={20} color="#FFFFFF" />
+            <X size={20} color={THEME.colors.text} />
           </TouchableOpacity>
 
           <View style={styles.pillHeader}>
@@ -206,7 +206,7 @@ export default function ReceiptScannerScreen() {
               setIsTorchOn((prev) => !prev);
             }}
           >
-            {isTorchOn ? <Zap size={18} color="#09090B" /> : <ZapOff size={18} color="#FFFFFF" />}
+            {isTorchOn ? <Zap size={18} color={THEME.colors.primaryForeground} /> : <ZapOff size={18} color={THEME.colors.text} />}
           </TouchableOpacity>
         </View>
 
@@ -253,7 +253,7 @@ export default function ReceiptScannerScreen() {
             <View style={styles.resultCategoryRow}>
               <Sparkles size={13} color={THEME.colors.aiLight} />
               <Text style={styles.resultCategoryText}>
-                Category: <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{scanResult.category.sub}</Text> ({scanResult.category.master})
+                Category: <Text style={{ color: THEME.colors.text, fontWeight: '700' }}>{scanResult.category.sub}</Text> ({scanResult.category.master})
               </Text>
             </View>
 
@@ -270,7 +270,7 @@ export default function ReceiptScannerScreen() {
                 style={styles.applyButton}
                 onPress={handleApplyResult}
               >
-                <Check size={18} color="#09090B" />
+                <Check size={18} color={THEME.colors.primaryForeground} />
                 <Text style={styles.applyButtonText}>Use in Expense</Text>
               </TouchableOpacity>
             </View>
@@ -283,7 +283,7 @@ export default function ReceiptScannerScreen() {
               onPress={handlePickFromGallery}
               disabled={isProcessing}
             >
-              <ImageIcon size={22} color="#FFFFFF" />
+              <ImageIcon size={22} color={THEME.colors.text} />
               <Text style={styles.galleryButtonText}>Gallery</Text>
             </TouchableOpacity>
 
@@ -314,7 +314,7 @@ export default function ReceiptScannerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: THEME.colors.palette.black,
   },
   overlay: {
     flex: 1,
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   pillHeaderText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#EDE9FE',
+    color: THEME.colors.aiLight,
   },
   viewfinderContainer: {
     alignItems: 'center',
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     height: 76,
     borderRadius: 38,
     borderWidth: 4,
-    borderColor: '#FFFFFF',
+    borderColor: THEME.colors.palette.white,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.35)',
     gap: 14,
-    shadowColor: '#000000',
+    shadowColor: THEME.colors.palette.black,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 16,
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
   applyButtonText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
   },
   permissionContainer: {
     flex: 1,
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   primaryPermButtonText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
   },
   secondaryPermButton: {
     flexDirection: 'row',

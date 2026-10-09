@@ -157,9 +157,9 @@ export default function GroupSettingsScreen() {
           style={[styles.saveButton, isSaving && { opacity: 0.6 }]}
         >
           {isSaving ? (
-            <ActivityIndicator size="small" color="#09090B" />
+            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
           ) : (
-            <Check size={18} color="#09090B" />
+            <Check size={18} color={THEME.colors.primaryForeground} />
           )}
         </TouchableOpacity>
       </View>

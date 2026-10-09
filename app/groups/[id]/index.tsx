@@ -675,7 +675,7 @@ export default function GroupDetailScreen() {
                                 });
                               }}
                             >
-                              <Zap size={13} color="#000000" strokeWidth={2.5} />
+                              <Zap size={13} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
                               <Text style={styles.settleButtonText}>Settle</Text>
                             </TouchableOpacity>
                           )}
@@ -834,7 +834,7 @@ export default function GroupDetailScreen() {
               onPress={handleAddExpense}
               activeOpacity={0.85}
             >
-              <Plus size={14} color="#000000" strokeWidth={2.5} />
+              <Plus size={14} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
               <Text style={styles.heroAddBtnText}>Add</Text>
             </TouchableOpacity>
 
@@ -849,7 +849,7 @@ export default function GroupDetailScreen() {
               }}
               activeOpacity={0.85}
             >
-              <Handshake size={14} color="#FFFFFF" />
+              <Handshake size={14} color={THEME.colors.text} />
               <Text style={styles.heroSettleBtnText}>Settle</Text>
             </TouchableOpacity>
           </View>
@@ -866,7 +866,7 @@ export default function GroupDetailScreen() {
           style={styles.heroGlassBtn}
           activeOpacity={0.8}
         >
-          <ArrowLeft size={18} color="#FFFFFF" />
+          <ArrowLeft size={18} color={THEME.colors.text} />
         </TouchableOpacity>
 
         {/* Left-Aligned Collapsed Title */}
@@ -896,7 +896,7 @@ export default function GroupDetailScreen() {
             style={styles.heroGlassBtn}
             activeOpacity={0.8}
           >
-            <Search size={17} color="#FFFFFF" />
+            <Search size={17} color={THEME.colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -910,7 +910,7 @@ export default function GroupDetailScreen() {
             style={[styles.heroGlassBtn, { backgroundColor: 'rgba(139, 92, 246, 0.45)' }]}
             activeOpacity={0.8}
           >
-            <Sparkles size={16} color="#FFFFFF" />
+            <Sparkles size={16} color={THEME.colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -921,7 +921,7 @@ export default function GroupDetailScreen() {
             style={styles.heroGlassBtn}
             activeOpacity={0.8}
           >
-            <Settings size={18} color="#FFFFFF" />
+            <Settings size={18} color={THEME.colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -997,7 +997,7 @@ export default function GroupDetailScreen() {
               ],
             }}
           >
-            <Plus size={22} color="#000000" strokeWidth={2.5} />
+            <Plus size={22} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
           </Animated.View>
         </TouchableOpacity>
       </Animated.View>
@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
   },
   heroVignette: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#000000',
+    backgroundColor: THEME.colors.palette.black,
   },
   heroTopBarFixed: {
     position: 'absolute',
@@ -1075,7 +1075,7 @@ const styles = StyleSheet.create({
   collapsedTitleText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     letterSpacing: -0.2,
     textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.85)',
@@ -1106,7 +1106,7 @@ const styles = StyleSheet.create({
   heroGroupTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     letterSpacing: -0.4,
     textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 2 },
@@ -1142,7 +1142,7 @@ const styles = StyleSheet.create({
   heroAddBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#000000',
+    color: THEME.colors.primaryForeground,
   },
   heroSettleBtn: {
     flexDirection: 'row',
@@ -1158,7 +1158,7 @@ const styles = StyleSheet.create({
   heroSettleBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
 
   // Minimalist Stat Strip (Borderless Typographic Row)
@@ -1212,7 +1212,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     paddingHorizontal: 10,
-    shadowColor: '#000000',
+    shadowColor: THEME.colors.palette.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 6,
@@ -1235,7 +1235,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1,
     borderColor: THEME.colors.hairlineLight,
-    shadowColor: '#000000',
+    shadowColor: THEME.colors.palette.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.25,
     shadowRadius: 3,
@@ -1399,7 +1399,7 @@ const styles = StyleSheet.create({
   settleButtonText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#000000',
+    color: THEME.colors.primaryForeground,
   },
 
   // Standings

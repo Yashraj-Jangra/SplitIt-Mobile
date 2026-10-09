@@ -933,7 +933,7 @@ export default function NewExpenseModal() {
                 >
                   <Sparkles size={11} color={THEME.colors.aiLight} />
                   <Text style={styles.aiSuggestionText}>
-                    Category: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{predictedCategory.sub}</Text>
+                    Category: <Text style={{ fontWeight: '700', color: THEME.colors.text }}>{predictedCategory.sub}</Text>
                   </Text>
                   <Text style={styles.aiApplyLabel}>Apply</Text>
                 </TouchableOpacity>
@@ -1015,7 +1015,7 @@ export default function NewExpenseModal() {
                     <Image source={{ uri: member.avatarUrl }} style={styles.avatarImg} />
                     {member.selected && (
                       <View style={styles.checkBadge}>
-                        <Check size={9} color="#000000" strokeWidth={3} />
+                        <Check size={9} color={THEME.colors.primaryForeground} strokeWidth={3} />
                       </View>
                     )}
                   </View>
@@ -1112,13 +1112,13 @@ export default function NewExpenseModal() {
             {isSaving ? (
               <ActivityIndicator
                 size="small"
-                color={isEditMode && !hasChanges ? THEME.colors.textMuted : '#000000'}
+                color={isEditMode && !hasChanges ? THEME.colors.textMuted : THEME.colors.primaryForeground}
               />
             ) : (
               <>
                 <Check
                   size={18}
-                  color={isEditMode && !hasChanges ? THEME.colors.textMuted : '#000000'}
+                  color={isEditMode && !hasChanges ? THEME.colors.textMuted : THEME.colors.primaryForeground}
                   strokeWidth={2.5}
                 />
                 <Text
@@ -1206,7 +1206,7 @@ export default function NewExpenseModal() {
                 activeOpacity={0.8}
               >
                 <View style={[styles.defaultCheckbox, isDefaultGroupChecked && styles.defaultCheckboxActive]}>
-                  {isDefaultGroupChecked && <Check size={12} color="#000000" strokeWidth={3} />}
+                  {isDefaultGroupChecked && <Check size={12} color={THEME.colors.primaryForeground} strokeWidth={3} />}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.defaultToggleTitle}>Set as default group</Text>
@@ -1435,7 +1435,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#000000',
+    backgroundColor: THEME.colors.palette.black,
   },
   expandingContainer: {
     flex: 1,
@@ -1881,7 +1881,7 @@ const styles = StyleSheet.create({
   recordBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#000000',
+    color: THEME.colors.primaryForeground,
   },
 
   /* Modal Sheets Shared */

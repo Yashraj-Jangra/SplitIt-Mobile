@@ -273,7 +273,7 @@ export default function AiChatModal() {
         description: 'Detect high-ticket transactions & unusual spikes',
         prompt: 'What was our largest expense this month?',
         icon: Receipt,
-        accentColor: '#F59E0B',
+        accentColor: THEME.colors.warning,
         badgeBg: 'rgba(245, 158, 11, 0.12)',
       },
       {
@@ -282,7 +282,7 @@ export default function AiChatModal() {
         description: 'Analyze burn rate and category breakdown timeline',
         prompt: "What's our spending trend this month vs last month?",
         icon: TrendingUp,
-        accentColor: '#38BDF8',
+        accentColor: THEME.colors.infoLight,
         badgeBg: 'rgba(56, 189, 248, 0.12)',
       },
     ],
@@ -652,7 +652,7 @@ export default function AiChatModal() {
                             activeOpacity={0.85}
                           >
                             <Text style={styles.applyButtonText}>Approve & Apply to Group Ledger</Text>
-                            <ArrowRight size={14} color="#09090B" />
+                            <ArrowRight size={14} color={THEME.colors.primaryForeground} />
                           </TouchableOpacity>
                         )}
                       </View>
@@ -777,7 +777,7 @@ export default function AiChatModal() {
                   activeOpacity={0.85}
                   accessibilityLabel="Stop generation"
                 >
-                  <Square size={13} color="#FFFFFF" fill="#FFFFFF" />
+                  <Square size={13} color={THEME.colors.text} fill={THEME.colors.text} />
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -791,7 +791,7 @@ export default function AiChatModal() {
                 >
                   <Send
                     size={15}
-                    color={input.trim() ? '#09090B' : THEME.colors.textMuted}
+                    color={input.trim() ? THEME.colors.primaryForeground : THEME.colors.textMuted}
                   />
                 </TouchableOpacity>
               )}
@@ -831,7 +831,7 @@ export default function AiChatModal() {
 
             <View style={styles.infoList}>
               <View style={styles.infoRow}>
-                <Calculator size={16} color="#10B981" style={styles.infoRowIcon} />
+                <Calculator size={16} color={THEME.colors.success} style={styles.infoRowIcon} />
                 <View style={styles.infoRowContent}>
                   <Text style={styles.infoRowTitle}>Zero Math Hallucinations</Text>
                   <Text style={styles.infoRowDesc}>
@@ -841,7 +841,7 @@ export default function AiChatModal() {
               </View>
 
               <View style={styles.infoRow}>
-                <Database size={16} color="#38BDF8" style={styles.infoRowIcon} />
+                <Database size={16} color={THEME.colors.infoLight} style={styles.infoRowIcon} />
                 <View style={styles.infoRowContent}>
                   <Text style={styles.infoRowTitle}>Semantic Vector Search</Text>
                   <Text style={styles.infoRowDesc}>
@@ -851,7 +851,7 @@ export default function AiChatModal() {
               </View>
 
               <View style={styles.infoRow}>
-                <ShieldCheck size={16} color="#A78BFA" style={styles.infoRowIcon} />
+                <ShieldCheck size={16} color={THEME.colors.aiLight} style={styles.infoRowIcon} />
                 <View style={styles.infoRowContent}>
                   <Text style={styles.infoRowTitle}>Private by Design</Text>
                   <Text style={styles.infoRowDesc}>
@@ -861,7 +861,7 @@ export default function AiChatModal() {
               </View>
 
               <View style={styles.infoRow}>
-                <Cpu size={16} color="#F59E0B" style={styles.infoRowIcon} />
+                <Cpu size={16} color={THEME.colors.warning} style={styles.infoRowIcon} />
                 <View style={styles.infoRowContent}>
                   <Text style={styles.infoRowTitle}>How It Operates</Text>
                   <Text style={styles.infoRowDesc}>
@@ -1164,7 +1164,7 @@ const styles = StyleSheet.create({
   },
   boldText: {
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   currencyHighlight: {
     fontWeight: '800',
@@ -1320,7 +1320,7 @@ const styles = StyleSheet.create({
   applyButtonText: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
   },
   appliedBanner: {
     flexDirection: 'row',
@@ -1439,7 +1439,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#EF4444',
+    backgroundColor: THEME.colors.critical,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,

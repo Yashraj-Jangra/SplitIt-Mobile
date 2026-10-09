@@ -101,9 +101,9 @@ export default function NewGroupModal() {
           style={[styles.saveButton, isSubmitting && { opacity: 0.6 }]}
         >
           {isSubmitting ? (
-            <ActivityIndicator size="small" color="#09090B" />
+            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
           ) : (
-            <Check size={20} color="#09090B" />
+            <Check size={20} color={THEME.colors.primaryForeground} />
           )}
         </TouchableOpacity>
       </View>
@@ -207,7 +207,7 @@ export default function NewGroupModal() {
                 onSubmitEditing={handleAddMember}
               />
               <TouchableOpacity style={styles.addBtn} onPress={handleAddMember}>
-                <Plus size={18} color="#09090B" />
+                <Plus size={18} color={THEME.colors.primaryForeground} />
               </TouchableOpacity>
             </View>
 

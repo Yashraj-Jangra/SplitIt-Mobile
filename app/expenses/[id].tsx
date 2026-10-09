@@ -315,7 +315,7 @@ export default function ExpenseDetailScreen() {
             style={styles.frostedIconButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <ArrowLeft size={20} color="#FFFFFF" />
+            <ArrowLeft size={20} color={THEME.colors.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.errorStateContainer}>
@@ -329,7 +329,7 @@ export default function ExpenseDetailScreen() {
               fetchExpense();
             }}
           >
-            <RefreshCw size={15} color="#09090B" style={{ marginRight: 8 }} />
+            <RefreshCw size={15} color={THEME.colors.primaryForeground} style={{ marginRight: 8 }} />
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -386,7 +386,7 @@ export default function ExpenseDetailScreen() {
             style={styles.frostedIconButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <ArrowLeft size={20} color="#FFFFFF" />
+            <ArrowLeft size={20} color={THEME.colors.text} />
           </TouchableOpacity>
 
           <View style={styles.navGroupBadge}>
@@ -397,15 +397,15 @@ export default function ExpenseDetailScreen() {
 
           <View style={styles.headerActions}>
             <TouchableOpacity onPress={handleReceiptAction} style={styles.frostedIconButton}>
-              <Camera size={18} color={expense?.receiptImageUrl ? '#10B981' : '#FFFFFF'} />
+              <Camera size={18} color={expense?.receiptImageUrl ? THEME.colors.success : THEME.colors.text} />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleDelete} style={styles.frostedIconButton}>
-              <Trash2 size={18} color="#EF4444" />
+              <Trash2 size={18} color={THEME.colors.critical} />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleOpenEdit} style={styles.frostedIconButton}>
-              <Pencil size={18} color="#FFFFFF" />
+              <Pencil size={18} color={THEME.colors.text} />
             </TouchableOpacity>
           </View>
         </View>
@@ -455,7 +455,7 @@ export default function ExpenseDetailScreen() {
             </View>
 
             <View style={styles.heroMetaRow}>
-              <Calendar size={13} color="#71717A" />
+              <Calendar size={13} color={THEME.colors.textMuted} />
               <Text style={styles.heroMetaText}>{dateFormatted}</Text>
               <Text style={styles.heroMetaDot}>•</Text>
               <Text style={styles.heroMetaText}>Added by {creatorName}</Text>
@@ -478,14 +478,14 @@ export default function ExpenseDetailScreen() {
             >
               <View style={styles.receiptAttachedLeft}>
                 <View style={styles.receiptIconPill}>
-                  <ImageIcon size={15} color="#10B981" />
+                  <ImageIcon size={15} color={THEME.colors.success} />
                 </View>
                 <View>
                   <Text style={styles.receiptAttachedTitle}>Receipt Photo Attached</Text>
                   <Text style={styles.receiptAttachedSubtitle}>Tap to inspect full resolution</Text>
                 </View>
               </View>
-              <ArrowRight size={15} color="#71717A" />
+              <ArrowRight size={15} color={THEME.colors.textMuted} />
             </TouchableOpacity>
           ) : null}
 
@@ -520,7 +520,7 @@ export default function ExpenseDetailScreen() {
                 </Text>
               </View>
               <View style={styles.paidBadgePill}>
-                <Check size={11} color="#10B981" />
+                <Check size={11} color={THEME.colors.success} />
                 <Text style={styles.paidBadgeText}>PAID {currencySymbol}{amount.toFixed(2)}</Text>
               </View>
             </View>
@@ -653,32 +653,32 @@ export default function ExpenseDetailScreen() {
                       <View style={styles.logBadgeContainer}>
                         {isCreated && (
                           <View style={[styles.logTypePill, styles.pillCreated]}>
-                            <Plus size={10} color="#10B981" />
-                            <Text style={[styles.logTypePillText, { color: '#10B981' }]}>Created</Text>
+                            <Plus size={10} color={THEME.colors.success} />
+                            <Text style={[styles.logTypePillText, { color: THEME.colors.success }]}>Created</Text>
                           </View>
                         )}
                         {isComment && (
                           <View style={[styles.logTypePill, styles.pillComment]}>
-                            <MessageSquare size={10} color="#60A5FA" />
-                            <Text style={[styles.logTypePillText, { color: '#60A5FA' }]}>Comment</Text>
+                            <MessageSquare size={10} color={THEME.colors.infoLight} />
+                            <Text style={[styles.logTypePillText, { color: THEME.colors.infoLight }]}>Comment</Text>
                           </View>
                         )}
                         {isDeleted && (
                           <View style={[styles.logTypePill, styles.pillDeleted]}>
-                            <Trash2 size={10} color="#EF4444" />
-                            <Text style={[styles.logTypePillText, { color: '#EF4444' }]}>Deleted</Text>
+                            <Trash2 size={10} color={THEME.colors.critical} />
+                            <Text style={[styles.logTypePillText, { color: THEME.colors.critical }]}>Deleted</Text>
                           </View>
                         )}
                         {isRestored && (
                           <View style={[styles.logTypePill, styles.pillRestored]}>
-                            <RotateCcw size={10} color="#A855F7" />
-                            <Text style={[styles.logTypePillText, { color: '#A855F7' }]}>Restored</Text>
+                            <RotateCcw size={10} color={THEME.colors.notification.announcement} />
+                            <Text style={[styles.logTypePillText, { color: THEME.colors.notification.announcement }]}>Restored</Text>
                           </View>
                         )}
                         {!isCreated && !isComment && !isDeleted && !isRestored && (
                           <View style={[styles.logTypePill, styles.pillUpdated]}>
-                            <Pencil size={10} color="#3B82F6" />
-                            <Text style={[styles.logTypePillText, { color: '#3B82F6' }]}>Updated</Text>
+                            <Pencil size={10} color={THEME.colors.info} />
+                            <Text style={[styles.logTypePillText, { color: THEME.colors.info }]}>Updated</Text>
                           </View>
                         )}
                       </View>
@@ -711,12 +711,12 @@ export default function ExpenseDetailScreen() {
                               </View>
                             ) : ch.type === 'added' ? (
                               <View style={styles.changeActionRow}>
-                                <UserPlus size={10} color="#10B981" />
+                                <UserPlus size={10} color={THEME.colors.success} />
                                 <Text style={styles.changeAddedText}>Added {ch.detail}</Text>
                               </View>
                             ) : ch.type === 'removed' ? (
                               <View style={styles.changeActionRow}>
-                                <UserMinus size={10} color="#EF4444" />
+                                <UserMinus size={10} color={THEME.colors.critical} />
                                 <Text style={styles.changeRemovedText}>Removed {ch.detail}</Text>
                               </View>
                             ) : (
@@ -756,9 +756,9 @@ export default function ExpenseDetailScreen() {
               ]}
             >
               {isSendingComment ? (
-                <ActivityIndicator size="small" color="#10B981" />
+                <ActivityIndicator size="small" color={THEME.colors.success} />
               ) : (
-                <Send size={16} color={commentInput.trim() ? '#10B981' : THEME.colors.textMuted} />
+                <Send size={16} color={commentInput.trim() ? THEME.colors.success : THEME.colors.textMuted} />
               )}
             </TouchableOpacity>
           </View>
@@ -782,7 +782,7 @@ export default function ExpenseDetailScreen() {
                 onPress={() => setIsReceiptModalOpen(false)}
                 style={styles.modalCloseBtn}
               >
-                <X size={22} color="#FFFFFF" />
+                <X size={22} color={THEME.colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -808,11 +808,11 @@ export default function ExpenseDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121215',
+    backgroundColor: THEME.colors.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#121215',
+    backgroundColor: THEME.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
   navGroupText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#E4E4E7',
+    color: THEME.colors.text,
     letterSpacing: 0.2,
   },
   headerActions: {
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(24, 25, 30, 0.7)',
-    shadowColor: '#000000',
+    shadowColor: THEME.colors.palette.black,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
@@ -885,7 +885,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#18191E',
+    backgroundColor: THEME.colors.surface,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
@@ -910,7 +910,7 @@ const styles = StyleSheet.create({
   categoryTagText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#F4F4F5',
+    color: THEME.colors.text,
     letterSpacing: 0.3,
   },
 
@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     textAlign: 'center',
     letterSpacing: -0.3,
     paddingHorizontal: 16,
@@ -949,13 +949,13 @@ const styles = StyleSheet.create({
   heroAmountWhole: {
     fontSize: 44,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     letterSpacing: -1.2,
   },
   heroAmountDecimal: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#A1A1AA',
+    color: THEME.colors.textSecondary,
   },
   heroMetaRow: {
     flexDirection: 'row',
@@ -966,11 +966,11 @@ const styles = StyleSheet.create({
   heroMetaText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#71717A',
+    color: THEME.colors.textMuted,
   },
   heroMetaDot: {
     fontSize: 12,
-    color: '#52525B',
+    color: THEME.colors.textMuted,
   },
   editorialNotesBlock: {
     borderLeftWidth: 3,
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
   },
   editorialNotesText: {
     fontSize: 13,
-    color: '#D4D4D8',
+    color: THEME.colors.textSecondary,
     lineHeight: 19,
     fontStyle: 'italic',
   },
@@ -1015,11 +1015,11 @@ const styles = StyleSheet.create({
   receiptAttachedTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   receiptAttachedSubtitle: {
     fontSize: 11,
-    color: '#71717A',
+    color: THEME.colors.textMuted,
     marginTop: 1,
   },
 
@@ -1038,7 +1038,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#71717A',
+    color: THEME.colors.textMuted,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
@@ -1051,7 +1051,7 @@ const styles = StyleSheet.create({
   splitTypeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     textTransform: 'capitalize',
   },
   payerLedgerRow: {
@@ -1067,7 +1067,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1F2024',
+    backgroundColor: THEME.colors.surfaceElevated,
     overflow: 'hidden',
   },
   avatarImg: {
@@ -1085,11 +1085,11 @@ const styles = StyleSheet.create({
   payerNameText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   payerSubText: {
     fontSize: 12,
-    color: '#71717A',
+    color: THEME.colors.textMuted,
   },
   paidBadgePill: {
     flexDirection: 'row',
@@ -1105,7 +1105,7 @@ const styles = StyleSheet.create({
   paidBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#10B981',
+    color: THEME.colors.success,
     letterSpacing: 0.5,
   },
 
@@ -1121,12 +1121,12 @@ const styles = StyleSheet.create({
   },
   multiPayerName: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   multiPayerAmount: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#D4D4D8',
+    color: THEME.colors.textSecondary,
   },
 
   // Participants Ledger List with Timeline Connectors
@@ -1155,9 +1155,9 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#3F3F46',
+    backgroundColor: THEME.colors.surfacePill,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: THEME.colors.surfaceElevated,
     zIndex: 2,
   },
   timelineConnectorLine: {
@@ -1171,7 +1171,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#27272A',
+    backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -1183,7 +1183,7 @@ const styles = StyleSheet.create({
   participantAvatarInitial: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#E4E4E7',
+    color: THEME.colors.text,
   },
   participantNameCol: {
     flex: 1,
@@ -1197,11 +1197,11 @@ const styles = StyleSheet.create({
   participantName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#E4E4E7',
+    color: THEME.colors.text,
   },
   participantNameUser: {
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   youBadge: {
     backgroundColor: 'rgba(28, 194, 159, 0.15)',
@@ -1217,7 +1217,7 @@ const styles = StyleSheet.create({
   },
   participantShareDetail: {
     fontSize: 11,
-    color: '#71717A',
+    color: THEME.colors.textMuted,
   },
 
   debtStatusPill: {
@@ -1239,13 +1239,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   debtTextOwes: {
-    color: '#FB7185',
+    color: THEME.colors.dangerLight,
   },
   debtTextGetsBack: {
-    color: '#10B981',
+    color: THEME.colors.success,
   },
   debtTextNeutral: {
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
 
   splitSkeletonBlock: {
@@ -1261,7 +1261,7 @@ const styles = StyleSheet.create({
   splitLoadingNoticeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#71717A',
+    color: THEME.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
@@ -1275,12 +1275,12 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     marginTop: 8,
   },
   errorMessage: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -1294,7 +1294,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   retryButtonText: {
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -1313,7 +1313,7 @@ const styles = StyleSheet.create({
   countBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#71717A',
+    color: THEME.colors.textMuted,
   },
   logsList: {
     gap: 0,
@@ -1364,26 +1364,26 @@ const styles = StyleSheet.create({
   },
   logTimeText: {
     fontSize: 11,
-    color: '#71717A',
+    color: THEME.colors.textMuted,
   },
   logActorLine: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     marginTop: 1,
   },
   logActorName: {
     fontWeight: '700',
-    color: '#E4E4E7',
+    color: THEME.colors.text,
   },
   logDescriptionText: {
     fontSize: 12,
-    color: '#D4D4D8',
+    color: THEME.colors.textSecondary,
     lineHeight: 17,
   },
   commentBubble: {
     backgroundColor: 'rgba(96, 165, 250, 0.08)',
     borderLeftWidth: 2.5,
-    borderLeftColor: '#60A5FA',
+    borderLeftColor: THEME.colors.infoLight,
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 6,
@@ -1391,7 +1391,7 @@ const styles = StyleSheet.create({
   },
   commentBodyText: {
     fontSize: 13,
-    color: '#F3F4F6',
+    color: THEME.colors.text,
     lineHeight: 18,
   },
   changesList: {
@@ -1408,7 +1408,7 @@ const styles = StyleSheet.create({
   changeFieldLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#A1A1AA',
+    color: THEME.colors.textSecondary,
   },
   changeDiffRow: {
     flexDirection: 'row',
@@ -1417,12 +1417,12 @@ const styles = StyleSheet.create({
   },
   changeFrom: {
     fontSize: 11,
-    color: '#EF4444',
+    color: THEME.colors.critical,
     textDecorationLine: 'line-through',
   },
   changeTo: {
     fontSize: 11,
-    color: '#10B981',
+    color: THEME.colors.success,
     fontWeight: '700',
   },
   changeActionRow: {
@@ -1432,31 +1432,31 @@ const styles = StyleSheet.create({
   },
   changeAddedText: {
     fontSize: 11,
-    color: '#10B981',
+    color: THEME.colors.success,
     fontWeight: '600',
   },
   changeRemovedText: {
     fontSize: 11,
-    color: '#EF4444',
+    color: THEME.colors.critical,
     fontWeight: '600',
   },
   changeGeneric: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
 
   // Bottom Floating "Add a comment" Bar
   bottomCommentDock: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#101114',
+    backgroundColor: THEME.colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1B20',
+    backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.full,
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -1467,7 +1467,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   sendButton: {
     width: 32,
@@ -1488,7 +1488,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#18181B',
+    backgroundColor: THEME.colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
@@ -1507,7 +1507,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   modalCloseBtn: {
     padding: 4,
@@ -1523,7 +1523,7 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     letterSpacing: 1.1,
   },
   modalRowGroup: {
@@ -1534,7 +1534,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#27272A',
+    backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: THEME.radius.md,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -1544,17 +1544,17 @@ const styles = StyleSheet.create({
   modalSelectTriggerText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#10B981',
+    color: THEME.colors.success,
     flex: 1,
     marginRight: 4,
   },
   modalInput: {
-    backgroundColor: '#27272A',
+    backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: THEME.radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: THEME.colors.text,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
@@ -1574,21 +1574,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: THEME.radius.full,
-    backgroundColor: '#27272A',
+    backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   catPillActive: {
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderColor: '#10B981',
+    borderColor: THEME.colors.success,
   },
   catPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   catPillTextActive: {
-    color: '#10B981',
+    color: THEME.colors.success,
     fontWeight: '700',
   },
   catMasterPill: {
@@ -1604,15 +1604,15 @@ const styles = StyleSheet.create({
   },
   catMasterPillActive: {
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderColor: '#10B981',
+    borderColor: THEME.colors.success,
   },
   catMasterPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
   catMasterPillTextActive: {
-    color: '#10B981',
+    color: THEME.colors.success,
     fontWeight: '700',
   },
   modalSaveButton: {
@@ -1620,7 +1620,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#10B981',
+    backgroundColor: THEME.colors.success,
     paddingVertical: 14,
     borderRadius: THEME.radius.md,
     marginTop: 10,
@@ -1628,13 +1628,13 @@ const styles = StyleSheet.create({
   modalSaveButtonText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
   },
 
   // Receipt Viewer Modal
   receiptViewerBackdrop: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: THEME.colors.palette.black,
   },
   receiptViewerSafeArea: {
     flex: 1,
@@ -1649,7 +1649,7 @@ const styles = StyleSheet.create({
   receiptViewerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: THEME.colors.text,
   },
   receiptImageContainer: {
     flex: 1,
@@ -1663,6 +1663,6 @@ const styles = StyleSheet.create({
   },
   noReceiptText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
   },
 });
