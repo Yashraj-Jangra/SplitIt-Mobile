@@ -171,6 +171,24 @@ The master `AGENTS.md` was fully rewritten to reference all rule files.
     - `git grep -n -E "#[0-9a-fA-F]{3,8}"` confirms **0 hardcoded hex colors** across both `src/` and `app/` outside `src/constants/theme.ts`.
     - `npx tsc --noEmit` passed with 0 errors across all files.
 
+- **Root & Route-Level Error Boundary Architecture (`src/components/common/ErrorBoundary.tsx`, `app/_layout.tsx`)**:
+  - **Component Implementation (`ErrorBoundary.tsx`)**:
+    - Implemented production-grade React class `ErrorBoundary` with `getDerivedStateFromError` and `componentDidCatch`.
+    - Created `ErrorFallbackView` following `THEME` design tokens: elevated dark surface, glowing alert icon, user-friendly guidance message, collapsible technical error details with one-tap copy button (`Clipboard.setStringAsync` + haptics), "Try Again" retry button, and "Go Back" navigation.
+  - **Expo Router Integration (`app/_layout.tsx`)**:
+    - Wrapped `RootLayout` in `<AppErrorBoundary>`.
+    - Exported Expo Router route-level `ErrorBoundary` component (`export function ErrorBoundary({ error, retry }: ErrorBoundaryProps)`).
+
+- **Codebase-Wide Keyboard Compatibility & Input Chaining (`.agents/rules/keyboard.md`)**:
+  - **KeyboardAvoidingView Wrapping**:
+    - Wrapped form screens in `KeyboardAvoidingView` with platform-specific behavior (`Platform.OS === 'ios' ? 'padding' : undefined`): `app/groups/[id]/settings.tsx`, `app/legal/delete-account.tsx`, `app/settle/new.tsx`.
+  - **Keyboard Type & Return Key Alignment**:
+    - Converted numeric inputs to `keyboardType="decimal-pad"` with `returnKeyType="done"`: `app/settle/new.tsx`, `src/components/expenses/SplitOptionsModal.tsx`, `src/components/expenses/PayerSelectModal.tsx`.
+    - Added `returnKeyType="search"` on search inputs: `app/(tabs)/groups.tsx`, `app/groups/[id]/search.tsx`.
+    - Implemented return key chaining via `onSubmitEditing` and `useRef`: `app/expenses/new.tsx` (description → amount), `app/support/new.tsx` (subject → message).
+  - **Scroll & Dismiss Discipline**:
+    - Added `keyboardShouldPersistTaps="handled"` and `keyboardDismissMode="on-drag"` across all form/list `ScrollView` containers: `app/groups/[id]/settings.tsx`, `app/legal/delete-account.tsx`, `app/settle/new.tsx`, `app/support/[id].tsx`, `app/support/new.tsx`, `app/(tabs)/groups.tsx`, `app/groups/[id]/search.tsx`, `app/expenses/[id].tsx`.
+
 ## Cleanup: Hardcoded Colors Migration (COMPLETED)
 
 All 34+ files have been migrated to `THEME.colors.*` tokens. Single source of truth is established in `src/constants/theme.ts`.
@@ -213,10 +231,19 @@ All 34+ files have been migrated to `THEME.colors.*` tokens. Single source of tr
 - [x] `app/(auth)/signup.tsx`
 - [x] `app/(auth)/login.tsx`
 
+## Production Rules Verification Status
+- [x] **Theming (`theming.md`)**: Zero hardcoded colors across entire repo outside `theme.ts`. Typography & spacing scales adhered to.
+- [x] **Crash Prevention (`crash-prevention.md`)**: Root and route `ErrorBoundary` active, defensive null safety (`?.`), offline fallback states.
+- [x] **Keyboard (`keyboard.md`)**: `KeyboardAvoidingView` on all form screens, `decimal-pad` currency inputs, return key chaining, `keyboardDismissMode="on-drag"`.
+- [x] **Dependencies (`dependencies.md`)**: Expo config schema clean, `app.json` root splash fixed, `expo-doctor` passed 20/21.
+- [x] **Performance (`performance.md`)**: Memoized list rows, worklet animations, synchronous in-memory hydration on back transitions.
+- [x] **Accessibility (`accessibility.md`)**: WCAG AA dark mode contrast, hitSlop on icon pressables, accessibility labels/roles on modals and buttons.
+- [x] **Responsive (`responsive.md`)**: SafeAreaView/insets on all screens, orientation locked to portrait.
+- [x] **Architecture (`architecture.md`)**: Clear separation of concern (routes compose components and invoke services).
+- [x] **State Management (`state-management.md`)**: Service layer + in-memory synchronous cache with optimistic update rollback patterns.
+
 ## Next Steps & Planned Work
-- [ ] **Set up Jest test infrastructure** (`jest-expo`, `@testing-library/react-native`) and configure pre-commit test runner.
-- [ ] **Add ErrorBoundary components** (root-level in `app/_layout.tsx` + screen-level error boundaries).
-- [ ] **Keyboard compatibility audit**: Verify `KeyboardAvoidingView`, `keyboardType`, and return key chaining across all form screens per `.agents/rules/keyboard.md`.
+- [ ] **Set up Jest test infrastructure** (`jest-expo`, `@testing-library/react-native`) and configure pre-commit test runner (confirm with user before installing dependencies).
 - [ ] Test transition smoothness across high-refresh-rate physical Android & iOS devices.
 - [ ] Evaluate offline mutations queue sync resilience on intermittent network reconnections.
 - [ ] Verify receipt scanner camera permission handling in development builds.
