@@ -116,6 +116,7 @@ export default function GroupsScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCapitalize="none"
+          returnKeyType="search"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity
@@ -166,6 +167,8 @@ export default function GroupsScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollList}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

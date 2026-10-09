@@ -744,6 +744,7 @@ export function SplitOptionsModal({
                                     placeholder="0.00"
                                     placeholderTextColor={THEME.colors.textMuted}
                                     keyboardType="decimal-pad"
+                                    returnKeyType="done"
                                     value={isSelected ? (exactInputs[p.id] || '') : '0.00'}
                                     editable={isSelected}
                                     onChangeText={(t) => handleExactChange(p.id, t)}
@@ -766,6 +767,7 @@ export function SplitOptionsModal({
                                     placeholder="0.00"
                                     placeholderTextColor={THEME.colors.textMuted}
                                     keyboardType="decimal-pad"
+                                    returnKeyType="done"
                                     value={isSelected ? (percentageInputs[p.id] || '') : '0.00'}
                                     editable={isSelected}
                                     onChangeText={(t) => handlePercentageChange(p.id, t)}

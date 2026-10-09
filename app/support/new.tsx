@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 
 export default function NewSupportTicketModal() {
   const router = useRouter();
+  const messageInputRef = useRef<TextInput>(null);
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState<TicketCategory>('general');
   const [message, setMessage] = useState('');
@@ -89,6 +90,7 @@ export default function NewSupportTicketModal() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {errorMsg ? (
             <View style={styles.errorBanner}>
@@ -134,6 +136,8 @@ export default function NewSupportTicketModal() {
               onChangeText={setSubject}
               placeholder="e.g. Issue settling expense with Google Pay"
               placeholderTextColor={THEME.colors.textMuted}
+              returnKeyType="next"
+              onSubmitEditing={() => messageInputRef.current?.focus()}
             />
           </View>
 
@@ -141,6 +145,7 @@ export default function NewSupportTicketModal() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>MESSAGE / DESCRIPTION</Text>
             <TextInput
+              ref={messageInputRef}
               style={[styles.textInput, styles.textArea]}
               value={message}
               onChangeText={setMessage}

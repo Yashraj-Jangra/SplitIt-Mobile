@@ -91,6 +91,7 @@ export default function NewExpenseModal() {
   const startScaleY = 52 / SCREEN_HEIGHT;
 
   const expandAnim = useRef(new Animated.Value(0)).current;
+  const amountInputRef = useRef<TextInput>(null);
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
@@ -916,6 +917,7 @@ export default function NewExpenseModal() {
                   placeholderTextColor={THEME.colors.textMuted}
                   autoCapitalize="sentences"
                   returnKeyType="next"
+                  onSubmitEditing={() => amountInputRef.current?.focus()}
                 />
               </View>
 
@@ -943,12 +945,14 @@ export default function NewExpenseModal() {
               <View style={styles.amountUnderlineRow}>
                 <Text style={styles.currencyPrefix}>₹</Text>
                 <TextInput
+                  ref={amountInputRef}
                   style={styles.amountUnderlineInput}
                   value={amount}
                   onChangeText={setAmount}
                   placeholder="0.00"
                   placeholderTextColor={THEME.colors.textMuted}
                   keyboardType="decimal-pad"
+                  returnKeyType="done"
                   autoFocus
                 />
               </View>

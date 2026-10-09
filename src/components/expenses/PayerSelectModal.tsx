@@ -587,6 +587,7 @@ export function PayerSelectModal({
                             placeholder="0.00"
                             placeholderTextColor={THEME.colors.textMuted}
                             keyboardType="decimal-pad"
+                            returnKeyType="done"
                             value={isSelected ? val : '0.00'}
                             editable={isSelected}
                             onChangeText={(t) => handleAmountChange(m.id, t)}

@@ -8,6 +8,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -164,18 +166,28 @@ export default function GroupSettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Group Name Field */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>GROUP NAME</Text>
-          <TextInput
-            style={styles.textInput}
-            value={groupName}
-            onChangeText={setGroupName}
-            placeholder="Group Name"
-            placeholderTextColor={THEME.colors.textMuted}
-          />
-        </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {/* Group Name Field */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>GROUP NAME</Text>
+            <TextInput
+              style={styles.textInput}
+              value={groupName}
+              onChangeText={setGroupName}
+              placeholder="Group Name"
+              placeholderTextColor={THEME.colors.textMuted}
+              returnKeyType="done"
+            />
+          </View>
 
         {/* Member Management */}
         <View style={styles.sectionCard}>
@@ -237,8 +249,9 @@ export default function GroupSettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
-  );
+    </KeyboardAvoidingView>
+  </SafeAreaView>
+);
 }
 
 const styles = StyleSheet.create({

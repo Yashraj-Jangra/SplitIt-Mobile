@@ -8,6 +8,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -87,69 +89,79 @@ export default function DeleteAccountScreen() {
         <Text style={styles.headerTitle} numberOfLines={1}>Delete Account</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.warningCard}>
-          <ShieldAlert size={28} color={THEME.colors.negative} />
-          <View style={styles.warningTextContainer}>
-            <Text style={styles.warningTitle}>Irreversible Action</Text>
-            <Text style={styles.warningSubtitle}>
-              Deleting your account permanently removes your identity, profile data, and active sessions.
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View style={styles.warningCard}>
+            <ShieldAlert size={28} color={THEME.colors.negative} />
+            <View style={styles.warningTextContainer}>
+              <Text style={styles.warningTitle}>Irreversible Action</Text>
+              <Text style={styles.warningSubtitle}>
+                Deleting your account permanently removes your identity, profile data, and active sessions.
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>What gets erased:</Text>
+          <View style={styles.consequencesCard}>
+            <Text style={styles.consequenceItem}>
+              • Your user profile, name, avatar, and email records.
+            </Text>
+            <Text style={styles.consequenceItem}>
+              • All active login sessions across Web, Mobile, and Extension.
+            </Text>
+            <Text style={styles.consequenceItem}>
+              • Your registered UPI IDs and push notification device tokens.
+            </Text>
+            <Text style={styles.consequenceItem}>
+              • Group expense records will remain visible to other group members with an unlinked profile reference.
             </Text>
           </View>
-        </View>
 
-        <Text style={styles.sectionTitle}>What gets erased:</Text>
-        <View style={styles.consequencesCard}>
-          <Text style={styles.consequenceItem}>
-            • Your user profile, name, avatar, and email records.
-          </Text>
-          <Text style={styles.consequenceItem}>
-            • All active login sessions across Web, Mobile, and Extension.
-          </Text>
-          <Text style={styles.consequenceItem}>
-            • Your registered UPI IDs and push notification device tokens.
-          </Text>
-          <Text style={styles.consequenceItem}>
-            • Group expense records will remain visible to other group members with an unlinked profile reference.
-          </Text>
-        </View>
+          {errorMsg ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
 
-        {errorMsg ? (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{errorMsg}</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>TYPE "DELETE" TO CONFIRM</Text>
+            <TextInput
+              style={styles.textInput}
+              value={confirmationInput}
+              onChangeText={setConfirmationInput}
+              placeholder="DELETE"
+              placeholderTextColor={THEME.colors.textMuted}
+              autoCapitalize="characters"
+              returnKeyType="done"
+            />
           </View>
-        ) : null}
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>TYPE "DELETE" TO CONFIRM</Text>
-          <TextInput
-            style={styles.textInput}
-            value={confirmationInput}
-            onChangeText={setConfirmationInput}
-            placeholder="DELETE"
-            placeholderTextColor={THEME.colors.textMuted}
-            autoCapitalize="characters"
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.deleteButton,
-            (!isConfirmed || isDeleting) && styles.deleteButtonDisabled,
-          ]}
-          onPress={handleDeleteAccount}
-          disabled={!isConfirmed || isDeleting}
-        >
-          {isDeleting ? (
-            <ActivityIndicator size="small" color={THEME.colors.text} />
-          ) : (
-            <>
-              <Trash2 size={18} color={THEME.colors.text} />
-              <Text style={styles.deleteButtonText}>Permanently Delete My Account</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity
+            style={[
+              styles.deleteButton,
+              (!isConfirmed || isDeleting) && styles.deleteButtonDisabled,
+            ]}
+            onPress={handleDeleteAccount}
+            disabled={!isConfirmed || isDeleting}
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color={THEME.colors.text} />
+            ) : (
+              <>
+                <Trash2 size={18} color={THEME.colors.text} />
+                <Text style={styles.deleteButtonText}>Permanently Delete My Account</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

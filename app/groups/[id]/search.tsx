@@ -127,6 +127,7 @@ export default function GroupSearchScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
             {filteredExpenses.length === 0 ? (
               <View style={styles.emptyContainer}>

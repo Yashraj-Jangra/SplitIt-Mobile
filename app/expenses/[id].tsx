@@ -439,6 +439,8 @@ export default function ExpenseDetailScreen() {
           ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {/* Hero Typography: Title & High-Impact Amount */}
           <View style={styles.heroSection}>

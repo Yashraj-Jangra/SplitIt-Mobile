@@ -115,6 +115,7 @@ export default function NewGroupModal() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {errorMsg ? (
             <View style={styles.errorBanner}>
@@ -131,6 +132,7 @@ export default function NewGroupModal() {
               onChangeText={setName}
               placeholder="e.g. Apartment Flatmates 🏠"
               placeholderTextColor={THEME.colors.textMuted}
+              returnKeyType="done"
             />
           </View>
 
@@ -204,6 +206,7 @@ export default function NewGroupModal() {
                 placeholderTextColor={THEME.colors.textMuted}
                 autoCapitalize="none"
                 keyboardType="email-address"
+                returnKeyType="done"
                 onSubmitEditing={handleAddMember}
               />
               <TouchableOpacity style={styles.addBtn} onPress={handleAddMember}>

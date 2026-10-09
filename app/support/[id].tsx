@@ -137,6 +137,8 @@ export default function TicketThreadScreen() {
         <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={styles.messagesContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           {ticket.messages.map((msg, index) => {

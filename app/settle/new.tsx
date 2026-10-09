@@ -8,6 +8,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -158,45 +160,55 @@ export default function SettleUpModal() {
         <Text style={styles.headerTitle} numberOfLines={1}>Settle Up</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* Transfer Participants Flow */}
-        <View style={styles.partiesFlowRow}>
-          <View style={styles.partyItem}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{debtorName.charAt(0)}</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Transfer Participants Flow */}
+          <View style={styles.partiesFlowRow}>
+            <View style={styles.partyItem}>
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>{debtorName.charAt(0)}</Text>
+              </View>
+              <Text style={styles.partyName}>{debtorName}</Text>
+              <Text style={styles.partyRole}>Payer</Text>
             </View>
-            <Text style={styles.partyName}>{debtorName}</Text>
-            <Text style={styles.partyRole}>Payer</Text>
-          </View>
 
-          <View style={styles.arrowCircle}>
-            <ArrowRight size={18} color={THEME.colors.primary} />
-          </View>
-
-          <View style={styles.partyItem}>
-            <View style={[styles.avatarCircle, { backgroundColor: THEME.colors.surfaceElevated }]}>
-              <Text style={styles.avatarText}>{creditorName.charAt(0)}</Text>
+            <View style={styles.arrowCircle}>
+              <ArrowRight size={18} color={THEME.colors.primary} />
             </View>
-            <Text style={styles.partyName}>{creditorName}</Text>
-            <Text style={styles.partyRole}>Recipient</Text>
-          </View>
-        </View>
 
-        {/* Large Amount Input */}
-        <View style={styles.amountBlock}>
-          <Text style={styles.amountEyebrow}>SETTLEMENT AMOUNT</Text>
-          <View style={styles.amountRow}>
-            <Text style={styles.currencySymbol}>₹</Text>
-            <TextInput
-              style={styles.amountInput}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="numeric"
-              placeholder="0"
-              placeholderTextColor={THEME.colors.textMuted}
-            />
+            <View style={styles.partyItem}>
+              <View style={[styles.avatarCircle, { backgroundColor: THEME.colors.surfaceElevated }]}>
+                <Text style={styles.avatarText}>{creditorName.charAt(0)}</Text>
+              </View>
+              <Text style={styles.partyName}>{creditorName}</Text>
+              <Text style={styles.partyRole}>Recipient</Text>
+            </View>
           </View>
-        </View>
+
+          {/* Large Amount Input */}
+          <View style={styles.amountBlock}>
+            <Text style={styles.amountEyebrow}>SETTLEMENT AMOUNT</Text>
+            <View style={styles.amountRow}>
+              <Text style={styles.currencySymbol}>₹</Text>
+              <TextInput
+                style={styles.amountInput}
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                placeholder="0"
+                placeholderTextColor={THEME.colors.textMuted}
+              />
+            </View>
+          </View>
 
         {/* Method Selector */}
         <View style={styles.sectionContainer}>
@@ -268,6 +280,7 @@ export default function SettleUpModal() {
           </Text>
         </View>
       </ScrollView>
+    </KeyboardAvoidingView>
 
       {/* Floating Bottom Action */}
       <View style={styles.bottomBar}>
