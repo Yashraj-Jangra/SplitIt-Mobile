@@ -1,6 +1,25 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Expense Info Screen Redesign — Open Editorial / No-Div Architecture & Scrollable Header (`app/expenses/[id].tsx`, `ExpenseAbstractHeader.tsx`)**:
+  - **Completely Scrollable Header Graphics**:
+    - Embedded `ExpenseAbstractHeader` inside the `ScrollView` as the topmost element, allowing the ambient vector waves, glows, and frosted navigation bar to scroll smoothly and naturally with the rest of the page.
+    - Added dynamic `centerY = height * 0.45` in `ExpenseAbstractHeader.tsx` to automatically scale orbital rings and aura highlights cleanly at lower heights (`height={140}`).
+  - **Category Beside Amount & Title**:
+    - Removed floating category orb and badge pill from the vector header.
+    - Created `heroSideRow`: placed a category icon squircle (52x52 rounded squircle with theme tint, subtle border, and glow) directly on the left of a column containing the uppercase category label & date, expense title, high-impact amount (`₹2,450.00`), and creator attribution.
+  - **Settlement & Split Flow with Continuous Connecting Stem Lines**:
+    - Abolished boxy badge divs, pill wrappers, and card soup for settlement status.
+    - Implemented a continuous vertical stem connector line running seamlessly from the payer's green check node (`payerNodeDot`) down through each participant row (`nodeDotUser` in primary teal, `nodeDotNeutral` for others), terminating cleanly at the last participant.
+    - Replaced pill badges with pure unboxed colored typography:
+      - `PAID ₹X.XX` in emerald green (`THEME.colors.success`).
+      - `You owe ₹X.XX` in rose red (`THEME.colors.dangerLight`).
+      - `Gets back ₹X.XX` in emerald green (`THEME.colors.success`).
+      - Other members' shares in clean white/neutral (`THEME.colors.text`).
+  - **History & Audit Log Preserved**:
+    - Maintained granular history timeline, event badges (Created, Comment, Deleted, Restored, Updated), and deduplicated audit entries intact.
+  - **Zero Type Errors**: Passed `npx tsc --noEmit` with 0 errors.
+
 - **Group Activity Tab Progressive Loading & Rendering Optimization (`app/groups/[id]/index.tsx`, `GroupHistoryTab.tsx`, `GroupTabSkeleton.tsx`)**:
   - **Progressive Batch Loading**:
     - Implemented windowed batching (initial 15 items, +15 on infinite scroll) for group audit activity events matching the expenses tab behavior.
