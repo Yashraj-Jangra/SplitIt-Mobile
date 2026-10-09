@@ -50,6 +50,7 @@ This project enforces a comprehensive set of rules organized by category. **Read
 ### 🎨 [Theming & Visual Design](file:///d:/Projects/SplitIt-Mobile/.agents/rules/theming.md)
 - **Zero hardcoded colors** — every color comes from `THEME.colors.*` in `src/constants/theme.ts`.
 - Dark-mode only (`userInterfaceStyle: 'dark'`).
+- **Open editorial & "no-div" design** — abolish card soup and nested boxes; use continuous hairlines, visual connecting stem lines, nodes, and status pills instead of text clutter.
 - Consistent typography scale, spacing scale, and border radius tokens.
 - All animations use `react-native-reanimated` with defined spring physics.
 - Haptic feedback standards for every interaction type.

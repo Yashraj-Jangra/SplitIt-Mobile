@@ -50,6 +50,37 @@ notification: {
 
 ---
 
+## 📐 Open Editorial & "No-Div" Architecture (Anti-Card Soup)
+
+### Core Philosophy: Less Div / No Div Design
+- **Abolish "Card Soup"**: Avoid nesting `<View>` cards inside `<View>` containers inside boxes. Multiple concentric borders and boxed-in containers make a mobile finance UI feel heavy, clunky, and claustrophobic.
+- **Open Editorial Space**: Rely on negative space (`THEME.spacing`), typographic contrast (`THEME.typography`), and subtle hairline dividers (`THEME.colors.hairline` or `StyleSheet.hairlineWidth`) to create hierarchy naturally without boxing everything in.
+- **Hierarchy via Typography**: A massive, beautifully formatted amount (`hero` / `headline` size, colored currency symbol, muted decimal cents) establishes visual anchor far better than wrapping the number inside a gray box card.
+
+### Visual Connecting Lines & Flow Architecture
+- **Continuous Hairline Timelines**: Replace directory-style ASCII branches (`└──`) or disconnected cards with clean continuous hairline ledgers (`borderLeftWidth: 1`, `borderColor: THEME.colors.hairline`).
+- **Node Paths & Directional Flow**:
+  - Connect payers to participants using continuous vertical timeline stems and node dots (`timelineDotNode`, `#1CC29F` for the current user, muted dots for others).
+  - Use visual transfer indicators (directional arrows, animated vectors, participant avatar nodes) rather than long sentence descriptions.
+- **Visual Nodes over Text Explanations**:
+  - **Payer Row**: Highlighted with an avatar ring and a green status pill (`PAID`).
+  - **Participant Rows**: Connected by vertical stem lines into individual debt impact pills (`You owe ₹X` in rose, `Gets back ₹X` in emerald).
+
+### Visual Elements Over Text Clutter
+- **Never Explain What Can Be Visualized**:
+  - ❌ *"Rohit owes Yashraj ₹500 because Yashraj paid the total of ₹1,000 for dinner."*
+  - ✅ **Visual Flow**: `[Avatar: Yashraj (PAID ₹1,000)] ─── stem line ───> [Avatar: Rohit] [You owe ₹500 (Rose Pill)]`
+- **Atmospheric & Generative Headers**:
+  - Use subtle vector geometry, generative SVG contours, and dynamic category-colored radial glow (like `ExpenseAbstractHeader.tsx`) to anchor screen tops instead of flat, heavy rectangular bars.
+  - Floating illuminated category orbs with orbital rings and category tag dots.
+- **Micro-Badges & Status Pills**:
+  - Color-coded delta pills (`+₹450` in emerald, `-₹120` in rose).
+  - Status indicators using glowing dots or subtle translucent pills (`THEME.colors.successMuted` / `negativeMuted`) rather than long status paragraphs.
+- **Open Quote Blocks with Vertical Accent Bars**:
+  - For notes, descriptions, or memos, use an open quote block with a 3px category-tinted vertical accent bar on the left rather than a boxed gray input card.
+
+---
+
 ## Typography Scale
 
 Define and use a consistent type scale in `THEME.typography`. Never use arbitrary `fontSize` values inline.

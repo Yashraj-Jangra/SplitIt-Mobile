@@ -232,7 +232,7 @@ All 34+ files have been migrated to `THEME.colors.*` tokens. Single source of tr
 - [x] `app/(auth)/login.tsx`
 
 ## Production Rules Verification Status
-- [x] **Theming (`theming.md`)**: Zero hardcoded colors across entire repo outside `theme.ts`. Typography & spacing scales adhered to.
+- [x] **Theming (`theming.md`)**: Zero hardcoded colors across entire repo outside `theme.ts`. Open editorial & "no-div" design (continuous hairlines, timeline nodes, connecting stems, pills over text clutter). Typography & spacing scales adhered to.
 - [x] **Crash Prevention (`crash-prevention.md`)**: Root and route `ErrorBoundary` active, defensive null safety (`?.`), offline fallback states.
 - [x] **Keyboard (`keyboard.md`)**: `KeyboardAvoidingView` on all form screens, `decimal-pad` currency inputs, return key chaining, `keyboardDismissMode="on-drag"`.
 - [x] **Dependencies (`dependencies.md`)**: Expo config schema clean, `app.json` root splash fixed, `expo-doctor` passed 20/21.
