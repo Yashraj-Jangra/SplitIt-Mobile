@@ -59,7 +59,7 @@ export default function SupportTicketsScreen() {
       case 'in_progress':
         return {
           label: 'In Progress',
-          color: '#3B82F6',
+          color: THEME.colors.info,
           bg: 'rgba(59, 130, 246, 0.12)',
           icon: Clock,
         };
@@ -73,7 +73,7 @@ export default function SupportTicketsScreen() {
       default:
         return {
           label: 'Open',
-          color: '#F59E0B',
+          color: THEME.colors.warning,
           bg: 'rgba(245, 158, 11, 0.12)',
           icon: AlertCircle,
         };
@@ -103,7 +103,7 @@ export default function SupportTicketsScreen() {
           }}
           style={styles.newButton}
         >
-          <Plus size={16} color="#09090B" />
+          <Plus size={16} color={THEME.colors.primaryForeground} />
           <Text style={styles.newButtonText}>New</Text>
         </TouchableOpacity>
       </View>
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   newButtonText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
   },
   heroCard: {
     flexDirection: 'row',

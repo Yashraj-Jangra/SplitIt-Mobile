@@ -106,8 +106,8 @@ export default function UpiQrModal() {
             <QRCode
               value={upiUrl}
               size={210}
-              color="#000000"
-              backgroundColor="#FFFFFF"
+              color={THEME.colors.palette.black}
+              backgroundColor={THEME.colors.palette.white}
             />
           </View>
           <Text style={styles.qrInstruction}>
@@ -154,11 +154,11 @@ export default function UpiQrModal() {
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#09090B" />
+            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
           ) : (
             <>
               <Text style={styles.confirmButtonText}>I Have Paid ₹{amount.toLocaleString()}</Text>
-              <ArrowRight size={18} color="#09090B" />
+              <ArrowRight size={18} color={THEME.colors.primaryForeground} />
             </>
           )}
         </TouchableOpacity>
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   qrWhiteBox: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.palette.white,
     padding: 16,
     borderRadius: THEME.radius.lg,
     alignItems: 'center',
@@ -314,6 +314,6 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
   },
 });

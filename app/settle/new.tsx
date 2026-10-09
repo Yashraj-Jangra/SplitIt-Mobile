@@ -278,7 +278,7 @@ export default function SettleUpModal() {
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#000000" />
+            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
           ) : (
             <Text style={styles.actionBtnText}>
               {method === 'upi_app'
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#000000',
+    color: THEME.colors.primaryForeground,
   },
   partyName: {
     fontSize: 14,
@@ -509,6 +509,6 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#000000',
+    color: THEME.colors.primaryForeground,
   },
 });

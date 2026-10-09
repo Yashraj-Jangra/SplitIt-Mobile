@@ -360,7 +360,7 @@ export default function NotificationsCenterScreen() {
             </Text>
             {unreadExpenses > 0 && (
               <View style={[styles.tabBadge, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}>
-                <Text style={[styles.tabBadgeText, { color: '#3B82F6' }]}>
+                <Text style={[styles.tabBadgeText, { color: THEME.colors.notification.expense }]}>
                   {unreadExpenses}
                 </Text>
               </View>
@@ -389,7 +389,7 @@ export default function NotificationsCenterScreen() {
             </Text>
             {unreadSettlements > 0 && (
               <View style={[styles.tabBadge, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}>
-                <Text style={[styles.tabBadgeText, { color: '#10B981' }]}>
+                <Text style={[styles.tabBadgeText, { color: THEME.colors.notification.payment }]}>
                   {unreadSettlements}
                 </Text>
               </View>
@@ -418,7 +418,7 @@ export default function NotificationsCenterScreen() {
             </Text>
             {unreadReminders > 0 && (
               <View style={[styles.tabBadge, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
-                <Text style={[styles.tabBadgeText, { color: '#F59E0B' }]}>
+                <Text style={[styles.tabBadgeText, { color: THEME.colors.notification.budget }]}>
                   {unreadReminders}
                 </Text>
               </View>
@@ -447,7 +447,7 @@ export default function NotificationsCenterScreen() {
             </Text>
             {unreadOther > 0 && (
               <View style={[styles.tabBadge, { backgroundColor: 'rgba(168, 85, 247, 0.2)' }]}>
-                <Text style={[styles.tabBadgeText, { color: '#A855F7' }]}>
+                <Text style={[styles.tabBadgeText, { color: THEME.colors.notification.announcement }]}>
                   {unreadOther}
                 </Text>
               </View>
@@ -510,81 +510,81 @@ function getNotificationVisuals(type: string, isRead: boolean) {
     case 'expense_updated':
     case 'expense_deleted':
       Icon = Receipt;
-      iconColor = '#3B82F6';
+      iconColor = THEME.colors.notification.expense;
       iconBg = 'rgba(59, 130, 246, 0.12)';
-      accentBorderColor = '#3B82F6';
+      accentBorderColor = THEME.colors.notification.expense;
       break;
 
     case 'settlement_added':
       Icon = Handshake;
-      iconColor = '#10B981';
+      iconColor = THEME.colors.notification.payment;
       iconBg = 'rgba(16, 185, 129, 0.12)';
-      accentBorderColor = '#10B981';
+      accentBorderColor = THEME.colors.notification.payment;
       break;
 
     case 'member_added':
     case 'member_removed':
       Icon = Users;
-      iconColor = '#F97316';
+      iconColor = THEME.colors.notification.member;
       iconBg = 'rgba(249, 115, 22, 0.12)';
-      accentBorderColor = '#F97316';
+      accentBorderColor = THEME.colors.notification.member;
       break;
 
     case 'payment_reminder':
     case 'payment_confirmation_request':
       Icon = Wallet;
-      iconColor = '#10B981';
+      iconColor = THEME.colors.notification.payment;
       iconBg = 'rgba(16, 185, 129, 0.12)';
-      accentBorderColor = '#10B981';
+      accentBorderColor = THEME.colors.notification.payment;
       break;
 
     case 'monthly_summary':
       Icon = TrendingUp;
-      iconColor = '#14B8A6';
+      iconColor = THEME.colors.primary;
       iconBg = 'rgba(20, 184, 166, 0.12)';
-      accentBorderColor = '#14B8A6';
+      accentBorderColor = THEME.colors.primary;
       break;
 
     case 'group_inactivity':
       Icon = History;
-      iconColor = '#F59E0B';
+      iconColor = THEME.colors.notification.budget;
       iconBg = 'rgba(245, 158, 11, 0.12)';
-      accentBorderColor = '#F59E0B';
+      accentBorderColor = THEME.colors.notification.budget;
       break;
 
     case 'budget_alert':
       Icon = AlertTriangle;
-      iconColor = '#F59E0B';
+      iconColor = THEME.colors.notification.budget;
       iconBg = 'rgba(245, 158, 11, 0.12)';
-      accentBorderColor = '#F59E0B';
+      accentBorderColor = THEME.colors.notification.budget;
       break;
 
     case 'budget_exceeded':
       Icon = AlertCircle;
-      iconColor = '#F43F5E';
+      iconColor = THEME.colors.notification.budgetExceeded;
       iconBg = 'rgba(244, 63, 94, 0.12)';
-      accentBorderColor = '#F43F5E';
+      accentBorderColor = THEME.colors.notification.budgetExceeded;
       break;
 
     case 'support_reply':
       Icon = HelpCircle;
-      iconColor = '#06B6D4';
+      iconColor = THEME.colors.notification.support;
       iconBg = 'rgba(6, 182, 212, 0.12)';
-      accentBorderColor = '#06B6D4';
+      accentBorderColor = THEME.colors.notification.support;
       break;
 
     case 'broadcast_announcement':
       Icon = Megaphone;
-      iconColor = '#A855F7';
+      iconColor = THEME.colors.notification.announcement;
       iconBg = 'rgba(168, 85, 247, 0.12)';
-      accentBorderColor = '#A855F7';
+      accentBorderColor = THEME.colors.notification.announcement;
       break;
 
     case 'broadcast_critical':
       Icon = ShieldAlert;
-      iconColor = '#EF4444';
+      iconColor = THEME.colors.notification.critical;
       iconBg = 'rgba(239, 68, 68, 0.12)';
-      accentBorderColor = '#EF4444';
+      accentBorderColor = THEME.colors.notification.critical;
       break;
 
     default:

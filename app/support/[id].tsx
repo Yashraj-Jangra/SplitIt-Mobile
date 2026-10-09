@@ -192,7 +192,7 @@ export default function TicketThreadScreen() {
             onPress={handleSendReply}
             disabled={!replyText.trim() || isSending}
           >
-            <Send size={18} color="#09090B" />
+            <Send size={18} color={THEME.colors.primaryForeground} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

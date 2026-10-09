@@ -75,9 +75,9 @@ export default function NewSupportTicketModal() {
           style={[styles.submitButton, isSubmitting && { opacity: 0.6 }]}
         >
           {isSubmitting ? (
-            <ActivityIndicator size="small" color="#09090B" />
+            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
           ) : (
-            <Send size={18} color="#09090B" />
+            <Send size={18} color={THEME.colors.primaryForeground} />
           )}
         </TouchableOpacity>
       </View>

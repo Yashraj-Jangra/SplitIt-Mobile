@@ -93,7 +93,7 @@ export default function NotificationPreferencesScreen() {
 
       {savedBanner && (
         <View style={styles.savedBanner}>
-          <Check size={14} color="#09090B" />
+          <Check size={14} color={THEME.colors.primaryForeground} />
           <Text style={styles.savedBannerText}>Preferences synchronized</Text>
         </View>
       )}
@@ -122,8 +122,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.inAppEnabled}
                   onValueChange={() => toggleGlobal('inAppEnabled')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
 
@@ -138,8 +138,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.pushEnabled}
                   onValueChange={() => toggleGlobal('pushEnabled')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
 
@@ -154,8 +154,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.emailEnabled}
                   onValueChange={() => toggleGlobal('emailEnabled')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
             </View>
@@ -173,8 +173,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.events.expense_added.push}
                   onValueChange={() => toggleEventPush('expense_added')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
 
@@ -186,8 +186,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.events.expense_updated.push}
                   onValueChange={() => toggleEventPush('expense_updated')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
             </View>
@@ -204,8 +204,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.events.settlement_added.push}
                   onValueChange={() => toggleEventPush('settlement_added')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
 
@@ -217,8 +217,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.events.payment_reminder.push}
                   onValueChange={() => toggleEventPush('payment_reminder')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
             </View>
@@ -235,8 +235,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.events.budget_alert.push}
                   onValueChange={() => toggleEventPush('budget_alert')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
 
@@ -248,8 +248,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.events.budget_exceeded.push}
                   onValueChange={() => toggleEventPush('budget_exceeded')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
 
@@ -261,8 +261,8 @@ export default function NotificationPreferencesScreen() {
                 <Switch
                   value={prefs.events.support_reply.push}
                   onValueChange={() => toggleEventPush('support_reply')}
-                  trackColor={{ false: '#27272A', true: THEME.colors.primary }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
                 />
               </View>
             </View>
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   savedBannerText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#09090B',
+    color: THEME.colors.primaryForeground,
   },
   loadingContainer: {
     flex: 1,
