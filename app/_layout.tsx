@@ -1,4 +1,4 @@
-import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, Theme } from 'expo-router';
+import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, Theme, ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -8,8 +8,14 @@ import { THEME } from '../src/constants/theme';
 import { AuthProvider, useAuth } from '../src/contexts/auth.context';
 import { NetworkProvider } from '../src/contexts/network.context';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
+import { ErrorBoundary as AppErrorBoundary, ErrorFallbackView } from '../src/components/common/ErrorBoundary';
 import { notificationService } from '../src/services/notification.service';
 import { useEffect } from 'react';
+
+// Expo Router route error boundary export
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <ErrorFallbackView error={error} onRetry={retry} />;
+}
 
 // Disarm react-freeze global suspense unmounts so background screens never suspend with null fallback
 enableFreeze(false);
@@ -205,17 +211,19 @@ function NavigationGate() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <SafeAreaProvider>
-        <StatusBar style="light" />
-        <NetworkProvider>
-          <AuthProvider>
-            <OfflineBanner />
-            <NavigationGate />
-          </AuthProvider>
-        </NetworkProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <AppErrorBoundary>
+      <GestureHandlerRootView style={styles.container}>
+        <SafeAreaProvider>
+          <StatusBar style="light" />
+          <NetworkProvider>
+            <AuthProvider>
+              <OfflineBanner />
+              <NavigationGate />
+            </AuthProvider>
+          </NetworkProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </AppErrorBoundary>
   );
 }
 

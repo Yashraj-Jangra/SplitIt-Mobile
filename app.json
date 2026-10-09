@@ -8,11 +8,6 @@
     "scheme": "splitit",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#131417",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#131417"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.splitit.app",
