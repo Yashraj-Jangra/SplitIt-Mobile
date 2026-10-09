@@ -375,62 +375,6 @@ export default function ExpenseDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* Top Generative Vector Abstract Header */}
-      <ExpenseAbstractHeader categoryColor={categoryColor} height={215}>
-        <View style={styles.headerNav}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.selectionAsync();
-              router.back();
-            }}
-            style={styles.frostedIconButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ArrowLeft size={20} color={THEME.colors.text} />
-          </TouchableOpacity>
-
-          <View style={styles.navGroupBadge}>
-            <Text style={styles.navGroupText} numberOfLines={1}>
-              {expense?.groupName || 'Expense'}
-            </Text>
-          </View>
-
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={handleReceiptAction} style={styles.frostedIconButton}>
-              <Camera size={18} color={expense?.receiptImageUrl ? THEME.colors.success : THEME.colors.text} />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleDelete} style={styles.frostedIconButton}>
-              <Trash2 size={18} color={THEME.colors.critical} />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleOpenEdit} style={styles.frostedIconButton}>
-              <Pencil size={18} color={THEME.colors.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Floating Illuminated Category Orb with Orbital Rings */}
-        <View style={styles.heroOrbContainer}>
-          <View style={[styles.heroOrbRing, { borderColor: `${categoryColor}45` }]}>
-            <View style={styles.heroOrbInner}>
-              <CategoryIcon
-                subCategory={expense?.category?.sub}
-                masterCategory={expense?.category?.master}
-                size={28}
-                color={categoryColor}
-              />
-            </View>
-          </View>
-          <View style={[styles.categoryTagPill, { borderColor: `${categoryColor}30` }]}>
-            <View style={[styles.categoryTagDot, { backgroundColor: categoryColor }]} />
-            <Text style={styles.categoryTagText}>
-              {expense?.category?.sub || 'Other'}
-            </Text>
-          </View>
-        </View>
-      </ExpenseAbstractHeader>
-
       <KeyboardAvoidingView
         style={styles.flexOne}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -442,193 +386,276 @@ export default function ExpenseDetailScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {/* Hero Typography: Title & High-Impact Amount */}
-          <View style={styles.heroSection}>
-            <Text style={styles.heroTitle} numberOfLines={2}>
-              {title}
-            </Text>
+          {/* ── 1. Top Generative Vector Abstract Header (Scrolls Naturally With Page) ── */}
+          <ExpenseAbstractHeader categoryColor={categoryColor} height={140}>
+            <View style={styles.headerNav}>
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  router.back();
+                }}
+                style={styles.frostedIconButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
+                <ArrowLeft size={20} color={THEME.colors.text} />
+              </TouchableOpacity>
 
-            <View style={styles.heroAmountRow}>
-              <Text style={[styles.heroCurrencySymbol, { color: categoryColor }]}>
-                {currencySymbol}
-              </Text>
-              <Text style={styles.heroAmountWhole}>{amountParts.whole}</Text>
-              <Text style={styles.heroAmountDecimal}>.{amountParts.decimal}</Text>
-            </View>
-
-            <View style={styles.heroMetaRow}>
-              <Calendar size={13} color={THEME.colors.textMuted} />
-              <Text style={styles.heroMetaText}>{dateFormatted}</Text>
-              <Text style={styles.heroMetaDot}>•</Text>
-              <Text style={styles.heroMetaText}>Added by {creatorName}</Text>
-            </View>
-
-            {/* Editorial Quote Notes (No Div Design) */}
-            {expense?.notes ? (
-              <View style={[styles.editorialNotesBlock, { borderLeftColor: categoryColor }]}>
-                <Text style={styles.editorialNotesText}>"{expense.notes}"</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Quick Receipt Attached Banner (if attached) */}
-          {expense?.receiptImageUrl ? (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleReceiptAction}
-              style={styles.receiptAttachedBanner}
-            >
-              <View style={styles.receiptAttachedLeft}>
-                <View style={styles.receiptIconPill}>
-                  <ImageIcon size={15} color={THEME.colors.success} />
-                </View>
-                <View>
-                  <Text style={styles.receiptAttachedTitle}>Receipt Photo Attached</Text>
-                  <Text style={styles.receiptAttachedSubtitle}>Tap to inspect full resolution</Text>
-                </View>
-              </View>
-              <ArrowRight size={15} color={THEME.colors.textMuted} />
-            </TouchableOpacity>
-          ) : null}
-
-          {/* Settlement Ledger Flow (Open Editorial Layout - Zero Box Design) */}
-          <View style={styles.ledgerSection}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>SETTLEMENT LEDGER</Text>
-              <View style={styles.splitTypeBadge}>
-                <Text style={styles.splitTypeText}>
-                  {expense?.splitType ? expense.splitType.replace('_', ' ') : 'equally'}
+              <View style={styles.navGroupBadge}>
+                <Text style={styles.navGroupText} numberOfLines={1}>
+                  {expense?.groupName || 'Expense'}
                 </Text>
               </View>
-            </View>
 
-            {/* Payer Primary Ledger Row */}
-            <View style={styles.payerLedgerRow}>
-              <View style={[styles.payerAvatarRing, { borderColor: `${categoryColor}55` }]}>
-                {expense?.paidByAvatar ? (
-                  <Image source={{ uri: expense.paidByAvatar }} style={styles.avatarImg} />
-                ) : (
-                  <Text style={[styles.avatarInitial, { color: categoryColor }]}>
-                    {primaryPayerName.charAt(0).toUpperCase()}
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  onPress={handleReceiptAction}
+                  style={styles.frostedIconButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Receipt photo"
+                >
+                  <Camera size={18} color={expense?.receiptImageUrl ? THEME.colors.success : THEME.colors.text} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleDelete}
+                  style={styles.frostedIconButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete expense"
+                >
+                  <Trash2 size={18} color={THEME.colors.critical} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleOpenEdit}
+                  style={styles.frostedIconButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit expense"
+                >
+                  <Pencil size={18} color={THEME.colors.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ExpenseAbstractHeader>
+
+          {/* ── 2. Screen Body Content ── */}
+          <View style={styles.scrollBody}>
+            {/* Hero Section: Category Squircle beside Title & High-Impact Amount */}
+            <View style={styles.heroSection}>
+              <View style={styles.heroSideRow}>
+                {/* Category Squircle Icon Badge */}
+                <View style={[styles.categorySquircle, { backgroundColor: `${categoryColor}15`, borderColor: `${categoryColor}35` }]}>
+                  <CategoryIcon
+                    subCategory={expense?.category?.sub}
+                    masterCategory={expense?.category?.master}
+                    size={26}
+                    color={categoryColor}
+                  />
+                </View>
+
+                {/* Title, Amount & Metadata Column */}
+                <View style={styles.heroContentCol}>
+                  <View style={styles.categoryMetaRow}>
+                    <View style={[styles.categoryColorDot, { backgroundColor: categoryColor }]} />
+                    <Text style={[styles.categoryLabelText, { color: categoryColor }]}>
+                      {expense?.category?.sub || expense?.category?.master || 'Other'}
+                    </Text>
+                    <Text style={styles.metaDividerDot}>•</Text>
+                    <Text style={styles.metaTimeText}>{dateFormatted}</Text>
+                  </View>
+
+                  <Text style={styles.heroTitle} numberOfLines={2}>
+                    {title}
                   </Text>
-                )}
+
+                  {/* High-Impact Amount */}
+                  <View style={styles.heroAmountRow}>
+                    <Text style={[styles.heroCurrencySymbol, { color: categoryColor }]}>
+                      {currencySymbol}
+                    </Text>
+                    <Text style={styles.heroAmountWhole}>{amountParts.whole}</Text>
+                    <Text style={styles.heroAmountDecimal}>.{amountParts.decimal}</Text>
+                  </View>
+
+                  <Text style={styles.creatorMetaText}>Added by {creatorName}</Text>
+                </View>
               </View>
-              <View style={styles.payerInfoCol}>
-                <Text style={styles.payerNameText}>{primaryPayerName}</Text>
-                <Text style={styles.payerSubText}>
-                  {expense?.payers && expense.payers.length > 1
-                    ? `Paid by ${expense.payers.length} people`
-                    : 'Paid full amount'}
-                </Text>
-              </View>
-              <View style={styles.paidBadgePill}>
-                <Check size={11} color={THEME.colors.success} />
-                <Text style={styles.paidBadgeText}>PAID {currencySymbol}{amount.toFixed(2)}</Text>
-              </View>
+
+              {/* Editorial Quote Notes (No Div Design) */}
+              {expense?.notes ? (
+                <View style={[styles.editorialNotesBlock, { borderLeftColor: categoryColor }]}>
+                  <Text style={styles.editorialNotesText}>"{expense.notes}"</Text>
+                </View>
+              ) : null}
             </View>
 
-            {/* Multi-Payers Sub-List (if multiple payers) */}
-            {expense?.payers && expense.payers.length > 1 ? (
-              <View style={styles.multiPayersSubList}>
-                {expense.payers.map((p, idx) => (
-                  <View key={p.userId || idx} style={styles.multiPayerRow}>
-                    <Text style={styles.multiPayerName}>{p.name}</Text>
-                    <Text style={styles.multiPayerAmount}>
-                      {currencySymbol}{Number(p.amount || 0).toFixed(2)}
+            {/* Quick Receipt Attached Banner (if attached) */}
+            {expense?.receiptImageUrl ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleReceiptAction}
+                style={styles.receiptAttachedBanner}
+              >
+                <View style={styles.receiptAttachedLeft}>
+                  <View style={styles.receiptIconPill}>
+                    <ImageIcon size={15} color={THEME.colors.success} />
+                  </View>
+                  <View>
+                    <Text style={styles.receiptAttachedTitle}>Receipt Photo Attached</Text>
+                    <Text style={styles.receiptAttachedSubtitle}>Tap to inspect full resolution</Text>
+                  </View>
+                </View>
+                <ArrowRight size={15} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            ) : null}
+
+            {/* ── 3. Settlement & Split Flow (Connecting Stem Lines & Pure Colored Text) ── */}
+            <View style={styles.ledgerSection}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>SETTLEMENT & SPLIT</Text>
+                <View style={styles.splitTypeBadge}>
+                  <Text style={styles.splitTypeText}>
+                    {expense?.splitType ? expense.splitType.replace('_', ' ') : 'equally'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Continuous Timeline Ledger Container */}
+              <View style={styles.timelineLedgerContainer}>
+                {/* Payer Primary Ledger Row */}
+                <View style={styles.timelineRow}>
+                  {/* Stem Line Column */}
+                  <View style={styles.stemColumn}>
+                    <View style={styles.stemLineDown} />
+                    <View style={styles.payerNodeDot}>
+                      <Check size={8} color={THEME.colors.primaryForeground} strokeWidth={3} />
+                    </View>
+                  </View>
+
+                  {/* Payer Info & Unboxed Green Status Text */}
+                  <View style={[styles.timelineContentRow, styles.contentRowBorder]}>
+                    <View style={[styles.avatarRing, { borderColor: `${categoryColor}55` }]}>
+                      {expense?.paidByAvatar ? (
+                        <Image source={{ uri: expense.paidByAvatar }} style={styles.avatarImg} />
+                      ) : (
+                        <Text style={[styles.avatarInitial, { color: categoryColor }]}>
+                          {primaryPayerName.charAt(0).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.memberInfoCol}>
+                      <Text style={styles.memberNameText}>{primaryPayerName}</Text>
+                      <Text style={styles.memberSubText}>
+                        {expense?.payers && expense.payers.length > 1
+                          ? `Paid by ${expense.payers.length} people`
+                          : 'Paid full amount'}
+                      </Text>
+                    </View>
+                    {/* NO DIV / PURE GREEN TEXT */}
+                    <Text style={styles.paidColoredText}>
+                      PAID {currencySymbol}{amount.toFixed(2)}
                     </Text>
                   </View>
-                ))}
-              </View>
-            ) : null}
-
-            {/* Continuous Hairline Ledger connecting to participants */}
-            {!hasSplitLoaded || !areParticipantsValid(participants) ? (
-              <View style={styles.splitSkeletonBlock}>
-                <View style={styles.splitLoadingNotice}>
-                  <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
-                  <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
                 </View>
-                <SplitBreakdownSkeleton count={3} />
-              </View>
-            ) : (
-              <View style={styles.participantsLedgerList}>
-                {participants.map((p, index) => {
-                  const isLast = index === participants.length - 1;
-                  const isUser = p.isCurrentUser || p.userId === currentUserId;
-                  const owedText = formatParticipantOwedText(p, currencySymbol, groupMembers, currentUserId);
-                  const isPayer = p.userId === (expense?.paidById || primaryPayer.userId);
 
-                  return (
-                    <View key={p.userId || index} style={[styles.participantRow, !isLast && styles.participantRowBorder]}>
-                      {/* Timeline Dot Node */}
-                      <View style={styles.timelineNodeCol}>
-                        <View
-                          style={[
-                            styles.timelineDot,
-                            isUser ? { backgroundColor: THEME.colors.primary, borderColor: `${THEME.colors.primary}50` } : null,
-                          ]}
-                        />
-                        {!isLast && <View style={styles.timelineConnectorLine} />}
+                {/* Multi-Payers Sub-List (if multiple payers) */}
+                {expense?.payers && expense.payers.length > 1 ? (
+                  <View style={styles.multiPayersSubList}>
+                    {expense.payers.map((p, idx) => (
+                      <View key={p.userId || idx} style={styles.multiPayerRow}>
+                        <Text style={styles.multiPayerName}>{p.name}</Text>
+                        <Text style={styles.multiPayerAmount}>
+                          {currencySymbol}{Number(p.amount || 0).toFixed(2)}
+                        </Text>
                       </View>
+                    ))}
+                  </View>
+                ) : null}
 
-                      {/* Participant Avatar */}
-                      <View style={[styles.participantAvatar, isUser && styles.participantAvatarUser]}>
-                        {p.avatarUrl ? (
-                          <Image source={{ uri: p.avatarUrl }} style={styles.avatarImg} />
-                        ) : (
-                          <Text style={[styles.participantAvatarInitial, isUser && { color: THEME.colors.primary }]}>
-                            {(p.name || 'M').charAt(0).toUpperCase()}
-                          </Text>
-                        )}
-                      </View>
+                {/* Participants Flow connected by Continuous Stem */}
+                {!hasSplitLoaded || !areParticipantsValid(participants) ? (
+                  <View style={styles.splitSkeletonBlock}>
+                    <View style={styles.splitLoadingNotice}>
+                      <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
+                      <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
+                    </View>
+                    <SplitBreakdownSkeleton count={3} />
+                  </View>
+                ) : (
+                  participants.map((p, index) => {
+                    const isLast = index === participants.length - 1;
+                    const isUser = p.isCurrentUser || p.userId === currentUserId;
+                    const owedText = formatParticipantOwedText(p, currencySymbol, groupMembers, currentUserId);
+                    const isPayer = p.userId === (expense?.paidById || primaryPayer.userId);
+                    const userOwes = isUser && Number(p.amountOwed || 0) > 0 && !isPayer;
+                    const userGetsBack = isUser && isPayer;
 
-                      {/* Participant Name & Status */}
-                      <View style={styles.participantNameCol}>
-                        <View style={styles.participantNameRow}>
-                          <Text style={[styles.participantName, isUser && styles.participantNameUser]}>
-                            {p.name}
-                          </Text>
-                          {isUser && (
-                            <View style={styles.youBadge}>
-                              <Text style={styles.youBadgeText}>YOU</Text>
+                    return (
+                      <View key={p.userId || index} style={styles.timelineRow}>
+                        {/* Stem Line Column */}
+                        <View style={styles.stemColumn}>
+                          <View style={isLast ? styles.stemLineLast : styles.stemLineFull} />
+                          <View
+                            style={[
+                              styles.participantNodeDot,
+                              isUser ? styles.nodeDotUser : styles.nodeDotNeutral,
+                            ]}
+                          />
+                        </View>
+
+                        {/* Participant Content & Unboxed Colored Status Text */}
+                        <View style={[styles.timelineContentRow, !isLast && styles.contentRowBorder]}>
+                          <View style={[styles.participantAvatar, isUser && styles.participantAvatarUser]}>
+                            {p.avatarUrl ? (
+                              <Image source={{ uri: p.avatarUrl }} style={styles.avatarImg} />
+                            ) : (
+                              <Text style={[styles.participantAvatarInitial, isUser && { color: THEME.colors.primary }]}>
+                                {(p.name || 'M').charAt(0).toUpperCase()}
+                              </Text>
+                            )}
+                          </View>
+
+                          <View style={styles.memberInfoCol}>
+                            <View style={styles.nameBadgeRow}>
+                              <Text style={[styles.memberNameText, isUser && styles.memberNameUser]}>
+                                {p.name}
+                              </Text>
+                              {isUser && (
+                                <View style={styles.youBadge}>
+                                  <Text style={styles.youBadgeText}>YOU</Text>
+                                </View>
+                              )}
                             </View>
+                            <Text style={styles.memberSubText}>
+                              Share: {currencySymbol}{Number(p.amountOwed || 0).toFixed(2)}
+                            </Text>
+                          </View>
+
+                          {/* NO DIV / PURE COLORED TEXT: Red, Green, or White */}
+                          {userOwes ? (
+                            <Text style={styles.owesColoredText}>
+                              You owe {currencySymbol}{Number(p.amountOwed || 0).toFixed(2)}
+                            </Text>
+                          ) : userGetsBack ? (
+                            <Text style={styles.getsBackColoredText}>
+                              {owedText}
+                            </Text>
+                          ) : (
+                            <Text style={styles.memberStatusColoredText}>
+                              {owedText}
+                            </Text>
                           )}
                         </View>
-                        <Text style={styles.participantShareDetail}>
-                          Share: {currencySymbol}{Number(p.amountOwed || 0).toFixed(2)}
-                        </Text>
                       </View>
-
-                      {/* Debt / Impact Pill */}
-                      <View
-                        style={[
-                          styles.debtStatusPill,
-                          isUser && Number(p.amountOwed || 0) > 0 && !isPayer
-                            ? styles.debtPillOwes
-                            : isUser && isPayer
-                            ? styles.debtPillGetsBack
-                            : styles.debtPillNeutral,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.debtStatusText,
-                            isUser && Number(p.amountOwed || 0) > 0 && !isPayer
-                              ? styles.debtTextOwes
-                              : isUser && isPayer
-                              ? styles.debtTextGetsBack
-                              : styles.debtTextNeutral,
-                          ]}
-                        >
-                          {owedText}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
+                    );
+                  })
+                )}
               </View>
-            )}
-          </View>
+            </View>
 
           {/* Activity & History Section */}
           <View style={styles.historySection}>
@@ -735,7 +762,8 @@ export default function ExpenseDetailScreen() {
               })}
             </View>
           </View>
-        </ScrollView>
+        </View>
+      </ScrollView>
 
         {/* Bottom Docked "Add a comment" Bar */}
         <View style={styles.bottomCommentDock}>
@@ -862,125 +890,103 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  // Floating Illuminated Category Orb with Orbital Rings
-  heroOrbContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 12,
-    paddingBottom: 16,
+  // Scroll Content & Body
+  scrollContent: {
+    paddingBottom: 40,
   },
-  heroOrbRing: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  scrollBody: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 22,
+  },
+
+  // Hero Section - Clean High-Impact Typography & Category Squircle
+  heroSection: {
+    gap: 12,
+  },
+  heroSideRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  categorySquircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(24, 25, 30, 0.7)',
-    shadowColor: THEME.colors.palette.black,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
+    marginTop: 2,
   },
-  heroOrbInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  heroContentCol: {
+    flex: 1,
+    gap: 3,
   },
-  categoryTagPill: {
+  categoryMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(24, 25, 30, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 4.5,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    marginTop: 10,
   },
-  categoryTagDot: {
+  categoryColorDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  categoryTagText: {
+  categoryLabelText: {
     fontSize: 11,
     fontWeight: '700',
-    color: THEME.colors.text,
-    letterSpacing: 0.3,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-
-  // Scroll Content
-  scrollContent: {
-    paddingTop: 8,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 22,
+  metaDividerDot: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
   },
-
-  // Hero Section - Clean High-Impact Typography
-  heroSection: {
-    alignItems: 'center',
-    gap: 6,
+  metaTimeText: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
   },
   heroTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: THEME.colors.text,
-    textAlign: 'center',
     letterSpacing: -0.3,
-    paddingHorizontal: 16,
+    lineHeight: 28,
   },
   heroAmountRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    justifyContent: 'center',
     marginTop: 2,
   },
   heroCurrencySymbol: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     marginRight: 2,
   },
   heroAmountWhole: {
-    fontSize: 44,
+    fontSize: 34,
     fontWeight: '800',
     color: THEME.colors.text,
-    letterSpacing: -1.2,
+    letterSpacing: -0.8,
   },
   heroAmountDecimal: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     color: THEME.colors.textSecondary,
   },
-  heroMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  heroMetaText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: THEME.colors.textMuted,
-  },
-  heroMetaDot: {
+  creatorMetaText: {
     fontSize: 12,
     color: THEME.colors.textMuted,
+    fontWeight: '500',
+    marginTop: 2,
   },
   editorialNotesBlock: {
     borderLeftWidth: 3,
-    paddingLeft: 14,
+    paddingLeft: 12,
     paddingVertical: 4,
-    width: '100%',
-    maxWidth: 360,
-    marginTop: 8,
+    marginTop: 6,
+    marginLeft: 2,
   },
   editorialNotesText: {
     fontSize: 13,
@@ -1056,16 +1062,87 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
     textTransform: 'capitalize',
   },
-  payerLedgerRow: {
+
+  // Continuous Connecting Stem Line Ledger
+  timelineLedgerContainer: {
+    gap: 0,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  stemColumn: {
+    width: 24,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  stemLineDown: {
+    position: 'absolute',
+    top: 28,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    left: 11,
+  },
+  stemLineFull: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    left: 11,
+  },
+  stemLineLast: {
+    position: 'absolute',
+    top: 0,
+    height: 28,
+    width: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    left: 11,
+  },
+  payerNodeDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: THEME.colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    zIndex: 2,
+    borderWidth: 2,
+    borderColor: THEME.colors.background,
+  },
+  participantNodeDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginTop: 22,
+    zIndex: 2,
+    borderWidth: 2,
+    borderColor: THEME.colors.background,
+  },
+  nodeDotUser: {
+    backgroundColor: THEME.colors.primary,
+  },
+  nodeDotNeutral: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  timelineContentRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingLeft: 8,
     gap: 12,
-    paddingVertical: 6,
   },
-  payerAvatarRing: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  contentRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  avatarRing: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1077,44 +1154,71 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarInitial: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '800',
   },
-  payerInfoCol: {
+  memberInfoCol: {
     flex: 1,
     gap: 2,
   },
-  payerNameText: {
-    fontSize: 15,
+  nameBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  memberNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  memberNameUser: {
     fontWeight: '700',
     color: THEME.colors.text,
   },
-  payerSubText: {
-    fontSize: 12,
+  youBadge: {
+    backgroundColor: 'rgba(28, 194, 159, 0.15)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  youBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: THEME.colors.primary,
+    letterSpacing: 0.5,
+  },
+  memberSubText: {
+    fontSize: 11,
     color: THEME.colors.textMuted,
   },
-  paidBadgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4.5,
-    borderRadius: THEME.radius.full,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-  },
-  paidBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
+
+  // Pure Colored Typography (NO DIV DESIGN)
+  paidColoredText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: THEME.colors.success,
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
+  },
+  owesColoredText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.dangerLight,
+  },
+  getsBackColoredText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.success,
+  },
+  memberStatusColoredText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: THEME.colors.text,
   },
 
   multiPayersSubList: {
-    paddingLeft: 56,
+    paddingLeft: 44,
     gap: 6,
-    paddingBottom: 4,
+    paddingBottom: 6,
   },
   multiPayerRow: {
     flexDirection: 'row',
@@ -1131,44 +1235,6 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
 
-  // Participants Ledger List with Timeline Connectors
-  participantsLedgerList: {
-    gap: 0,
-    marginTop: 2,
-  },
-  participantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-  },
-  participantRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  timelineNodeCol: {
-    width: 14,
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  timelineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: THEME.colors.surfacePill,
-    borderWidth: 1,
-    borderColor: THEME.colors.surfaceElevated,
-    zIndex: 2,
-  },
-  timelineConnectorLine: {
-    position: 'absolute',
-    top: '50%',
-    bottom: -12,
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
   participantAvatar: {
     width: 34,
     height: 34,
@@ -1186,68 +1252,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.text,
-  },
-  participantNameCol: {
-    flex: 1,
-    gap: 1,
-  },
-  participantNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  participantName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: THEME.colors.text,
-  },
-  participantNameUser: {
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  youBadge: {
-    backgroundColor: 'rgba(28, 194, 159, 0.15)',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  youBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: THEME.colors.primary,
-    letterSpacing: 0.5,
-  },
-  participantShareDetail: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-  },
-
-  debtStatusPill: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-  },
-  debtPillOwes: {
-    backgroundColor: 'rgba(251, 113, 133, 0.12)',
-  },
-  debtPillGetsBack: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-  },
-  debtPillNeutral: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  debtStatusText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  debtTextOwes: {
-    color: THEME.colors.dangerLight,
-  },
-  debtTextGetsBack: {
-    color: THEME.colors.success,
-  },
-  debtTextNeutral: {
-    color: THEME.colors.textSecondary,
   },
 
   splitSkeletonBlock: {

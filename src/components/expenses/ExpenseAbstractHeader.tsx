@@ -34,6 +34,7 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
 }) => {
   const svgWidth = 400;
   const svgHeight = height;
+  const centerY = height * 0.45;
 
   return (
     <View style={[styles.container, { height }, style]}>
@@ -141,7 +142,7 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
         <G opacity="0.85">
           <Ellipse
             cx="200"
-            cy="115"
+            cy={centerY}
             rx="56"
             ry="48"
             fill="none"
@@ -151,7 +152,7 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
           />
           <Ellipse
             cx="200"
-            cy="115"
+            cy={centerY}
             rx="92"
             ry="78"
             fill="none"
@@ -162,7 +163,7 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
           />
           <Ellipse
             cx="200"
-            cy="115"
+            cy={centerY}
             rx="140"
             ry="112"
             fill="none"
@@ -173,7 +174,7 @@ export const ExpenseAbstractHeader: React.FC<ExpenseAbstractHeaderProps> = ({
           />
           <Ellipse
             cx="200"
-            cy="115"
+            cy={centerY}
             rx="190"
             ry="145"
             fill="none"
