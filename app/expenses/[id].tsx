@@ -45,11 +45,13 @@ import {
 } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
 import { useNetwork } from '../../src/contexts/network.context';
+import { useAuth } from '../../src/contexts/auth.context';
 import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBreakdownSkeleton';
 
 export default function ExpenseDetailScreen() {
   const router = useRouter();
   const { requireOnline } = useNetwork();
+  const { user } = useAuth();
   const params = useLocalSearchParams<{
     id: string;
     groupId?: string;
@@ -112,7 +114,17 @@ export default function ExpenseDetailScreen() {
 
   // Group Members & Auth User
   const [groupMembers, setGroupMembers] = useState<{ id: string; name: string; avatarUrl?: string }[]>([]);
-  const [currentUserId, setCurrentUserId] = useState('u1');
+  const [cachedUserId, setCachedUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      authService.getCachedUser().then((u) => {
+        if (u?.id) setCachedUserId(u.id);
+      });
+    }
+  }, [user?.id]);
+
+  const currentUserId = user?.id || cachedUserId || 'u1';
 
   // Receipt Modal State
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -151,12 +163,6 @@ export default function ExpenseDetailScreen() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    authService.getCachedUser().then((u) => {
-      if (u?.id) setCurrentUserId(u.id);
-    });
-  }, []);
 
 
   useEffect(() => {
@@ -271,27 +277,47 @@ export default function ExpenseDetailScreen() {
   const title = expense?.title || params.title || 'Expense';
   const amount = expense?.amount || parseFloat(params.amount || '0') || 0;
   const currencySymbol = '₹';
+
+  const viewerName = useMemo(() => {
+    if (user?.name && user.name !== 'You' && user.name !== 'undefined') {
+      return user.name;
+    }
+    const groupMember = groupMembers.find((m) => m.id === currentUserId);
+    if (groupMember?.name && groupMember.name !== 'You' && groupMember.name !== 'undefined') {
+      return groupMember.name;
+    }
+    return 'You';
+  }, [user?.name, groupMembers, currentUserId]);
+
   const primaryPayerName =
-    expense?.paidByName && expense.paidByName !== 'undefined'
+    expense?.paidByName && expense.paidByName !== 'undefined' && expense.paidByName !== 'You'
       ? expense.paidByName
-      : params.paidByName && params.paidByName !== 'undefined'
+      : expense?.paidById === currentUserId && viewerName !== 'You'
+      ? viewerName
+      : expense?.paidByName && expense.paidByName !== 'undefined'
+      ? expense.paidByName
+      : params.paidByName && params.paidByName !== 'undefined' && params.paidByName !== 'You'
       ? params.paidByName
       : 'Member';
+
   const creatorName =
-    expense?.creator?.name && expense.creator.name !== 'undefined'
+    expense?.creator?.name && expense.creator.name !== 'undefined' && expense.creator.name !== 'You'
       ? expense.creator.name
+      : expense?.creator?.id === currentUserId && viewerName !== 'You'
+      ? viewerName
       : primaryPayerName;
+
   const dateFormatted = expense?.date || params.date || 'Today';
-  const participants = expense?.participants || [];
-  const rawLogs = expense?.logs || [];
-  const logs = useMemo(() => deduplicateExpenseLogs(rawLogs), [rawLogs]);
+  const participants = useMemo(() => expense?.participants || [], [expense?.participants]);
+  const logs = useMemo(() => deduplicateExpenseLogs(expense?.logs || []), [expense?.logs]);
 
   const payersList = useMemo(() => {
     if (expense?.payers && expense.payers.length > 0) {
       return expense.payers.map((p) => {
+        const isCurrent = p.userId === currentUserId;
         const member = groupMembers.find((m) => m.id === p.userId);
         const participant = participants.find((part) => part.userId === p.userId);
-        const resolvedName =
+        let resolvedName =
           p.name && p.name !== 'undefined'
             ? p.name
             : member?.name && member.name !== 'undefined'
@@ -301,11 +327,15 @@ export default function ExpenseDetailScreen() {
             : p.userId === expense?.paidById && primaryPayerName && primaryPayerName !== 'undefined'
             ? primaryPayerName
             : 'Member';
+        if (isCurrent && (resolvedName === 'You' || resolvedName === 'Member') && viewerName !== 'You') {
+          resolvedName = viewerName;
+        }
         const resolvedAvatar =
           p.avatarUrl ||
           member?.avatarUrl ||
           participant?.avatarUrl ||
-          (p.userId === expense?.paidById ? expense?.paidByAvatar : undefined);
+          (p.userId === expense?.paidById ? expense?.paidByAvatar : undefined) ||
+          (isCurrent ? user?.avatarUrl : undefined);
         return {
           ...p,
           name: resolvedName,
@@ -318,11 +348,11 @@ export default function ExpenseDetailScreen() {
       {
         userId: expense?.paidById || 'payer',
         name: primaryPayerName || 'Member',
-        avatarUrl: expense?.paidByAvatar,
+        avatarUrl: expense?.paidByAvatar || (expense?.paidById === currentUserId ? user?.avatarUrl : undefined),
         amount: amount,
       },
     ];
-  }, [expense, primaryPayerName, amount, groupMembers, participants]);
+  }, [expense, primaryPayerName, amount, groupMembers, participants, currentUserId, viewerName, user?.avatarUrl]);
 
   const payersMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -346,30 +376,68 @@ export default function ExpenseDetailScreen() {
     >();
 
     participants.forEach((p) => {
+      const isCurrent = p.isCurrentUser || p.userId === currentUserId;
+      const groupMember = groupMembers.find((m) => m.id === p.userId);
       const paid = payersMap[p.userId] ?? (p.userId === expense?.paidById ? amount : 0);
+
+      let resolvedName = p.name && p.name !== 'undefined' ? p.name : 'Member';
+      if (isCurrent) {
+        if (resolvedName === 'You' || resolvedName === 'Member') {
+          if (viewerName && viewerName !== 'You') {
+            resolvedName = viewerName;
+          }
+        }
+      } else if (resolvedName === 'Member' && groupMember?.name) {
+        resolvedName = groupMember.name;
+      }
+
+      const resolvedAvatar = p.avatarUrl || groupMember?.avatarUrl || (isCurrent ? user?.avatarUrl : undefined);
+
       memberMap.set(p.userId, {
         userId: p.userId,
-        name: p.name || 'Member',
-        avatarUrl: p.avatarUrl,
-        isCurrentUser: p.isCurrentUser || p.userId === currentUserId,
+        name: resolvedName,
+        avatarUrl: resolvedAvatar,
+        isCurrentUser: isCurrent,
         paidAmount: paid,
         owedAmount: Number(p.amountOwed || 0),
       });
     });
 
     payersList.forEach((payer) => {
+      const isCurrent = payer.userId === currentUserId;
+      const groupMember = groupMembers.find((m) => m.id === payer.userId);
+
+      let resolvedName = payer.name && payer.name !== 'undefined' ? payer.name : 'Member';
+      if (isCurrent) {
+        if (resolvedName === 'You' || resolvedName === 'Member') {
+          if (viewerName && viewerName !== 'You') {
+            resolvedName = viewerName;
+          }
+        }
+      } else if (resolvedName === 'Member' && groupMember?.name) {
+        resolvedName = groupMember.name;
+      }
+
+      const resolvedAvatar = payer.avatarUrl || groupMember?.avatarUrl || (isCurrent ? user?.avatarUrl : undefined);
+
       if (!memberMap.has(payer.userId)) {
         memberMap.set(payer.userId, {
           userId: payer.userId,
-          name: payer.name || 'Member',
-          avatarUrl: payer.avatarUrl,
-          isCurrentUser: payer.userId === currentUserId,
+          name: resolvedName,
+          avatarUrl: resolvedAvatar,
+          isCurrentUser: isCurrent,
           paidAmount: Number(payer.amount || 0),
           owedAmount: 0,
         });
       } else {
         const existing = memberMap.get(payer.userId)!;
         existing.paidAmount = Number(payer.amount || existing.paidAmount || 0);
+        if (existing.name === 'You' && resolvedName !== 'You') {
+          existing.name = resolvedName;
+        }
+        if (!existing.avatarUrl && resolvedAvatar) {
+          existing.avatarUrl = resolvedAvatar;
+        }
       }
     });
 
@@ -379,7 +447,7 @@ export default function ExpenseDetailScreen() {
       if (b.paidAmount > 0 && a.paidAmount === 0) return 1;
       return 0;
     });
-  }, [participants, payersList, payersMap, expense?.paidById, amount, currentUserId]);
+  }, [participants, payersList, payersMap, expense?.paidById, amount, currentUserId, viewerName, groupMembers, user?.avatarUrl]);
 
   const categoryColor = useMemo(
     () => getCategoryColor(expense?.category?.master, expense?.category?.sub),
@@ -617,6 +685,8 @@ export default function ExpenseDetailScreen() {
               <View style={styles.splitMembersList}>
                 {splitMembers.map((member, index) => {
                   const isLast = index === splitMembers.length - 1;
+                  const isViewer = member.isCurrentUser || member.userId === currentUserId;
+                  const displayName = isViewer && member.name === 'You' && viewerName !== 'You' ? viewerName : member.name;
 
                   return (
                     <View
@@ -624,24 +694,12 @@ export default function ExpenseDetailScreen() {
                       style={[styles.splitMemberRow, !isLast && styles.splitMemberRowBorder]}
                     >
                       <View style={styles.memberLeftCol}>
-                        <View
-                          style={[
-                            styles.splitAvatar,
-                            member.paidAmount > 0 && styles.splitAvatarPayer,
-                            member.isCurrentUser && styles.splitAvatarUser,
-                          ]}
-                        >
+                        <View style={styles.splitAvatar}>
                           {member.avatarUrl ? (
                             <Image source={{ uri: member.avatarUrl }} style={styles.avatarImg} />
                           ) : (
-                            <Text
-                              style={[
-                                styles.splitAvatarInitial,
-                                member.paidAmount > 0 && { color: THEME.colors.success },
-                                member.isCurrentUser && { color: THEME.colors.primary },
-                              ]}
-                            >
-                              {(member.name || 'M').charAt(0).toUpperCase()}
+                            <Text style={styles.splitAvatarInitial}>
+                              {(displayName || 'M').charAt(0).toUpperCase()}
                             </Text>
                           )}
                         </View>
@@ -651,12 +709,12 @@ export default function ExpenseDetailScreen() {
                             <Text
                               style={[
                                 styles.splitMemberName,
-                                member.isCurrentUser && styles.splitMemberNameUser,
+                                isViewer && styles.splitMemberNameUser,
                               ]}
                             >
-                              {member.name}
+                              {displayName}
                             </Text>
-                            {member.isCurrentUser && (
+                            {isViewer && (
                               <View style={styles.youBadge}>
                                 <Text style={styles.youBadgeText}>YOU</Text>
                               </View>
@@ -671,14 +729,8 @@ export default function ExpenseDetailScreen() {
                             paid {currencySymbol}{member.paidAmount.toFixed(2)}
                           </Text>
                         )}
-                        <Text
-                          style={[
-                            styles.splitOwesText,
-                            member.isCurrentUser && member.paidAmount === 0 && styles.splitYouOwesText,
-                          ]}
-                        >
-                          {member.isCurrentUser ? 'you owe ' : 'owes '}{currencySymbol}
-                          {member.owedAmount.toFixed(2)}
+                        <Text style={styles.splitOwesText}>
+                          owes {currencySymbol}{member.owedAmount.toFixed(2)}
                         </Text>
                       </View>
                     </View>
@@ -1139,12 +1191,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
   },
-  splitAvatarPayer: {
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-  },
-  splitAvatarUser: {
-    borderColor: THEME.colors.primary,
-  },
   splitAvatarInitial: {
     fontSize: 14,
     fontWeight: '700',
@@ -1193,10 +1239,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: THEME.colors.text,
-  },
-  splitYouOwesText: {
-    color: THEME.colors.dangerLight,
-    fontWeight: '700',
   },
 
   splitSkeletonBlock: {

@@ -337,13 +337,13 @@ export const expenseService = {
               paidByName: item.paidByName,
               payers: item.payers.map((p: any) => ({
                 userId: p.user?.uid || p.userId || '',
-                name: (p.user?.uid || p.userId) === currentUserId ? 'You' : (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : p.user?.name || 'Member'),
+                name: (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : (p.user?.name || (p.name && p.name !== 'undefined' ? p.name : ((p.user?.uid || p.userId) === currentUserId ? 'You' : 'Member')))),
                 avatarUrl: p.user?.avatarUrl,
                 amount: Number(p.amount || 0),
               })),
               participants: item.participants.map((p: any) => ({
                 userId: p.user?.uid || p.userId || '',
-                name: (p.user?.uid || p.userId) === currentUserId ? 'You' : (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : p.user?.name || 'Member'),
+                name: (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : (p.user?.name || (p.name && p.name !== 'undefined' ? p.name : ((p.user?.uid || p.userId) === currentUserId ? 'You' : 'Member')))),
                 avatarUrl: p.user?.avatarUrl,
                 amountOwed: Number(p.amountOwed || 0),
                 isCurrentUser: (p.user?.uid || p.userId) === currentUserId,
@@ -409,9 +409,7 @@ export const expenseService = {
           const payers = (e.payers || []).map((p: any) => {
             const uid = p.user?.uid || p.user?.id || p.userId || p.id || 'u';
             const rawName = p.name || p.user?.name || (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : undefined);
-            const name = uid === currentUserId
-              ? 'You'
-              : (rawName && rawName !== 'undefined' ? rawName : 'Member');
+            const name = rawName && rawName !== 'undefined' ? rawName : (uid === currentUserId ? 'You' : 'Member');
             return {
               userId: uid,
               name,
@@ -432,9 +430,7 @@ export const expenseService = {
           const participants = (e.participants || []).map((p: any) => {
             const uid = p.user?.uid || p.user?.id || p.userId || p.id || 'u';
             const rawName = p.name || p.user?.name || (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}`.trim() : undefined);
-            const name = uid === currentUserId
-              ? 'You'
-              : (rawName && rawName !== 'undefined' ? rawName : 'Member');
+            const name = rawName && rawName !== 'undefined' ? rawName : (uid === currentUserId ? 'You' : 'Member');
             return {
               userId: uid,
               name,
