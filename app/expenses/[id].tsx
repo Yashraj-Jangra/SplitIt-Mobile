@@ -20,27 +20,13 @@ import {
   Camera,
   Trash2,
   Pencil,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Coffee,
-  Sparkles,
-  Home,
-  Plane,
-  Heart,
   Send,
   Check,
   X,
-  User,
-  Users,
-  ChevronDown,
-  Calendar,
-  Clock,
   ArrowRight,
   UserPlus,
   UserMinus,
   MessageSquare,
-  FileText,
   ImageIcon,
   AlertCircle,
   RefreshCw,
@@ -49,16 +35,14 @@ import {
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
-import { expenseService, ExpenseDetailModel, ExpenseHistoryLog, deduplicateExpenseLogs } from '../../src/services/expense.service';
+import { expenseService, ExpenseDetailModel, deduplicateExpenseLogs } from '../../src/services/expense.service';
 import { groupService } from '../../src/services/group.service';
 import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon, getCategoryColor } from '../../src/utils/category-icons';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import {
-  MasterCategory,
   areParticipantsValid,
-  formatPayerText,
 } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
 import { useNetwork } from '../../src/contexts/network.context';
@@ -66,7 +50,7 @@ import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBrea
 
 export default function ExpenseDetailScreen() {
   const router = useRouter();
-  const { isOnline, requireOnline } = useNetwork();
+  const { requireOnline } = useNetwork();
   const params = useLocalSearchParams<{
     id: string;
     groupId?: string;
@@ -127,13 +111,8 @@ export default function ExpenseDetailScreen() {
   const [commentInput, setCommentInput] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
 
-  // Categories State
-  const [categories, setCategories] = useState<Record<string, MasterCategory>>(() =>
-    settingsService.getCachedExpenseCategories()
-  );
-
   // Group Members & Auth User
-  const [groupMembers, setGroupMembers] = useState<Array<{ id: string; name: string; avatarUrl?: string }>>([]);
+  const [groupMembers, setGroupMembers] = useState<{ id: string; name: string; avatarUrl?: string }[]>([]);
   const [currentUserId, setCurrentUserId] = useState('u1');
 
   // Receipt Modal State
@@ -180,19 +159,12 @@ export default function ExpenseDetailScreen() {
     });
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    settingsService.getExpenseCategories().then((cats) => {
-      if (mounted) setCategories(cats);
-    });
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   useEffect(() => {
+    let active = true;
     // 0ms Fast Tick: Hydrate offline split record immediately
     expenseService.getCachedExpenseDetails(expenseId).then((cached) => {
+      if (!active) return;
       if (cached) {
         setExpense(cached);
         if (areParticipantsValid(cached.participants)) {
@@ -200,8 +172,11 @@ export default function ExpenseDetailScreen() {
         }
         setLoading(false);
       }
+      fetchExpense();
     });
-    fetchExpense();
+    return () => {
+      active = false;
+    };
   }, [expenseId, groupId]);
 
   useFocusEffect(
@@ -294,6 +269,81 @@ export default function ExpenseDetailScreen() {
 
 
 
+  const title = expense?.title || params.title || 'Expense';
+  const amount = expense?.amount || parseFloat(params.amount || '0') || 0;
+  const currencySymbol = '₹';
+  const primaryPayerName =
+    expense?.paidByName && expense.paidByName !== 'undefined'
+      ? expense.paidByName
+      : params.paidByName && params.paidByName !== 'undefined'
+      ? params.paidByName
+      : 'Member';
+  const creatorName =
+    expense?.creator?.name && expense.creator.name !== 'undefined'
+      ? expense.creator.name
+      : primaryPayerName;
+  const dateFormatted = expense?.date || params.date || 'Today';
+  const participants = expense?.participants || [];
+  const rawLogs = expense?.logs || [];
+  const logs = useMemo(() => deduplicateExpenseLogs(rawLogs), [rawLogs]);
+
+  const payersList = useMemo(() => {
+    if (expense?.payers && expense.payers.length > 0) {
+      return expense.payers.map((p) => {
+        const member = groupMembers.find((m) => m.id === p.userId);
+        const participant = participants.find((part) => part.userId === p.userId);
+        const resolvedName =
+          p.name && p.name !== 'undefined'
+            ? p.name
+            : member?.name && member.name !== 'undefined'
+            ? member.name
+            : participant?.name && participant.name !== 'undefined'
+            ? participant.name
+            : p.userId === expense?.paidById && primaryPayerName && primaryPayerName !== 'undefined'
+            ? primaryPayerName
+            : 'Member';
+        const resolvedAvatar =
+          p.avatarUrl ||
+          member?.avatarUrl ||
+          participant?.avatarUrl ||
+          (p.userId === expense?.paidById ? expense?.paidByAvatar : undefined);
+        return {
+          ...p,
+          name: resolvedName,
+          avatarUrl: resolvedAvatar,
+          amount: Number(p.amount || 0),
+        };
+      });
+    }
+    return [
+      {
+        userId: expense?.paidById || 'payer',
+        name: primaryPayerName || 'Member',
+        avatarUrl: expense?.paidByAvatar,
+        amount: amount,
+      },
+    ];
+  }, [expense, primaryPayerName, amount, groupMembers, participants]);
+
+  const payersMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    payersList.forEach((p) => {
+      map[p.userId] = (map[p.userId] || 0) + Number(p.amount || 0);
+    });
+    return map;
+  }, [payersList]);
+
+  const categoryColor = useMemo(
+    () => getCategoryColor(expense?.category?.master, expense?.category?.sub),
+    [expense?.category]
+  );
+
+  const amountParts = useMemo(() => {
+    const fixed = Number(amount || 0).toFixed(2);
+    const [whole, decimal] = fixed.split('.');
+    return { whole, decimal: decimal || '00' };
+  }, [amount]);
+
   if (loading && !expense) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -335,57 +385,6 @@ export default function ExpenseDetailScreen() {
       </SafeAreaView>
     );
   }
-
-  const title = expense?.title || params.title || 'Expense';
-  const amount = expense?.amount || parseFloat(params.amount || '0') || 0;
-  const currencySymbol = '₹';
-  const primaryPayerName =
-    expense?.paidByName && expense.paidByName !== 'undefined'
-      ? expense.paidByName
-      : params.paidByName && params.paidByName !== 'undefined'
-      ? params.paidByName
-      : 'Member';
-  const creatorName =
-    expense?.creator?.name && expense.creator.name !== 'undefined'
-      ? expense.creator.name
-      : primaryPayerName;
-  const dateFormatted = expense?.date || params.date || 'Today';
-  const participants = expense?.participants || [];
-  const rawLogs = expense?.logs || [];
-  const logs = useMemo(() => deduplicateExpenseLogs(rawLogs), [rawLogs]);
-
-  const payersList = useMemo(() => {
-    if (expense?.payers && expense.payers.length > 0) {
-      return expense.payers;
-    }
-    return [
-      {
-        userId: expense?.paidById || 'payer',
-        name: primaryPayerName,
-        avatarUrl: expense?.paidByAvatar,
-        amount: amount,
-      },
-    ];
-  }, [expense?.payers, expense?.paidById, expense?.paidByAvatar, primaryPayerName, amount]);
-
-  const payersMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    payersList.forEach((p) => {
-      map[p.userId] = (map[p.userId] || 0) + Number(p.amount || 0);
-    });
-    return map;
-  }, [payersList]);
-
-  const categoryColor = useMemo(
-    () => getCategoryColor(expense?.category?.master, expense?.category?.sub),
-    [expense?.category]
-  );
-
-  const amountParts = useMemo(() => {
-    const fixed = Number(amount || 0).toFixed(2);
-    const [whole, decimal] = fixed.split('.');
-    return { whole, decimal: decimal || '00' };
-  }, [amount]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -522,7 +521,7 @@ export default function ExpenseDetailScreen() {
             {/* Editorial Quote Notes */}
             {expense?.notes ? (
               <View style={[styles.editorialNotesBlock, { borderLeftColor: categoryColor }]}>
-                <Text style={styles.editorialNotesText}>"{expense.notes}"</Text>
+                <Text style={styles.editorialNotesText}>{`"${expense.notes}"`}</Text>
               </View>
             ) : null}
 
@@ -580,7 +579,7 @@ export default function ExpenseDetailScreen() {
                             <Image source={{ uri: payerItem.avatarUrl }} style={styles.avatarImg} />
                           ) : (
                             <Text style={[styles.avatarInitial, { color: THEME.colors.success }]}>
-                              {payerItem.name.charAt(0).toUpperCase()}
+                              {(payerItem.name || 'M').charAt(0).toUpperCase()}
                             </Text>
                           )}
                         </View>
@@ -591,7 +590,7 @@ export default function ExpenseDetailScreen() {
 
                       <View style={styles.payerTextCol}>
                         <View style={styles.nameBadgeRow}>
-                          <Text style={styles.payerNameText}>{payerItem.name}</Text>
+                          <Text style={styles.payerNameText}>{payerItem.name || 'Member'}</Text>
                           {isUserPayer && (
                             <View style={styles.youBadge}>
                               <Text style={styles.youBadgeText}>YOU</Text>
@@ -675,7 +674,7 @@ export default function ExpenseDetailScreen() {
                           <View style={styles.memberInfoCol}>
                             <View style={styles.nameBadgeRow}>
                               <Text style={[styles.memberNameText, isUser && styles.memberNameUser]}>
-                                {p.name}
+                                {p.name || 'Member'}
                               </Text>
                               {isUser && (
                                 <View style={styles.youBadge}>
