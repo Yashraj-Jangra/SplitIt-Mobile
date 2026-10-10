@@ -1,6 +1,22 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Unified Financial Split List with Minimal No-Div Design (`app/expenses/[id].tsx`)**:
+  - **Combined Payer and Payee into Single List**:
+    - Eliminated segregated nested boxes ("PAID BY CARD", "SPLIT FOR X MEMBERS", stem lines, dot nodes).
+    - Unified all payers and split participants into a single memoized `splitMembers` ledger, with payers naturally sorted to the top.
+  - **Direct Parity with Website Financial Split Pattern**:
+    - Each participant row displays the member's avatar and name (with `YOU` pill badge) on the left.
+    - Right side displays stacked colored text:
+      - `paid ₹X.XX` in emerald green (`THEME.colors.success`) if they contributed.
+      - `owes ₹Y.YY` (or `you owe ₹Y.YY` for the current user) in crisp text.
+  - **Minimal No-Div Design**:
+    - Replaced heavy card containers and tree branches with lightweight rows separated by delicate hairline dividers (`StyleSheet.hairlineWidth`).
+  - **Verification Gates**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx expo lint app/expenses/[id].tsx` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Fix Runtime Render Crash & Unconditional Hook Execution (`app/expenses/[id].tsx`)**:
   - **Fixed `Cannot read property 'charAt' of undefined` Runtime Crash**:
     - Identified that `expense.payers` items from the API may lack a `name` field, causing `payerItem.name.charAt(0)` to crash the entire screen.
@@ -10,10 +26,6 @@
     - Reordered all hook calls (`payersList`, `payersMap`, `categoryColor`, `amountParts`, `logs`) to execute unconditionally before early loading/error returns.
     - Wrapped async hydration to avoid synchronous `setState` in effect bodies.
     - Escaped JSX quotes in editorial quote blocks (`{\`"${expense.notes}"\`}`).
-  - **Pre-Commit Verification Gates**:
-    - `npx tsc --noEmit` passed with 0 errors.
-    - `npx expo lint app/expenses/[id].tsx` passed with 0 errors.
-    - `npx jest --passWithNoTests` passed with 0 failures.
 
 - **Expense Info Screen Redesign — Pinned Top Nav, Ambient Hero & Structured Settlement Ledger (`app/expenses/[id].tsx`)**:
   - **Pinned Fixed Navigation Bar (`pinnedHeader`)**:
