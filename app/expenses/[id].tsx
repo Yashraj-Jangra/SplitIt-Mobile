@@ -54,11 +54,10 @@ import { groupService } from '../../src/services/group.service';
 import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon, getCategoryColor } from '../../src/utils/category-icons';
-import { ExpenseAbstractHeader } from '../../src/components/expenses/ExpenseAbstractHeader';
+import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import {
   MasterCategory,
   areParticipantsValid,
-  formatParticipantOwedText,
   formatPayerText,
 } from '@splitit/core';
 import * as Haptics from 'expo-haptics';
@@ -306,7 +305,7 @@ export default function ExpenseDetailScreen() {
   if (!loading && !expense && loadError) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.headerNav}>
+        <View style={styles.pinnedHeader}>
           <TouchableOpacity
             onPress={() => {
               Haptics.selectionAsync();
@@ -355,12 +354,27 @@ export default function ExpenseDetailScreen() {
   const rawLogs = expense?.logs || [];
   const logs = useMemo(() => deduplicateExpenseLogs(rawLogs), [rawLogs]);
 
-  const primaryPayer = expense?.payers?.[0] || {
-    userId: expense?.paidById || 'payer',
-    name: primaryPayerName,
-    avatarUrl: expense?.paidByAvatar,
-    amount: amount,
-  };
+  const payersList = useMemo(() => {
+    if (expense?.payers && expense.payers.length > 0) {
+      return expense.payers;
+    }
+    return [
+      {
+        userId: expense?.paidById || 'payer',
+        name: primaryPayerName,
+        avatarUrl: expense?.paidByAvatar,
+        amount: amount,
+      },
+    ];
+  }, [expense?.payers, expense?.paidById, expense?.paidByAvatar, primaryPayerName, amount]);
+
+  const payersMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    payersList.forEach((p) => {
+      map[p.userId] = (map[p.userId] || 0) + Number(p.amount || 0);
+    });
+    return map;
+  }, [payersList]);
 
   const categoryColor = useMemo(
     () => getCategoryColor(expense?.category?.master, expense?.category?.sub),
@@ -375,6 +389,61 @@ export default function ExpenseDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* ── 1. PINNED FIXED NAVIGATION BAR (Never scrolls away) ── */}
+      <View style={styles.pinnedHeader}>
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.selectionAsync();
+            router.back();
+          }}
+          style={styles.frostedIconButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <ArrowLeft size={20} color={THEME.colors.text} />
+        </TouchableOpacity>
+
+        <View style={styles.navGroupBadge}>
+          <Text style={styles.navGroupText} numberOfLines={1}>
+            {expense?.groupName || 'Expense Details'}
+          </Text>
+        </View>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={handleReceiptAction}
+            style={styles.frostedIconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Receipt photo"
+          >
+            <Camera size={18} color={expense?.receiptImageUrl ? THEME.colors.success : THEME.colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleDelete}
+            style={styles.frostedIconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Delete expense"
+          >
+            <Trash2 size={18} color={THEME.colors.critical} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleOpenEdit}
+            style={styles.frostedIconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Edit expense"
+          >
+            <Pencil size={18} color={THEME.colors.text} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── 2. SCROLLABLE CONTENT BODY ── */}
       <KeyboardAvoidingView
         style={styles.flexOne}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -386,114 +455,78 @@ export default function ExpenseDetailScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {/* ── 1. Top Generative Vector Abstract Header (Scrolls Naturally With Page) ── */}
-          <ExpenseAbstractHeader categoryColor={categoryColor} height={140}>
-            <View style={styles.headerNav}>
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  router.back();
-                }}
-                style={styles.frostedIconButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-              >
-                <ArrowLeft size={20} color={THEME.colors.text} />
-              </TouchableOpacity>
+          {/* Hero Section: Ambient Glow & Category Squircle Beside Title & Large Amount */}
+          <View style={styles.heroSection}>
+            {/* Ambient Category Radial Glow */}
+            <View style={styles.heroGlowCanvas} pointerEvents="none">
+              <Svg width="100%" height={160}>
+                <Defs>
+                  <RadialGradient id="categoryHeroGlow" cx="50%" cy="30%" r="70%">
+                    <Stop offset="0%" stopColor={categoryColor} stopOpacity="0.22" />
+                    <Stop offset="50%" stopColor={categoryColor} stopOpacity="0.06" />
+                    <Stop offset="100%" stopColor={THEME.colors.background} stopOpacity="0" />
+                  </RadialGradient>
+                </Defs>
+                <Rect width="100%" height={160} fill="url(#categoryHeroGlow)" />
+              </Svg>
+            </View>
 
-              <View style={styles.navGroupBadge}>
-                <Text style={styles.navGroupText} numberOfLines={1}>
-                  {expense?.groupName || 'Expense'}
+            {/* Category Squircle beside Title & Category Sub-label */}
+            <View style={styles.heroIdentityRow}>
+              <View
+                style={[
+                  styles.categorySquircle,
+                  {
+                    backgroundColor: `${categoryColor}18`,
+                    borderColor: `${categoryColor}40`,
+                  },
+                ]}
+              >
+                <CategoryIcon
+                  subCategory={expense?.category?.sub}
+                  masterCategory={expense?.category?.master}
+                  size={26}
+                  color={categoryColor}
+                />
+              </View>
+
+              <View style={styles.heroTitleCol}>
+                <View style={styles.categoryBreadcrumb}>
+                  <View style={[styles.categoryColorDot, { backgroundColor: categoryColor }]} />
+                  <Text style={[styles.categoryLabelText, { color: categoryColor }]}>
+                    {expense?.category?.sub || expense?.category?.master || 'Other'}
+                  </Text>
+                  <Text style={styles.metaDividerDot}>•</Text>
+                  <Text style={styles.metaTimeText}>{dateFormatted}</Text>
+                </View>
+
+                <Text style={styles.heroTitleText} numberOfLines={2}>
+                  {title}
                 </Text>
               </View>
-
-              <View style={styles.headerActions}>
-                <TouchableOpacity
-                  onPress={handleReceiptAction}
-                  style={styles.frostedIconButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Receipt photo"
-                >
-                  <Camera size={18} color={expense?.receiptImageUrl ? THEME.colors.success : THEME.colors.text} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handleDelete}
-                  style={styles.frostedIconButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Delete expense"
-                >
-                  <Trash2 size={18} color={THEME.colors.critical} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handleOpenEdit}
-                  style={styles.frostedIconButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit expense"
-                >
-                  <Pencil size={18} color={THEME.colors.text} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </ExpenseAbstractHeader>
-
-          {/* ── 2. Screen Body Content ── */}
-          <View style={styles.scrollBody}>
-            {/* Hero Section: Category Squircle beside Title & High-Impact Amount */}
-            <View style={styles.heroSection}>
-              <View style={styles.heroSideRow}>
-                {/* Category Squircle Icon Badge */}
-                <View style={[styles.categorySquircle, { backgroundColor: `${categoryColor}15`, borderColor: `${categoryColor}35` }]}>
-                  <CategoryIcon
-                    subCategory={expense?.category?.sub}
-                    masterCategory={expense?.category?.master}
-                    size={26}
-                    color={categoryColor}
-                  />
-                </View>
-
-                {/* Title, Amount & Metadata Column */}
-                <View style={styles.heroContentCol}>
-                  <View style={styles.categoryMetaRow}>
-                    <View style={[styles.categoryColorDot, { backgroundColor: categoryColor }]} />
-                    <Text style={[styles.categoryLabelText, { color: categoryColor }]}>
-                      {expense?.category?.sub || expense?.category?.master || 'Other'}
-                    </Text>
-                    <Text style={styles.metaDividerDot}>•</Text>
-                    <Text style={styles.metaTimeText}>{dateFormatted}</Text>
-                  </View>
-
-                  <Text style={styles.heroTitle} numberOfLines={2}>
-                    {title}
-                  </Text>
-
-                  {/* High-Impact Amount */}
-                  <View style={styles.heroAmountRow}>
-                    <Text style={[styles.heroCurrencySymbol, { color: categoryColor }]}>
-                      {currencySymbol}
-                    </Text>
-                    <Text style={styles.heroAmountWhole}>{amountParts.whole}</Text>
-                    <Text style={styles.heroAmountDecimal}>.{amountParts.decimal}</Text>
-                  </View>
-
-                  <Text style={styles.creatorMetaText}>Added by {creatorName}</Text>
-                </View>
-              </View>
-
-              {/* Editorial Quote Notes (No Div Design) */}
-              {expense?.notes ? (
-                <View style={[styles.editorialNotesBlock, { borderLeftColor: categoryColor }]}>
-                  <Text style={styles.editorialNotesText}>"{expense.notes}"</Text>
-                </View>
-              ) : null}
             </View>
 
-            {/* Quick Receipt Attached Banner (if attached) */}
+            {/* High-Impact Centered Amount Display */}
+            <View style={styles.heroAmountBlock}>
+              <View style={styles.heroAmountRow}>
+                <Text style={[styles.heroCurrencySymbol, { color: categoryColor }]}>
+                  {currencySymbol}
+                </Text>
+                <Text style={styles.heroAmountWhole}>{amountParts.whole}</Text>
+                <Text style={styles.heroAmountDecimal}>.{amountParts.decimal}</Text>
+              </View>
+
+              <Text style={styles.creatorMetaText}>Added by {creatorName}</Text>
+            </View>
+
+            {/* Editorial Quote Notes */}
+            {expense?.notes ? (
+              <View style={[styles.editorialNotesBlock, { borderLeftColor: categoryColor }]}>
+                <Text style={styles.editorialNotesText}>"{expense.notes}"</Text>
+              </View>
+            ) : null}
+
+            {/* Quick Receipt Attached Banner */}
             {expense?.receiptImageUrl ? (
               <TouchableOpacity
                 activeOpacity={0.8}
@@ -512,102 +545,122 @@ export default function ExpenseDetailScreen() {
                 <ArrowRight size={15} color={THEME.colors.textMuted} />
               </TouchableOpacity>
             ) : null}
+          </View>
 
-            {/* ── 3. Settlement & Split Flow (Connecting Stem Lines & Pure Colored Text) ── */}
-            <View style={styles.ledgerSection}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>SETTLEMENT & SPLIT</Text>
-                <View style={styles.splitTypeBadge}>
-                  <Text style={styles.splitTypeText}>
-                    {expense?.splitType ? expense.splitType.replace('_', ' ') : 'equally'}
+          {/* ── 3. Settlement & Split (Structured Payer vs Payees) ── */}
+          <View style={styles.ledgerSection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>SETTLEMENT & SPLIT</Text>
+              <View style={styles.splitTypeBadge}>
+                <Text style={styles.splitTypeText}>
+                  {expense?.splitType ? expense.splitType.replace('_', ' ') : 'equally'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.structuredLedgerContainer}>
+              {/* A. PAID BY CARD */}
+              <View style={styles.paidByCard}>
+                <View style={styles.subHeaderRow}>
+                  <Text style={styles.subHeaderLabel}>PAID BY</Text>
+                  <Text style={styles.subHeaderPaidTotal}>
+                    {currencySymbol}{amount.toFixed(2)}
                   </Text>
                 </View>
-              </View>
 
-              {/* Continuous Timeline Ledger Container */}
-              <View style={styles.timelineLedgerContainer}>
-                {/* Payer Primary Ledger Row */}
-                <View style={styles.timelineRow}>
-                  {/* Stem Line Column */}
-                  <View style={styles.stemColumn}>
-                    <View style={styles.stemLineDown} />
-                    <View style={styles.payerNodeDot}>
-                      <Check size={8} color={THEME.colors.primaryForeground} strokeWidth={3} />
-                    </View>
-                  </View>
+                {payersList.map((payerItem, pIdx) => {
+                  const isUserPayer = payerItem.userId === currentUserId;
+                  const payerPercent = amount > 0 ? Math.round((payerItem.amount / amount) * 100) : 100;
 
-                  {/* Payer Info & Unboxed Green Status Text */}
-                  <View style={[styles.timelineContentRow, styles.contentRowBorder]}>
-                    <View style={[styles.avatarRing, { borderColor: `${categoryColor}55` }]}>
-                      {expense?.paidByAvatar ? (
-                        <Image source={{ uri: expense.paidByAvatar }} style={styles.avatarImg} />
-                      ) : (
-                        <Text style={[styles.avatarInitial, { color: categoryColor }]}>
-                          {primaryPayerName.charAt(0).toUpperCase()}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={styles.memberInfoCol}>
-                      <Text style={styles.memberNameText}>{primaryPayerName}</Text>
-                      <Text style={styles.memberSubText}>
-                        {expense?.payers && expense.payers.length > 1
-                          ? `Paid by ${expense.payers.length} people`
-                          : 'Paid full amount'}
-                      </Text>
-                    </View>
-                    {/* NO DIV / PURE GREEN TEXT */}
-                    <Text style={styles.paidColoredText}>
-                      PAID {currencySymbol}{amount.toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
+                  return (
+                    <View key={payerItem.userId || pIdx} style={styles.payerRowItem}>
+                      <View style={styles.payerAvatarWrap}>
+                        <View style={[styles.payerAvatarRing, { borderColor: THEME.colors.success }]}>
+                          {payerItem.avatarUrl ? (
+                            <Image source={{ uri: payerItem.avatarUrl }} style={styles.avatarImg} />
+                          ) : (
+                            <Text style={[styles.avatarInitial, { color: THEME.colors.success }]}>
+                              {payerItem.name.charAt(0).toUpperCase()}
+                            </Text>
+                          )}
+                        </View>
+                        <View style={styles.payerCheckBadge}>
+                          <Check size={8} color={THEME.colors.primaryForeground} strokeWidth={3} />
+                        </View>
+                      </View>
 
-                {/* Multi-Payers Sub-List (if multiple payers) */}
-                {expense?.payers && expense.payers.length > 1 ? (
-                  <View style={styles.multiPayersSubList}>
-                    {expense.payers.map((p, idx) => (
-                      <View key={p.userId || idx} style={styles.multiPayerRow}>
-                        <Text style={styles.multiPayerName}>{p.name}</Text>
-                        <Text style={styles.multiPayerAmount}>
-                          {currencySymbol}{Number(p.amount || 0).toFixed(2)}
+                      <View style={styles.payerTextCol}>
+                        <View style={styles.nameBadgeRow}>
+                          <Text style={styles.payerNameText}>{payerItem.name}</Text>
+                          {isUserPayer && (
+                            <View style={styles.youBadge}>
+                              <Text style={styles.youBadgeText}>YOU</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.payerSubText}>
+                          {payersList.length > 1
+                            ? `Contributed ${payerPercent}% of bill`
+                            : 'Paid full amount out of pocket'}
                         </Text>
                       </View>
-                    ))}
-                  </View>
-                ) : null}
 
-                {/* Participants Flow connected by Continuous Stem */}
-                {!hasSplitLoaded || !areParticipantsValid(participants) ? (
-                  <View style={styles.splitSkeletonBlock}>
-                    <View style={styles.splitLoadingNotice}>
-                      <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
-                      <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
+                      {/* NO DIV / PURE GREEN TEXT */}
+                      <Text style={styles.paidGreenText}>
+                        PAID {currencySymbol}{Number(payerItem.amount || 0).toFixed(2)}
+                      </Text>
                     </View>
-                    <SplitBreakdownSkeleton count={3} />
+                  );
+                })}
+              </View>
+
+              {/* B. CONTINUOUS STEM FLOW DIVIDER */}
+              <View style={styles.flowStemDividerRow}>
+                <View style={styles.flowStemLine} />
+                <View style={styles.flowStemPill}>
+                  <Text style={styles.flowStemText}>
+                    SPLIT FOR {participants.length} {participants.length === 1 ? 'MEMBER' : 'MEMBERS'}
+                  </Text>
+                </View>
+                <View style={styles.flowStemLine} />
+              </View>
+
+              {/* C. SPLIT BREAKDOWN (Who owes what) */}
+              {!hasSplitLoaded || !areParticipantsValid(participants) ? (
+                <View style={styles.splitSkeletonBlock}>
+                  <View style={styles.splitLoadingNotice}>
+                    <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
                   </View>
-                ) : (
-                  participants.map((p, index) => {
+                  <SplitBreakdownSkeleton count={3} />
+                </View>
+              ) : (
+                <View style={styles.participantsTimelineList}>
+                  {participants.map((p, index) => {
                     const isLast = index === participants.length - 1;
                     const isUser = p.isCurrentUser || p.userId === currentUserId;
-                    const owedText = formatParticipantOwedText(p, currencySymbol, groupMembers, currentUserId);
-                    const isPayer = p.userId === (expense?.paidById || primaryPayer.userId);
-                    const userOwes = isUser && Number(p.amountOwed || 0) > 0 && !isPayer;
-                    const userGetsBack = isUser && isPayer;
+                    const paidAmount = payersMap[p.userId] ?? (p.userId === expense?.paidById ? amount : 0);
+                    const share = Number(p.amountOwed || 0);
+                    const netBalance = paidAmount - share;
 
                     return (
-                      <View key={p.userId || index} style={styles.timelineRow}>
-                        {/* Stem Line Column */}
+                      <View key={p.userId || index} style={styles.timelineParticipantRow}>
+                        {/* Continuous Stem Line Column */}
                         <View style={styles.stemColumn}>
                           <View style={isLast ? styles.stemLineLast : styles.stemLineFull} />
                           <View
                             style={[
-                              styles.participantNodeDot,
-                              isUser ? styles.nodeDotUser : styles.nodeDotNeutral,
+                              styles.stemNodeDot,
+                              netBalance > 0.01
+                                ? styles.nodeDotGreen
+                                : isUser
+                                ? styles.nodeDotUser
+                                : styles.nodeDotNeutral,
                             ]}
                           />
                         </View>
 
-                        {/* Participant Content & Unboxed Colored Status Text */}
+                        {/* Content Row */}
                         <View style={[styles.timelineContentRow, !isLast && styles.contentRowBorder]}>
                           <View style={[styles.participantAvatar, isUser && styles.participantAvatarUser]}>
                             {p.avatarUrl ? (
@@ -631,31 +684,30 @@ export default function ExpenseDetailScreen() {
                               )}
                             </View>
                             <Text style={styles.memberSubText}>
-                              Share: {currencySymbol}{Number(p.amountOwed || 0).toFixed(2)}
+                              Share: {currencySymbol}{share.toFixed(2)}
                             </Text>
                           </View>
 
-                          {/* NO DIV / PURE COLORED TEXT: Red, Green, or White */}
-                          {userOwes ? (
-                            <Text style={styles.owesColoredText}>
-                              You owe {currencySymbol}{Number(p.amountOwed || 0).toFixed(2)}
+                          {/* Pure colored typography (NO DIV, NO NAME REPEATED) */}
+                          {netBalance > 0.01 ? (
+                            <Text style={styles.getsBackGreenText}>
+                              Gets back {currencySymbol}{netBalance.toFixed(2)}
                             </Text>
-                          ) : userGetsBack ? (
-                            <Text style={styles.getsBackColoredText}>
-                              {owedText}
+                          ) : netBalance < -0.01 ? (
+                            <Text style={isUser ? styles.youOweRedText : styles.otherOwesWhiteText}>
+                              {isUser ? 'You owe ' : 'Owes '}{currencySymbol}{Math.abs(netBalance).toFixed(2)}
                             </Text>
                           ) : (
-                            <Text style={styles.memberStatusColoredText}>
-                              {owedText}
-                            </Text>
+                            <Text style={styles.settledMutedText}>Settled</Text>
                           )}
                         </View>
                       </View>
                     );
-                  })
-                )}
-              </View>
+                  })}
+                </View>
+              )}
             </View>
+          </View>
 
           {/* Activity & History Section */}
           <View style={styles.historySection}>
@@ -762,8 +814,7 @@ export default function ExpenseDetailScreen() {
               })}
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
 
         {/* Bottom Docked "Add a comment" Bar */}
         <View style={styles.bottomCommentDock}>
@@ -850,14 +901,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Abstract Vector Header & Nav Bar
-  headerNav: {
+  // Fixed Pinned Header
+  pinnedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 8,
-    height: 52,
+    paddingVertical: 10,
+    backgroundColor: THEME.colors.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    zIndex: 10,
   },
   frostedIconButton: {
     width: 38,
@@ -871,9 +925,9 @@ const styles = StyleSheet.create({
   },
   navGroupBadge: {
     paddingHorizontal: 14,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: THEME.radius.full,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     maxWidth: 200,
@@ -890,39 +944,45 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  // Scroll Content & Body
+  // Scroll Content
   scrollContent: {
-    paddingBottom: 40,
-  },
-  scrollBody: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingTop: 12,
+    paddingBottom: 40,
     gap: 22,
   },
 
-  // Hero Section - Clean High-Impact Typography & Category Squircle
+  // Hero Section
   heroSection: {
-    gap: 12,
+    gap: 14,
+    position: 'relative',
+    paddingTop: 4,
   },
-  heroSideRow: {
+  heroGlowCanvas: {
+    position: 'absolute',
+    top: -20,
+    left: -18,
+    right: -18,
+    height: 180,
+  },
+  heroIdentityRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 14,
   },
   categorySquircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
-  heroContentCol: {
+  heroTitleCol: {
     flex: 1,
-    gap: 3,
+    gap: 4,
   },
-  categoryMetaRow: {
+  categoryBreadcrumb: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -934,7 +994,7 @@ const styles = StyleSheet.create({
   },
   categoryLabelText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
@@ -947,31 +1007,38 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     fontWeight: '500',
   },
-  heroTitle: {
+  heroTitleText: {
     fontSize: 22,
     fontWeight: '800',
     color: THEME.colors.text,
     letterSpacing: -0.3,
     lineHeight: 28,
   },
+
+  // High-Impact Amount Block
+  heroAmountBlock: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 4,
+  },
   heroAmountRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginTop: 2,
+    justifyContent: 'center',
   },
   heroCurrencySymbol: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '800',
     marginRight: 2,
   },
   heroAmountWhole: {
-    fontSize: 34,
+    fontSize: 42,
     fontWeight: '800',
     color: THEME.colors.text,
-    letterSpacing: -0.8,
+    letterSpacing: -1.2,
   },
   heroAmountDecimal: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '600',
     color: THEME.colors.textSecondary,
   },
@@ -979,14 +1046,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.colors.textMuted,
     fontWeight: '500',
-    marginTop: 2,
   },
+
+  // Editorial Notes Block
   editorialNotesBlock: {
     borderLeftWidth: 3,
-    paddingLeft: 12,
+    paddingLeft: 14,
     paddingVertical: 4,
-    marginTop: 6,
-    marginLeft: 2,
+    marginTop: 2,
   },
   editorialNotesText: {
     fontSize: 13,
@@ -1000,8 +1067,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: THEME.radius.lg,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
@@ -1031,9 +1098,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
-  // Open Editorial Ledger (Zero Div / Box Design)
+  // Settlement & Split (Structured)
   ledgerSection: {
-    gap: 14,
+    gap: 12,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -1063,26 +1130,130 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
 
-  // Continuous Connecting Stem Line Ledger
-  timelineLedgerContainer: {
+  structuredLedgerContainer: {
     gap: 0,
   },
-  timelineRow: {
+
+  // Paid By Card
+  paidByCard: {
+    borderRadius: THEME.radius.md,
+    backgroundColor: 'rgba(16, 185, 129, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.18)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  subHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(16, 185, 129, 0.15)',
+    paddingBottom: 6,
+  },
+  subHeaderLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.success,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  subHeaderPaidTotal: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.colors.success,
+  },
+  payerRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  payerAvatarWrap: {
+    position: 'relative',
+  },
+  payerAvatarRing: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.surfaceElevated,
+    overflow: 'hidden',
+  },
+  payerCheckBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: THEME.colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: THEME.colors.background,
+  },
+  payerTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  payerNameText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  payerSubText: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  paidGreenText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: THEME.colors.success,
+    letterSpacing: 0.2,
+  },
+
+  // Connecting Stem Divider
+  flowStemDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 8,
+  },
+  flowStemLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  flowStemPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  flowStemText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.8,
+  },
+
+  // Participants Timeline
+  participantsTimelineList: {
+    gap: 0,
+  },
+  timelineParticipantRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
   },
   stemColumn: {
-    width: 24,
+    width: 22,
     alignItems: 'center',
     position: 'relative',
-  },
-  stemLineDown: {
-    position: 'absolute',
-    top: 28,
-    bottom: 0,
-    width: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    left: 11,
   },
   stemLineFull: {
     position: 'absolute',
@@ -1090,36 +1261,27 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    left: 11,
+    left: 10,
   },
   stemLineLast: {
     position: 'absolute',
     top: 0,
-    height: 28,
+    height: 24,
     width: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    left: 11,
+    left: 10,
   },
-  payerNodeDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+  stemNodeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 18,
+    zIndex: 2,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.background,
+  },
+  nodeDotGreen: {
     backgroundColor: THEME.colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    zIndex: 2,
-    borderWidth: 2,
-    borderColor: THEME.colors.background,
-  },
-  participantNodeDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginTop: 22,
-    zIndex: 2,
-    borderWidth: 2,
-    borderColor: THEME.colors.background,
   },
   nodeDotUser: {
     backgroundColor: THEME.colors.primary,
@@ -1131,7 +1293,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingLeft: 8,
     gap: 12,
   },
@@ -1139,23 +1301,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
-  avatarRing: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
+  participantAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.surfaceElevated,
     overflow: 'hidden',
   },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
+  participantAvatarUser: {
+    borderWidth: 1.5,
+    borderColor: THEME.colors.primary,
   },
-  avatarInitial: {
-    fontSize: 14,
-    fontWeight: '800',
+  participantAvatarInitial: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
   },
   memberInfoCol: {
     flex: 1,
@@ -1192,66 +1354,26 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
   },
 
-  // Pure Colored Typography (NO DIV DESIGN)
-  paidColoredText: {
+  // Pure Colored Status Text (NO DIVS, NO REPEATING NAMES)
+  getsBackGreenText: {
     fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.success,
-    letterSpacing: 0.2,
   },
-  owesColoredText: {
+  youOweRedText: {
     fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.dangerLight,
   },
-  getsBackColoredText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.success,
-  },
-  memberStatusColoredText: {
+  otherOwesWhiteText: {
     fontSize: 13,
     fontWeight: '500',
     color: THEME.colors.text,
   },
-
-  multiPayersSubList: {
-    paddingLeft: 44,
-    gap: 6,
-    paddingBottom: 6,
-  },
-  multiPayerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  multiPayerName: {
+  settledMutedText: {
     fontSize: 12,
-    color: THEME.colors.textSecondary,
-  },
-  multiPayerAmount: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
-  },
-
-  participantAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: THEME.colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  participantAvatarUser: {
-    borderWidth: 1,
-    borderColor: THEME.colors.primary,
-  },
-  participantAvatarInitial: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.text,
+    fontWeight: '500',
+    color: THEME.colors.textMuted,
   },
 
   splitSkeletonBlock: {
@@ -1270,6 +1392,14 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarInitial: {
+    fontSize: 14,
+    fontWeight: '800',
   },
   errorStateContainer: {
     flex: 1,
