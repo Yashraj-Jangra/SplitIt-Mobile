@@ -1,6 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Fix Runtime Render Crash & Unconditional Hook Execution (`app/expenses/[id].tsx`)**:
+  - **Fixed `Cannot read property 'charAt' of undefined` Runtime Crash**:
+    - Identified that `expense.payers` items from the API may lack a `name` field, causing `payerItem.name.charAt(0)` to crash the entire screen.
+    - Updated `payersList` memo to defensively resolve member names and avatars by cross-referencing `groupMembers`, `participants`, and `primaryPayerName`, falling back to `'Member'`.
+    - Added defensive fallbacks `(payerItem.name || 'M').charAt(0).toUpperCase()` and `{payerItem.name || 'Member'}` in JSX.
+  - **Strict Rules of Hooks Compliance**:
+    - Reordered all hook calls (`payersList`, `payersMap`, `categoryColor`, `amountParts`, `logs`) to execute unconditionally before early loading/error returns.
+    - Wrapped async hydration to avoid synchronous `setState` in effect bodies.
+    - Escaped JSX quotes in editorial quote blocks (`{\`"${expense.notes}"\`}`).
+  - **Pre-Commit Verification Gates**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx expo lint app/expenses/[id].tsx` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Expense Info Screen Redesign — Pinned Top Nav, Ambient Hero & Structured Settlement Ledger (`app/expenses/[id].tsx`)**:
   - **Pinned Fixed Navigation Bar (`pinnedHeader`)**:
     - Extracted the navigation header outside `ScrollView` directly beneath `SafeAreaView` with `zIndex: 10`, ensuring the back button, group pill badge, and action icons (`Camera`, `Trash2`, `Pencil`) stay permanently docked at the top and NEVER scroll away.
@@ -12,7 +26,6 @@
     - **Dedicated `PAID BY` Section**: Prominent card with emerald checkmark badge, funding member name, contribution percentage, and pure green unboxed text `PAID ₹X.XX`.
     - **Continuous Connecting Stem Line**: Extends seamlessly through a `SPLIT FOR X MEMBERS` divider down to every participant node.
     - **Eliminated Duplicate Name Printing**: Member names render on the left with avatar; right column renders purely the action and amount (`Gets back ₹X.XX` in emerald green, `You owe ₹X.XX` in rose red, `Owes ₹X.XX` in clean white, `Settled` in muted text). Never repeats member names.
-  - **Zero Type Errors**: Passed `npx tsc --noEmit` and Jest tests.
 
 - **Group Activity Tab Progressive Loading & Rendering Optimization (`app/groups/[id]/index.tsx`, `GroupHistoryTab.tsx`, `GroupTabSkeleton.tsx`)**:
   - **Progressive Batch Loading**:
