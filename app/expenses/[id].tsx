@@ -21,7 +21,6 @@ import {
   Trash2,
   Pencil,
   Send,
-  Check,
   X,
   ArrowRight,
   UserPlus,
@@ -333,6 +332,55 @@ export default function ExpenseDetailScreen() {
     return map;
   }, [payersList]);
 
+  const splitMembers = useMemo(() => {
+    const memberMap = new Map<
+      string,
+      {
+        userId: string;
+        name: string;
+        avatarUrl?: string;
+        isCurrentUser: boolean;
+        paidAmount: number;
+        owedAmount: number;
+      }
+    >();
+
+    participants.forEach((p) => {
+      const paid = payersMap[p.userId] ?? (p.userId === expense?.paidById ? amount : 0);
+      memberMap.set(p.userId, {
+        userId: p.userId,
+        name: p.name || 'Member',
+        avatarUrl: p.avatarUrl,
+        isCurrentUser: p.isCurrentUser || p.userId === currentUserId,
+        paidAmount: paid,
+        owedAmount: Number(p.amountOwed || 0),
+      });
+    });
+
+    payersList.forEach((payer) => {
+      if (!memberMap.has(payer.userId)) {
+        memberMap.set(payer.userId, {
+          userId: payer.userId,
+          name: payer.name || 'Member',
+          avatarUrl: payer.avatarUrl,
+          isCurrentUser: payer.userId === currentUserId,
+          paidAmount: Number(payer.amount || 0),
+          owedAmount: 0,
+        });
+      } else {
+        const existing = memberMap.get(payer.userId)!;
+        existing.paidAmount = Number(payer.amount || existing.paidAmount || 0);
+      }
+    });
+
+    const list = Array.from(memberMap.values());
+    return list.sort((a, b) => {
+      if (a.paidAmount > 0 && b.paidAmount === 0) return -1;
+      if (b.paidAmount > 0 && a.paidAmount === 0) return 1;
+      return 0;
+    });
+  }, [participants, payersList, payersMap, expense?.paidById, amount, currentUserId]);
+
   const categoryColor = useMemo(
     () => getCategoryColor(expense?.category?.master, expense?.category?.sub),
     [expense?.category]
@@ -546,10 +594,10 @@ export default function ExpenseDetailScreen() {
             ) : null}
           </View>
 
-          {/* ── 3. Settlement & Split (Structured Payer vs Payees) ── */}
+          {/* ── 3. Combined Financial Split (Minimal No-Div Design) ── */}
           <View style={styles.ledgerSection}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>SETTLEMENT & SPLIT</Text>
+              <Text style={styles.sectionTitle}>FINANCIAL SPLIT</Text>
               <View style={styles.splitTypeBadge}>
                 <Text style={styles.splitTypeText}>
                   {expense?.splitType ? expense.splitType.replace('_', ' ') : 'equally'}
@@ -557,155 +605,87 @@ export default function ExpenseDetailScreen() {
               </View>
             </View>
 
-            <View style={styles.structuredLedgerContainer}>
-              {/* A. PAID BY CARD */}
-              <View style={styles.paidByCard}>
-                <View style={styles.subHeaderRow}>
-                  <Text style={styles.subHeaderLabel}>PAID BY</Text>
-                  <Text style={styles.subHeaderPaidTotal}>
-                    {currencySymbol}{amount.toFixed(2)}
-                  </Text>
+            {!hasSplitLoaded || !areParticipantsValid(participants) ? (
+              <View style={styles.splitSkeletonBlock}>
+                <View style={styles.splitLoadingNotice}>
+                  <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
+                  <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
                 </View>
-
-                {payersList.map((payerItem, pIdx) => {
-                  const isUserPayer = payerItem.userId === currentUserId;
-                  const payerPercent = amount > 0 ? Math.round((payerItem.amount / amount) * 100) : 100;
+                <SplitBreakdownSkeleton count={3} />
+              </View>
+            ) : (
+              <View style={styles.splitMembersList}>
+                {splitMembers.map((member, index) => {
+                  const isLast = index === splitMembers.length - 1;
 
                   return (
-                    <View key={payerItem.userId || pIdx} style={styles.payerRowItem}>
-                      <View style={styles.payerAvatarWrap}>
-                        <View style={[styles.payerAvatarRing, { borderColor: THEME.colors.success }]}>
-                          {payerItem.avatarUrl ? (
-                            <Image source={{ uri: payerItem.avatarUrl }} style={styles.avatarImg} />
+                    <View
+                      key={member.userId || index}
+                      style={[styles.splitMemberRow, !isLast && styles.splitMemberRowBorder]}
+                    >
+                      <View style={styles.memberLeftCol}>
+                        <View
+                          style={[
+                            styles.splitAvatar,
+                            member.paidAmount > 0 && styles.splitAvatarPayer,
+                            member.isCurrentUser && styles.splitAvatarUser,
+                          ]}
+                        >
+                          {member.avatarUrl ? (
+                            <Image source={{ uri: member.avatarUrl }} style={styles.avatarImg} />
                           ) : (
-                            <Text style={[styles.avatarInitial, { color: THEME.colors.success }]}>
-                              {(payerItem.name || 'M').charAt(0).toUpperCase()}
+                            <Text
+                              style={[
+                                styles.splitAvatarInitial,
+                                member.paidAmount > 0 && { color: THEME.colors.success },
+                                member.isCurrentUser && { color: THEME.colors.primary },
+                              ]}
+                            >
+                              {(member.name || 'M').charAt(0).toUpperCase()}
                             </Text>
                           )}
                         </View>
-                        <View style={styles.payerCheckBadge}>
-                          <Check size={8} color={THEME.colors.primaryForeground} strokeWidth={3} />
+
+                        <View style={styles.memberNameWrap}>
+                          <View style={styles.nameBadgeRow}>
+                            <Text
+                              style={[
+                                styles.splitMemberName,
+                                member.isCurrentUser && styles.splitMemberNameUser,
+                              ]}
+                            >
+                              {member.name}
+                            </Text>
+                            {member.isCurrentUser && (
+                              <View style={styles.youBadge}>
+                                <Text style={styles.youBadgeText}>YOU</Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                       </View>
 
-                      <View style={styles.payerTextCol}>
-                        <View style={styles.nameBadgeRow}>
-                          <Text style={styles.payerNameText}>{payerItem.name || 'Member'}</Text>
-                          {isUserPayer && (
-                            <View style={styles.youBadge}>
-                              <Text style={styles.youBadgeText}>YOU</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.payerSubText}>
-                          {payersList.length > 1
-                            ? `Contributed ${payerPercent}% of bill`
-                            : 'Paid full amount out of pocket'}
+                      <View style={styles.memberRightCol}>
+                        {member.paidAmount > 0 && (
+                          <Text style={styles.splitPaidText}>
+                            paid {currencySymbol}{member.paidAmount.toFixed(2)}
+                          </Text>
+                        )}
+                        <Text
+                          style={[
+                            styles.splitOwesText,
+                            member.isCurrentUser && member.paidAmount === 0 && styles.splitYouOwesText,
+                          ]}
+                        >
+                          {member.isCurrentUser ? 'you owe ' : 'owes '}{currencySymbol}
+                          {member.owedAmount.toFixed(2)}
                         </Text>
                       </View>
-
-                      {/* NO DIV / PURE GREEN TEXT */}
-                      <Text style={styles.paidGreenText}>
-                        PAID {currencySymbol}{Number(payerItem.amount || 0).toFixed(2)}
-                      </Text>
                     </View>
                   );
                 })}
               </View>
-
-              {/* B. CONTINUOUS STEM FLOW DIVIDER */}
-              <View style={styles.flowStemDividerRow}>
-                <View style={styles.flowStemLine} />
-                <View style={styles.flowStemPill}>
-                  <Text style={styles.flowStemText}>
-                    SPLIT FOR {participants.length} {participants.length === 1 ? 'MEMBER' : 'MEMBERS'}
-                  </Text>
-                </View>
-                <View style={styles.flowStemLine} />
-              </View>
-
-              {/* C. SPLIT BREAKDOWN (Who owes what) */}
-              {!hasSplitLoaded || !areParticipantsValid(participants) ? (
-                <View style={styles.splitSkeletonBlock}>
-                  <View style={styles.splitLoadingNotice}>
-                    <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
-                    <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
-                  </View>
-                  <SplitBreakdownSkeleton count={3} />
-                </View>
-              ) : (
-                <View style={styles.participantsTimelineList}>
-                  {participants.map((p, index) => {
-                    const isLast = index === participants.length - 1;
-                    const isUser = p.isCurrentUser || p.userId === currentUserId;
-                    const paidAmount = payersMap[p.userId] ?? (p.userId === expense?.paidById ? amount : 0);
-                    const share = Number(p.amountOwed || 0);
-                    const netBalance = paidAmount - share;
-
-                    return (
-                      <View key={p.userId || index} style={styles.timelineParticipantRow}>
-                        {/* Continuous Stem Line Column */}
-                        <View style={styles.stemColumn}>
-                          <View style={isLast ? styles.stemLineLast : styles.stemLineFull} />
-                          <View
-                            style={[
-                              styles.stemNodeDot,
-                              netBalance > 0.01
-                                ? styles.nodeDotGreen
-                                : isUser
-                                ? styles.nodeDotUser
-                                : styles.nodeDotNeutral,
-                            ]}
-                          />
-                        </View>
-
-                        {/* Content Row */}
-                        <View style={[styles.timelineContentRow, !isLast && styles.contentRowBorder]}>
-                          <View style={[styles.participantAvatar, isUser && styles.participantAvatarUser]}>
-                            {p.avatarUrl ? (
-                              <Image source={{ uri: p.avatarUrl }} style={styles.avatarImg} />
-                            ) : (
-                              <Text style={[styles.participantAvatarInitial, isUser && { color: THEME.colors.primary }]}>
-                                {(p.name || 'M').charAt(0).toUpperCase()}
-                              </Text>
-                            )}
-                          </View>
-
-                          <View style={styles.memberInfoCol}>
-                            <View style={styles.nameBadgeRow}>
-                              <Text style={[styles.memberNameText, isUser && styles.memberNameUser]}>
-                                {p.name || 'Member'}
-                              </Text>
-                              {isUser && (
-                                <View style={styles.youBadge}>
-                                  <Text style={styles.youBadgeText}>YOU</Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text style={styles.memberSubText}>
-                              Share: {currencySymbol}{share.toFixed(2)}
-                            </Text>
-                          </View>
-
-                          {/* Pure colored typography (NO DIV, NO NAME REPEATED) */}
-                          {netBalance > 0.01 ? (
-                            <Text style={styles.getsBackGreenText}>
-                              Gets back {currencySymbol}{netBalance.toFixed(2)}
-                            </Text>
-                          ) : netBalance < -0.01 ? (
-                            <Text style={isUser ? styles.youOweRedText : styles.otherOwesWhiteText}>
-                              {isUser ? 'You owe ' : 'Owes '}{currencySymbol}{Math.abs(netBalance).toFixed(2)}
-                            </Text>
-                          ) : (
-                            <Text style={styles.settledMutedText}>Settled</Text>
-                          )}
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
+            )}
           </View>
 
           {/* Activity & History Section */}
@@ -1097,15 +1077,15 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
-  // Settlement & Split (Structured)
+  // Financial Split Section (Minimal No-Div Design)
   ledgerSection: {
-    gap: 12,
+    gap: 8,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 6,
+    paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
@@ -1129,212 +1109,63 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
 
-  structuredLedgerContainer: {
+  splitMembersList: {
     gap: 0,
   },
-
-  // Paid By Card
-  paidByCard: {
-    borderRadius: THEME.radius.md,
-    backgroundColor: 'rgba(16, 185, 129, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.18)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-  },
-  subHeaderRow: {
+  splitMemberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  splitMemberRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(16, 185, 129, 0.15)',
-    paddingBottom: 6,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
-  subHeaderLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: THEME.colors.success,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  subHeaderPaidTotal: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: THEME.colors.success,
-  },
-  payerRowItem: {
+  memberLeftCol: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
-  payerAvatarWrap: {
-    position: 'relative',
-  },
-  payerAvatarRing: {
+  splitAvatar: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    borderWidth: 1.5,
+    backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
   },
-  payerCheckBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: THEME.colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: THEME.colors.background,
+  splitAvatarPayer: {
+    borderColor: 'rgba(16, 185, 129, 0.4)',
   },
-  payerTextCol: {
-    flex: 1,
-    gap: 2,
+  splitAvatarUser: {
+    borderColor: THEME.colors.primary,
   },
-  payerNameText: {
+  splitAvatarInitial: {
     fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.text,
   },
-  payerSubText: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-  },
-  paidGreenText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: THEME.colors.success,
-    letterSpacing: 0.2,
-  },
-
-  // Connecting Stem Divider
-  flowStemDividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 8,
-  },
-  flowStemLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  flowStemPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: THEME.radius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  flowStemText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: THEME.colors.textMuted,
-    letterSpacing: 0.8,
-  },
-
-  // Participants Timeline
-  participantsTimelineList: {
-    gap: 0,
-  },
-  timelineParticipantRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  stemColumn: {
-    width: 22,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  stemLineFull: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    left: 10,
-  },
-  stemLineLast: {
-    position: 'absolute',
-    top: 0,
-    height: 24,
-    width: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    left: 10,
-  },
-  stemNodeDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginTop: 18,
-    zIndex: 2,
-    borderWidth: 1.5,
-    borderColor: THEME.colors.background,
-  },
-  nodeDotGreen: {
-    backgroundColor: THEME.colors.success,
-  },
-  nodeDotUser: {
-    backgroundColor: THEME.colors.primary,
-  },
-  nodeDotNeutral: {
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
-  },
-  timelineContentRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingLeft: 8,
-    gap: 12,
-  },
-  contentRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  participantAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: THEME.colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  participantAvatarUser: {
-    borderWidth: 1.5,
-    borderColor: THEME.colors.primary,
-  },
-  participantAvatarInitial: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  memberInfoCol: {
-    flex: 1,
+  memberNameWrap: {
     gap: 2,
+    flex: 1,
   },
   nameBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  memberNameText: {
+  splitMemberName: {
     fontSize: 14,
     fontWeight: '600',
     color: THEME.colors.text,
   },
-  memberNameUser: {
+  splitMemberNameUser: {
     fontWeight: '700',
-    color: THEME.colors.text,
   },
   youBadge: {
     backgroundColor: 'rgba(28, 194, 159, 0.15)',
@@ -1348,31 +1179,24 @@ const styles = StyleSheet.create({
     color: THEME.colors.primary,
     letterSpacing: 0.5,
   },
-  memberSubText: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
+  memberRightCol: {
+    alignItems: 'flex-end',
+    gap: 2,
   },
-
-  // Pure Colored Status Text (NO DIVS, NO REPEATING NAMES)
-  getsBackGreenText: {
-    fontSize: 13,
+  splitPaidText: {
+    fontSize: 12,
     fontWeight: '700',
     color: THEME.colors.success,
+    letterSpacing: 0.1,
   },
-  youOweRedText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.dangerLight,
-  },
-  otherOwesWhiteText: {
-    fontSize: 13,
-    fontWeight: '500',
+  splitOwesText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: THEME.colors.text,
   },
-  settledMutedText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: THEME.colors.textMuted,
+  splitYouOwesText: {
+    color: THEME.colors.dangerLight,
+    fontWeight: '700',
   },
 
   splitSkeletonBlock: {
