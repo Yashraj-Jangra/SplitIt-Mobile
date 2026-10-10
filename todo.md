@@ -1,6 +1,24 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Viewer Profile Name & Avatar Standardization in Expense Details (`app/expenses/[id].tsx`, `src/services/expense.service.ts`)**:
+  - **Preserved Real Name in Data Layer (`src/services/expense.service.ts`)**:
+    - Updated `payers` and `participants` mappings in `expenseService` to preserve the user's real name (`user.name` / `firstName + lastName`) instead of forcing `name = 'You'` and discarding raw API name data.
+  - **Viewer Real Name Display with `YOU` Badge (`app/expenses/[id].tsx`)**:
+    - Connected `useAuth()` to dynamically resolve `viewerName` from `user.name` or `groupMembers` matching `currentUserId`.
+    - Member row now displays their actual name (e.g. "Yashraj") instead of the generic string "You".
+    - Kept the distinct emerald `[YOU]` badge (`styles.youBadge`) docked adjacent to the name.
+  - **Avatar Normalization for Viewer**:
+    - Removed `splitAvatarUser` (primary green border) and green initial text styling from viewer avatar.
+    - The viewer's avatar now matches all other members identically with standard border (`rgba(255, 255, 255, 0.08)`) and default initial coloring.
+  - **Cleaned Up Right-Side Ledger Text**:
+    - Unified the right-side text column across all members to standard `owes ₹X.XX`.
+    - Removed deprecated `splitAvatarPayer`, `splitAvatarUser`, and `splitYouOwesText` style objects.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint app/expenses/[id].tsx src/services/expense.service.ts` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Unified Financial Split List with Minimal No-Div Design (`app/expenses/[id].tsx`)**:
   - **Combined Payer and Payee into Single List**:
     - Eliminated segregated nested boxes ("PAID BY CARD", "SPLIT FOR X MEMBERS", stem lines, dot nodes).
