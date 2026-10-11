@@ -15,34 +15,48 @@ import QRCode from 'react-native-qrcode-svg';
 import { THEME } from '../../src/constants/theme';
 import { buildUpiUrl, copyToClipboard } from '../../src/utils/upi';
 import { settlementService } from '../../src/services/settlement.service';
+import { groupService } from '../../src/services/group.service';
+import { useAuth } from '../../src/contexts/auth.context';
 import * as Haptics from 'expo-haptics';
 
 export default function UpiQrModal() {
   const router = useRouter();
+  const { user } = useAuth();
   const params = useLocalSearchParams<{
     groupId?: string;
+    payerId?: string;
+    payerName?: string;
+    payeeId?: string;
     payeeName?: string;
     upiId?: string;
     amount?: string;
     notes?: string;
   }>();
 
-  const payeeName = params.payeeName || 'Rohit Sharma';
-  const upiId = params.upiId || 'rohit@okhdfc';
-  const amount = parseFloat(params.amount || '1900') || 1900;
-  const notes = params.notes || 'SplitIt Settlement';
+  const payerId = params.payerId || user?.id || '';
+  const payerName = params.payerName || user?.name || 'You';
+  const payeeId = params.payeeId || '';
+  const payeeName = params.payeeName || 'Recipient';
+  const upiId = params.upiId?.trim() || '';
+  const amount = parseFloat(params.amount || '0') || 0;
+  const notes = params.notes || 'SplitIt settlement';
 
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const upiUrl = buildUpiUrl({
-    upiId,
-    payeeName,
-    amount,
-    notes,
-  });
+  const hasUpiId = Boolean(upiId && upiId.includes('@'));
+
+  const upiUrl = hasUpiId
+    ? buildUpiUrl({
+        upiId,
+        payeeName,
+        amount,
+        notes,
+      })
+    : '';
 
   const handleCopy = async () => {
+    if (!hasUpiId) return;
     const success = await copyToClipboard(upiId);
     if (success) {
       setCopied(true);
@@ -51,14 +65,18 @@ export default function UpiQrModal() {
   };
 
   const handleConfirmPaid = async () => {
+    if (amount <= 0) {
+      Alert.alert('Invalid Amount', 'Settlement amount must be greater than 0.');
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setLoading(true);
 
     const res = await settlementService.recordSettlement({
-      groupId: params.groupId || 'default',
-      payerId: 'u1',
-      payerName: 'You',
-      payeeId: 'u2',
+      groupId: params.groupId || '',
+      payerId,
+      payerName,
+      payeeId,
       payeeName,
       amount,
       method: 'upi',
@@ -68,7 +86,9 @@ export default function UpiQrModal() {
 
     if (res.success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Dismiss back to group detail
+      if (params.groupId) {
+        groupService.getGroupDetails(params.groupId).catch(() => {});
+      }
       router.dismissAll();
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -97,46 +117,58 @@ export default function UpiQrModal() {
         <View style={styles.payeeSection}>
           <Text style={styles.payeeLabel}>PAYING TO</Text>
           <Text style={styles.payeeName}>{payeeName}</Text>
-          <Text style={styles.amountDisplay}>₹{amount.toLocaleString()}</Text>
+          <Text style={styles.amountDisplay}>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
 
         {/* High-Contrast QR Code Card */}
-        <View style={styles.qrCardContainer}>
-          <View style={styles.qrWhiteBox}>
-            <QRCode
-              value={upiUrl}
-              size={210}
-              color={THEME.colors.palette.black}
-              backgroundColor={THEME.colors.palette.white}
-            />
-          </View>
-          <Text style={styles.qrInstruction}>
-            Scan with Google Pay, PhonePe, Paytm, or any UPI app
-          </Text>
-        </View>
-
-        {/* UPI ID Pill with 1-Tap Copy */}
-        <View style={styles.upiPillRow}>
-          <View style={styles.upiTextContainer}>
-            <Text style={styles.upiPillLabel}>UPI ID</Text>
-            <Text style={styles.upiPillValue} numberOfLines={1}>
-              {upiId}
+        {hasUpiId ? (
+          <View style={styles.qrCardContainer}>
+            <View style={styles.qrWhiteBox}>
+              <QRCode
+                value={upiUrl}
+                size={210}
+                color={THEME.colors.palette.black}
+                backgroundColor={THEME.colors.palette.white}
+              />
+            </View>
+            <Text style={styles.qrInstruction}>
+              Scan with Google Pay, PhonePe, Paytm, or any UPI app
             </Text>
           </View>
-          <TouchableOpacity style={styles.copyButton} onPress={handleCopy} activeOpacity={0.8}>
-            {copied ? (
-              <>
-                <Check size={14} color={THEME.colors.primary} />
-                <Text style={[styles.copyButtonText, { color: THEME.colors.primary }]}>Copied</Text>
-              </>
-            ) : (
-              <>
-                <Copy size={14} color={THEME.colors.text} />
-                <Text style={styles.copyButtonText}>Copy ID</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={styles.noUpiCard}>
+            <ShieldCheck size={32} color={THEME.colors.dangerLight} />
+            <Text style={styles.noUpiTitle}>UPI VPA Not Configured</Text>
+            <Text style={styles.noUpiSubtitle}>
+              {payeeName} has not added their UPI ID yet. They can configure it in their profile settings.
+            </Text>
+          </View>
+        )}
+
+        {/* UPI ID Pill with 1-Tap Copy */}
+        {hasUpiId && (
+          <View style={styles.upiPillRow}>
+            <View style={styles.upiTextContainer}>
+              <Text style={styles.upiPillLabel}>UPI ID</Text>
+              <Text style={styles.upiPillValue} numberOfLines={1}>
+                {upiId}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.copyButton} onPress={handleCopy} activeOpacity={0.8}>
+              {copied ? (
+                <>
+                  <Check size={14} color={THEME.colors.primary} />
+                  <Text style={[styles.copyButtonText, { color: THEME.colors.primary }]}>Copied</Text>
+                </>
+              ) : (
+                <>
+                  <Copy size={14} color={THEME.colors.text} />
+                  <Text style={styles.copyButtonText}>Copy ID</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Disclaimer */}
         <View style={styles.disclaimerBox}>
@@ -150,14 +182,14 @@ export default function UpiQrModal() {
         <TouchableOpacity
           style={styles.confirmButton}
           onPress={handleConfirmPaid}
-          disabled={loading}
+          disabled={loading || amount <= 0}
           activeOpacity={0.85}
         >
           {loading ? (
             <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
           ) : (
             <>
-              <Text style={styles.confirmButtonText}>I Have Paid ₹{amount.toLocaleString()}</Text>
+              <Text style={styles.confirmButtonText}>I Have Paid ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               <ArrowRight size={18} color={THEME.colors.primaryForeground} />
             </>
           )}
@@ -227,6 +259,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.colors.border,
     width: '100%',
+  },
+  noUpiCard: {
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surface,
+    padding: 24,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    width: '100%',
+    gap: 8,
+  },
+  noUpiTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  noUpiSubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   qrWhiteBox: {
     backgroundColor: THEME.colors.palette.white,
