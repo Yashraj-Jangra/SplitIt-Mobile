@@ -9,6 +9,9 @@ import {
   Animated,
   Dimensions,
   LayoutChangeEvent,
+  Switch,
+  Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -26,9 +29,12 @@ import {
   Handshake,
   CheckCircle2,
   Calendar,
+  ArrowRight,
+  ArrowLeftRight,
 } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData } from '../../../src/services/group.service';
+import { useAuth } from '../../../src/contexts/auth.context';
 import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRing';
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../../src/utils/category-icons';
@@ -58,6 +64,8 @@ export default function GroupDetailScreen() {
   const HEADER_MAX_HEIGHT = topInset + 180;
   const SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
+  const { user } = useAuth();
+  const currentUserId = user?.id || 'u1';
   const [group, setGroup] = useState<GroupDetailData | null>(() => groupService.getInMemoryGroupDetail(targetId));
   const [activeTab, setActiveTab] = useState<TabType>('expenses');
   const [visitedTabs, setVisitedTabs] = useState<Record<TabType, boolean>>({
@@ -66,6 +74,7 @@ export default function GroupDetailScreen() {
     budget: false,
     activity: false,
   });
+  const [isSimplified, setIsSimplified] = useState(false);
   const [loading, setLoading] = useState(!group);
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
@@ -297,8 +306,52 @@ export default function GroupDetailScreen() {
   };
 
   const expenses = group?.expenses || [];
-  const members = group?.members || [];
-  const simplifiedDebts = group?.simplifiedDebts || [];
+  const members = useMemo(() => group?.members || [], [group?.members]);
+  const simplifiedDebts = useMemo(() => group?.simplifiedDebts || [], [group?.simplifiedDebts]);
+
+  const everythingIsSettled = useMemo(
+    () => members.length > 0 && members.every((m) => Math.abs(m.netBalance || 0) < 0.01),
+    [members]
+  );
+
+  const sortedBalances = useMemo(() => {
+    return [...members].sort((a, b) => {
+      const getStatus = (balance: number) => {
+        if (balance > 0.01) return 0; // Owed / Gets back
+        if (balance < -0.01) return 2; // Owes
+        return 1; // Settled
+      };
+
+      const statusA = getStatus(a.netBalance || 0);
+      const statusB = getStatus(b.netBalance || 0);
+
+      if (statusA !== statusB) {
+        return statusA - statusB;
+      }
+
+      if (statusA === 0) {
+        return (b.netBalance || 0) - (a.netBalance || 0);
+      }
+      if (statusA === 2) {
+        return (a.netBalance || 0) - (b.netBalance || 0);
+      }
+
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [members]);
+
+  const getMemberDisplayName = useCallback(
+    (memberId: string, rawName: string) => {
+      const isViewer = memberId === currentUserId;
+      if (isViewer) {
+        if (user?.name && user.name !== 'You' && user.name !== 'undefined') {
+          return user.name;
+        }
+      }
+      return rawName && rawName !== 'undefined' ? rawName : 'Member';
+    },
+    [currentUserId, user?.name]
+  );
   const budget = group?.budget || {
     enabled: false,
     totalMonthlyLimit: 0,
@@ -627,81 +680,224 @@ export default function GroupDetailScreen() {
               <BalancesTabSkeleton />
             ) : (
               <>
-                <View style={styles.simplifiedHeaderCard}>
-                  <Sparkles size={15} color={THEME.colors.primary} />
-                  <Text style={styles.simplifiedHeaderText}>
-                    Simplified Debts: Circular IOUs collapsed into minimum direct payments.
-                  </Text>
-                </View>
-
-                {/* Debt Cards */}
-                <View style={styles.debtsList}>
-                  {simplifiedDebts.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                      <Handshake size={32} color={THEME.colors.primary} />
-                      <Text style={styles.emptyTitle}>All settled up!</Text>
-                      <Text style={styles.emptySubtitle}>No pending repayments needed between group members.</Text>
+                {/* 1. Header with Switch (matches website) */}
+                <View style={styles.balancesHeaderRow}>
+                  <View style={styles.balancesTitleRow}>
+                    <ArrowLeftRight size={17} color={THEME.colors.primary} />
+                    <Text style={styles.balancesSectionTitle}>Group Balances</Text>
+                  </View>
+                  {!everythingIsSettled && members.length > 0 && (
+                    <View style={styles.switchRow}>
+                      <Text style={styles.switchLabel}>Simplify Debts</Text>
+                      <Switch
+                        value={isSimplified}
+                        onValueChange={(val) => {
+                          Haptics.selectionAsync();
+                          setIsSimplified(val);
+                        }}
+                        trackColor={{
+                          false: 'rgba(255, 255, 255, 0.12)',
+                          true: THEME.colors.primary,
+                        }}
+                        thumbColor={THEME.colors.palette.white}
+                        style={styles.switchControl}
+                      />
                     </View>
-                  ) : (
-                    simplifiedDebts.map((debt, index) => (
-                      <View key={index} style={styles.debtCard}>
-                        <View style={styles.debtInfoRow}>
-                          <View style={styles.debtAvatar}>
-                            <Text style={styles.avatarLetter}>{(debt.fromName || 'M').charAt(0)}</Text>
-                          </View>
-                          <View style={styles.debtTextCol}>
-                            <Text style={styles.debtPrimaryText}>
-                              <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.fromName || 'Member'}</Text> owes{' '}
-                              <Text style={{ fontWeight: '800', color: THEME.colors.text }}>{debt.toName || 'Member'}</Text>
-                            </Text>
-                            <Text style={styles.debtAmount}>₹{debt.amount.toLocaleString()}</Text>
-                          </View>
-                          {debt.toName === 'You' && (
-                            <TouchableOpacity
-                              style={styles.settleButton}
-                              onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                router.push({
-                                  pathname: '/settle/new',
-                                  params: {
-                                    groupId: group.id,
-                                    debtorId: debt.fromUserId,
-                                    debtorName: debt.fromName,
-                                    creditorId: debt.toUserId,
-                                    creditorName: debt.toName,
-                                    amount: debt.amount.toString(),
-                                    upiId: members.find((m) => m.id === debt.toUserId)?.upiId || 'rohit@okhdfc',
-                                  },
-                                });
-                              }}
-                            >
-                              <Zap size={13} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-                              <Text style={styles.settleButtonText}>Settle</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                    ))
                   )}
                 </View>
 
-                {/* Member Standings */}
-                <View style={styles.standingsCard}>
-                  <Text style={styles.sectionHeaderTitle}>MEMBER STANDINGS</Text>
-                  {members.map((m) => (
-                    <View key={m.id} style={styles.standingRow}>
-                      <Text style={styles.standingName}>{m.name}</Text>
-                      <Text
-                        style={[
-                          styles.standingAmount,
-                          { color: (m.netBalance || 0) >= 0 ? THEME.colors.primary : THEME.colors.negative },
-                        ]}
-                      >
-                        {(m.netBalance || 0) >= 0 ? `+₹${m.netBalance || 0}` : `-₹${Math.abs(m.netBalance || 0)}`}
-                      </Text>
+                {/* 2. Empty or Settled States */}
+                {members.length === 0 ? (
+                  <View style={styles.settledStateContainer}>
+                    <Handshake size={32} color={THEME.colors.primary} />
+                    <Text style={styles.settledTitle}>No balances to show</Text>
+                    <Text style={styles.settledSubtitle}>Add expenses to track balances between members.</Text>
+                  </View>
+                ) : everythingIsSettled ? (
+                  <View style={styles.settledStateContainer}>
+                    <View style={styles.settledIconWrap}>
+                      <CheckCircle2 size={36} color={THEME.colors.success} />
                     </View>
-                  ))}
-                </View>
+                    <Text style={styles.settledTitle}>All debts are settled!</Text>
+                    <Text style={styles.settledSubtitle}>Everyone is balanced in this group.</Text>
+                  </View>
+                ) : isSimplified ? (
+                  /* 3. SIMPLIFIED DEBTS FORM (Website-style simplified settlement plan) */
+                  <View style={styles.simplifiedPlanList}>
+                    {simplifiedDebts.length === 0 ? (
+                      <View style={styles.settledStateContainer}>
+                        <View style={styles.settledIconWrap}>
+                          <CheckCircle2 size={36} color={THEME.colors.success} />
+                        </View>
+                        <Text style={styles.settledTitle}>All debts are settled!</Text>
+                        <Text style={styles.settledSubtitle}>Everyone is balanced in this group.</Text>
+                      </View>
+                    ) : (
+                      simplifiedDebts.map((debt, index) => {
+                        const fromMember = members.find((m) => m.id === debt.fromUserId);
+                        const toMember = members.find((m) => m.id === debt.toUserId);
+                        const isFromViewer = debt.fromUserId === currentUserId;
+                        const isToViewer = debt.toUserId === currentUserId;
+                        const fromDisplayName = getMemberDisplayName(debt.fromUserId, debt.fromName);
+                        const toDisplayName = getMemberDisplayName(debt.toUserId, debt.toName);
+                        const fromAvatar = fromMember?.avatarUrl;
+                        const toAvatar = toMember?.avatarUrl;
+
+                        return (
+                          <View key={index} style={styles.simplifiedTransferCard}>
+                            <View style={styles.transferFlowRow}>
+                              {/* Debtor (From) */}
+                              <View style={styles.transferPartyCol}>
+                                <View style={styles.balanceAvatar}>
+                                  {fromAvatar ? (
+                                    <Image source={{ uri: fromAvatar }} style={styles.avatarImg} />
+                                  ) : (
+                                    <Text style={styles.balanceAvatarInitial}>
+                                      {(fromDisplayName || 'M').charAt(0).toUpperCase()}
+                                    </Text>
+                                  )}
+                                </View>
+                                <View style={styles.transferNameBadge}>
+                                  <Text style={styles.transferNameText} numberOfLines={1}>
+                                    {fromDisplayName}
+                                  </Text>
+                                  {isFromViewer && (
+                                    <View style={styles.youBadge}>
+                                      <Text style={styles.youBadgeText}>YOU</Text>
+                                    </View>
+                                  )}
+                                </View>
+                              </View>
+
+                              {/* Center Arrow & Amount */}
+                              <View style={styles.transferCenterCol}>
+                                <Text style={styles.transferCenterAmount}>
+                                  ₹{debt.amount.toFixed(2)}
+                                </Text>
+                                <View style={styles.transferArrowPill}>
+                                  <ArrowRight size={13} color={THEME.colors.primary} />
+                                </View>
+                              </View>
+
+                              {/* Creditor (To) */}
+                              <View style={[styles.transferPartyCol, styles.transferPartyColRight]}>
+                                <View style={[styles.transferNameBadge, styles.transferNameBadgeRight]}>
+                                  <Text style={styles.transferNameText} numberOfLines={1}>
+                                    {toDisplayName}
+                                  </Text>
+                                  {isToViewer && (
+                                    <View style={styles.youBadge}>
+                                      <Text style={styles.youBadgeText}>YOU</Text>
+                                    </View>
+                                  )}
+                                </View>
+                                <View style={styles.balanceAvatar}>
+                                  {toAvatar ? (
+                                    <Image source={{ uri: toAvatar }} style={styles.avatarImg} />
+                                  ) : (
+                                    <Text style={styles.balanceAvatarInitial}>
+                                      {(toDisplayName || 'M').charAt(0).toUpperCase()}
+                                    </Text>
+                                  )}
+                                </View>
+                              </View>
+
+                              {/* Settle Action */}
+                              <TouchableOpacity
+                                style={styles.settleButton}
+                                activeOpacity={0.8}
+                                onPress={() => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                  router.push({
+                                    pathname: '/settle/new',
+                                    params: {
+                                      groupId: group?.id || targetId,
+                                      debtorId: debt.fromUserId,
+                                      debtorName: fromDisplayName,
+                                      creditorId: debt.toUserId,
+                                      creditorName: toDisplayName,
+                                      amount: debt.amount.toString(),
+                                      upiId: toMember?.upiId || 'rohit@okhdfc',
+                                    },
+                                  });
+                                }}
+                              >
+                                <Zap size={11} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
+                                <Text style={styles.settleButtonText}>Settle</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        );
+                      })
+                    )}
+                  </View>
+                ) : (
+                  /* 4. NORMAL FORM (Individual member net balances) */
+                  <View style={styles.normalBalancesList}>
+                    {sortedBalances.map((m, index) => {
+                      const isLast = index === sortedBalances.length - 1;
+                      const isViewer = m.id === currentUserId;
+                      const displayName = getMemberDisplayName(m.id, m.name);
+                      const isOwed = (m.netBalance || 0) > 0.01;
+                      const isDebtor = (m.netBalance || 0) < -0.01;
+                      const isSettled = !isOwed && !isDebtor;
+
+                      return (
+                        <View
+                          key={m.id || index}
+                          style={[styles.balanceMemberRow, !isLast && styles.balanceMemberRowBorder]}
+                        >
+                          <View style={styles.balanceMemberLeft}>
+                            <View style={styles.balanceAvatar}>
+                              {m.avatarUrl ? (
+                                <Image source={{ uri: m.avatarUrl }} style={styles.avatarImg} />
+                              ) : (
+                                <Text style={styles.balanceAvatarInitial}>
+                                  {(displayName || 'M').charAt(0).toUpperCase()}
+                                </Text>
+                              )}
+                            </View>
+
+                            <View style={styles.balanceMemberNameWrap}>
+                              <Text
+                                style={[
+                                  styles.balanceMemberName,
+                                  isViewer && styles.balanceMemberNameUser,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {displayName}
+                              </Text>
+                              {isViewer && (
+                                <View style={styles.youBadge}>
+                                  <Text style={styles.youBadgeText}>YOU</Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+
+                          <View style={styles.balanceRightCol}>
+                            {isOwed && (
+                              <Text style={styles.balanceOwedText}>
+                                is owed ₹{(m.netBalance || 0).toFixed(2)}
+                              </Text>
+                            )}
+                            {isDebtor && (
+                              <Text style={styles.balanceDebtorText}>
+                                owes ₹{Math.abs(m.netBalance || 0).toFixed(2)}
+                              </Text>
+                            )}
+                            {isSettled && (
+                              <Text style={styles.balanceSettledText}>
+                                settled up
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -1329,88 +1525,237 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
-  // Balances Tab
-  simplifiedHeaderCard: {
+  // Balances Tab & Redesigned Header
+  balancesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    marginBottom: 2,
+  },
+  balancesTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: THEME.colors.primaryMuted,
-    padding: 12,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.22)',
   },
-  simplifiedHeaderText: {
-    flex: 1,
-    fontSize: 11,
-    color: THEME.colors.primaryLight,
-    lineHeight: 16,
+  balancesSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    letterSpacing: -0.2,
   },
-  debtsList: {
-    gap: 10,
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  debtCard: {
+  switchLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+  },
+  switchControl: {
+    transform: Platform.OS === 'ios' ? [{ scaleX: 0.82 }, { scaleY: 0.82 }] : [],
+  },
+
+  // Normal Balances List (No-div Minimalist Layout)
+  normalBalancesList: {
     backgroundColor: THEME.colors.surface,
-    padding: 14,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  balanceMemberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  balanceMemberRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  balanceMemberLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    minWidth: 0,
+  },
+  balanceAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  balanceAvatarInitial: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  balanceMemberNameWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+  },
+  balanceMemberName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  balanceMemberNameUser: {
+    fontWeight: '700',
+  },
+  youBadge: {
+    backgroundColor: 'rgba(28, 194, 159, 0.15)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  youBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: THEME.colors.primary,
+    letterSpacing: 0.5,
+  },
+  balanceRightCol: {
+    alignItems: 'flex-end',
+    marginLeft: 10,
+  },
+  balanceOwedText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.success,
+  },
+  balanceDebtorText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.negative,
+  },
+  balanceSettledText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: THEME.colors.textMuted,
+  },
+
+  // Simplified Settlement Plan
+  simplifiedPlanList: {
+    gap: 8,
+  },
+  simplifiedTransferCard: {
+    backgroundColor: THEME.colors.surface,
+    padding: 12,
     borderRadius: THEME.radius.lg,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
   },
-  debtInfoRow: {
+  transferFlowRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: 6,
   },
-  debtAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.colors.surfaceElevated,
+  transferPartyCol: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+  },
+  transferPartyColRight: {
+    justifyContent: 'flex-end',
+  },
+  transferNameBadge: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  transferNameBadgeRight: {
+    justifyContent: 'flex-end',
+  },
+  transferNameText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  transferCenterCol: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 2,
+    minWidth: 62,
   },
-  avatarLetter: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: THEME.colors.text,
-  },
-  debtTextCol: {
-    flex: 1,
-  },
-  debtPrimaryText: {
+  transferCenterAmount: {
     fontSize: 13,
-    color: THEME.colors.textSecondary,
-  },
-  debtAmount: {
-    fontSize: 14,
     fontWeight: '800',
     color: THEME.colors.text,
-    marginTop: 2,
+    marginBottom: 2,
+  },
+  transferArrowPill: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   settleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: THEME.radius.md,
+    marginLeft: 4,
   },
   settleButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: THEME.colors.primaryForeground,
   },
 
-  // Standings
-  standingsCard: {
-    backgroundColor: THEME.colors.surface,
-    padding: 16,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    gap: 12,
+  // Empty / Settled States
+  settledStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    gap: 6,
   },
+  settledIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  settledTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    textAlign: 'center',
+  },
+  settledSubtitle: {
+    fontSize: 13,
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
+  },
+
+  // Budget Tab
   sectionHeaderTitle: {
     fontSize: 11,
     fontWeight: '800',
@@ -1418,23 +1763,6 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginBottom: 4,
   },
-  standingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  standingName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: THEME.colors.text,
-  },
-  standingAmount: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-
-  // Budget Tab
   budgetCard: {
     backgroundColor: THEME.colors.surface,
     padding: 20,

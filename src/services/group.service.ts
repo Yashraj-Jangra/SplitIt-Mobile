@@ -381,24 +381,32 @@ export const groupService = {
 
           // Map members and net balances
           const members: GroupMember[] = Array.isArray(balancesData) && balancesData.length > 0
-            ? balancesData.map((b: any) => ({
-                id: b.user?.uid || b.user?.id || 'm',
-                name: (b.user?.uid || b.user?.id) === currentUserId
-                  ? 'You'
-                  : (b.user?.firstName ? `${b.user.firstName} ${b.user.lastName || ''}`.trim() : b.user?.name || 'Member'),
-                avatarUrl: b.user?.avatarUrl,
-                upiId: b.user?.upiId,
-                netBalance: Number(b.netBalance || 0),
-              }))
-            : (groupData.members || []).map((m: any) => ({
-                id: m.uid || m.id,
-                name: (m.uid || m.id) === currentUserId
-                  ? 'You'
-                  : (m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.name || 'Member'),
-                avatarUrl: m.avatarUrl,
-                upiId: m.upiId,
-                netBalance: 0,
-              }));
+            ? balancesData.map((b: any) => {
+                const uid = b.user?.uid || b.user?.id || 'm';
+                const rawName = b.user?.firstName
+                  ? `${b.user.firstName} ${b.user.lastName || ''}`.trim()
+                  : b.user?.name;
+                return {
+                  id: uid,
+                  name: rawName || (uid === currentUserId ? 'You' : 'Member'),
+                  avatarUrl: b.user?.avatarUrl,
+                  upiId: b.user?.upiId,
+                  netBalance: Number(b.netBalance || 0),
+                };
+              })
+            : (groupData.members || []).map((m: any) => {
+                const uid = m.uid || m.id;
+                const rawName = m.firstName
+                  ? `${m.firstName} ${m.lastName || ''}`.trim()
+                  : m.name;
+                return {
+                  id: uid,
+                  name: rawName || (uid === currentUserId ? 'You' : 'Member'),
+                  avatarUrl: m.avatarUrl,
+                  upiId: m.upiId,
+                  netBalance: 0,
+                };
+              });
 
           // Compute simplified debts via @splitit/core
           const coreDebts = simplifyDebts(

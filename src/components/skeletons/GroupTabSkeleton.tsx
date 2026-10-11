@@ -57,34 +57,23 @@ export function BalancesTabSkeleton() {
 
   return (
     <View style={styles.tabSectionGap}>
-      {/* Simplified Debts Header Card */}
-      <View style={styles.simplifiedHeaderCard}>
-        <Animated.View style={[styles.iconSquareSmall, { opacity: pulse }]} />
-        <Animated.View style={[styles.headerTextLine, { opacity: pulse }]} />
+      {/* Header Row Skeleton with Switch */}
+      <View style={styles.balancesHeaderSkeleton}>
+        <Animated.View style={[styles.balancesTitleSkeleton, { opacity: pulse }]} />
+        <Animated.View style={[styles.switchSkeleton, { opacity: pulse }]} />
       </View>
 
-      {/* Debt Cards */}
-      <View style={styles.debtsList}>
-        {[1, 2].map((idx) => (
-          <View key={idx} style={styles.debtCard}>
-            <View style={styles.debtInfoRow}>
-              <Animated.View style={[styles.avatarCircle, { opacity: pulse }]} />
-              <View style={styles.debtTextCol}>
-                <Animated.View style={[styles.debtNamesLine, { opacity: pulse }]} />
-                <Animated.View style={[styles.debtAmountLine, { opacity: pulse }]} />
-              </View>
-              <Animated.View style={[styles.settlePill, { opacity: pulse }]} />
-            </View>
-          </View>
-        ))}
-      </View>
-
-      {/* Member Standings Card */}
-      <View style={styles.standingsCard}>
-        <Animated.View style={[styles.sectionTitleLine, { opacity: pulse }]} />
+      {/* Member Balances Rows Skeleton */}
+      <View style={styles.balancesListSkeleton}>
         {[1, 2, 3, 4].map((idx) => (
-          <View key={idx} style={styles.standingRow}>
-            <Animated.View style={[styles.standingNameLine, { opacity: pulse }]} />
+          <View
+            key={idx}
+            style={[styles.balanceMemberRowSkeleton, idx < 4 && styles.balanceRowBorderSkeleton]}
+          >
+            <View style={styles.balanceMemberLeftSkeleton}>
+              <Animated.View style={[styles.avatarCircle, { opacity: pulse }]} />
+              <Animated.View style={[styles.standingNameLine, { opacity: pulse }]} />
+            </View>
             <Animated.View style={[styles.standingAmountLine, { opacity: pulse }]} />
           </View>
         ))}
@@ -265,40 +254,44 @@ const styles = StyleSheet.create({
   },
 
   // Balances
-  simplifiedHeaderCard: {
+  balancesHeaderSkeleton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: THEME.colors.surface,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 2,
   },
-  iconSquareSmall: {
-    width: 16,
+  balancesTitleSkeleton: {
+    width: 120,
     height: 16,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  headerTextLine: {
-    flex: 1,
-    height: 11,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+  switchSkeleton: {
+    width: 80,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
-  debtsList: {
-    gap: 10,
-  },
-  debtCard: {
+  balancesListSkeleton: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
-    padding: 14,
+    borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
   },
-  debtInfoRow: {
+  balanceMemberRowSkeleton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  balanceRowBorderSkeleton: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  balanceMemberLeftSkeleton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -309,35 +302,23 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     backgroundColor: 'rgba(255, 255, 255, 0.09)',
   },
-  debtTextCol: {
-    flex: 1,
-  },
-  debtNamesLine: {
-    width: 140,
-    height: 12,
+  standingNameLine: {
+    width: 100,
+    height: 13,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.09)',
   },
-  debtAmountLine: {
-    width: 70,
-    height: 15,
+  standingAmountLine: {
+    width: 60,
+    height: 14,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    marginTop: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.09)',
   },
-  settlePill: {
-    width: 64,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  standingsCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    gap: 12,
+  iconSquareSmall: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   sectionTitleLine: {
     width: 120,
@@ -345,23 +326,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginBottom: 4,
-  },
-  standingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  standingNameLine: {
-    width: 90,
-    height: 12,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  standingAmountLine: {
-    width: 55,
-    height: 12,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
 
   // Budget
