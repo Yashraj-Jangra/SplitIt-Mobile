@@ -1,6 +1,34 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Settle Up Screen Redesign with Real Data, Party Swap, UPI Check & Automated Confirmation (`app/settle/new.tsx`, `app/settle/qr.tsx`, `src/services/settlement.service.ts`)**:
+  - **Zero Mock Data Integration**:
+    - Completely purged hardcoded mock data (`Rohit Sharma`, `rohit@okhdfc`, `1900`, `u1`, `u2`) from both `app/settle/new.tsx` and `app/settle/qr.tsx`.
+    - Integrated real authenticated user session via `useAuth()` and group members via `groupService.getGroupDetails`.
+  - **Party Flow: Avatar -> (Sleek Double-Arrow Swap) -> Avatar**:
+    - Replaced generic dropdowns with interactive party tiles (`PAID BY` and `PAID TO`) displaying standardized avatars, member display names, and `[YOU]` badge for the viewer.
+    - Added central `<ArrowLeftRight>` swap button between avatars enabling 1-tap party swapping with haptic feedback (`handleSwapParties`).
+  - **Mutual-Exclusion Member Dropdown Selection**:
+    - Tapping an avatar opens a bottom sheet member picker modal.
+    - Excluded the currently selected receiver from the payer picker, and the currently selected payer from the receiver picker, guaranteeing parties cannot be the same member.
+  - **Hero Amount & Ledger Summary**:
+    - Docked a hero amount card with `₹` currency prefix, large numeric text input matching `app/expenses/new.tsx`, and an optional settlement note input.
+    - Added dynamic sentence summary (`[Payer] is paying ₹[Amount] to [Receiver]`) paired with a concise legal disclaimer: `"SplitIt records shared balances between members and does not transfer or escrow funds directly."`
+  - **Pay via UPI Checkbox & VPA Availability Guard**:
+    - Replaced stacked secondary buttons with a single checkbox row docked directly above the primary action button.
+    - If the receiver has not configured a UPI VPA, the checkbox locks with a padlock icon, displays a "VPA Missing" pill, and informs the user via alert upon tapping.
+    - When a valid VPA is present, displays the recipient's VPA badge and enables automated UPI app launching.
+  - **Automated UPI Payment Detection & Confirmation (`AppState`)**:
+    - Added background-to-foreground `AppState` resumption detection (`AppState.addEventListener('change', ...)`).
+    - Upon returning from third-party UPI apps (GPay, PhonePe, Paytm, CRED), SplitIt automatically prompts confirmation: `"Did your UPI payment of ₹X to [Receiver] complete successfully?"`
+    - On confirmation, automatically posts the settlement to the `/api/settlements` backend and closes the modal.
+  - **Secondary High-Contrast QR Code Screen (`app/settle/qr.tsx`)**:
+    - Updated QR screen to consume real params, handle missing VPA gracefully with a warning card, and provide 1-tap UPI ID copy.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint app/settle/new.tsx app/settle/qr.tsx src/services/settlement.service.ts` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Redesign Group Balances with Simplify Debts Toggle & Website Parity (`app/groups/[id]/index.tsx`, `GroupTabSkeleton.tsx`, `group.service.ts`)**:
   - **Header Toggle Switch (Direct Website Parity)**:
     - Added an open-editorial header row docking `"Group Balances"` title on the left and `"Simplify Debts"` label with native iOS/Android `Switch` on the right.
