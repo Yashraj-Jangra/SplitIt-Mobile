@@ -1,6 +1,29 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Settle Up Screen Enhancements: All-Member Dropdown with Auto-Deselect, Arrow Hierarchy, No-Div Underline Amount & Shared Default Group (`app/settle/new.tsx`, `app/settle/qr.tsx`)**:
+  - **All-Member Selection with Mutual Auto-Deselect**:
+    - "Paid by" and "Paid to" dropdown pickers now display all group members.
+    - If a user selects a member in "Paid by" who is currently set in "Paid to", "Paid to" is automatically deselected (`''`) and shows an unselected placeholder, ensuring members are never duplicated.
+    - Same auto-deselect logic applies conversely when selecting "Paid to".
+  - **Arrow Visual Hierarchy**:
+    - Made the primary settlement arrow `->` (`ArrowRight`) bigger (`size={22}`) and situated it at the top to represent the core direction of the money transfer.
+    - Repositioned the secondary double-arrow swap button (`ArrowLeftRight`) downwards and smaller (`size={12}` in a 28×28 circular pill), making it visually distinct as a modifier action.
+  - **No-Div Responsive Amount Underline**:
+    - Replaced the boxed card container around the amount with an open, no-div underline layout directly on the background.
+    - Features a large emerald `₹` currency symbol (`36px`), a centered responsive numeric `TextInput` with underline border, and zero extraneous text.
+  - **Shared Default Group & Group Switcher**:
+    - Integrated with `groupService.getDefaultGroupId()` and `groupService.setDefaultGroupId()`, sharing the same default group state and storage as Add Expense.
+    - Header displays the active group badge (`in [Group Name] ▾`). Tapping it opens a group selection bottom sheet with search, member counts, and a "Set as default group" star toggle.
+  - **Comprehensive Edge Case Guards**:
+    - **Recipient is You (`isReceiverViewer`)**: QR button at top and "Pay via UPI" checkbox are locked with alert guards explaining that users cannot pay themselves.
+    - **Missing VPA (`!hasUpiId`)**: QR button and UPI checkbox are locked with "VPA Missing" indicators.
+    - **Missing Recipient**: Prompts the user to select who receives payment first.
+    - **Default Pay via UPI Unselected**: Checkbox starts unselected (`payViaUpi = false`), requiring intentional opt-in.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint app/settle/new.tsx app/settle/qr.tsx src/services/settlement.service.ts` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Settle Up Screen Redesign with Real Data, Party Swap, UPI Check & Automated Confirmation (`app/settle/new.tsx`, `app/settle/qr.tsx`, `src/services/settlement.service.ts`)**:
   - **Zero Mock Data Integration**:
     - Completely purged hardcoded mock data (`Rohit Sharma`, `rohit@okhdfc`, `1900`, `u1`, `u2`) from both `app/settle/new.tsx` and `app/settle/qr.tsx`.
