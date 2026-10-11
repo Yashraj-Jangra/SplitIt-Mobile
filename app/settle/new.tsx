@@ -26,10 +26,18 @@ import {
   QrCode,
   ShieldCheck,
   ChevronDown,
+  Search,
+  Star,
+  User,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
-import { groupService, GroupMember, GroupDetailData } from '../../src/services/group.service';
+import {
+  groupService,
+  GroupMember,
+  GroupDetailData,
+  GroupListItem,
+} from '../../src/services/group.service';
 import { settlementService } from '../../src/services/settlement.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { launchUpiPayment } from '../../src/utils/upi';
@@ -52,7 +60,14 @@ export default function SettleUpModal() {
     upiId?: string;
   }>();
 
-  // 1. Group & Member Real Data
+  // 1. Group & Shared Default Group State
+  const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(params.groupId || '');
+  const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
+  const [isDefaultGroupChecked, setIsDefaultGroupChecked] = useState(false);
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [groupSearch, setGroupSearch] = useState('');
+
   const [group, setGroup] = useState<GroupDetailData | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isLoadingGroup, setIsLoadingGroup] = useState(true);
@@ -60,49 +75,89 @@ export default function SettleUpModal() {
   // 2. Settlement Parties State
   const [payerId, setPayerId] = useState<string>(() => params.debtorId || currentUserId);
   const [receiverId, setReceiverId] = useState<string>(() => params.creditorId || '');
-
-  // 3. User Picker Modal
   const [activePicker, setActivePicker] = useState<'payer' | 'receiver' | null>(null);
 
-  // 4. Form Fields
+  // 3. Amount Field
   const [amount, setAmount] = useState(params.amount || '');
-  const [notes, setNotes] = useState('SplitIt settlement');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load real group data and members
-  useEffect(() => {
-    let active = true;
-    const loadData = async () => {
+  // 4. Pay via UPI Selection (By default UNSELECTED)
+  const [payViaUpi, setPayViaUpi] = useState(false);
+
+  // Load group members & party records for a specific group
+  const loadGroupMembersAndParties = useCallback(
+    async (gId: string) => {
       try {
-        let targetGId = params.groupId;
-        if (!targetGId) {
-          const userGroups = await groupService.getUserGroups();
-          if (userGroups && userGroups.length > 0) {
-            targetGId = userGroups[0].id;
+        const inMem = groupService.getInMemoryGroupDetail(gId);
+        if (inMem) {
+          setGroup(inMem);
+          if (inMem.members && inMem.members.length > 0) {
+            setMembers(inMem.members);
+            setPayerId((prev) =>
+              prev && inMem.members?.some((m) => m.id === prev)
+                ? prev
+                : inMem.members?.find((m) => m.id === currentUserId)?.id || inMem.members?.[0]?.id || ''
+            );
+            setReceiverId((prev) =>
+              prev && inMem.members?.some((m) => m.id === prev)
+                ? prev
+                : inMem.members?.find((m) => m.id !== currentUserId)?.id || inMem.members?.[1]?.id || ''
+            );
           }
         }
 
-        if (targetGId) {
-          const inMem = groupService.getInMemoryGroupDetail(targetGId);
-          if (inMem && active) {
-            setGroup(inMem);
-            if (inMem.members && inMem.members.length > 0) {
-              setMembers(inMem.members);
-              setPayerId((prev) => (prev || inMem.members?.find((m) => m.id === currentUserId)?.id || inMem.members?.[0]?.id || ''));
-              setReceiverId((prev) => (prev || inMem.members?.find((m) => m.id !== currentUserId)?.id || inMem.members?.[0]?.id || ''));
-            }
-            setIsLoadingGroup(false);
+        const fresh = await groupService.getGroupDetails(gId);
+        if (fresh) {
+          setGroup(fresh);
+          if (fresh.members && fresh.members.length > 0) {
+            setMembers(fresh.members);
+            setPayerId((prev) =>
+              prev && fresh.members?.some((m) => m.id === prev)
+                ? prev
+                : fresh.members?.find((m) => m.id === currentUserId)?.id || fresh.members?.[0]?.id || ''
+            );
+            setReceiverId((prev) =>
+              prev && fresh.members?.some((m) => m.id === prev)
+                ? prev
+                : fresh.members?.find((m) => m.id !== currentUserId)?.id || fresh.members?.[1]?.id || ''
+            );
           }
+        }
+      } catch {
+        // Handled gracefully
+      }
+    },
+    [currentUserId]
+  );
 
-          const fresh = await groupService.getGroupDetails(targetGId);
-          if (fresh && active) {
-            setGroup(fresh);
-            if (fresh.members && fresh.members.length > 0) {
-              setMembers(fresh.members);
-              setPayerId((prev) => (prev || fresh.members?.find((m) => m.id === currentUserId)?.id || fresh.members?.[0]?.id || ''));
-              setReceiverId((prev) => (prev || fresh.members?.find((m) => m.id !== currentUserId)?.id || fresh.members?.[0]?.id || ''));
-            }
+  // Initialization: load all groups, check shared default group, and load active group
+  useEffect(() => {
+    let active = true;
+    const init = async () => {
+      try {
+        const [allGroups, savedDefault] = await Promise.all([
+          groupService.getUserGroups(),
+          groupService.getDefaultGroupId(),
+        ]);
+        if (active) {
+          setGroups(allGroups || []);
+          setDefaultGroupId(savedDefault);
+          if (savedDefault) {
+            setIsDefaultGroupChecked(true);
           }
+        }
+
+        let targetGId = params.groupId;
+        if (!targetGId && savedDefault && allGroups.some((g) => g.id === savedDefault)) {
+          targetGId = savedDefault;
+        }
+        if (!targetGId && allGroups && allGroups.length > 0) {
+          targetGId = allGroups[0].id;
+        }
+
+        if (targetGId) {
+          if (active) setSelectedGroupId(targetGId);
+          await loadGroupMembersAndParties(targetGId);
         }
       } catch {
         // Handled gracefully
@@ -111,14 +166,31 @@ export default function SettleUpModal() {
       }
     };
 
-    loadData();
+    init();
     return () => {
       active = false;
     };
-  }, [params.groupId, currentUserId]);
+  }, [params.groupId, loadGroupMembersAndParties]);
+
+  // Handle switching group & syncing shared default group
+  const handleSelectGroup = async (gId: string) => {
+    Haptics.selectionAsync();
+    setSelectedGroupId(gId);
+    setShowGroupModal(false);
+
+    if (isDefaultGroupChecked) {
+      await groupService.setDefaultGroupId(gId);
+      setDefaultGroupId(gId);
+    }
+
+    setIsLoadingGroup(true);
+    await loadGroupMembersAndParties(gId);
+    setIsLoadingGroup(false);
+  };
 
   // Resolve payer and receiver member records
   const payerMember = useMemo(() => {
+    if (!payerId) return null;
     const found = members.find((m) => m.id === payerId);
     if (found) return found;
     if (payerId === currentUserId) {
@@ -131,7 +203,7 @@ export default function SettleUpModal() {
       };
     }
     return {
-      id: payerId || 'payer',
+      id: payerId,
       name: params.debtorName || 'Member',
       avatarUrl: undefined,
       netBalance: 0,
@@ -139,6 +211,7 @@ export default function SettleUpModal() {
   }, [members, payerId, currentUserId, currentUserName, user?.avatarUrl, user?.upiId, params.debtorName]);
 
   const receiverMember = useMemo(() => {
+    if (!receiverId) return null;
     const found = members.find((m) => m.id === receiverId);
     if (found) return found;
     if (receiverId === currentUserId) {
@@ -151,7 +224,7 @@ export default function SettleUpModal() {
       };
     }
     return {
-      id: receiverId || 'receiver',
+      id: receiverId,
       name: params.creditorName || 'Member',
       avatarUrl: undefined,
       upiId: params.upiId,
@@ -159,36 +232,43 @@ export default function SettleUpModal() {
     };
   }, [members, receiverId, currentUserId, currentUserName, user?.avatarUrl, user?.upiId, params.creditorName, params.upiId]);
 
-  const isPayerViewer = payerMember.id === currentUserId;
-  const isReceiverViewer = receiverMember.id === currentUserId;
+  const isPayerViewer = Boolean(payerMember && payerMember.id === currentUserId);
+  const isReceiverViewer = Boolean(receiverMember && receiverMember.id === currentUserId);
 
-  const payerDisplayName = isPayerViewer && currentUserName && currentUserName !== 'You'
-    ? currentUserName
-    : payerMember.name;
+  const payerDisplayName = payerMember
+    ? (isPayerViewer && currentUserName && currentUserName !== 'You' ? currentUserName : payerMember.name)
+    : 'Select payer';
 
-  const receiverDisplayName = isReceiverViewer && currentUserName && currentUserName !== 'You'
-    ? currentUserName
-    : receiverMember.name;
+  const receiverDisplayName = receiverMember
+    ? (isReceiverViewer && currentUserName && currentUserName !== 'You' ? currentUserName : receiverMember.name)
+    : 'Select recipient';
 
   // Real Receiver UPI VPA configuration
   const receiverUpiId = useMemo(() => {
+    if (!receiverMember) return undefined;
     const id = receiverMember.upiId?.trim() || (receiverId === params.creditorId ? params.upiId?.trim() : undefined);
     return id && id.includes('@') ? id : undefined;
-  }, [receiverMember.upiId, receiverId, params.creditorId, params.upiId]);
+  }, [receiverMember, receiverId, params.creditorId, params.upiId]);
 
   const hasUpiId = Boolean(receiverUpiId);
-  const [upiOptOut, setUpiOptOut] = useState(false);
-  const payViaUpi = hasUpiId && !upiOptOut;
+
+  // Edge cases for QR and UPI
+  const isQrLocked = !receiverId || isReceiverViewer || !hasUpiId;
+  const isUpiLocked = !receiverId || isReceiverViewer || !hasUpiId;
+  const effectivePayViaUpi = payViaUpi && !isUpiLocked;
 
   // Amount parsing
-  const numAmount = parseFloat(amount) || 0;
+  const sanitizedAmount = amount.replace(',', '.');
+  const numAmount = parseFloat(sanitizedAmount) || 0;
   const isValidAmount = numAmount > 0;
+  const isValidParties = Boolean(payerId && receiverId && payerId !== receiverId);
+  const isValidSubmit = isValidAmount && isValidParties;
   const formattedAmount = numAmount.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 
-  // Double arrow swap handler
+  // Double-arrow swap handler
   const handleSwapParties = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const prevPayer = payerId;
@@ -197,41 +277,118 @@ export default function SettleUpModal() {
     setReceiverId(prevPayer);
   };
 
-  // Filter members in dropdown picker:
-  // When picking payer: do not display currently selected receiver
-  // When picking receiver: do not display currently selected payer
-  const pickerMembers = useMemo(() => {
+  // Select member handler:
+  // Shows all members. If selected party matches the opposite party, deselect opposite party.
+  const handleSelectMember = (mId: string) => {
+    Haptics.selectionAsync();
     if (activePicker === 'payer') {
-      return members.filter((m) => m.id !== receiverId);
+      setPayerId(mId);
+      if (receiverId === mId) {
+        setReceiverId(''); // Deselect receiver if same member selected as payer
+      }
+    } else if (activePicker === 'receiver') {
+      setReceiverId(mId);
+      if (payerId === mId) {
+        setPayerId(''); // Deselect payer if same member selected as receiver
+      }
     }
-    if (activePicker === 'receiver') {
-      return members.filter((m) => m.id !== payerId);
+    setActivePicker(null);
+  };
+
+  // QR Code Button Handler with comprehensive edge-case feedback
+  const handleQrPress = () => {
+    Haptics.selectionAsync();
+    if (!receiverId) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert('Select Recipient', 'Please select who receives the payment to view their QR code.');
+      return;
     }
-    return members;
-  }, [members, activePicker, receiverId, payerId]);
+    if (isReceiverViewer) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        'Cannot Pay Yourself',
+        'You are selected as the recipient. QR payment code is only available when paying another member.'
+      );
+      return;
+    }
+    if (!hasUpiId) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        'UPI VPA Not Configured',
+        `${receiverDisplayName} has not added their UPI ID (VPA) yet. QR code cannot be generated.`
+      );
+      return;
+    }
+    handleOpenQr();
+  };
 
-  const targetGroupId = group?.id || params.groupId || '';
+  const handleOpenQr = () => {
+    router.push({
+      pathname: '/settle/qr',
+      params: {
+        groupId: selectedGroupId || group?.id || '',
+        payerId: payerMember?.id || '',
+        payerName: payerDisplayName,
+        payeeId: receiverMember?.id || '',
+        payeeName: receiverDisplayName,
+        upiId: receiverUpiId || '',
+        amount: numAmount > 0 ? numAmount.toString() : '0',
+        notes: 'SplitIt settlement',
+      },
+    });
+  };
 
-  // Record settlement callback (declared before AppState effect)
+  // Toggle UPI Checkbox Handler with edge-case feedback
+  const handleToggleUpi = () => {
+    if (!receiverId) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert('Select Recipient', 'Please select who receives the payment first.');
+      return;
+    }
+    if (isReceiverViewer) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        'Cannot Pay Yourself',
+        'You are selected as the recipient. You cannot send a UPI payment to yourself. Record this settlement manually instead.'
+      );
+      return;
+    }
+    if (!hasUpiId) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        'UPI VPA Not Configured',
+        `${receiverDisplayName} has not added their UPI ID (VPA) yet. You can still record this settlement manually.`
+      );
+      return;
+    }
+    Haptics.selectionAsync();
+    setPayViaUpi((prev) => !prev);
+  };
+
+  const targetGId = selectedGroupId || group?.id || params.groupId || '';
+  const effectivePayerId = payerMember?.id || '';
+  const effectiveReceiverId = receiverMember?.id || '';
+
+  // Record settlement callback
   const performRecordSettlement = useCallback(
     async (amt: number, method: 'upi' | 'cash') => {
       setIsSubmitting(true);
       try {
         const res = await settlementService.recordSettlement({
-          groupId: targetGroupId,
-          payerId: payerMember.id,
+          groupId: targetGId,
+          payerId: effectivePayerId,
           payerName: payerDisplayName,
-          payeeId: receiverMember.id,
+          payeeId: effectiveReceiverId,
           payeeName: receiverDisplayName,
           amount: amt,
           method,
-          notes,
+          notes: 'SplitIt settlement',
         });
 
         if (res.success) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          if (targetGroupId) {
-            groupService.getGroupDetails(targetGroupId).catch(() => {});
+          if (targetGId) {
+            groupService.getGroupDetails(targetGId).catch(() => {});
           }
           router.back();
         } else {
@@ -245,7 +402,7 @@ export default function SettleUpModal() {
         setIsSubmitting(false);
       }
     },
-    [targetGroupId, payerMember.id, payerDisplayName, receiverMember.id, receiverDisplayName, notes, router]
+    [targetGId, effectivePayerId, payerDisplayName, effectiveReceiverId, receiverDisplayName, router]
   );
 
   // AppState Return Detection for Automated UPI Post-Confirmation
@@ -285,22 +442,20 @@ export default function SettleUpModal() {
       Alert.alert('Invalid Amount', 'Please enter a settlement amount greater than 0.');
       return;
     }
-
-    if (payerId === receiverId) {
+    if (!isValidParties) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Invalid Settlement', 'Payer and recipient cannot be the same member.');
+      Alert.alert('Select Parties', 'Please select both who paid and who receives the payment.');
       return;
     }
 
-    // Launch UPI intent if requested and receiver has VPA
-    if (payViaUpi && hasUpiId && receiverUpiId) {
+    if (effectivePayViaUpi && receiverUpiId) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       isWaitingUpiReturn.current = true;
       const launched = await launchUpiPayment({
         upiId: receiverUpiId,
         payeeName: receiverDisplayName,
         amount: numAmount,
-        notes,
+        notes: 'SplitIt settlement',
       });
 
       if (!launched) {
@@ -329,23 +484,6 @@ export default function SettleUpModal() {
     await performRecordSettlement(numAmount, 'cash');
   };
 
-  const handleOpenQr = () => {
-    Haptics.selectionAsync();
-    router.push({
-      pathname: '/settle/qr',
-      params: {
-        groupId: group?.id || params.groupId || '',
-        payerId: payerMember.id,
-        payerName: payerDisplayName,
-        payeeId: receiverMember.id,
-        payeeName: receiverDisplayName,
-        upiId: receiverUpiId || params.upiId || '',
-        amount: numAmount > 0 ? numAmount.toString() : '0',
-        notes,
-      },
-    });
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* ── Top Header ── */}
@@ -362,23 +500,38 @@ export default function SettleUpModal() {
           <X size={20} color={THEME.colors.textSecondary} />
         </TouchableOpacity>
 
+        {/* Center Title + Group Switcher Badge (Website Parity & Shared Default Group) */}
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>Settle Up</Text>
-          {group?.name && (
-            <Text style={styles.headerSubtitle} numberOfLines={1}>
-              {group.name}
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.selectionAsync();
+              setShowGroupModal(true);
+            }}
+            activeOpacity={0.7}
+            style={styles.headerGroupBadge}
+            accessibilityRole="button"
+            accessibilityLabel={`Current group: ${group?.name || 'Select group'}. Tap to switch.`}
+          >
+            <Text style={styles.headerGroupText} numberOfLines={1}>
+              in <Text style={styles.headerGroupNameHighlight}>{group?.name || 'Select group'}</Text>
             </Text>
-          )}
+            <ChevronDown size={11} color={THEME.colors.primary} />
+          </TouchableOpacity>
         </View>
 
-        {/* QR Code Secondary Trigger */}
+        {/* QR Code Trigger with Edge Cases Handling */}
         <TouchableOpacity
-          onPress={handleOpenQr}
-          style={styles.headerActionBtn}
+          onPress={handleQrPress}
+          style={[styles.headerActionBtn, isQrLocked && styles.headerActionBtnLocked]}
           accessibilityRole="button"
-          accessibilityLabel="Display QR Code"
+          accessibilityLabel={isQrLocked ? 'QR Code Unavailable' : 'Display QR Code'}
         >
-          <QrCode size={18} color={THEME.colors.primary} />
+          {isQrLocked ? (
+            <Lock size={15} color={THEME.colors.textMuted} />
+          ) : (
+            <QrCode size={18} color={THEME.colors.primary} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -399,7 +552,7 @@ export default function SettleUpModal() {
             </View>
           ) : (
             <>
-              {/* ── 1. Avatar -> (Sleek Double-Arrow) -> Avatar Flow ── */}
+              {/* ── 1. Avatar -> (Main Arrow & Double Swap) -> Avatar Flow ── */}
               <View style={styles.transferFlowCard}>
                 {/* Payer (Left) */}
                 <TouchableOpacity
@@ -413,15 +566,21 @@ export default function SettleUpModal() {
                   accessibilityLabel={`Select payer, currently ${payerDisplayName}`}
                 >
                   <View style={styles.partyAvatarContainer}>
-                    <View style={styles.avatarCircle}>
-                      {payerMember.avatarUrl ? (
-                        <Image source={{ uri: payerMember.avatarUrl }} style={styles.avatarImg} />
-                      ) : (
-                        <Text style={styles.avatarText}>
-                          {(payerDisplayName || 'M').charAt(0).toUpperCase()}
-                        </Text>
-                      )}
-                    </View>
+                    {payerMember ? (
+                      <View style={styles.avatarCircle}>
+                        {payerMember.avatarUrl ? (
+                          <Image source={{ uri: payerMember.avatarUrl }} style={styles.avatarImg} />
+                        ) : (
+                          <Text style={styles.avatarText}>
+                            {(payerDisplayName || 'M').charAt(0).toUpperCase()}
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.avatarCirclePlaceholder}>
+                        <User size={22} color={THEME.colors.textMuted} />
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.partyRoleBadge}>
@@ -429,7 +588,10 @@ export default function SettleUpModal() {
                   </View>
 
                   <View style={styles.partyNameRow}>
-                    <Text style={styles.partyName} numberOfLines={1}>
+                    <Text
+                      style={[styles.partyName, !payerMember && styles.partyNameUnselected]}
+                      numberOfLines={1}
+                    >
                       {payerDisplayName}
                     </Text>
                     {isPayerViewer && (
@@ -441,18 +603,19 @@ export default function SettleUpModal() {
                   </View>
                 </TouchableOpacity>
 
-                {/* Center Sleek Double-Arrow Swap Button */}
-                <View style={styles.centerSwapWrap}>
+                {/* Center Arrows: Main Arrow -> (Bigger, on top) & Double-Arrow Swap (Smaller, below) */}
+                <View style={styles.centerArrowsWrap}>
+                  <ArrowRight size={22} color={THEME.colors.primary} strokeWidth={2.4} />
+
                   <TouchableOpacity
-                    style={styles.swapButton}
+                    style={styles.swapButtonSmall}
                     onPress={handleSwapParties}
-                    activeOpacity={0.75}
+                    activeOpacity={0.7}
                     accessibilityRole="button"
                     accessibilityLabel="Swap payer and recipient"
                   >
-                    <ArrowLeftRight size={15} color={THEME.colors.primary} />
+                    <ArrowLeftRight size={12} color={THEME.colors.textSecondary} />
                   </TouchableOpacity>
-                  <ArrowRight size={13} color={THEME.colors.textMuted} style={styles.flowDirectionArrow} />
                 </View>
 
                 {/* Receiver (Right) */}
@@ -467,15 +630,21 @@ export default function SettleUpModal() {
                   accessibilityLabel={`Select recipient, currently ${receiverDisplayName}`}
                 >
                   <View style={styles.partyAvatarContainer}>
-                    <View style={styles.avatarCircle}>
-                      {receiverMember.avatarUrl ? (
-                        <Image source={{ uri: receiverMember.avatarUrl }} style={styles.avatarImg} />
-                      ) : (
-                        <Text style={styles.avatarText}>
-                          {(receiverDisplayName || 'M').charAt(0).toUpperCase()}
-                        </Text>
-                      )}
-                    </View>
+                    {receiverMember ? (
+                      <View style={styles.avatarCircle}>
+                        {receiverMember.avatarUrl ? (
+                          <Image source={{ uri: receiverMember.avatarUrl }} style={styles.avatarImg} />
+                        ) : (
+                          <Text style={styles.avatarText}>
+                            {(receiverDisplayName || 'M').charAt(0).toUpperCase()}
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.avatarCirclePlaceholder}>
+                        <User size={22} color={THEME.colors.textMuted} />
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.partyRoleBadge}>
@@ -483,7 +652,10 @@ export default function SettleUpModal() {
                   </View>
 
                   <View style={styles.partyNameRow}>
-                    <Text style={styles.partyName} numberOfLines={1}>
+                    <Text
+                      style={[styles.partyName, !receiverMember && styles.partyNameUnselected]}
+                      numberOfLines={1}
+                    >
                       {receiverDisplayName}
                     </Text>
                     {isReceiverViewer && (
@@ -496,44 +668,42 @@ export default function SettleUpModal() {
                 </TouchableOpacity>
               </View>
 
-              {/* ── 2. Hero Amount Input (Matching Add Expense Style) ── */}
-              <View style={styles.heroAmountCard}>
-                <View style={styles.amountInputRow}>
+              {/* ── 2. Amount Section (No-Div Minimal Underline Design, No Other Text) ── */}
+              <View style={styles.amountNoDivContainer}>
+                <View style={styles.amountUnderlineRow}>
                   <Text style={styles.currencyPrefix}>₹</Text>
                   <TextInput
-                    style={styles.heroAmountInput}
+                    style={styles.amountUnderlineInput}
                     value={amount}
-                    onChangeText={setAmount}
+                    onChangeText={(val) => {
+                      const sanitized = val.replace(',', '.');
+                      setAmount(sanitized);
+                    }}
                     keyboardType="decimal-pad"
                     returnKeyType="done"
                     placeholder="0.00"
                     placeholderTextColor={THEME.colors.textMuted}
                     autoFocus={!params.amount}
-                  />
-                </View>
-
-                {/* Optional Settlement Note Input */}
-                <View style={styles.noteInputRow}>
-                  <TextInput
-                    style={styles.noteInput}
-                    value={notes}
-                    onChangeText={setNotes}
-                    placeholder="Add a settlement note..."
-                    placeholderTextColor={THEME.colors.textMuted}
-                    returnKeyType="done"
+                    accessibilityLabel="Settlement amount"
                   />
                 </View>
               </View>
 
               {/* ── 3. Dynamic Summary & Short Disclaimer ── */}
               <View style={styles.summaryContainer}>
-                <Text style={styles.summarySentence}>
-                  <Text style={styles.summaryHighlight}>{payerDisplayName}</Text> is paying{' '}
-                  <Text style={styles.summaryAmountHighlight}>
-                    ₹{numAmount > 0 ? numAmount.toFixed(2) : '0.00'}
-                  </Text>{' '}
-                  to <Text style={styles.summaryHighlight}>{receiverDisplayName}</Text>
-                </Text>
+                {isValidParties ? (
+                  <Text style={styles.summarySentence}>
+                    <Text style={styles.summaryHighlight}>{payerDisplayName}</Text> is paying{' '}
+                    <Text style={styles.summaryAmountHighlight}>
+                      ₹{numAmount > 0 ? numAmount.toFixed(2) : '0.00'}
+                    </Text>{' '}
+                    to <Text style={styles.summaryHighlight}>{receiverDisplayName}</Text>
+                  </Text>
+                ) : (
+                  <Text style={styles.summarySentencePrompt}>
+                    Select both who paid and who receives the payment to settle up.
+                  </Text>
+                )}
                 <View style={styles.disclaimerRow}>
                   <ShieldCheck size={13} color={THEME.colors.textMuted} />
                   <Text style={styles.disclaimerText}>
@@ -548,50 +718,47 @@ export default function SettleUpModal() {
 
       {/* ── 4. Bottom Dock: UPI Checkbox + Single Main Button ── */}
       <View style={styles.bottomDock}>
-        {/* UPI App Checkbox Row (Locked if receiver has no VPA) */}
+        {/* UPI App Checkbox Row */}
         <TouchableOpacity
           style={[
             styles.upiCheckboxRow,
-            !hasUpiId && styles.upiCheckboxRowDisabled,
-            payViaUpi && hasUpiId && styles.upiCheckboxRowActive,
+            isUpiLocked && styles.upiCheckboxRowDisabled,
+            effectivePayViaUpi && styles.upiCheckboxRowActive,
           ]}
-          onPress={() => {
-            if (!hasUpiId) {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-              Alert.alert(
-                'UPI VPA Not Configured',
-                `${receiverDisplayName} has not added their UPI ID (VPA) yet. You can still record this settlement manually.`
-              );
-              return;
-            }
-            Haptics.selectionAsync();
-            setUpiOptOut(!upiOptOut);
-          }}
+          onPress={handleToggleUpi}
           activeOpacity={0.75}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: payViaUpi && hasUpiId, disabled: !hasUpiId }}
+          accessibilityState={{ checked: effectivePayViaUpi, disabled: isUpiLocked }}
         >
           <View style={styles.upiCheckLeft}>
             <View
               style={[
                 styles.checkboxBox,
-                payViaUpi && hasUpiId && styles.checkboxBoxChecked,
-                !hasUpiId && styles.checkboxBoxLocked,
+                effectivePayViaUpi && styles.checkboxBoxChecked,
+                isUpiLocked && styles.checkboxBoxLocked,
               ]}
             >
-              {payViaUpi && hasUpiId ? (
+              {effectivePayViaUpi ? (
                 <Check size={11} color={THEME.colors.primaryForeground} strokeWidth={3} />
-              ) : !hasUpiId ? (
+              ) : isUpiLocked ? (
                 <Lock size={10} color={THEME.colors.textMuted} />
               ) : null}
             </View>
 
             <View style={styles.upiTextCol}>
               <View style={styles.upiTitleRow}>
-                <Text style={[styles.upiTitleText, !hasUpiId && styles.upiTitleTextDisabled]}>
-                  Pay via UPI App on submit
+                <Text style={[styles.upiTitleText, isUpiLocked && styles.upiTitleTextDisabled]}>
+                  Pay via UPI App
                 </Text>
-                {hasUpiId ? (
+                {isReceiverViewer ? (
+                  <View style={styles.vpaNoticeBadge}>
+                    <Text style={styles.vpaNoticeText}>You are recipient</Text>
+                  </View>
+                ) : !receiverId ? (
+                  <View style={styles.vpaNoticeBadge}>
+                    <Text style={styles.vpaNoticeText}>No recipient</Text>
+                  </View>
+                ) : hasUpiId ? (
                   <View style={styles.vpaBadge}>
                     <Text style={styles.vpaBadgeText} numberOfLines={1}>
                       {receiverUpiId}
@@ -604,7 +771,11 @@ export default function SettleUpModal() {
                 )}
               </View>
               <Text style={styles.upiSubText}>
-                {hasUpiId
+                {isReceiverViewer
+                  ? 'Cannot pay yourself via UPI'
+                  : !receiverId
+                  ? 'Select recipient first'
+                  : hasUpiId
                   ? 'Launches GPay, PhonePe, Paytm, or CRED with exact amount'
                   : `${receiverDisplayName} has not setup their UPI VPA`}
               </Text>
@@ -616,10 +787,10 @@ export default function SettleUpModal() {
         <TouchableOpacity
           style={[
             styles.recordMainBtn,
-            (!isValidAmount || isSubmitting) && styles.recordMainBtnDisabled,
+            (!isValidSubmit || isSubmitting) && styles.recordMainBtnDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={!isValidAmount || isSubmitting}
+          disabled={!isValidSubmit || isSubmitting}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Record Settlement"
@@ -628,13 +799,13 @@ export default function SettleUpModal() {
             <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
           ) : (
             <Text style={styles.recordMainBtnText}>
-              {payViaUpi && hasUpiId ? `Pay ₹${formattedAmount} & Record` : 'Record Settlement'}
+              {effectivePayViaUpi ? `Pay ₹${formattedAmount} & Record` : 'Record Settlement'}
             </Text>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* ── 5. User Selection Modal ── */}
+      {/* ── 5. User Selection Modal (Shows ALL Members; Auto-Deselects Opposite Party If Same) ── */}
       <Modal
         visible={activePicker !== null}
         animationType="slide"
@@ -667,33 +838,25 @@ export default function SettleUpModal() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {pickerMembers.length === 0 ? (
+              {members.length === 0 ? (
                 <View style={styles.modalEmptyBox}>
-                  <Text style={styles.modalEmptyText}>No other members available</Text>
+                  <Text style={styles.modalEmptyText}>No members available</Text>
                 </View>
               ) : (
-                pickerMembers.map((m, idx) => {
+                members.map((m, idx) => {
                   const isSelected = activePicker === 'payer' ? m.id === payerId : m.id === receiverId;
                   const isViewer = m.id === currentUserId;
                   const memberName = isViewer && currentUserName && currentUserName !== 'You'
                     ? currentUserName
                     : m.name;
-                  const isLast = idx === pickerMembers.length - 1;
+                  const isLast = idx === members.length - 1;
 
                   return (
                     <TouchableOpacity
                       key={m.id || idx}
                       style={[styles.memberOptionRow, !isLast && styles.memberOptionBorder]}
                       activeOpacity={0.7}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        if (activePicker === 'payer') {
-                          setPayerId(m.id);
-                        } else {
-                          setReceiverId(m.id);
-                        }
-                        setActivePicker(null);
-                      }}
+                      onPress={() => handleSelectMember(m.id)}
                     >
                       <View style={styles.memberLeft}>
                         <View style={styles.avatarCircleSmall}>
@@ -743,6 +906,104 @@ export default function SettleUpModal() {
           </View>
         </View>
       </Modal>
+
+      {/* ── 6. Group Selection Modal (Website Parity & Shared Default Group) ── */}
+      <Modal
+        visible={showGroupModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowGroupModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.sheetBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowGroupModal(false)}
+        >
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Select Group</Text>
+            <Text style={styles.sheetSubtitle}>
+              Select which group this settlement belongs to
+            </Text>
+
+            {/* Set as Default Toggle Card */}
+            <TouchableOpacity
+              style={styles.defaultToggleCard}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setIsDefaultGroupChecked((prev) => !prev);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.defaultCheckbox, isDefaultGroupChecked && styles.defaultCheckboxActive]}>
+                {isDefaultGroupChecked && <Check size={12} color={THEME.colors.primaryForeground} strokeWidth={3} />}
+              </View>
+              <View style={styles.defaultToggleTextCol}>
+                <Text style={styles.defaultToggleTitle}>Set as default group</Text>
+                <Text style={styles.defaultToggleSub}>Auto-select when settling from homescreen</Text>
+              </View>
+              <Star
+                size={18}
+                color={isDefaultGroupChecked ? THEME.colors.primary : THEME.colors.textMuted}
+                fill={isDefaultGroupChecked ? THEME.colors.primary : 'transparent'}
+              />
+            </TouchableOpacity>
+
+            {/* Search Box */}
+            <View style={styles.sheetSearchBox}>
+              <Search size={15} color={THEME.colors.textMuted} />
+              <TextInput
+                style={styles.sheetSearchInput}
+                placeholder="Search your groups..."
+                placeholderTextColor={THEME.colors.textMuted}
+                value={groupSearch}
+                onChangeText={setGroupSearch}
+              />
+            </View>
+
+            {/* Groups List */}
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetList}>
+              {groups
+                .filter((g) => g.name.toLowerCase().includes(groupSearch.toLowerCase()))
+                .map((grp) => {
+                  const isSelected = grp.id === selectedGroupId;
+                  const isDefault = grp.id === defaultGroupId;
+                  return (
+                    <TouchableOpacity
+                      key={grp.id}
+                      style={[styles.sheetGroupRow, isSelected && styles.sheetGroupRowActive]}
+                      onPress={() => handleSelectGroup(grp.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.groupAvatarWrap}>
+                        {grp.coverImageUrl ? (
+                          <Image source={{ uri: grp.coverImageUrl }} style={styles.groupAvatarImg} />
+                        ) : (
+                          <Text style={styles.groupAvatarInitial}>{grp.name.charAt(0)}</Text>
+                        )}
+                      </View>
+                      <View style={styles.groupInfoCol}>
+                        <View style={styles.groupNameRow}>
+                          <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
+                            {grp.name}
+                          </Text>
+                          {isDefault && (
+                            <View style={styles.defaultBadge}>
+                              <Star size={9} color={THEME.colors.primary} fill={THEME.colors.primary} />
+                              <Text style={styles.defaultBadgeText}>Default</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.groupMetaText}>{grp.membersCount || 0} members</Text>
+                      </View>
+                      {isSelected && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
+                    </TouchableOpacity>
+                  );
+                })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -776,16 +1037,29 @@ const styles = StyleSheet.create({
   headerTitleWrap: {
     alignItems: 'center',
     flex: 1,
+    gap: 2,
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: THEME.colors.text,
   },
-  headerSubtitle: {
+  headerGroupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  headerGroupText: {
     fontSize: 11,
     color: THEME.colors.textMuted,
-    marginTop: 1,
+  },
+  headerGroupNameHighlight: {
+    fontWeight: '700',
+    color: THEME.colors.text,
   },
   headerActionBtn: {
     width: 36,
@@ -794,6 +1068,10 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerActionBtnLocked: {
+    opacity: 0.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
 
   scrollContent: {
@@ -846,6 +1124,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
     overflow: 'hidden',
   },
+  avatarCirclePlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
   avatarImg: {
     width: '100%',
     height: '100%',
@@ -879,6 +1168,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: THEME.colors.text,
   },
+  partyNameUnselected: {
+    color: THEME.colors.textMuted,
+    fontStyle: 'italic',
+  },
   youBadge: {
     backgroundColor: 'rgba(28, 194, 159, 0.15)',
     paddingHorizontal: 4,
@@ -892,82 +1185,76 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  centerSwapWrap: {
+  /* Center Arrows: Main Arrow Top, Small Double Arrow Bottom */
+  centerArrowsWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
-    gap: 4,
+    paddingHorizontal: 8,
+    gap: 8,
   },
-  swapButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  swapButtonSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  flowDirectionArrow: {
-    opacity: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
 
-  /* 2. Hero Amount Card */
-  heroAmountCard: {
-    backgroundColor: THEME.colors.surface,
-    paddingVertical: 16,
+  /* 2. Amount Section (No-Div Minimal Underline Design) */
+  amountNoDivContainer: {
     paddingHorizontal: 16,
-    borderRadius: THEME.radius.xl,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    alignItems: 'center',
-  },
-  amountInputRow: {
-    flexDirection: 'row',
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.12)',
-    paddingBottom: 8,
-    width: '100%',
+  },
+  amountUnderlineRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.16)',
+    paddingBottom: 6,
+    minWidth: 180,
+    maxWidth: '92%',
   },
   currencyPrefix: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '700',
     color: THEME.colors.primary,
-    marginRight: 4,
-    lineHeight: 42,
+    marginRight: 6,
+    lineHeight: 44,
   },
-  heroAmountInput: {
-    fontSize: 34,
+  amountUnderlineInput: {
+    fontSize: 36,
     fontWeight: '700',
     color: THEME.colors.text,
-    minWidth: 120,
+    minWidth: 100,
     textAlign: 'center',
     paddingVertical: 0,
-    lineHeight: 42,
-  },
-  noteInputRow: {
-    width: '100%',
-    paddingTop: 10,
-  },
-  noteInput: {
-    fontSize: 12,
-    color: THEME.colors.text,
-    textAlign: 'center',
-    paddingVertical: 4,
+    paddingHorizontal: 0,
+    lineHeight: 44,
   },
 
   /* 3. Summary & Disclaimer */
   summaryContainer: {
     paddingHorizontal: 4,
     gap: 8,
+    marginTop: 4,
   },
   summarySentence: {
     fontSize: 13,
     color: THEME.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  summarySentencePrompt: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   summaryHighlight: {
     fontWeight: '700',
@@ -1086,6 +1373,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: THEME.colors.dangerLight,
   },
+  vpaNoticeBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  vpaNoticeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME.colors.textMuted,
+  },
   upiSubText: {
     fontSize: 10,
     color: THEME.colors.textMuted,
@@ -1114,7 +1412,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.primaryForeground,
   },
 
-  /* 5. User Selection Modal */
+  /* 5. Member Selection Modal */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.72)',
@@ -1232,5 +1530,169 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.18)',
+  },
+
+  /* 6. Group Selection Sheet Modal */
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: THEME.colors.surface,
+    borderTopLeftRadius: THEME.radius['2xl'],
+    borderTopRightRadius: THEME.radius['2xl'],
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+    maxHeight: '75%',
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  sheetTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    textAlign: 'center',
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  defaultToggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: THEME.colors.surfaceElevated,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    marginBottom: 12,
+  },
+  defaultCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  defaultCheckboxActive: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
+  },
+  defaultToggleTextCol: {
+    flex: 1,
+  },
+  defaultToggleTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  defaultToggleSub: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  sheetSearchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: THEME.colors.surfaceElevated,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: THEME.radius.md,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    marginBottom: 10,
+  },
+  sheetSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: THEME.colors.text,
+    paddingVertical: 0,
+  },
+  sheetList: {
+    maxHeight: 280,
+  },
+  sheetGroupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: THEME.radius.md,
+  },
+  sheetGroupRowActive: {
+    backgroundColor: 'rgba(28, 194, 159, 0.08)',
+  },
+  groupAvatarWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+  },
+  groupAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  groupAvatarInitial: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  groupInfoCol: {
+    flex: 1,
+    gap: 2,
+  },
+  groupNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  groupNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  groupNameTextActive: {
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  defaultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(28, 194, 159, 0.12)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  defaultBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: THEME.colors.primary,
+  },
+  groupMetaText: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
   },
 });

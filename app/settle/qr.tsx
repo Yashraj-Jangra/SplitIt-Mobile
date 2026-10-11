@@ -44,7 +44,8 @@ export default function UpiQrModal() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const hasUpiId = Boolean(upiId && upiId.includes('@'));
+  const isPayeeViewer = Boolean(payeeId && user?.id && payeeId === user.id);
+  const hasUpiId = Boolean(upiId && upiId.includes('@') && !isPayeeViewer);
 
   const upiUrl = hasUpiId
     ? buildUpiUrl({
@@ -67,6 +68,10 @@ export default function UpiQrModal() {
   const handleConfirmPaid = async () => {
     if (amount <= 0) {
       Alert.alert('Invalid Amount', 'Settlement amount must be greater than 0.');
+      return;
+    }
+    if (isPayeeViewer) {
+      Alert.alert('Invalid Settlement', 'You cannot record a payment to yourself.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -121,7 +126,15 @@ export default function UpiQrModal() {
         </View>
 
         {/* High-Contrast QR Code Card */}
-        {hasUpiId ? (
+        {isPayeeViewer ? (
+          <View style={styles.noUpiCard}>
+            <ShieldCheck size={32} color={THEME.colors.warning} />
+            <Text style={styles.noUpiTitle}>Cannot Pay Yourself</Text>
+            <Text style={styles.noUpiSubtitle}>
+              You are selected as the recipient. QR payment codes are only valid when paying another member.
+            </Text>
+          </View>
+        ) : hasUpiId ? (
           <View style={styles.qrCardContainer}>
             <View style={styles.qrWhiteBox}>
               <QRCode
