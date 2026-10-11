@@ -50,6 +50,13 @@ import * as Haptics from 'expo-haptics';
 const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
 type TabType = typeof TABS[number];
 
+const TAB_LABELS: Record<TabType, string> = {
+  expenses: 'Activity',
+  balances: 'Balances',
+  budget: 'Budget',
+  activity: 'Logs',
+};
+
 const PAGE_SIZE = 15;
 
 export default function GroupDetailScreen() {
@@ -297,7 +304,7 @@ export default function GroupDetailScreen() {
                 activeTab === tab && styles.tabTextActive,
               ]}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {TAB_LABELS[tab]}
             </Text>
           </TouchableOpacity>
         ))}
@@ -592,7 +599,7 @@ export default function GroupDetailScreen() {
                 {expenses.length === 0 ? (
                   <View style={styles.emptyContainer}>
                     <Receipt size={32} color={THEME.colors.textMuted} />
-                    <Text style={styles.emptyTitle}>No expenses recorded</Text>
+                    <Text style={styles.emptyTitle}>No activity recorded</Text>
                     <Text style={styles.emptySubtitle}>
                       Tap "+ Add" to record your first expense in this group!
                     </Text>

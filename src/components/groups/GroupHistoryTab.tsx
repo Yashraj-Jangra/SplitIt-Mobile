@@ -553,7 +553,7 @@ export function GroupHistoryTab({
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderTitleRow}>
           <HistoryIcon size={18} color={THEME.colors.success} />
-          <Text style={styles.cardTitle}>Group History</Text>
+          <Text style={styles.cardTitle}>Audit Logs</Text>
         </View>
         <Text style={styles.cardDescription}>
           An audit log of all activities within this group.
@@ -567,7 +567,7 @@ export function GroupHistoryTab({
         ) : history.length === 0 ? (
           <View style={styles.emptyContainer}>
             <HistoryIcon size={36} color={THEME.colors.textMuted} />
-            <Text style={styles.emptyTitle}>No history recorded yet for this group.</Text>
+            <Text style={styles.emptyTitle}>No logs recorded yet for this group.</Text>
           </View>
         ) : (
           <>
