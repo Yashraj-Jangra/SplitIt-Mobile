@@ -1,6 +1,26 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Redesign Group Balances with Simplify Debts Toggle & Website Parity (`app/groups/[id]/index.tsx`, `GroupTabSkeleton.tsx`, `group.service.ts`)**:
+  - **Header Toggle Switch (Direct Website Parity)**:
+    - Added an open-editorial header row docking `"Group Balances"` title on the left and `"Simplify Debts"` label with native iOS/Android `Switch` on the right.
+    - Added reactive `isSimplified` state with haptic response (`Haptics.selectionAsync()`) on toggle.
+  - **Normal Form Mode (`isSimplified === false`)**:
+    - Replicated website's sorting: members who are owed (`netBalance > 0.01`, largest first), settled members, and debtors (`netBalance < -0.01`, largest debt first).
+    - Lightweight hairline-divided rows with standardized circular avatars, viewer real name resolution (`user.name`), and emerald `[YOU]` badge.
+    - Pure colored text: `is owed ₹X.XX` in emerald green (`THEME.colors.success`), `owes ₹X.XX` in coral red (`THEME.colors.negative`), and `settled up` in muted text (`THEME.colors.textMuted`).
+  - **Simplified Settlement Plan Mode (`isSimplified === true`)**:
+    - Direct transfer cards showing debtor (avatar + name with `[YOU]`) flowing into creditor (name with `[YOU]` + avatar) via directional `ArrowRight` and bold amount (`₹X.XX`).
+    - Integrated native "Settle" button on each simplified transfer routing to `/settle/new` with pre-filled debt parameters.
+  - **Eliminated Extra Fluff & Clutter**:
+    - Abolished wordy marketing paragraphs ("Circular IOUs collapsed into minimum direct payments..."), heavy card soup, and nested box dividers.
+    - Added clean "All debts are settled!" state with emerald shield/check icon when `everythingIsSettled` is true.
+  - **Modernized Skeleton Placeholder (`GroupTabSkeleton.tsx`)**:
+    - Updated `BalancesTabSkeleton` with header switch pill and clean member rows shimmer.
+  - **Verification Gates**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Viewer Profile Name & Avatar Standardization in Expense Details (`app/expenses/[id].tsx`, `src/services/expense.service.ts`)**:
   - **Preserved Real Name in Data Layer (`src/services/expense.service.ts`)**:
     - Updated `payers` and `participants` mappings in `expenseService` to preserve the user's real name (`user.name` / `firstName + lastName`) instead of forcing `name = 'You'` and discarding raw API name data.
