@@ -1,6 +1,16 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Group Tab Structure Realignment with Website Parity (`app/groups/[id]/index.tsx`, `src/components/groups/GroupHistoryTab.tsx`)**:
+  - **Renamed Tabs**:
+    - Renamed **Expenses** tab to **Activity** (`TAB_LABELS.expenses = 'Activity'`), aligning with the website's group activity stream structure.
+    - Renamed **Activity** tab to **Logs** (`TAB_LABELS.activity = 'Logs'`), matching the audit trail / group history event feed.
+  - **Updated Content & Empty States**:
+    - Tab 1 empty state now reads `"No activity recorded"`.
+    - Tab 4 header now reads `"Audit Logs"` with empty state `"No logs recorded yet for this group."`.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Settle Up Screen Enhancements: All-Member Dropdown with Auto-Deselect, Arrow Hierarchy, No-Div Underline Amount & Shared Default Group (`app/settle/new.tsx`, `app/settle/qr.tsx`)**:
   - **All-Member Selection with Mutual Auto-Deselect**:
     - "Paid by" and "Paid to" dropdown pickers now display all group members.
