@@ -761,20 +761,14 @@ export default function GroupDetailScreen() {
                           <View style={styles.settlementLeftCol}>
                             <View style={styles.settlementTransferRow}>
                               <Text
-                                style={[
-                                  styles.settlementPartyName,
-                                  isPayerViewer && styles.settlementViewerHighlight,
-                                ]}
+                                style={styles.settlementPartyName}
                                 numberOfLines={1}
                               >
                                 {payerText}
                               </Text>
                               <ArrowRight size={13} color={THEME.colors.textMuted} style={styles.settlementArrowIcon} />
                               <Text
-                                style={[
-                                  styles.settlementPartyName,
-                                  isPayeeViewer && styles.settlementViewerHighlight,
-                                ]}
+                                style={styles.settlementPartyName}
                                 numberOfLines={1}
                               >
                                 {payeeText}
@@ -1703,7 +1697,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   settlementViewerHighlight: {
-    color: THEME.colors.primary,
+    fontWeight: '700',
   },
   settlementArrowIcon: {
     marginHorizontal: 1,

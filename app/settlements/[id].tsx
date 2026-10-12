@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -192,8 +192,24 @@ export default function SettlementDetailScreen() {
   const isPayerViewer = settlement?.payer?.id === currentUserId || settlement?.payer?.name === 'You';
   const isPayeeViewer = settlement?.payee?.id === currentUserId || settlement?.payee?.name === 'You';
 
-  const payerDisplayName = isPayerViewer ? 'You' : settlement?.payer?.name || params.payerName || 'Member';
-  const payeeDisplayName = isPayeeViewer ? 'You' : settlement?.payee?.name || params.payeeName || 'Member';
+  const viewerName = useMemo(() => {
+    if (user?.name && user.name !== 'You' && user.name !== 'undefined') {
+      return user.name;
+    }
+    return 'You';
+  }, [user?.name]);
+
+  const payerDisplayName = isPayerViewer
+    ? (settlement?.payer?.name && settlement.payer.name !== 'You'
+        ? settlement.payer.name
+        : (viewerName !== 'You' ? viewerName : 'You'))
+    : settlement?.payer?.name || params.payerName || 'Member';
+
+  const payeeDisplayName = isPayeeViewer
+    ? (settlement?.payee?.name && settlement.payee.name !== 'You'
+        ? settlement.payee.name
+        : (viewerName !== 'You' ? viewerName : 'You'))
+    : settlement?.payee?.name || params.payeeName || 'Member';
 
   const logs = settlement?.logs || [];
 
@@ -273,7 +289,7 @@ export default function SettlementDetailScreen() {
                 </View>
 
                 <View style={styles.partyNameWrap}>
-                  <Text style={[styles.partyNameText, isPayerViewer && styles.partyViewerText]} numberOfLines={1}>
+                  <Text style={styles.partyNameText} numberOfLines={1}>
                     {payerDisplayName}
                   </Text>
                   {isPayerViewer && (
@@ -303,7 +319,7 @@ export default function SettlementDetailScreen() {
                 </View>
 
                 <View style={styles.partyNameWrap}>
-                  <Text style={[styles.partyNameText, isPayeeViewer && styles.partyViewerText]} numberOfLines={1}>
+                  <Text style={styles.partyNameText} numberOfLines={1}>
                     {payeeDisplayName}
                   </Text>
                   {isPayeeViewer && (
@@ -594,7 +610,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   partyViewerText: {
-    color: THEME.colors.primary,
+    fontWeight: '700',
   },
   youPill: {
     paddingHorizontal: 4,
