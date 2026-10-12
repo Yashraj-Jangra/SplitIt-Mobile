@@ -708,7 +708,7 @@ export default function GroupDetailScreen() {
                               <CategoryIcon
                                 subCategory={exp.category?.sub}
                                 masterCategory={exp.category?.master}
-                                size={16}
+                                size={20}
                                 color={THEME.colors.textSecondary}
                               />
                             </View>
@@ -758,6 +758,10 @@ export default function GroupDetailScreen() {
                           }}
                           activeOpacity={0.7}
                         >
+                          <View style={styles.settlementGlyph}>
+                            <Handshake size={20} color={THEME.colors.palette.emerald} />
+                          </View>
+
                           <View style={styles.settlementLeftCol}>
                             <View style={styles.settlementTransferRow}>
                               <Text
@@ -1633,10 +1637,22 @@ const styles = StyleSheet.create({
     borderBottomColor: THEME.colors.hairline,
   },
   categoryGlyph: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  settlementGlyph: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.28)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1670,10 +1686,8 @@ const styles = StyleSheet.create({
   settlementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 14,
-    paddingHorizontal: 4,
-    minHeight: 58,
+    gap: 12,
   },
   settlementRowBorder: {
     borderBottomWidth: 1,
@@ -1681,7 +1695,6 @@ const styles = StyleSheet.create({
   },
   settlementLeftCol: {
     flex: 1,
-    marginRight: 12,
   },
   settlementTransferRow: {
     flexDirection: 'row',

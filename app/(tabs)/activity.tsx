@@ -112,7 +112,7 @@ export default function ActivityScreen() {
                       <CategoryIcon
                         subCategory={tx.category}
                         masterCategory={tx.masterCategory}
-                        size={16}
+                        size={20}
                         color={
                           isGet
                             ? THEME.colors.primary
@@ -212,13 +212,15 @@ const styles = StyleSheet.create({
     borderBottomColor: THEME.colors.hairline,
   },
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   details: {
     flex: 1,

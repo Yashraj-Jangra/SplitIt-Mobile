@@ -421,7 +421,7 @@ export default function HomeScreen() {
                     }}
                   >
                     <View style={styles.ledgerIconCircle}>
-                      <CategoryIcon subCategory={tx.category} masterCategory={tx.masterCategory} size={16} color={THEME.colors.textSecondary} />
+                      <CategoryIcon subCategory={tx.category} masterCategory={tx.masterCategory} size={20} color={THEME.colors.textSecondary} />
                     </View>
 
                     <View style={styles.ledgerInfo}>
@@ -799,12 +799,14 @@ const styles = StyleSheet.create({
     borderBottomColor: THEME.colors.hairline,
   },
   ledgerIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   ledgerInfo: {
     flex: 1,
