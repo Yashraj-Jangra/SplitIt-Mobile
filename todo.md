@@ -1,6 +1,36 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Settlement Listing in Activity Stream & Dedicated Settlement Detail Page (`app/groups/[id]/index.tsx`, `app/settlements/[id].tsx`, `src/services/settlement.service.ts`, `src/services/group.service.ts`)**:
+  - **Activity Stream Combined Feed (`app/groups/[id]/index.tsx`)**:
+    - Merged expenses and settlements into a unified `activityStream` sorted chronologically by date descending, matching the website's behavior.
+    - Designed distinct, non-boxed settlement rows:
+      - **No Front Category Icon**: Visually distinct from expense records with zero glyph clutter.
+      - **Arrow Transfer Structure**: Sleek `Person -> Person` layout with directional `<ArrowRight size={13}>`.
+      - **Viewer Display Logic**: Automatically writes `"You"` instead of full name when the participant is the logged-in viewer.
+      - **Right Amount Column**: Large bold emerald amount (`₹X,XXX.00`) with subtle `"Settled"` status tag.
+      - **Navigation**: 1-tap navigation to the settlement detail screen (`/settlements/[id]`).
+  - **Dedicated Settlement Detail Screen (`app/settlements/[id].tsx`)**:
+    - **Pinned Header**: Back button, group badge, and destructive delete button with confirmation dialog.
+    - **Ambient Hero & Transfer Flow**:
+      - Emerald radial glow canvas behind transfer visual.
+      - `Avatar (name under) -> (Big Arrow size={26}) -> Avatar (name under)` matching the visual hierarchy requested.
+      - Highlighted green `[YOU]` badge when the payer or receiver is the current viewer.
+      - Centered high-impact amount display with `"Payment Settled"` status pill.
+      - Editorial quote box for settlement notes.
+    - **Settlement Details Table**: Minimal no-div hairline grid with Payment Method, Date Recorded, Group, and Verified Status.
+    - **Activity & Audit Logs Section**: Matches `app/expenses/[id].tsx` audit structure with event pills (`Created`, `Updated`, `Deleted`, `Restored`), actor attribution, timestamps, and description.
+    - **Bottom Comment Dock**: Dedicated docked comment bar allowing instant commenting.
+  - **Service & Model Extensions**:
+    - `settlementService`: Added `GroupSettlementItem`, `SettlementDetailModel`, `getSettlementsByGroupId`, `getSettlementDetails`, `deleteSettlement`, `addSettlementComment`, and in-memory/AsyncStorage caching.
+    - `groupService`: Fetches `/api/settlements?groupId=${id}` in `getGroupDetails`, maps to `settlements`, and warms detail cache.
+    - `storageService`: Added `SETTLEMENT_DETAIL` key.
+    - `expenseService`: Extended `ExpenseHistoryLog['type']` with settlement event types.
+    - `app/_layout.tsx`: Registered `settlements/[id]` modal screen.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint app/settlements/[id].tsx` passed with 0 errors and 0 warnings.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Group Tab Structure Realignment with Website Parity (`app/groups/[id]/index.tsx`, `src/components/groups/GroupHistoryTab.tsx`)**:
   - **Renamed Tabs**:
     - Renamed **Expenses** tab to **Activity** (`TAB_LABELS.expenses = 'Activity'`), aligning with the website's group activity stream structure.
