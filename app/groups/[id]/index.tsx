@@ -33,7 +33,8 @@ import {
   ArrowLeftRight,
 } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
-import { groupService, GroupDetailData } from '../../../src/services/group.service';
+import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
+import { GroupSettlementItem } from '../../../src/services/settlement.service';
 import { useAuth } from '../../../src/contexts/auth.context';
 import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRing';
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
@@ -58,6 +59,10 @@ const TAB_LABELS: Record<TabType, string> = {
 };
 
 const PAGE_SIZE = 15;
+
+type GroupActivityStreamItem =
+  | { type: 'expense'; id: string; date: string; rawDate: string; data: GroupExpense }
+  | { type: 'settlement'; id: string; date: string; rawDate: string; data: GroupSettlementItem };
 
 export default function GroupDetailScreen() {
   const router = useRouter();
@@ -372,20 +377,46 @@ export default function GroupDetailScreen() {
   const totalGroupSpend = group?.totalGroupSpend || 0;
   const yourNetBalance = group?.yourNetBalance || 0;
 
+  const activityStream: GroupActivityStreamItem[] = useMemo(() => {
+    const expItems: GroupActivityStreamItem[] = (group?.expenses || []).map((e) => ({
+      type: 'expense' as const,
+      id: `exp_${e.id}`,
+      date: e.date,
+      rawDate: (e as any).rawDate || e.date,
+      data: e,
+    }));
+
+    const setItems: GroupActivityStreamItem[] = (group?.settlements || []).map((s) => ({
+      type: 'settlement' as const,
+      id: `stl_${s.id}`,
+      date: s.date,
+      rawDate: s.rawDate || s.date,
+      data: s,
+    }));
+
+    const combined = [...expItems, ...setItems];
+    return combined.sort((a, b) => {
+      const timeA = new Date(a.rawDate).getTime();
+      const timeB = new Date(b.rawDate).getTime();
+      if (isNaN(timeA) || isNaN(timeB)) return 0;
+      return timeB - timeA;
+    });
+  }, [group?.expenses, group?.settlements]);
+
   // Progressive infinite scroll data & loader (Called unconditionally before any early returns)
-  const visibleExpenses = useMemo(
-    () => expenses.slice(0, visibleExpenseCount),
-    [expenses, visibleExpenseCount]
+  const visibleActivities = useMemo(
+    () => activityStream.slice(0, visibleExpenseCount),
+    [activityStream, visibleExpenseCount]
   );
 
   const loadMoreExpenses = useCallback(() => {
-    if (isLoadingMoreExpenses || visibleExpenseCount >= expenses.length) return;
+    if (isLoadingMoreExpenses || visibleExpenseCount >= activityStream.length) return;
     setIsLoadingMoreExpenses(true);
     setTimeout(() => {
-      setVisibleExpenseCount((prev) => Math.min(expenses.length, prev + PAGE_SIZE));
+      setVisibleExpenseCount((prev) => Math.min(activityStream.length, prev + PAGE_SIZE));
       setIsLoadingMoreExpenses(false);
     }, 180);
-  }, [isLoadingMoreExpenses, visibleExpenseCount, expenses.length]);
+  }, [isLoadingMoreExpenses, visibleExpenseCount, activityStream.length]);
 
   const loadMoreActivities = useCallback(() => {
     const totalActivities = group?.history?.length || 0;
@@ -589,69 +620,140 @@ export default function GroupDetailScreen() {
             },
           ]}
         >
-        {/* TAB 1: EXPENSES */}
+        {/* TAB 1: EXPENSES & SETTLEMENTS (ACTIVITY STREAM) */}
         {visitedTabs.expenses && (
           <View style={[styles.tabSection, activeTab !== 'expenses' && styles.tabHidden]}>
-            {loading && expenses.length === 0 ? (
+            {loading && activityStream.length === 0 ? (
               <ExpensesTabSkeleton count={4} />
             ) : (
               <View style={styles.ledgerStream}>
-                {expenses.length === 0 ? (
+                {activityStream.length === 0 ? (
                   <View style={styles.emptyContainer}>
                     <Receipt size={32} color={THEME.colors.textMuted} />
                     <Text style={styles.emptyTitle}>No activity recorded</Text>
                     <Text style={styles.emptySubtitle}>
-                      Tap "+ Add" to record your first expense in this group!
+                      Tap "+ Add" to record your first expense or settlement in this group!
                     </Text>
                   </View>
                 ) : (
                   <>
-                    {visibleExpenses.map((exp, index) => {
+                    {visibleActivities.map((entry, index) => {
                       const isLast =
-                        index === visibleExpenses.length - 1 &&
-                        visibleExpenseCount >= expenses.length &&
+                        index === visibleActivities.length - 1 &&
+                        visibleExpenseCount >= activityStream.length &&
                         !isLoadingMoreExpenses;
+
+                      if (entry.type === 'expense') {
+                        const exp = entry.data;
+                        return (
+                          <TouchableOpacity
+                            key={entry.id}
+                            style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              router.push({
+                                pathname: '/expenses/[id]',
+                                params: {
+                                  id: exp.id,
+                                  groupId: targetId,
+                                  title: exp.title,
+                                  amount: String(exp.amount),
+                                  paidByName: exp.paidByName || 'Member',
+                                  date: exp.date,
+                                  category: exp.category?.sub || exp.category?.master || 'Other',
+                                },
+                              });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.categoryGlyph}>
+                              <CategoryIcon
+                                subCategory={exp.category?.sub}
+                                masterCategory={exp.category?.master}
+                                size={16}
+                                color={THEME.colors.textSecondary}
+                              />
+                            </View>
+
+                            <View style={styles.ledgerDetails}>
+                              <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
+                                {exp.title}
+                              </Text>
+                              <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
+                                {exp.paidByName || 'Member'} paid • {exp.date}
+                              </Text>
+                            </View>
+
+                            <ExpenseImpactCol expense={exp} />
+                          </TouchableOpacity>
+                        );
+                      }
+
+                      // Settlement row: no front icon, person -> person amount, "You" if viewer
+                      const set = entry.data;
+                      const isPayerViewer = set.payerId === currentUserId || set.payerName === 'You';
+                      const isPayeeViewer = set.payeeId === currentUserId || set.payeeName === 'You';
+                      const payerText = isPayerViewer ? 'You' : set.payerName;
+                      const payeeText = isPayeeViewer ? 'You' : set.payeeName;
 
                       return (
                         <TouchableOpacity
-                          key={exp.id}
-                          style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                          key={entry.id}
+                          style={[styles.settlementRow, !isLast && styles.settlementRowBorder]}
                           onPress={() => {
                             Haptics.selectionAsync();
                             router.push({
-                              pathname: '/expenses/[id]',
+                              pathname: '/settlements/[id]',
                               params: {
-                                id: exp.id,
+                                id: set.id,
                                 groupId: targetId,
-                                title: exp.title,
-                                amount: String(exp.amount),
-                                paidByName: exp.paidByName || 'Member',
-                                date: exp.date,
-                                category: exp.category?.sub || exp.category?.master || 'Other',
+                                amount: String(set.amount),
+                                payerName: set.payerName,
+                                payeeName: set.payeeName,
+                                payerId: set.payerId,
+                                payeeId: set.payeeId,
+                                date: set.date,
+                                method: set.method || 'cash',
+                                notes: set.notes || '',
                               },
                             });
                           }}
                           activeOpacity={0.7}
                         >
-                          <View style={styles.categoryGlyph}>
-                            <CategoryIcon
-                              subCategory={exp.category?.sub}
-                              masterCategory={exp.category?.master}
-                              size={16}
-                              color={THEME.colors.textSecondary}
-                            />
+                          <View style={styles.settlementLeftCol}>
+                            <View style={styles.settlementTransferRow}>
+                              <Text
+                                style={[
+                                  styles.settlementPartyName,
+                                  isPayerViewer && styles.settlementViewerHighlight,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {payerText}
+                              </Text>
+                              <ArrowRight size={13} color={THEME.colors.textMuted} style={styles.settlementArrowIcon} />
+                              <Text
+                                style={[
+                                  styles.settlementPartyName,
+                                  isPayeeViewer && styles.settlementViewerHighlight,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {payeeText}
+                              </Text>
+                            </View>
+
+                            <Text style={styles.settlementSubtitle}>
+                              Settlement • {set.date}
+                            </Text>
                           </View>
 
-                          <View style={styles.ledgerDetails}>
-                            <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
-                              {exp.title}
+                          <View style={styles.settlementAmountCol}>
+                            <Text style={styles.settlementAmountText}>
+                              ₹{Number(set.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Text>
-                            <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
-                              {exp.paidByName || 'Member'} paid • {exp.date}
-                            </Text>
+                            <Text style={styles.settlementStatusText}>Settled</Text>
                           </View>
-
-                          <ExpenseImpactCol expense={exp} />
                         </TouchableOpacity>
                       );
                     })}
@@ -664,12 +766,12 @@ export default function GroupDetailScreen() {
                     )}
 
                     {/* End of list completion footer */}
-                    {expenses.length > PAGE_SIZE &&
-                      visibleExpenseCount >= expenses.length &&
+                    {activityStream.length > PAGE_SIZE &&
+                      visibleExpenseCount >= activityStream.length &&
                       !isLoadingMoreExpenses && (
                         <View style={styles.endOfListFooter}>
                           <Text style={styles.endOfListText}>
-                            • All {expenses.length} expenses loaded •
+                            • All {activityStream.length} activities loaded •
                           </Text>
                         </View>
                       )}
@@ -1530,6 +1632,67 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: THEME.colors.textMuted,
     marginTop: 1,
+  },
+
+  // Settlement Activity Row
+  settlementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    minHeight: 58,
+  },
+  settlementRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+  },
+  settlementLeftCol: {
+    flex: 1,
+    marginRight: 12,
+  },
+  settlementTransferRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 3,
+  },
+  settlementPartyName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    letterSpacing: -0.2,
+  },
+  settlementViewerHighlight: {
+    color: THEME.colors.primary,
+  },
+  settlementArrowIcon: {
+    marginHorizontal: 1,
+  },
+  settlementSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  settlementAmountCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  settlementAmountText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: THEME.colors.palette.emerald,
+    letterSpacing: -0.2,
+  },
+  settlementStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: THEME.colors.palette.emerald,
+    opacity: 0.85,
+    textTransform: 'uppercase',
+    marginTop: 2,
+    letterSpacing: 0.4,
   },
 
   // Balances Tab & Redesigned Header

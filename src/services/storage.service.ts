@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   GROUP_DETAIL: (id: string) => `splitit_cache_group_detail_${id}`,
   USER_TRANSACTIONS: 'splitit_cache_user_transactions',
   EXPENSE_DETAIL: (id: string) => `splitit_cache_expense_detail_${id}`,
+  SETTLEMENT_DETAIL: (id: string) => `splitit_cache_settlement_detail_${id}`,
   BALANCE_SUMMARY: 'splitit_cache_balance_summary',
   CATEGORIES: 'splitit_cache_expense_categories',
   DEFAULT_GROUP: 'splitit_default_group_id',

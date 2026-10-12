@@ -1,4 +1,7 @@
 import { authService, API_BASE_URL } from './auth.service';
+import { storageService, STORAGE_KEYS } from './storage.service';
+import { groupService } from './group.service';
+import { ExpenseHistoryLog } from './expense.service';
 
 export interface RecordSettlementParams {
   groupId: string;
@@ -11,7 +14,345 @@ export interface RecordSettlementParams {
   notes?: string;
 }
 
+export interface GroupSettlementItem {
+  id: string;
+  groupId: string;
+  amount: number;
+  currency?: string;
+  date: string;
+  rawDate: string;
+  payerId: string;
+  payerName: string;
+  payerAvatarUrl?: string;
+  payeeId: string;
+  payeeName: string;
+  payeeAvatarUrl?: string;
+  notes?: string;
+  method?: string;
+  createdAt?: string;
+}
+
+export interface SettlementDetailModel {
+  id: string;
+  groupId: string;
+  groupName?: string;
+  amount: number;
+  currency: string;
+  date: string;
+  rawDate: string;
+  createdAt?: string;
+  method?: string;
+  notes?: string;
+  payer: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+    upiId?: string;
+  };
+  payee: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+    upiId?: string;
+  };
+  recordedBy?: {
+    id: string;
+    name: string;
+  };
+  logs: ExpenseHistoryLog[];
+}
+
+const _cachedSettlementDetailsMap = new Map<string, SettlementDetailModel>();
+const _settlementCommentsCache = new Map<string, ExpenseHistoryLog[]>();
+
 export const settlementService = {
+  getInMemorySettlementDetails(settlementId: string): SettlementDetailModel | null {
+    return _cachedSettlementDetailsMap.get(settlementId) || null;
+  },
+
+  async getCachedSettlementDetails(settlementId: string): Promise<SettlementDetailModel | null> {
+    if (_cachedSettlementDetailsMap.has(settlementId)) {
+      return _cachedSettlementDetailsMap.get(settlementId)!;
+    }
+    const fromStorage = await storageService.getItem<SettlementDetailModel>(
+      STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId)
+    );
+    if (fromStorage) {
+      _cachedSettlementDetailsMap.set(settlementId, fromStorage);
+      return fromStorage;
+    }
+    return null;
+  },
+
+  async getSettlementsByGroupId(groupId: string): Promise<GroupSettlementItem[]> {
+    try {
+      const token = await authService.getToken();
+      const currentUser = await authService.getCachedUser();
+      const currentUserId = currentUser?.id || 'u1';
+
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/settlements?groupId=${groupId}`, {
+          headers: {
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            return data.map((s: any) => {
+              const payerId = s.paidBy?.uid || s.paidBy?.id || s.paidById || s.payerId || '';
+              const payeeId = s.paidTo?.uid || s.paidTo?.id || s.paidToId || s.payeeId || '';
+              const payerName =
+                payerId === currentUserId
+                  ? 'You'
+                  : s.paidBy?.firstName
+                  ? `${s.paidBy.firstName} ${s.paidBy.lastName || ''}`.trim()
+                  : s.paidBy?.name || s.payerName || 'Member';
+              const payeeName =
+                payeeId === currentUserId
+                  ? 'You'
+                  : s.paidTo?.firstName
+                  ? `${s.paidTo.firstName} ${s.paidTo.lastName || ''}`.trim()
+                  : s.paidTo?.name || s.payeeName || 'Member';
+
+              const rawDate = s.date ? new Date(s.date) : new Date();
+              const formattedDate = rawDate.toLocaleDateString('en-IN', {
+                month: 'short',
+                day: 'numeric',
+              });
+
+              return {
+                id: s.id,
+                groupId: s.groupId || groupId,
+                amount: Number(s.amount || 0),
+                currency: s.currency || 'INR',
+                date: formattedDate,
+                rawDate: rawDate.toISOString(),
+                payerId,
+                payerName,
+                payerAvatarUrl: s.paidBy?.avatarUrl,
+                payeeId,
+                payeeName,
+                payeeAvatarUrl: s.paidTo?.avatarUrl,
+                notes: s.notes || undefined,
+                method: s.method || 'cash',
+                createdAt: s.createdAt,
+              };
+            });
+          }
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    return [];
+  },
+
+  async getSettlementDetails(settlementId: string, groupId?: string): Promise<SettlementDetailModel | null> {
+    if (_cachedSettlementDetailsMap.has(settlementId)) {
+      return _cachedSettlementDetailsMap.get(settlementId)!;
+    }
+
+    const fromStorage = await storageService.getItem<SettlementDetailModel>(
+      STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId)
+    );
+    if (fromStorage) {
+      _cachedSettlementDetailsMap.set(settlementId, fromStorage);
+    }
+
+    const token = await authService.getToken();
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || 'u1';
+
+    try {
+      if (token) {
+        const headers = {
+          'Accept': 'application/json',
+          Authorization: `Bearer ${token}`,
+          Cookie: `better-auth.session_token=${token}`,
+        };
+
+        const settlementsUrl = groupId
+          ? `${API_BASE_URL}/api/settlements?groupId=${groupId}`
+          : `${API_BASE_URL}/api/settlements?all=true`;
+
+        const res = await fetch(settlementsUrl, { headers });
+        if (res.ok) {
+          const list = await res.json();
+          const found = Array.isArray(list) ? list.find((s: any) => s.id === settlementId) : null;
+          if (found) {
+            const targetGId = found.groupId || groupId;
+            let groupName = 'Group Settlement';
+            if (targetGId) {
+              const groupData = await groupService.getCachedGroupDetails(targetGId);
+              if (groupData?.name) groupName = groupData.name;
+            }
+
+            let historyList: any[] = [];
+            if (targetGId) {
+              try {
+                const hRes = await fetch(`${API_BASE_URL}/api/history?groupId=${targetGId}`, { headers });
+                if (hRes.ok) {
+                  historyList = await hRes.json();
+                }
+              } catch {
+                // Ignore history error
+              }
+            }
+
+            const rawDate = found.date ? new Date(found.date) : new Date();
+            const payerId = found.paidBy?.uid || found.paidBy?.id || found.paidById || '';
+            const payeeId = found.paidTo?.uid || found.paidTo?.id || found.paidToId || '';
+
+            const payerName =
+              payerId === currentUserId
+                ? 'You'
+                : found.paidBy?.firstName
+                ? `${found.paidBy.firstName} ${found.paidBy.lastName || ''}`.trim()
+                : found.paidBy?.name || 'Member';
+
+            const payeeName =
+              payeeId === currentUserId
+                ? 'You'
+                : found.paidTo?.firstName
+                ? `${found.paidTo.firstName} ${found.paidTo.lastName || ''}`.trim()
+                : found.paidTo?.name || 'Member';
+
+            const relevantHistory = historyList.filter((h: any) => {
+              return (
+                h.data?.settlementId === settlementId ||
+                h.data?.newSettlementId === settlementId ||
+                (h.eventType && h.eventType.startsWith('settlement_') && h.description?.includes(settlementId))
+              );
+            });
+
+            const logs: ExpenseHistoryLog[] = relevantHistory.map((h: any) => ({
+              id: h.id,
+              type: h.eventType,
+              actorName: h.actor?.firstName
+                ? `${h.actor.firstName} ${h.actor.lastName || ''}`.trim()
+                : h.actor?.name || 'Member',
+              actorAvatar: h.actor?.avatarUrl,
+              timestamp: new Date(h.timestamp).toLocaleString('en-IN', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+              timeAgo: 'Just now',
+              description: h.description,
+            }));
+
+            if (logs.length === 0) {
+              logs.push({
+                id: `log_init_${settlementId}`,
+                type: 'expense_created',
+                actorName: payerName,
+                timestamp: rawDate.toLocaleDateString('en-IN', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                }),
+                timeAgo: 'Recorded',
+                description: `Settlement recorded: ${payerName} paid ${payeeName} ₹${Number(found.amount || 0).toFixed(2)}.`,
+              });
+            }
+
+            const comments = _settlementCommentsCache.get(settlementId) || [];
+            const combinedLogs = [...logs, ...comments];
+
+            const detail: SettlementDetailModel = {
+              id: found.id,
+              groupId: targetGId,
+              groupName,
+              amount: Number(found.amount || 0),
+              currency: 'INR',
+              date: rawDate.toLocaleDateString('en-IN', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              }),
+              rawDate: rawDate.toISOString(),
+              createdAt: found.createdAt,
+              method: found.method || 'cash',
+              notes: found.notes || undefined,
+              payer: {
+                id: payerId,
+                name: payerName,
+                avatarUrl: found.paidBy?.avatarUrl,
+                upiId: found.paidBy?.upiId,
+              },
+              payee: {
+                id: payeeId,
+                name: payeeName,
+                avatarUrl: found.paidTo?.avatarUrl,
+                upiId: found.paidTo?.upiId,
+              },
+              recordedBy: {
+                id: payerId,
+                name: payerName,
+              },
+              logs: combinedLogs,
+            };
+
+            _cachedSettlementDetailsMap.set(settlementId, detail);
+            await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId), detail);
+            return detail;
+          }
+        }
+      }
+    } catch {
+      // Network error, fall back to storage
+    }
+
+    return fromStorage;
+  },
+
+  async deleteSettlement(settlementId: string, groupId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/settlements/${settlementId}?groupId=${groupId}`, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
+        });
+        if (res.ok) {
+          _cachedSettlementDetailsMap.delete(settlementId);
+          return { success: true };
+        }
+        const data = await res.json().catch(() => ({}));
+        return { success: false, error: data.error || 'Failed to delete settlement' };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Network error' };
+    }
+    _cachedSettlementDetailsMap.delete(settlementId);
+    return { success: true };
+  },
+
+  async addSettlementComment(settlementId: string, commentText: string): Promise<ExpenseHistoryLog> {
+    const currentUser = await authService.getCachedUser();
+    const userName = currentUser?.name || 'You';
+    const newLog: ExpenseHistoryLog = {
+      id: `com_${Date.now()}`,
+      type: 'comment',
+      actorName: userName,
+      actorAvatar: currentUser?.avatarUrl,
+      timestamp: 'Just now',
+      timeAgo: 'Just now',
+      commentText,
+    };
+    const existing = _settlementCommentsCache.get(settlementId) || [];
+    _settlementCommentsCache.set(settlementId, [...existing, newLog]);
+    return newLog;
+  },
+
   async recordSettlement(params: RecordSettlementParams): Promise<{ success: boolean; error?: string }> {
     try {
       const token = await authService.getToken();

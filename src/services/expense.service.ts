@@ -38,7 +38,17 @@ export interface UserTransactionItem {
 
 export interface ExpenseHistoryLog {
   id: string;
-  type: 'expense_created' | 'expense_updated' | 'expense_deleted' | 'expense_restored' | 'comment';
+  type:
+    | 'expense_created'
+    | 'expense_updated'
+    | 'expense_deleted'
+    | 'expense_restored'
+    | 'settlement_created'
+    | 'settlement_updated'
+    | 'settlement_deleted'
+    | 'settlement_restored'
+    | 'comment'
+    | string;
   actorName: string;
   actorAvatar?: string;
   timestamp: string;

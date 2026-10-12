@@ -136,6 +136,14 @@ function NavigationGate() {
             }}
           />
           <Stack.Screen
+            name="settlements/[id]"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
             name="ai/chat"
             options={{
               presentation: Platform.OS === 'android' ? 'card' : 'modal',

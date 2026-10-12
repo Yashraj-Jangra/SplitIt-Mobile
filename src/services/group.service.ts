@@ -4,6 +4,7 @@ import { authService, API_BASE_URL } from './auth.service';
 import { settingsService } from './settings.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { THEME } from '../constants/theme';
+import { GroupSettlementItem } from './settlement.service';
 
 const DEFAULT_GROUP_STORAGE_KEY = 'splitit_default_group_id';
 
@@ -115,6 +116,7 @@ export interface GroupDetailData {
   yourNetBalance: number;
   members: GroupMember[];
   expenses: GroupExpense[];
+  settlements?: GroupSettlementItem[];
   simplifiedDebts: SimplifiedDebt[];
   budget: GroupBudget;
   activities: GroupActivityItem[];
@@ -366,11 +368,12 @@ export const groupService = {
           Cookie: `better-auth.session_token=${token}`,
         };
 
-        const [groupRes, expensesRes, balancesRes, historyRes] = await Promise.allSettled([
+        const [groupRes, expensesRes, balancesRes, historyRes, settlementsRes] = await Promise.allSettled([
           fetch(`${API_BASE_URL}/api/groups/${groupId}`, { headers }),
           fetch(`${API_BASE_URL}/api/expenses?groupId=${groupId}`, { headers }),
           fetch(`${API_BASE_URL}/api/groups/${groupId}/balances`, { headers }),
           fetch(`${API_BASE_URL}/api/history?groupId=${groupId}`, { headers }),
+          fetch(`${API_BASE_URL}/api/settlements?groupId=${groupId}`, { headers }),
         ]);
 
         if (groupRes.status === 'fulfilled' && groupRes.value.ok) {
@@ -378,6 +381,7 @@ export const groupService = {
           const expensesData = expensesRes.status === 'fulfilled' && expensesRes.value.ok ? await expensesRes.value.json() : [];
           const balancesData = balancesRes.status === 'fulfilled' && balancesRes.value.ok ? await balancesRes.value.json() : [];
           const historyData = historyRes.status === 'fulfilled' && historyRes.value.ok ? await historyRes.value.json() : [];
+          const settlementsData = settlementsRes.status === 'fulfilled' && settlementsRes.value.ok ? await settlementsRes.value.json() : [];
 
           // Map members and net balances
           const members: GroupMember[] = Array.isArray(balancesData) && balancesData.length > 0
@@ -576,6 +580,50 @@ export const groupService = {
               }))
             : [];
 
+          // Map settlements
+          const settlements: GroupSettlementItem[] = Array.isArray(settlementsData)
+            ? settlementsData.map((s: any) => {
+                const payerId = s.paidBy?.uid || s.paidBy?.id || s.paidById || s.payerId || '';
+                const payeeId = s.paidTo?.uid || s.paidTo?.id || s.paidToId || s.payeeId || '';
+                const payerName =
+                  payerId === currentUserId
+                    ? 'You'
+                    : s.paidBy?.firstName
+                    ? `${s.paidBy.firstName} ${s.paidBy.lastName || ''}`.trim()
+                    : s.paidBy?.name || s.payerName || 'Member';
+                const payeeName =
+                  payeeId === currentUserId
+                    ? 'You'
+                    : s.paidTo?.firstName
+                    ? `${s.paidTo.firstName} ${s.paidTo.lastName || ''}`.trim()
+                    : s.paidTo?.name || s.payeeName || 'Member';
+
+                const rawDate = s.date ? new Date(s.date) : new Date();
+                const formattedDate = rawDate.toLocaleDateString('en-IN', {
+                  month: 'short',
+                  day: 'numeric',
+                });
+
+                return {
+                  id: s.id,
+                  groupId: s.groupId || groupId,
+                  amount: Number(s.amount || 0),
+                  currency: s.currency || 'INR',
+                  date: formattedDate,
+                  rawDate: rawDate.toISOString(),
+                  payerId,
+                  payerName,
+                  payerAvatarUrl: s.paidBy?.avatarUrl,
+                  payeeId,
+                  payeeName,
+                  payeeAvatarUrl: s.paidTo?.avatarUrl,
+                  notes: s.notes || undefined,
+                  method: s.method || 'cash',
+                  createdAt: s.createdAt,
+                };
+              })
+            : [];
+
           const detailResult: GroupDetailData = {
             id: groupData.id,
             name: groupData.name || 'Group',
@@ -587,6 +635,7 @@ export const groupService = {
             yourNetBalance,
             members,
             expenses,
+            settlements,
             simplifiedDebts,
             budget,
             activities,
@@ -617,6 +666,37 @@ export const groupService = {
               creator: {
                 id: exp.paidById || 'creator',
                 name: exp.paidByName || 'Member',
+              },
+              logs: [],
+            });
+          }
+
+          // Proactively warm each settlement's detail cache in persistent storage
+          for (const stl of settlements) {
+            await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(stl.id), {
+              id: stl.id,
+              groupId: stl.groupId,
+              groupName: groupData.name || 'Group',
+              amount: stl.amount,
+              currency: stl.currency || 'INR',
+              date: stl.date,
+              rawDate: stl.rawDate,
+              createdAt: stl.createdAt,
+              method: stl.method,
+              notes: stl.notes,
+              payer: {
+                id: stl.payerId,
+                name: stl.payerName,
+                avatarUrl: stl.payerAvatarUrl,
+              },
+              payee: {
+                id: stl.payeeId,
+                name: stl.payeeName,
+                avatarUrl: stl.payeeAvatarUrl,
+              },
+              recordedBy: {
+                id: stl.payerId,
+                name: stl.payerName,
               },
               logs: [],
             });
@@ -786,6 +866,24 @@ export const groupService = {
       yourNetBalance: matching.userNetBalance || 0,
       members: baseMembers,
       expenses: groupExpenses,
+      settlements: [
+        {
+          id: `stl_${matching.id || groupId}_1`,
+          groupId: matching.id || groupId,
+          amount: 1500,
+          currency: 'INR',
+          date: '02 Oct',
+          rawDate: new Date(Date.now() - 86400000 * 3).toISOString(),
+          payerId: baseMembers[1]?.id || 'u2',
+          payerName: baseMembers[1]?.name || 'Rohit Sharma',
+          payerAvatarUrl: baseMembers[1]?.avatarUrl,
+          payeeId: baseMembers[0]?.id || 'u1',
+          payeeName: baseMembers[0]?.name || 'You',
+          payeeAvatarUrl: baseMembers[0]?.avatarUrl,
+          notes: 'Monthly settlement adjustment',
+          method: 'upi',
+        },
+      ],
       simplifiedDebts,
       budget: {
         enabled: true,
