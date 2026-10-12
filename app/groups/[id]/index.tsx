@@ -64,6 +64,42 @@ type GroupActivityStreamItem =
   | { type: 'expense'; id: string; date: string; rawDate: string; data: GroupExpense }
   | { type: 'settlement'; id: string; date: string; rawDate: string; data: GroupSettlementItem };
 
+function getTimelineTimestamp(rawDate?: string, dateStr?: string): number {
+  if (rawDate) {
+    const parsed = new Date(rawDate).getTime();
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (dateStr) {
+    const lower = dateStr.toLowerCase().trim();
+    if (lower.startsWith('today')) {
+      const now = new Date();
+      const timePart = dateStr.split(',')[1]?.trim();
+      if (timePart) {
+        const timeParsed = new Date(`${now.toDateString()} ${timePart}`).getTime();
+        if (!isNaN(timeParsed) && timeParsed > 0) return timeParsed;
+      }
+      return now.getTime();
+    }
+    if (lower.startsWith('yesterday')) {
+      const yest = new Date(Date.now() - 86400000);
+      const timePart = dateStr.split(',')[1]?.trim();
+      if (timePart) {
+        const timeParsed = new Date(`${yest.toDateString()} ${timePart}`).getTime();
+        if (!isNaN(timeParsed) && timeParsed > 0) return timeParsed;
+      }
+      return yest.getTime();
+    }
+
+    const currentYear = new Date().getFullYear();
+    const withYear = new Date(`${dateStr} ${currentYear}`).getTime();
+    if (!isNaN(withYear) && withYear > 0) return withYear;
+
+    const direct = new Date(dateStr).getTime();
+    if (!isNaN(direct) && direct > 0) return direct;
+  }
+  return 0;
+}
+
 export default function GroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -382,7 +418,7 @@ export default function GroupDetailScreen() {
       type: 'expense' as const,
       id: `exp_${e.id}`,
       date: e.date,
-      rawDate: (e as any).rawDate || e.date,
+      rawDate: e.rawDate || (e as any).rawDate || e.date,
       data: e,
     }));
 
@@ -396,10 +432,12 @@ export default function GroupDetailScreen() {
 
     const combined = [...expItems, ...setItems];
     return combined.sort((a, b) => {
-      const timeA = new Date(a.rawDate).getTime();
-      const timeB = new Date(b.rawDate).getTime();
-      if (isNaN(timeA) || isNaN(timeB)) return 0;
-      return timeB - timeA;
+      const timeA = getTimelineTimestamp(a.rawDate, a.date);
+      const timeB = getTimelineTimestamp(b.rawDate, b.date);
+      if (timeA !== timeB) {
+        return timeB - timeA;
+      }
+      return b.id.localeCompare(a.id);
     });
   }, [group?.expenses, group?.settlements]);
 

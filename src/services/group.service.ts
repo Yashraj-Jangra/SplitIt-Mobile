@@ -24,6 +24,7 @@ export interface GroupExpense {
   paidById: string;
   paidByName: string;
   date: string;
+  rawDate?: string;
   category: {
     master: string;
     sub: string;
@@ -474,8 +475,9 @@ export const groupService = {
                   userShareStatus = 'not_involved';
                 }
 
-                const rawDate = e.date ? new Date(e.date) : new Date();
-                const formattedDate = rawDate.toLocaleDateString('en-IN', {
+                const rawParsed = e.date ? new Date(e.date) : (e.createdAt ? new Date(e.createdAt) : new Date());
+                const validDate = isNaN(rawParsed.getTime()) ? new Date() : rawParsed;
+                const formattedDate = validDate.toLocaleDateString('en-IN', {
                   month: 'short',
                   day: 'numeric',
                 });
@@ -495,6 +497,7 @@ export const groupService = {
                     paidById: payerId,
                     paidByName: payerName,
                     date: formattedDate,
+                    rawDate: validDate.toISOString(),
                     category: {
                       master: masterCategory,
                       sub: subCategory,
@@ -756,6 +759,7 @@ export const groupService = {
           paidById: 'u2',
           paidByName: 'Rohit Sharma',
           date: '01 Oct',
+          rawDate: '2026-10-01T09:00:00.000Z',
           category: { master: 'Housing', sub: 'Rent' },
           yourShare: 7000,
           yourImpact: 'owe',
@@ -770,6 +774,7 @@ export const groupService = {
           paidById: 'u1',
           paidByName: 'You',
           date: 'Yesterday, 8:30 PM',
+          rawDate: new Date(Date.now() - 86400000).toISOString(),
           category: { master: 'Utilities', sub: 'Internet' },
           yourShare: 1124.25,
           yourImpact: 'get',
@@ -784,6 +789,7 @@ export const groupService = {
           paidById: 'u1',
           paidByName: 'You',
           date: '04 Oct, 7:15 PM',
+          rawDate: '2026-10-04T19:15:00.000Z',
           category: { master: 'Food and Drink', sub: 'Groceries' },
           yourShare: 2887.5,
           yourImpact: 'get',
@@ -801,6 +807,7 @@ export const groupService = {
           paidById: 'u1',
           paidByName: 'You',
           date: 'Yesterday',
+          rawDate: new Date(Date.now() - 86400000).toISOString(),
           category: { master: 'Entertainment', sub: 'Sports' },
           yourShare: 3600,
           yourImpact: 'get',
@@ -815,6 +822,7 @@ export const groupService = {
           paidById: 'u2',
           paidByName: 'Rohit Sharma',
           date: '03 Oct',
+          rawDate: '2026-10-03T10:00:00.000Z',
           category: { master: 'Transportation', sub: 'Taxi' },
           yourShare: 550,
           yourImpact: 'owe',
@@ -832,6 +840,7 @@ export const groupService = {
           paidById: 'u1',
           paidByName: 'You',
           date: 'Today, 9:00 PM',
+          rawDate: new Date().toISOString(),
           category: { master: 'Food and Drink', sub: 'Dining Out' },
           yourShare: 3600,
           yourImpact: 'get',
@@ -846,6 +855,7 @@ export const groupService = {
           paidById: 'u3',
           paidByName: 'Priya Patel',
           date: 'Yesterday',
+          rawDate: new Date(Date.now() - 86400000).toISOString(),
           category: { master: 'Food and Drink', sub: 'Dining Out' },
           yourShare: 1066.67,
           yourImpact: 'owe',
@@ -873,7 +883,7 @@ export const groupService = {
           amount: 1500,
           currency: 'INR',
           date: '02 Oct',
-          rawDate: new Date(Date.now() - 86400000 * 3).toISOString(),
+          rawDate: '2026-10-02T10:00:00.000Z',
           payerId: baseMembers[1]?.id || 'u2',
           payerName: baseMembers[1]?.name || 'Rohit Sharma',
           payerAvatarUrl: baseMembers[1]?.avatarUrl,
