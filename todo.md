@@ -1,6 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Distinctive Settlement Logo & Universal List Icon Size Enlargement (`app/groups/[id]/index.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/activity.tsx`, `app/groups/[id]/search.tsx`, `src/components/skeletons/GroupTabSkeleton.tsx`)**:
+  - **Distinctive Settlement Logo in Group Activity List**:
+    - Added a dedicated 40×40 emerald-tinted circular glyph (`settlementGlyph`: `rgba(16, 185, 129, 0.12)` background, `borderWidth: 1`, `rgba(16, 185, 129, 0.28)` border) featuring a 20px `<Handshake size={20} color={THEME.colors.palette.emerald} />` icon.
+    - Symmetrically aligned `settlementRow` with `ledgerRow` (`gap: 12`, flex: 1 title & transfer info), giving settlements instant visual recognition while preserving harmonious grid alignment.
+  - **Enlarged List Icons Across All Screens**:
+    - Increased `CategoryIcon` size from `16px` to `20px` across all list views: Group Activity Feed, Home Screen Recent Transactions, Global Activity Feed, and Group Search.
+    - Upgraded circular glyph containers (`categoryGlyph`, `ledgerIconCircle`, `iconCircle`) from 34-36px to a uniform, premium 40×40px footprint with subtle borders (`rgba(255, 255, 255, 0.08)`).
+    - Updated `GroupTabSkeleton` category glyph placeholder to match the upgraded 40×40px footprint.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Viewer Name Color Normalization Across Views (`app/groups/[id]/index.tsx`, `app/settlements/[id].tsx`)**:
   - Removed green text styling (`THEME.colors.primary`) applied to the user's name / `"You"` text in both the Activity list view and Settlement detail transfer view.
   - User name and `"You"` are now consistently rendered in standard text color (`THEME.colors.text`), matching all other members.
