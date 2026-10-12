@@ -1,6 +1,21 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Timeline Synchronization for Activity Stream Settlements (`app/groups/[id]/index.tsx`, `src/services/group.service.ts`)**:
+  - **Identified Timeline Anomaly**:
+    - Previously, `GroupExpense` did not propagate `rawDate` from API responses or mock fallbacks, falling back to human-formatted date strings (e.g. `"01 Oct"`, `"Yesterday, 8:30 PM"`).
+    - In JavaScript/Hermes, evaluating `new Date("01 Oct").getTime()` either resolved to year 2001 or returned `NaN`, causing settlement records (which possessed full 2026 ISO timestamps) to be misplaced or clumped together arbitrarily on the timeline.
+  - **Comprehensive Multi-Format Timestamp Normalizer (`getTimelineTimestamp`)**:
+    - Created a robust date-parser helper `getTimelineTimestamp(rawDate, dateStr)` in `app/groups/[id]/index.tsx`.
+    - Correctly handles ISO timestamps, human relative expressions (`"Today, 9:00 PM"`, `"Yesterday, 8:30 PM"`), and month-day strings (`"04 Oct, 7:15 PM"`, `"01 Oct"`) by attaching the current calendar year.
+    - Added deterministic tie-breaking by ID to guarantee reliable, stable sort ordering.
+  - **Data Model & Mock Timeline Realignment (`src/services/group.service.ts`)**:
+    - Added `rawDate?: string;` to `GroupExpense` interface.
+    - Added ISO `rawDate: validDate.toISOString()` mapping in `getGroupDetails`.
+    - Aligned all fallback mock expenses and settlements to accurate ISO dates, ensuring reverse-chronological order: Recent/Yesterday > Oct 04 (Groceries) > Oct 02 (Settlement) > Oct 01 (Rent).
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Settlement Listing in Activity Stream & Dedicated Settlement Detail Page (`app/groups/[id]/index.tsx`, `app/settlements/[id].tsx`, `src/services/settlement.service.ts`, `src/services/group.service.ts`)**:
   - **Activity Stream Combined Feed (`app/groups/[id]/index.tsx`)**:
     - Merged expenses and settlements into a unified `activityStream` sorted chronologically by date descending, matching the website's behavior.
