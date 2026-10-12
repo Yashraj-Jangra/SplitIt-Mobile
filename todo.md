@@ -1,6 +1,12 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Viewer Name Color Normalization Across Views (`app/groups/[id]/index.tsx`, `app/settlements/[id].tsx`)**:
+  - Removed green text styling (`THEME.colors.primary`) applied to the user's name / `"You"` text in both the Activity list view and Settlement detail transfer view.
+  - User name and `"You"` are now consistently rendered in standard text color (`THEME.colors.text`), matching all other members.
+  - Preserved emerald green accent styling solely for the dedicated tag-like `[YOU]` badge/pill, maintaining clear viewer attribution without coloring normal typography.
+  - In settlement details, resolved viewer's real display name with fallback to `"You"` accompanied by the green `[YOU]` badge.
+  - Quality gates: `npx tsc --noEmit` and `npx jest --passWithNoTests` passed with 0 errors.
 - **Timeline Synchronization for Activity Stream Settlements (`app/groups/[id]/index.tsx`, `src/services/group.service.ts`)**:
   - **Identified Timeline Anomaly**:
     - Previously, `GroupExpense` did not propagate `rawDate` from API responses or mock fallbacks, falling back to human-formatted date strings (e.g. `"01 Oct"`, `"Yesterday, 8:30 PM"`).
