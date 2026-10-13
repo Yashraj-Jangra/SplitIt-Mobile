@@ -1,6 +1,19 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Modular `PrimaryActionButton` & Unified Locked Button System (`src/components/common/PrimaryActionButton.tsx`, `app/expenses/new.tsx`, `app/settle/new.tsx`, `app/settle/qr.tsx`)**:
+  - **Reusable Modular Component (`PrimaryActionButton`)**:
+    - Created a shared, token-driven primary action button adhering strictly to zero hardcoded colors (`THEME.colors`), consistent typography (`THEME.typography`), border radius (`THEME.radius.xl`), and spacing tokens (`THEME.spacing`).
+    - Standardized fixed height `50px`, centered row layout (`gap: 8`), and hardware-accelerated haptic feedback on tap.
+    - Added modular support for icons (defaults to `<Check size={18} strokeWidth={2.5} />` with dynamic color matching) and loading states (`ActivityIndicator`).
+  - **Unified Locked / Disabled State**:
+    - Eliminated dark black text (`primaryForeground`) on dark gray backgrounds (`surfaceElevated`) in disabled states.
+    - Synchronized locked styling across both screens: `backgroundColor: THEME.colors.surfaceElevated`, `borderWidth: 1, borderColor: THEME.colors.hairline`, `color: THEME.colors.textMuted` for both label and icon.
+    - Aligned disabled helper text behavior across screens (`Enter Amount to Settle` / `Enter Amount to Save`).
+    - Cleaned up obsolete local `recordBtn` and `recordMainBtn` style definitions from route files.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Dynamic Safe Area Bottom Inset Handling for Bottom Navigation, Buttons & Docks (`app/(tabs)/_layout.tsx`, `app/groups/[id]/index.tsx`, `app/settle/new.tsx`, `app/settlements/[id].tsx`, `app/expenses/[id].tsx`, `app/expenses/new.tsx`, `app/settle/qr.tsx`, `app/support/[id].tsx`, `app/support/new.tsx`, `app/legal/delete-account.tsx`, `app/groups/new.tsx`)**:
   - **Dynamic Bottom Navigation Bar Sizing (`app/(tabs)/_layout.tsx`)**:
     - Integrated `useSafeAreaInsets` to compute dynamic `bottomInset = Math.max(insets.bottom, 10)` and `height: 54 + bottomInset`.
