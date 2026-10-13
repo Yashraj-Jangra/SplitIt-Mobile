@@ -1,6 +1,35 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Settings Redesign & Bottom Navigation Bar Fix (`app/(tabs)/profile.tsx`, `app/(tabs)/_layout.tsx`, `app/settings/account.tsx`, `app/settings/preferences.tsx`, `app/_layout.tsx`, `src/services/auth.service.ts`, `src/contexts/auth.context.tsx`, `src/services/storage.service.ts`)**:
+  - **Bottom Navbar Icon Synchronization (`app/(tabs)/_layout.tsx`)**:
+    - Replaced the mismatched `<User>` icon with `<Settings size={size - 1} color={color} strokeWidth={2.2} />` to match the `"Settings"` label.
+  - **Enlarged User Avatar & Hero Header (`app/(tabs)/profile.tsx`)**:
+    - Displayed user's profile image if `user?.avatarUrl` is set with automatic fallback to styled initials.
+    - Enlarged avatar circle footprint to `80×80px` (`borderRadius: 40`, `borderWidth: 2.5`, `borderColor: THEME.colors.primary`) while preserving the obsidian dark minimalist aesthetic.
+    - Added user name, email, and interactive active UPI VPA badge (`effectiveUpi`) with direct shortcut to QR view or account settings.
+  - **Segregated Logical Settings Groups (`app/(tabs)/profile.tsx`)**:
+    - **Account & Security**: Account Information (name, username, phone, email), UPI & Payment QR, Security & Password.
+    - **Preferences & Alerts**: App Preferences (currency, haptics, default group), Notifications (push delivery, quiet hours, event alerts).
+    - **Support & Legal**: Support Desk (tickets & help center), AI Financial Assistant, Privacy Policy, Terms of Service.
+    - **Session**: Log Out button with confirmation dialogue.
+  - **Dedicated Account & Security Screen (`app/settings/account.tsx`)**:
+    - Personal Information: Editable First Name, Last Name, Username, Phone Number (with editable country code), Avatar URL, and read-only verified email.
+    - UPI & Quick Settlement: Default UPI VPA input with quick suffix suggestion chips (`@okaxis`, `@okhdfc`, `@paytm`, `@ybl`) and "Preview QR Code" button.
+    - Security & Credentials: Change password form (Current password, New password, Confirm password with visibility toggles).
+    - **Danger Zone**: Relocated "Delete Account" button strictly from the main settings screen to the Account Settings danger zone card, navigating to `/legal/delete-account`.
+  - **Dedicated App Preferences Screen (`app/settings/preferences.tsx`)**:
+    - Currency selection for INR (₹), USD ($), EUR (€), GBP (£), AUD (A$), CAD (C$), and AED (د.إ).
+    - Hardware haptics toggle with live persistence via `storageService`.
+    - Default group inspector and reset capability.
+  - **Service & Context Parity**:
+    - Extended `AuthUser` interface with `firstName`, `lastName`, `username`, `mobileNumber`, `countryCode`.
+    - Added `updateUserProfile` and `changePassword` in `authService` (with `PATCH /api/user/profile` and `POST /api/auth/change-password` integrations).
+    - Exposed `updateUserProfile` and `refreshUser` in `useAuth()` context for instant reactive UI updates.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint` passed with 0 errors and 0 warnings.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Modular `PrimaryActionButton` & Unified Locked Button System (`src/components/common/PrimaryActionButton.tsx`, `app/expenses/new.tsx`, `app/settle/new.tsx`, `app/settle/qr.tsx`)**:
   - **Reusable Modular Component (`PrimaryActionButton`)**:
     - Created a shared, token-driven primary action button adhering strictly to zero hardcoded colors (`THEME.colors`), consistent typography (`THEME.typography`), border radius (`THEME.radius.xl`), and spacing tokens (`THEME.spacing`).
