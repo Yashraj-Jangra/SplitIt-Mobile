@@ -42,6 +42,7 @@ import { settlementService } from '../../src/services/settlement.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { launchUpiPayment } from '../../src/utils/upi';
 import * as Haptics from 'expo-haptics';
+import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 
 /**
  * Sanitizes settlement numeric input with strict max .2f limit.
@@ -834,25 +835,21 @@ export default function SettleUpModal() {
         </TouchableOpacity>
 
         {/* The ONLY Main Button */}
-        <TouchableOpacity
-          style={[
-            styles.recordMainBtn,
-            (!isValidSubmit || isSubmitting) && styles.recordMainBtnDisabled,
-          ]}
+        <PrimaryActionButton
+          title={
+            numAmount <= 0
+              ? 'Enter Amount to Settle'
+              : !isValidParties
+              ? 'Select Members to Settle'
+              : effectivePayViaUpi
+              ? `Pay ₹${formattedAmount} & Record`
+              : 'Record Settlement'
+          }
           onPress={handleSubmit}
           disabled={!isValidSubmit || isSubmitting}
-          activeOpacity={0.85}
-          accessibilityRole="button"
+          loading={isSubmitting}
           accessibilityLabel="Record Settlement"
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
-          ) : (
-            <Text style={styles.recordMainBtnText}>
-              {effectivePayViaUpi ? `Pay ₹${formattedAmount} & Record` : 'Record Settlement'}
-            </Text>
-          )}
-        </TouchableOpacity>
+        />
       </View>
 
       {/* ── 5. User Selection Modal (Shows ALL Members; Auto-Deselects Opposite Party If Same) ── */}
@@ -1438,28 +1435,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: THEME.colors.textMuted,
     marginTop: 2,
-  },
-
-  recordMainBtn: {
-    backgroundColor: THEME.colors.primary,
-    paddingVertical: 14,
-    borderRadius: THEME.radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: THEME.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  recordMainBtnDisabled: {
-    opacity: 0.45,
-    backgroundColor: THEME.colors.surfaceElevated,
-  },
-  recordMainBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: THEME.colors.primaryForeground,
   },
 
   /* 5. Member Selection Modal */

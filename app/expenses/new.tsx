@@ -43,6 +43,7 @@ import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
+import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import { useNetwork } from '../../src/contexts/network.context';
 import * as Haptics from 'expo-haptics';
@@ -1104,47 +1105,24 @@ export default function NewExpenseModal() {
             </View>
           )}
 
-          <TouchableOpacity
-            style={[
-              styles.recordBtn,
-              (!description.trim() || numAmount <= 0 || isSaving) && styles.recordBtnDisabled,
-              isEditMode && !hasChanges && styles.recordBtnUnchanged,
-            ]}
+          <PrimaryActionButton
+            title={
+              isEditMode
+                ? !hasChanges
+                  ? 'No changes to save'
+                  : numAmount > 0
+                  ? `Save Changes (₹${numAmount.toLocaleString('en-IN')})`
+                  : 'Save Changes'
+                : numAmount > 0
+                ? `Record ₹${numAmount.toLocaleString('en-IN')} Expense`
+                : 'Enter Amount to Save'
+            }
             onPress={handleSave}
             disabled={!description.trim() || numAmount <= 0 || isSaving || (isEditMode && !hasChanges)}
-            activeOpacity={0.85}
-          >
-            {isSaving ? (
-              <ActivityIndicator
-                size="small"
-                color={isEditMode && !hasChanges ? THEME.colors.textMuted : THEME.colors.primaryForeground}
-              />
-            ) : (
-              <>
-                <Check
-                  size={18}
-                  color={isEditMode && !hasChanges ? THEME.colors.textMuted : THEME.colors.primaryForeground}
-                  strokeWidth={2.5}
-                />
-                <Text
-                  style={[
-                    styles.recordBtnText,
-                    isEditMode && !hasChanges && styles.recordBtnTextUnchanged,
-                  ]}
-                >
-                  {isEditMode
-                    ? !hasChanges
-                      ? 'No changes to save'
-                      : numAmount > 0
-                      ? `Save Changes (₹${numAmount.toLocaleString('en-IN')})`
-                      : 'Save Changes'
-                    : numAmount > 0
-                    ? `Record ₹${numAmount.toLocaleString('en-IN')} Expense`
-                    : 'Enter Amount to Save'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+            loading={isSaving}
+            variant={isEditMode && !hasChanges ? 'unchanged' : 'primary'}
+            accessibilityLabel="Record Expense"
+          />
         </View>
 
         {/* MODAL 1: PAYER SELECTOR */}
@@ -1828,15 +1806,6 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 4 : 12,
     backgroundColor: THEME.colors.background,
   },
-  recordBtn: {
-    height: 50,
-    borderRadius: THEME.radius.xl,
-    backgroundColor: THEME.colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
   headerRightPlaceholder: {
     width: 36,
     height: 36,
@@ -1850,20 +1819,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: THEME.colors.textMuted,
-  },
-  recordBtnDisabled: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    opacity: 0.5,
-  },
-  recordBtnUnchanged: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    opacity: 0.8,
-  },
-  recordBtnTextUnchanged: {
-    color: THEME.colors.textMuted,
-    fontWeight: '600',
   },
   unchangedPillWrap: {
     flexDirection: 'row',
@@ -1882,11 +1837,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.colors.textMuted,
     fontWeight: '500',
-  },
-  recordBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: THEME.colors.primaryForeground,
   },
 
   /* Modal Sheets Shared */

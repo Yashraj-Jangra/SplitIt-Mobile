@@ -18,6 +18,7 @@ import { settlementService } from '../../src/services/settlement.service';
 import { groupService } from '../../src/services/group.service';
 import { useAuth } from '../../src/contexts/auth.context';
 import * as Haptics from 'expo-haptics';
+import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 
 export default function UpiQrModal() {
   const router = useRouter();
@@ -193,21 +194,15 @@ export default function UpiQrModal() {
         </View>
 
         {/* Primary Confirmation Action */}
-        <TouchableOpacity
-          style={styles.confirmButton}
+        <PrimaryActionButton
+          title={`I Have Paid ₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           onPress={handleConfirmPaid}
           disabled={loading || amount <= 0}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
-          ) : (
-            <>
-              <Text style={styles.confirmButtonText}>I Have Paid ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-              <ArrowRight size={18} color={THEME.colors.primaryForeground} />
-            </>
-          )}
-        </TouchableOpacity>
+          loading={loading}
+          icon={({ color, size }) => <ArrowRight size={size} color={color} />}
+          style={{ width: '100%', marginTop: 4 }}
+          accessibilityLabel="Confirm Payment"
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -366,21 +361,5 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     flex: 1,
     lineHeight: 15,
-  },
-  confirmButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: THEME.colors.primary,
-    paddingVertical: 14,
-    borderRadius: THEME.radius.md,
-    width: '100%',
-    marginTop: 4,
-  },
-  confirmButtonText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: THEME.colors.primaryForeground,
   },
 });
