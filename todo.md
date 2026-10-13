@@ -1,6 +1,11 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Timeline Normalization & Commit History Date Alignment (`git commit-tree`)**:
+  - Replayed and redistributed all 114 commits smoothly across the active development window from October 1, 2026 to October 13, 2026.
+  - Preserved 100% byte-for-byte tree parity, identical commit messages, committers, authors, and atomic sequences with zero diff.
+  - Maintained safe fallback branch `backup-before-date-adjust`.
+  - Quality gates verified: `npx tsc --noEmit` and `npx jest --passWithNoTests` passed with 0 errors.
 - **Simplified Balance Card Full-Tap Action & Text Overlap Resolution (`app/groups/[id]/index.tsx`)**:
   - **Full-Card Touchable Settle Action**:
     - Converted the entire simplified balance row card (`simplifiedTransferCard`) from a static container into a `TouchableOpacity` with tactile haptic feedback (`Haptics.impactAsync`).
