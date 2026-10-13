@@ -1,6 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Strict Max .2f Limit & Exact Value Recording for Settlements (`app/settle/new.tsx`, `app/settle/qr.tsx`, `app/settlements/[id].tsx`, `src/services/group.service.ts`, `src/services/settlement.service.ts`)**:
+  - **Strict `.2f` Input Sanitization (`sanitizeSettlementAmountInput`)**:
+    - Built a robust, real-time input sanitization helper enforcing a hard cap of at most 2 decimal places (`.2f`).
+    - Actively blocks entering a 3rd decimal digit (e.g. typing `12.345` is rejected, keeping `12.34`).
+    - Strips non-numeric characters, normalizes regional comma decimals (`12,50` -> `12.50`), converts leading dots (`.` -> `0.`), and cleans leading zeros (`05` -> `5`) while safely preserving valid decimals (`0.xx`).
+    - Added `onBlur` cleanup to trim dangling decimal points (e.g. `12.` -> `12`).
+  - **Exact Value Matching on Recording (Zero Float Drift)**:
+    - Enforced exact currency math using `Math.round(amt * 100) / 100` across `new.tsx`, `qr.tsx`, and `settlement.service.ts`.
+    - Formatted confirmation dialogues and QR payload amounts with strict `.2f` representation (`{ minimumFractionDigits: 2, maximumFractionDigits: 2 }`).
+    - In `group.service.ts`, implemented `applyRecordedSettlement` and `removeRecordedSettlement` to immediately update in-memory group activities, member net balances, and simplified debts upon recording, ensuring instant UI reflection with zero floating-point drift.
+    - Pre-warmed `_cachedSettlementDetailsMap` so clicking a recorded settlement immediately opens the detail view with the exact amount.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Distinctive Settlement Logo & Universal List Icon Size Enlargement (`app/groups/[id]/index.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/activity.tsx`, `app/groups/[id]/search.tsx`, `src/components/skeletons/GroupTabSkeleton.tsx`)**:
   - **Distinctive Settlement Logo in Group Activity List**:
     - Added a dedicated 40×40 emerald-tinted circular glyph (`settlementGlyph`: `rgba(16, 185, 129, 0.12)` background, `borderWidth: 1`, `rgba(16, 185, 129, 0.28)` border) featuring a 20px `<Handshake size={20} color={THEME.colors.palette.emerald} />` icon.
