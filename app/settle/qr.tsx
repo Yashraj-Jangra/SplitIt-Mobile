@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,14 @@ export default function UpiQrModal() {
 
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Guard: if opened with no payeeId and no groupId this is a self-preview
+  // context — redirect to the dedicated My QR screen instead.
+  useEffect(() => {
+    if (!params.payeeId && !params.groupId) {
+      router.replace('/settings/my-qr');
+    }
+  }, []);
 
   const isPayeeViewer = Boolean(payeeId && user?.id && payeeId === user.id);
   const hasUpiId = Boolean(upiId && upiId.includes('@') && !isPayeeViewer);

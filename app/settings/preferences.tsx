@@ -16,7 +16,6 @@ import {
   Vibrate,
   Layers,
   Check,
-  Palette,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { storageService } from '../../src/services/storage.service';
@@ -215,28 +214,6 @@ export default function PreferencesScreen() {
           </View>
         </View>
 
-        {/* ── CARD 4: THEME & AESTHETICS ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIconBox}>
-              <Palette size={16} color={THEME.colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Aesthetics & Theme</Text>
-              <Text style={styles.cardSubtitle}>Visual styling synchronized with web</Text>
-            </View>
-          </View>
-
-          <View style={styles.themeRow}>
-            <View style={styles.themeInfo}>
-              <Text style={styles.themeName}>Obsidian Minimalist</Text>
-              <Text style={styles.themeDesc}>OLED black background with emerald accents</Text>
-            </View>
-            <View style={styles.themePill}>
-              <Text style={styles.themePillText}>ACTIVE</Text>
-            </View>
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -403,35 +380,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: THEME.colors.negative,
-  },
-  themeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  themeInfo: {
-    flex: 1,
-  },
-  themeName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  themeDesc: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    marginTop: 2,
-  },
-  themePill: {
-    backgroundColor: THEME.colors.primary + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  themePillText: {
-    color: THEME.colors.primary,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
   },
 });

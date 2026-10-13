@@ -14,22 +14,9 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import {
-  ArrowLeft,
-  User,
-  Mail,
-  QrCode,
-  Lock,
-  Eye,
-  EyeOff,
-  Trash2,
-  Check,
-  ExternalLink,
-  ShieldAlert,
-} from 'lucide-react-native';
+import { ArrowLeft, User, Mail, Check } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
-import { authService } from '../../src/services/auth.service';
 import * as Haptics from 'expo-haptics';
 
 export default function AccountSettingsScreen() {
@@ -39,27 +26,14 @@ export default function AccountSettingsScreen() {
 
   const nameParts = (user?.name || '').trim().split(' ');
 
-  // Profile Form States initialized lazily
   const [firstName, setFirstName] = useState(() => user?.firstName || nameParts[0] || '');
   const [lastName, setLastName] = useState(() => user?.lastName || nameParts.slice(1).join(' ') || '');
   const [username, setUsername] = useState(() => user?.username || (user?.email ? user.email.split('@')[0] : ''));
   const [mobileNumber, setMobileNumber] = useState(() => user?.mobileNumber || '');
   const [countryCode, setCountryCode] = useState(() => user?.countryCode || '+91');
   const [avatarUrl, setAvatarUrl] = useState(() => user?.avatarUrl || '');
-  const [upiId, setUpiId] = useState(() => user?.upiId || (user?.email ? `${user.email.split('@')[0]}@okaxis` : ''));
   const [imageError, setImageError] = useState(false);
-
-  // Password Form States
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPw, setShowCurrentPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
-  const [showConfirmPw, setShowConfirmPw] = useState(false);
-
-  // Loading States
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const initials = user?.name
     ? user.name
@@ -70,15 +44,14 @@ export default function AccountSettingsScreen() {
         .toUpperCase()
     : 'U';
 
-  const handleSaveProfile = async () => {
+  const handleSave = async () => {
     if (!firstName.trim()) {
       Alert.alert('Validation Error', 'First name is required.');
       return;
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsSavingProfile(true);
-
+    setIsSaving(true);
     try {
       const updated = await updateUserProfile({
         firstName: firstName.trim(),
@@ -87,64 +60,19 @@ export default function AccountSettingsScreen() {
         mobileNumber: mobileNumber.trim(),
         countryCode: countryCode.trim(),
         avatarUrl: avatarUrl.trim() || undefined,
-        upiId: upiId.trim(),
       });
 
       if (updated) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Saved', 'Your profile and payment details have been updated.');
+        Alert.alert('Saved', 'Your profile has been updated.');
       } else {
         Alert.alert('Update Failed', 'Could not save profile changes. Please try again.');
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to update profile.');
     } finally {
-      setIsSavingProfile(false);
+      setIsSaving(false);
     }
-  };
-
-  const handleUpdatePassword = async () => {
-    if (!currentPassword) {
-      Alert.alert('Validation Error', 'Please enter your current password.');
-      return;
-    }
-    if (newPassword.length < 6) {
-      Alert.alert('Validation Error', 'New password must be at least 6 characters.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Validation Error', 'New passwords do not match.');
-      return;
-    }
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsUpdatingPassword(true);
-
-    try {
-      const res = await authService.changePassword(currentPassword, newPassword);
-      if (res.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Success', 'Your password has been changed successfully.');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        Alert.alert('Update Failed', res.error || 'Failed to update password.');
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to update password.');
-    } finally {
-      setIsUpdatingPassword(false);
-    }
-  };
-
-  const handleOpenQrPreview = () => {
-    Haptics.selectionAsync();
-    const effectiveName = `${firstName} ${lastName}`.trim() || user?.name || 'You';
-    const effectiveUpi = upiId.trim() || (user?.email ? `${user.email.split('@')[0]}@okaxis` : 'yashraj@okaxis');
-    router.push(
-      `/settle/qr?amount=0&name=${encodeURIComponent(effectiveName)}&upiId=${encodeURIComponent(effectiveUpi)}`
-    );
   };
 
   return (
@@ -161,7 +89,7 @@ export default function AccountSettingsScreen() {
         >
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Account & Security</Text>
+        <Text style={styles.headerTitle}>Account Information</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -192,7 +120,7 @@ export default function AccountSettingsScreen() {
             </Text>
           </View>
 
-          {/* ── CARD 1: PERSONAL INFORMATION ── */}
+          {/* ── CARD: PERSONAL INFORMATION ── */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIconBox}>
@@ -229,6 +157,7 @@ export default function AccountSettingsScreen() {
                   onChangeText={setFirstName}
                   placeholder="First Name"
                   placeholderTextColor={THEME.colors.textMuted}
+                  returnKeyType="next"
                 />
               </View>
               <View style={[styles.formGroup, { flex: 1 }]}>
@@ -239,6 +168,7 @@ export default function AccountSettingsScreen() {
                   onChangeText={setLastName}
                   placeholder="Last Name"
                   placeholderTextColor={THEME.colors.textMuted}
+                  returnKeyType="next"
                 />
               </View>
             </View>
@@ -252,14 +182,15 @@ export default function AccountSettingsScreen() {
                 placeholder="username"
                 placeholderTextColor={THEME.colors.textMuted}
                 autoCapitalize="none"
+                returnKeyType="next"
               />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.fieldLabel}>ACCOUNT EMAIL</Text>
-              <View style={styles.readonlyInputRow}>
+              <View style={styles.readonlyRow}>
                 <Mail size={15} color={THEME.colors.textMuted} />
-                <Text style={styles.readonlyInputText}>{user?.email || 'user@example.com'}</Text>
+                <Text style={styles.readonlyText}>{user?.email || 'user@example.com'}</Text>
                 <View style={styles.verifiedBadge}>
                   <Text style={styles.verifiedBadgeText}>VERIFIED</Text>
                 </View>
@@ -268,7 +199,7 @@ export default function AccountSettingsScreen() {
 
             <View style={styles.formGroup}>
               <Text style={styles.fieldLabel}>MOBILE PHONE NUMBER</Text>
-              <View style={styles.phoneInputRow}>
+              <View style={styles.phoneRow}>
                 <TextInput
                   style={styles.countryCodeInput}
                   value={countryCode}
@@ -284,18 +215,19 @@ export default function AccountSettingsScreen() {
                   placeholder="9876543210"
                   placeholderTextColor={THEME.colors.textMuted}
                   keyboardType="phone-pad"
+                  returnKeyType="done"
+                  onSubmitEditing={handleSave}
                 />
               </View>
             </View>
 
-            {/* Save Profile Button */}
             <TouchableOpacity
               style={styles.saveBtn}
-              onPress={handleSaveProfile}
-              disabled={isSavingProfile}
+              onPress={handleSave}
+              disabled={isSaving}
               activeOpacity={0.8}
             >
-              {isSavingProfile ? (
+              {isSaving ? (
                 <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
               ) : (
                 <>
@@ -303,199 +235,6 @@ export default function AccountSettingsScreen() {
                   <Text style={styles.saveBtnText}>Save Profile Changes</Text>
                 </>
               )}
-            </TouchableOpacity>
-          </View>
-
-          {/* ── CARD 2: UPI & PAYMENT PREFERENCES ── */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIconBox}>
-                <QrCode size={16} color={THEME.colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>UPI & Quick Settlement</Text>
-                <Text style={styles.cardSubtitle}>Your VPA address for instant settlements</Text>
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>DEFAULT UPI ID (VPA)</Text>
-              <TextInput
-                style={styles.input}
-                value={upiId}
-                onChangeText={setUpiId}
-                placeholder="e.g. username@okaxis or 9876543210@paytm"
-                placeholderTextColor={THEME.colors.textMuted}
-                autoCapitalize="none"
-              />
-            </View>
-
-            {/* Quick Suffix Suggestions */}
-            <View style={styles.suggestionRow}>
-              {['@okaxis', '@okhdfc', '@paytm', '@ybl'].map((suffix) => (
-                <TouchableOpacity
-                  key={suffix}
-                  style={styles.suffixPill}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    const prefix = upiId.includes('@') ? upiId.split('@')[0] : upiId || (user?.email ? user.email.split('@')[0] : 'user');
-                    setUpiId(`${prefix}${suffix}`);
-                  }}
-                >
-                  <Text style={styles.suffixText}>{suffix}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.cardActionRow}>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={handleOpenQrPreview}
-                activeOpacity={0.7}
-              >
-                <QrCode size={15} color={THEME.colors.text} />
-                <Text style={styles.secondaryBtnText}>Preview QR Code</Text>
-                <ExternalLink size={13} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.saveSmallBtn}
-                onPress={handleSaveProfile}
-                disabled={isSavingProfile}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.saveSmallBtnText}>Save VPA</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* ── CARD 3: SECURITY & PASSWORD ── */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIconBox}>
-                <Lock size={16} color={THEME.colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>Security & Credentials</Text>
-                <Text style={styles.cardSubtitle}>Manage your account login password</Text>
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>CURRENT PASSWORD</Text>
-              <View style={styles.passwordInputContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  secureTextEntry={!showCurrentPw}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowCurrentPw(!showCurrentPw)}
-                  style={styles.eyeBtn}
-                >
-                  {showCurrentPw ? (
-                    <EyeOff size={16} color={THEME.colors.textMuted} />
-                  ) : (
-                    <Eye size={16} color={THEME.colors.textMuted} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>NEW PASSWORD (MIN. 6 CHARACTERS)</Text>
-              <View style={styles.passwordInputContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  secureTextEntry={!showNewPw}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowNewPw(!showNewPw)}
-                  style={styles.eyeBtn}
-                >
-                  {showNewPw ? (
-                    <EyeOff size={16} color={THEME.colors.textMuted} />
-                  ) : (
-                    <Eye size={16} color={THEME.colors.textMuted} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>CONFIRM NEW PASSWORD</Text>
-              <View style={styles.passwordInputContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  secureTextEntry={!showConfirmPw}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPw(!showConfirmPw)}
-                  style={styles.eyeBtn}
-                >
-                  {showConfirmPw ? (
-                    <EyeOff size={16} color={THEME.colors.textMuted} />
-                  ) : (
-                    <Eye size={16} color={THEME.colors.textMuted} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleUpdatePassword}
-              disabled={isUpdatingPassword}
-              activeOpacity={0.8}
-            >
-              {isUpdatingPassword ? (
-                <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
-              ) : (
-                <>
-                  <Lock size={16} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-                  <Text style={styles.saveBtnText}>Update Password</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* ── CARD 4: DANGER ZONE (MOVED HERE AS REQUESTED) ── */}
-          <View style={styles.dangerCard}>
-            <View style={styles.dangerHeader}>
-              <View style={styles.dangerIconBox}>
-                <ShieldAlert size={17} color={THEME.colors.negative} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.dangerTitle}>Danger Zone</Text>
-                <Text style={styles.dangerSubtitle}>Irreversible account actions</Text>
-              </View>
-            </View>
-
-            <Text style={styles.dangerWarningText}>
-              Permanently delete your user profile, wipe settled transactions, and dissociate your email. This action cannot be undone.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.deleteAccountBtn}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                router.push('/legal/delete-account');
-              }}
-              activeOpacity={0.8}
-            >
-              <Trash2 size={16} color={THEME.colors.negative} strokeWidth={2.2} />
-              <Text style={styles.deleteAccountText}>Delete Account</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -627,7 +366,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  readonlyInputRow: {
+  readonlyRow: {
     height: 44,
     backgroundColor: THEME.colors.surfaceElevated + '80',
     borderRadius: THEME.radius.md,
@@ -638,7 +377,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  readonlyInputText: {
+  readonlyText: {
     flex: 1,
     color: THEME.colors.textMuted,
     fontSize: 13,
@@ -655,7 +394,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  phoneInputRow: {
+  phoneRow: {
     flexDirection: 'row',
     gap: 8,
   },
@@ -683,134 +422,6 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     color: THEME.colors.primaryForeground,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  suggestionRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  suffixPill: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.full,
-  },
-  suffixText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
-  },
-  cardActionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  secondaryBtn: {
-    flex: 1,
-    height: 42,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-  },
-  secondaryBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  saveSmallBtn: {
-    height: 42,
-    paddingHorizontal: 16,
-    backgroundColor: THEME.colors.primary,
-    borderRadius: THEME.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveSmallBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.primaryForeground,
-  },
-  passwordInputContainer: {
-    height: 44,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-  },
-  passwordInput: {
-    flex: 1,
-    color: THEME.colors.text,
-    fontSize: 14,
-  },
-  eyeBtn: {
-    padding: 6,
-  },
-  dangerCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
-    borderWidth: 1,
-    borderColor: THEME.colors.negative + '40',
-    padding: 16,
-    gap: 12,
-  },
-  dangerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
-  },
-  dangerIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: THEME.colors.negative + '18',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dangerTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: THEME.colors.negative,
-  },
-  dangerSubtitle: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    marginTop: 1,
-  },
-  dangerWarningText: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-    lineHeight: 18,
-  },
-  deleteAccountBtn: {
-    height: 46,
-    backgroundColor: THEME.colors.negative + '15',
-    borderWidth: 1,
-    borderColor: THEME.colors.negative + '50',
-    borderRadius: THEME.radius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  deleteAccountText: {
-    color: THEME.colors.negative,
     fontSize: 13,
     fontWeight: '700',
   },

@@ -5,15 +5,15 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import {
   User,
   QrCode,
-  ShieldCheck,
+  Shield,
   Sliders,
   Bell,
   HelpCircle,
   Sparkles,
-  Shield,
   FileText,
   LogOut,
   ChevronRight,
+  CreditCard,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
@@ -21,13 +21,19 @@ import { storageService } from '../../src/services/storage.service';
 import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import * as Haptics from 'expo-haptics';
 
+interface SettingsItem {
+  icon: React.ElementType;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut, refreshUser } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [currencyCode, setCurrencyCode] = useState('INR');
 
-  // Refresh user and currency on focus
   useFocusEffect(
     useCallback(() => {
       refreshUser();
@@ -51,7 +57,7 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const effectiveUpi = user?.upiId || (user?.email ? `${user.email.split('@')[0]}@okaxis` : 'yashraj@okaxis');
+  const effectiveUpi = user?.upiId || (user?.email ? `${user.email.split('@')[0]}@okaxis` : '–');
   const effectiveName = user?.name || 'You';
 
   const initials = user?.name
@@ -63,35 +69,44 @@ export default function ProfileScreen() {
         .toUpperCase()
     : 'U';
 
-  const accountItems = [
+  // ── Section: Account ──
+  const accountItems: SettingsItem[] = [
     {
       icon: User,
       title: 'Account Information',
-      subtitle: user?.username ? `@${user.username} • Personal details` : 'Name, username, phone & email',
+      subtitle: user?.username ? `@${user.username} · Name, phone & email` : 'Name, username, phone & email',
       onPress: () => router.push('/settings/account'),
+    },
+    {
+      icon: CreditCard,
+      title: 'UPI & Payment',
+      subtitle: effectiveUpi !== '–' ? effectiveUpi : 'Configure your VPA address',
+      onPress: () => router.push('/settings/payment'),
     },
     {
       icon: QrCode,
-      title: 'UPI & Payment QR',
-      subtitle: effectiveUpi,
-      onPress: () =>
-        router.push(
-          `/settle/qr?amount=0&name=${encodeURIComponent(effectiveName)}&upiId=${encodeURIComponent(effectiveUpi)}`
-        ),
-    },
-    {
-      icon: ShieldCheck,
-      title: 'Security & Password',
-      subtitle: 'Manage password & credentials',
-      onPress: () => router.push('/settings/account'),
+      title: 'My Payment QR',
+      subtitle: 'Show your QR code to receive money',
+      onPress: () => router.push('/settings/my-qr'),
     },
   ];
 
-  const preferenceItems = [
+  // ── Section: Security ──
+  const securityItems: SettingsItem[] = [
+    {
+      icon: Shield,
+      title: 'Security & Password',
+      subtitle: 'Change password · Danger zone',
+      onPress: () => router.push('/settings/security'),
+    },
+  ];
+
+  // ── Section: Preferences ──
+  const preferenceItems: SettingsItem[] = [
     {
       icon: Sliders,
       title: 'App Preferences',
-      subtitle: `Currency (${currencyCode}) • Haptics & defaults`,
+      subtitle: `Currency (${currencyCode}) · Haptics & defaults`,
       onPress: () => router.push('/settings/preferences'),
     },
     {
@@ -102,18 +117,23 @@ export default function ProfileScreen() {
     },
   ];
 
-  const supportAndLegalItems = [
-    {
-      icon: HelpCircle,
-      title: 'Support Desk',
-      subtitle: 'Tickets, FAQs & help center',
-      onPress: () => router.push('/support'),
-    },
+  // ── Section: Tools ──
+  const toolsItems: SettingsItem[] = [
     {
       icon: Sparkles,
       title: 'AI Financial Assistant',
       subtitle: 'Smart expense insights & suggestions',
       onPress: () => router.push('/ai/chat'),
+    },
+  ];
+
+  // ── Section: Support & Legal ──
+  const supportItems: SettingsItem[] = [
+    {
+      icon: HelpCircle,
+      title: 'Support Desk',
+      subtitle: 'Tickets, FAQs & help center',
+      onPress: () => router.push('/support'),
     },
     {
       icon: Shield,
@@ -129,6 +149,38 @@ export default function ProfileScreen() {
     },
   ];
 
+  const renderSection = (title: string, items: SettingsItem[]) => (
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionLabel}>{title}</Text>
+      <View style={styles.groupCard}>
+        {items.map((item, index) => {
+          const IconComponent = item.icon;
+          const isLast = index === items.length - 1;
+          return (
+            <TouchableOpacity
+              key={item.title}
+              style={[styles.itemRow, !isLast && styles.itemRowBorder]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                item.onPress();
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.itemIconCircle}>
+                <IconComponent size={16} color={THEME.colors.textSecondary} />
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+              </View>
+              <ChevronRight size={15} color={THEME.colors.textMuted} />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
@@ -136,8 +188,8 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* User Profile Hero Header (Enlarged Avatar, Preserving Aesthetic) */}
-        <View style={styles.userHeroSection}>
+        {/* User Profile Hero */}
+        <View style={styles.userHero}>
           <View style={styles.avatarCircle}>
             {user?.avatarUrl && !imageError ? (
               <Image
@@ -149,13 +201,12 @@ export default function ProfileScreen() {
               <Text style={styles.avatarText}>{initials}</Text>
             )}
           </View>
-          <Text style={styles.userName}>{user?.name || 'Yashraj Jangra'}</Text>
-          <Text style={styles.userEmail}>{user?.email || 'jangrayash1505@gmail.com'}</Text>
+          <Text style={styles.userName}>{effectiveName}</Text>
+          <Text style={styles.userEmail}>{user?.email || ''}</Text>
 
-          {/* Active UPI ID Pill */}
           <TouchableOpacity
             style={styles.upiPill}
-            onPress={() => router.push('/settings/account')}
+            onPress={() => router.push('/settings/payment')}
             activeOpacity={0.7}
           >
             <QrCode size={12} color={THEME.colors.primary} />
@@ -163,122 +214,26 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── GROUP 1: ACCOUNT & SECURITY ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeaderTitle}>ACCOUNT & SECURITY</Text>
-          <View style={styles.settingsGroupCard}>
-            {accountItems.map((item, index) => {
-              const IconComponent = item.icon;
-              const isLast = index === accountItems.length - 1;
+        {renderSection('ACCOUNT', accountItems)}
+        {renderSection('SECURITY', securityItems)}
+        {renderSection('PREFERENCES', preferenceItems)}
+        {renderSection('TOOLS', toolsItems)}
+        {renderSection('SUPPORT & LEGAL', supportItems)}
 
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.itemRow, !isLast && styles.itemRowBorder]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    item.onPress();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.itemIconCircle}>
-                    <IconComponent size={16} color={THEME.colors.textSecondary} />
-                  </View>
-
-                  <View style={styles.itemContent}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-                  </View>
-
-                  <ChevronRight size={15} color={THEME.colors.textMuted} />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── GROUP 2: PREFERENCES & ALERTS ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeaderTitle}>PREFERENCES & ALERTS</Text>
-          <View style={styles.settingsGroupCard}>
-            {preferenceItems.map((item, index) => {
-              const IconComponent = item.icon;
-              const isLast = index === preferenceItems.length - 1;
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.itemRow, !isLast && styles.itemRowBorder]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    item.onPress();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.itemIconCircle}>
-                    <IconComponent size={16} color={THEME.colors.textSecondary} />
-                  </View>
-
-                  <View style={styles.itemContent}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-                  </View>
-
-                  <ChevronRight size={15} color={THEME.colors.textMuted} />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── GROUP 3: SUPPORT & LEGAL ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeaderTitle}>SUPPORT & LEGAL</Text>
-          <View style={styles.settingsGroupCard}>
-            {supportAndLegalItems.map((item, index) => {
-              const IconComponent = item.icon;
-              const isLast = index === supportAndLegalItems.length - 1;
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.itemRow, !isLast && styles.itemRowBorder]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    item.onPress();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.itemIconCircle}>
-                    <IconComponent size={16} color={THEME.colors.textSecondary} />
-                  </View>
-
-                  <View style={styles.itemContent}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-                  </View>
-
-                  <ChevronRight size={15} color={THEME.colors.textMuted} />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── GROUP 4: SESSION (LOG OUT ONLY) ── */}
-        <View style={styles.dangerSection}>
+        {/* Log Out */}
+        <View style={styles.logoutSection}>
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
             <LogOut size={16} color={THEME.colors.textSecondary} />
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Brand Identity Footer */}
+        {/* Brand Footer */}
         <View style={styles.brandFooter}>
           <BrandLogoImage size={28} />
-          <Text style={styles.brandFooterTitle}>SplitIt</Text>
-          <Text style={styles.brandFooterTagline}>Shared expenses, settled simply.</Text>
-          <Text style={styles.brandFooterVersion}>v1.0.0 • Mobile & Web Synchronized</Text>
+          <Text style={styles.brandTitle}>SplitIt</Text>
+          <Text style={styles.brandTagline}>Shared expenses, settled simply.</Text>
+          <Text style={styles.brandVersion}>v1.0.0 · Mobile & Web Synchronized</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -307,7 +262,8 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
     gap: 20,
   },
-  userHeroSection: {
+  // Hero
+  userHero: {
     alignItems: 'center',
     paddingVertical: 10,
   },
@@ -360,17 +316,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.textSecondary,
   },
+  // Sections
   sectionContainer: {
     gap: 8,
   },
-  sectionHeaderTitle: {
+  sectionLabel: {
     fontSize: 11,
     fontWeight: '800',
     color: THEME.colors.textMuted,
     letterSpacing: 0.6,
     paddingHorizontal: 4,
   },
-  settingsGroupCard: {
+  groupCard: {
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
@@ -408,7 +365,8 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginTop: 2,
   },
-  dangerSection: {
+  // Log Out
+  logoutSection: {
     marginTop: 4,
   },
   logoutBtn: {
@@ -427,23 +385,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.textSecondary,
   },
+  // Brand footer
   brandFooter: {
     alignItems: 'center',
     paddingVertical: 16,
     gap: 4,
   },
-  brandFooterTitle: {
+  brandTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: THEME.colors.text,
     letterSpacing: -0.3,
     marginTop: 4,
   },
-  brandFooterTagline: {
+  brandTagline: {
     fontSize: 11,
     color: THEME.colors.textMuted,
   },
-  brandFooterVersion: {
+  brandVersion: {
     fontSize: 10,
     color: THEME.colors.textMuted + '80',
     marginTop: 2,
