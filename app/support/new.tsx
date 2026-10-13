@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { X, Send, HelpCircle, Check } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 
 export default function NewSupportTicketModal() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const messageInputRef = useRef<TextInput>(null);
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState<TicketCategory>('general');
@@ -57,7 +58,7 @@ export default function NewSupportTicketModal() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -88,7 +89,7 @@ export default function NewSupportTicketModal() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >

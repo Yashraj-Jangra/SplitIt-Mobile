@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { X, Copy, Check, ShieldCheck, ArrowRight } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -21,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 
 export default function UpiQrModal() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const params = useLocalSearchParams<{
     groupId?: string;
@@ -102,7 +103,7 @@ export default function UpiQrModal() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -117,7 +118,7 @@ export default function UpiQrModal() {
         <Text style={styles.headerTitle} numberOfLines={1}>Scan UPI QR</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Recipient & Amount Info */}
         <View style={styles.payeeSection}>
           <Text style={styles.payeeLabel}>PAYING TO</Text>

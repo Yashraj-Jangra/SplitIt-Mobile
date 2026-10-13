@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
   ArrowLeft,
@@ -37,6 +37,7 @@ import { useAuth } from '../../src/contexts/auth.context';
 
 export default function SettlementDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
   const { user } = useAuth();
   const params = useLocalSearchParams<{
@@ -214,7 +215,7 @@ export default function SettlementDetailScreen() {
   const logs = settlement?.logs || [];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* ── 1. PINNED FIXED NAVIGATION BAR ── */}
       <View style={styles.pinnedHeader}>
         <TouchableOpacity
@@ -254,7 +255,7 @@ export default function SettlementDetailScreen() {
       >
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -473,7 +474,7 @@ export default function SettlementDetailScreen() {
         </ScrollView>
 
         {/* Bottom Docked Comment Bar */}
-        <View style={styles.bottomCommentDock}>
+        <View style={[styles.bottomCommentDock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
           <View style={styles.commentInputContainer}>
             <TextInput
               style={styles.commentTextInput}

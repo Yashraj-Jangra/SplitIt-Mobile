@@ -13,7 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
   ArrowLeft,
@@ -50,6 +50,7 @@ import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBrea
 
 export default function ExpenseDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
   const { user } = useAuth();
   const params = useLocalSearchParams<{
@@ -470,7 +471,7 @@ export default function ExpenseDetailScreen() {
 
   if (!loading && !expense && loadError) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.pinnedHeader}>
           <TouchableOpacity
             onPress={() => {
@@ -503,7 +504,7 @@ export default function ExpenseDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* ── 1. PINNED FIXED NAVIGATION BAR (Never scrolls away) ── */}
       <View style={styles.pinnedHeader}>
         <TouchableOpacity
@@ -565,7 +566,7 @@ export default function ExpenseDetailScreen() {
       >
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -848,7 +849,7 @@ export default function ExpenseDetailScreen() {
         </ScrollView>
 
         {/* Bottom Docked "Add a comment" Bar */}
-        <View style={styles.bottomCommentDock}>
+        <View style={[styles.bottomCommentDock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
           <View style={styles.commentInputContainer}>
             <TextInput
               style={styles.commentTextInput}

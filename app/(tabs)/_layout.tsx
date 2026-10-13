@@ -1,9 +1,13 @@
 import { Tabs } from 'expo-router';
 import { Home, Users, Activity, User } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { THEME } from '../../src/constants/theme';
 import * as Haptics from 'expo-haptics';
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 10);
+
   return (
     <Tabs
       detachInactiveScreens={false}
@@ -13,8 +17,8 @@ export default function TabsLayout() {
           backgroundColor: THEME.colors.background,
           borderTopColor: THEME.colors.hairline,
           borderTopWidth: 1,
-          height: 64,
-          paddingBottom: 10,
+          height: 54 + bottomInset,
+          paddingBottom: bottomInset,
           paddingTop: 8,
           elevation: 0,
         },

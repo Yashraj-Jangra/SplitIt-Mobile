@@ -17,7 +17,7 @@ import {
   Dimensions,
   BackHandler,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   X,
@@ -64,6 +64,7 @@ interface FormSnapshot {
 
 export default function NewExpenseModal() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
   const params = useLocalSearchParams<{
     amount?: string;
@@ -760,7 +761,7 @@ export default function NewExpenseModal() {
   if (isLoadingExisting) {
     return (
       <View style={styles.rootWrapper}>
-        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={THEME.colors.primary} />
             <Text style={styles.loadingText}>Loading expense details...</Text>
@@ -801,7 +802,7 @@ export default function NewExpenseModal() {
           />
         )}
 
-        <SafeAreaView style={styles.innerSafeArea} edges={['top', 'bottom']}>
+        <SafeAreaView style={styles.innerSafeArea} edges={['top']}>
           <Animated.View
             style={[
               styles.contentWrap,
@@ -876,7 +877,7 @@ export default function NewExpenseModal() {
         {/* Scrollable Form Body */}
         <ScrollView
           style={styles.scrollArea}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
@@ -1095,7 +1096,7 @@ export default function NewExpenseModal() {
         </View>
 
         {/* Floating Bottom Sticky Action Button */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           {isEditMode && !hasChanges && (
             <View style={styles.unchangedPillWrap}>
               <View style={styles.unchangedDot} />

@@ -557,13 +557,13 @@ export default function GroupDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
       <StatusBar style="light" />
 
       {/* Scrollable Content Stream (Rendered first so floating overlays sit on top of touch hierarchy) */}
       <Animated.ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
@@ -1287,6 +1287,7 @@ export default function GroupDetailScreen() {
         style={[
           styles.fabContainer,
           {
+            bottom: Math.max(insets.bottom, 16) + 16,
             opacity: fabAnim,
             transform: [{ scale: fabAnim }],
           },

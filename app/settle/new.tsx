@@ -15,7 +15,7 @@ import {
   AppState,
   AppStateStatus,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   X,
@@ -87,6 +87,7 @@ export function sanitizeSettlementAmountInput(val: string): string {
 
 export default function SettleUpModal() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -529,7 +530,7 @@ export default function SettleUpModal() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* ── Top Header ── */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -584,7 +585,7 @@ export default function SettleUpModal() {
         style={styles.flexOne}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 160 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
@@ -766,7 +767,7 @@ export default function SettleUpModal() {
       </KeyboardAvoidingView>
 
       {/* ── 4. Bottom Dock: UPI Checkbox + Single Main Button ── */}
-      <View style={styles.bottomDock}>
+      <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 14) }]}>
         {/* UPI App Checkbox Row */}
         <TouchableOpacity
           style={[
