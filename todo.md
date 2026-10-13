@@ -1,6 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Dynamic Safe Area Bottom Inset Handling for Bottom Navigation, Buttons & Docks (`app/(tabs)/_layout.tsx`, `app/groups/[id]/index.tsx`, `app/settle/new.tsx`, `app/settlements/[id].tsx`, `app/expenses/[id].tsx`, `app/expenses/new.tsx`, `app/settle/qr.tsx`, `app/support/[id].tsx`, `app/support/new.tsx`, `app/legal/delete-account.tsx`, `app/groups/new.tsx`)**:
+  - **Dynamic Bottom Navigation Bar Sizing (`app/(tabs)/_layout.tsx`)**:
+    - Integrated `useSafeAreaInsets` to compute dynamic `bottomInset = Math.max(insets.bottom, 10)` and `height: 54 + bottomInset`.
+    - Eliminated hardcoded `height: 64` which previously allowed the system bottom navigation bar (Android 3-button / gesture pill & iOS home indicator) to overlap tab icons and labels.
+  - **Edge-to-Edge List Fluidity with Elevated Bottom Actions ("Buttons & components, not lists")**:
+    - Removed restrictive outer `edges={['bottom']}` from screen containers holding scrollable lists, allowing lists to scroll edge-to-edge behind overlays without artificial bottom clipping or dead zones.
+    - Added dynamic `insets.bottom` padding to `contentContainerStyle` across all scrollviews and lists so items can always be scrolled fully above floating action buttons and docked bars.
+    - Positioned floating action buttons (`fabContainer` in `app/groups/[id]/index.tsx`) dynamically with `bottom: Math.max(insets.bottom, 16) + 16`.
+    - Added dynamic `insets.bottom` padding to fixed bottom docks and bars:
+      - Settle Up Bottom Dock (`app/settle/new.tsx`): `paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 14)`.
+      - Settlement & Expense Detail Comment Bars (`app/settlements/[id].tsx`, `app/expenses/[id].tsx`): `paddingBottom: Math.max(insets.bottom, 10)`.
+      - New Expense Sticky Action Bar (`app/expenses/new.tsx`): `paddingBottom: Math.max(insets.bottom, 12)`.
+      - Support Chat Reply Bar (`app/support/[id].tsx`): `paddingBottom: Math.max(insets.bottom, 12)`.
+      - UPI QR, Delete Account, Support Ticket, and New Group action screens.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Strict Max .2f Limit & Exact Value Recording for Settlements (`app/settle/new.tsx`, `app/settle/qr.tsx`, `app/settlements/[id].tsx`, `src/services/group.service.ts`, `src/services/settlement.service.ts`)**:
   - **Strict `.2f` Input Sanitization (`sanitizeSettlementAmountInput`)**:
     - Built a robust, real-time input sanitization helper enforcing a hard cap of at most 2 decimal places (`.2f`).
