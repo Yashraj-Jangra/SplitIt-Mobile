@@ -21,7 +21,6 @@ import {
   Settings,
   Plus,
   Search,
-  Zap,
   Utensils,
   Sparkles,
   Receipt,
@@ -889,7 +888,26 @@ export default function GroupDetailScreen() {
                         const toAvatar = toMember?.avatarUrl;
 
                         return (
-                          <View key={index} style={styles.simplifiedTransferCard}>
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.simplifiedTransferCard}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              router.push({
+                                pathname: '/settle/new',
+                                params: {
+                                  groupId: group?.id || targetId,
+                                  debtorId: debt.fromUserId,
+                                  debtorName: fromDisplayName,
+                                  creditorId: debt.toUserId,
+                                  creditorName: toDisplayName,
+                                  amount: debt.amount.toString(),
+                                  upiId: toMember?.upiId || 'rohit@okhdfc',
+                                },
+                              });
+                            }}
+                          >
                             <View style={styles.transferFlowRow}>
                               {/* Debtor (From) */}
                               <View style={styles.transferPartyCol}>
@@ -903,7 +921,11 @@ export default function GroupDetailScreen() {
                                   )}
                                 </View>
                                 <View style={styles.transferNameBadge}>
-                                  <Text style={styles.transferNameText} numberOfLines={1}>
+                                  <Text
+                                    style={styles.transferNameText}
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                  >
                                     {fromDisplayName}
                                   </Text>
                                   {isFromViewer && (
@@ -927,7 +949,11 @@ export default function GroupDetailScreen() {
                               {/* Creditor (To) */}
                               <View style={[styles.transferPartyCol, styles.transferPartyColRight]}>
                                 <View style={[styles.transferNameBadge, styles.transferNameBadgeRight]}>
-                                  <Text style={styles.transferNameText} numberOfLines={1}>
+                                  <Text
+                                    style={styles.transferNameText}
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                  >
                                     {toDisplayName}
                                   </Text>
                                   {isToViewer && (
@@ -946,32 +972,8 @@ export default function GroupDetailScreen() {
                                   )}
                                 </View>
                               </View>
-
-                              {/* Settle Action */}
-                              <TouchableOpacity
-                                style={styles.settleButton}
-                                activeOpacity={0.8}
-                                onPress={() => {
-                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                  router.push({
-                                    pathname: '/settle/new',
-                                    params: {
-                                      groupId: group?.id || targetId,
-                                      debtorId: debt.fromUserId,
-                                      debtorName: fromDisplayName,
-                                      creditorId: debt.toUserId,
-                                      creditorName: toDisplayName,
-                                      amount: debt.amount.toString(),
-                                      upiId: toMember?.upiId || 'rohit@okhdfc',
-                                    },
-                                  });
-                                }}
-                              >
-                                <Zap size={11} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-                                <Text style={styles.settleButtonText}>Settle</Text>
-                              </TouchableOpacity>
                             </View>
-                          </View>
+                          </TouchableOpacity>
                         );
                       })
                     )}
@@ -1874,7 +1876,8 @@ const styles = StyleSheet.create({
   },
   simplifiedTransferCard: {
     backgroundColor: THEME.colors.surface,
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderRadius: THEME.radius.lg,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
@@ -1883,7 +1886,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6,
+    gap: 8,
   },
   transferPartyCol: {
     flex: 1,
@@ -1909,12 +1912,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: THEME.colors.text,
+    flexShrink: 1,
   },
   transferCenterCol: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 2,
-    minWidth: 62,
+    paddingHorizontal: 6,
+    minWidth: 68,
   },
   transferCenterAmount: {
     fontSize: 13,
@@ -1925,21 +1929,6 @@ const styles = StyleSheet.create({
   transferArrowPill: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  settleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: THEME.radius.md,
-    marginLeft: 4,
-  },
-  settleButtonText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: THEME.colors.primaryForeground,
   },
 
   // Empty / Settled States
