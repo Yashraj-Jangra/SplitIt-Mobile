@@ -59,7 +59,7 @@ export default function SettlementDetailScreen() {
   const [settlement, setSettlement] = useState<SettlementDetailModel | null>(() => {
     const inMem = settlementService.getInMemorySettlementDetails(settlementId);
     if (inMem) return inMem;
-    const parsedAmt = parseFloat(params.amount || '0') || 0;
+    const parsedAmt = Math.round((parseFloat(params.amount || '0') || 0) * 100) / 100;
     return {
       id: settlementId,
       groupId: rawGroupId,
@@ -184,7 +184,7 @@ export default function SettlementDetailScreen() {
     }, 200);
   };
 
-  const rawAmount = settlement?.amount || parseFloat(params.amount || '0') || 0;
+  const rawAmount = Math.round((settlement?.amount || parseFloat(params.amount || '0') || 0) * 100) / 100;
   const amountStr = rawAmount.toFixed(2);
   const [whole, decimal] = amountStr.split('.');
   const amountParts = { whole: Number(whole).toLocaleString('en-IN'), decimal };

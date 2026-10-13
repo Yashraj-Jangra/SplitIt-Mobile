@@ -38,7 +38,7 @@ export default function UpiQrModal() {
   const payeeId = params.payeeId || '';
   const payeeName = params.payeeName || 'Recipient';
   const upiId = params.upiId?.trim() || '';
-  const amount = parseFloat(params.amount || '0') || 0;
+  const amount = Math.round((parseFloat(params.amount || '0') || 0) * 100) / 100;
   const notes = params.notes || 'SplitIt settlement';
 
   const [copied, setCopied] = useState(false);

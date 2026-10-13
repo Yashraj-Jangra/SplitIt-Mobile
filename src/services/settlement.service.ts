@@ -311,6 +311,7 @@ export const settlementService = {
   },
 
   async deleteSettlement(settlementId: string, groupId: string): Promise<{ success: boolean; error?: string }> {
+    const cachedDetail = _cachedSettlementDetailsMap.get(settlementId);
     try {
       const token = await authService.getToken();
       if (token) {
@@ -324,6 +325,16 @@ export const settlementService = {
         });
         if (res.ok) {
           _cachedSettlementDetailsMap.delete(settlementId);
+          await storageService.removeItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId));
+          if (cachedDetail) {
+            await groupService.removeRecordedSettlement(
+              settlementId,
+              groupId,
+              cachedDetail.amount,
+              cachedDetail.payer.id,
+              cachedDetail.payee.id
+            );
+          }
           return { success: true };
         }
         const data = await res.json().catch(() => ({}));
@@ -333,6 +344,16 @@ export const settlementService = {
       return { success: false, error: err?.message || 'Network error' };
     }
     _cachedSettlementDetailsMap.delete(settlementId);
+    await storageService.removeItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId));
+    if (cachedDetail) {
+      await groupService.removeRecordedSettlement(
+        settlementId,
+        groupId,
+        cachedDetail.amount,
+        cachedDetail.payer.id,
+        cachedDetail.payee.id
+      );
+    }
     return { success: true };
   },
 
@@ -353,8 +374,9 @@ export const settlementService = {
     return newLog;
   },
 
-  async recordSettlement(params: RecordSettlementParams): Promise<{ success: boolean; error?: string }> {
+  async recordSettlement(params: RecordSettlementParams): Promise<{ success: boolean; error?: string; settlementId?: string }> {
     try {
+      const exactAmount = Math.round(Number(params.amount) * 100) / 100;
       const token = await authService.getToken();
       if (token) {
         const payload = {
@@ -365,7 +387,7 @@ export const settlementService = {
           payerName: params.payerName,
           payeeId: params.payeeId,
           payeeName: params.payeeName,
-          amount: params.amount,
+          amount: exactAmount,
           method: params.method || 'cash',
           notes: params.notes,
         };
@@ -381,7 +403,66 @@ export const settlementService = {
         });
 
         if (res.ok) {
-          return { success: true };
+          const resData = await res.json().catch(() => ({}));
+          const settlementId = resData.id || `stl_${Date.now()}`;
+          const rawDate = new Date();
+
+          // 1. Pre-warm local settlement detail cache with exact amount
+          const detailModel: SettlementDetailModel = {
+            id: settlementId,
+            groupId: params.groupId,
+            groupName: 'Settlement',
+            amount: exactAmount,
+            currency: 'INR',
+            date: 'Today',
+            rawDate: rawDate.toISOString(),
+            createdAt: rawDate.toISOString(),
+            method: params.method || 'cash',
+            notes: params.notes || undefined,
+            payer: {
+              id: params.payerId,
+              name: params.payerName,
+            },
+            payee: {
+              id: params.payeeId,
+              name: params.payeeName,
+            },
+            recordedBy: {
+              id: params.payerId,
+              name: params.payerName,
+            },
+            logs: [
+              {
+                id: `log_init_${settlementId}`,
+                type: 'expense_created',
+                actorName: params.payerName,
+                timestamp: 'Today',
+                timeAgo: 'Just now',
+                description: `Settlement recorded: ${params.payerName} paid ${params.payeeName} ₹${exactAmount.toFixed(2)}.`,
+              },
+            ],
+          };
+          _cachedSettlementDetailsMap.set(settlementId, detailModel);
+          await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId), detailModel);
+
+          // 2. Pre-warm and update local group activity and balances with exact amount
+          await groupService.applyRecordedSettlement({
+            id: settlementId,
+            groupId: params.groupId,
+            amount: exactAmount,
+            currency: 'INR',
+            date: 'Today',
+            rawDate: rawDate.toISOString(),
+            payerId: params.payerId,
+            payerName: params.payerName,
+            payeeId: params.payeeId,
+            payeeName: params.payeeName,
+            method: params.method || 'cash',
+            notes: params.notes,
+            createdAt: rawDate.toISOString(),
+          });
+
+          return { success: true, settlementId };
         }
         const data = await res.json().catch(() => ({}));
         return { success: false, error: data.error || 'Failed to record settlement' };

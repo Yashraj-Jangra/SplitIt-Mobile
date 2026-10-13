@@ -43,6 +43,48 @@ import { useNetwork } from '../../src/contexts/network.context';
 import { launchUpiPayment } from '../../src/utils/upi';
 import * as Haptics from 'expo-haptics';
 
+/**
+ * Sanitizes settlement numeric input with strict max .2f limit.
+ * - Replaces commas with dots
+ * - Strips all invalid characters
+ * - Converts leading dot to '0.'
+ * - Enforces strict maximum of 2 decimal places (blocks typing a 3rd decimal place)
+ * - Normalizes leading zeros without affecting decimals (e.g. '05' -> '5', but keeps '0' and '0.xx')
+ */
+export function sanitizeSettlementAmountInput(val: string): string {
+  if (!val) return '';
+  // 1. Convert commas to dots
+  let cleaned = val.replace(/,/g, '.');
+
+  // 2. Strip anything that is not a digit or decimal point
+  cleaned = cleaned.replace(/[^0-9.]/g, '');
+
+  // 3. Prepend 0 if starting with a dot (e.g. ".5" -> "0.5")
+  if (cleaned.startsWith('.')) {
+    cleaned = '0' + cleaned;
+  }
+
+  // 4. Handle decimal point and enforce strict maximum of 2 decimal places (.2f)
+  const dotIndex = cleaned.indexOf('.');
+  if (dotIndex !== -1) {
+    const intPart = cleaned.slice(0, dotIndex);
+    // Remove any additional dots from the decimal part
+    const decPart = cleaned.slice(dotIndex + 1).replace(/\./g, '');
+    // Strictly cap to at most 2 decimal digits (typing a 3rd digit is strictly blocked)
+    cleaned = `${intPart.slice(0, 10)}.${decPart.slice(0, 2)}`;
+  } else {
+    // Integer only: limit to 10 digits
+    cleaned = cleaned.slice(0, 10);
+  }
+
+  // 5. Clean unnecessary leading zeros (e.g. "05" -> "5", but keep "0", "0.xx")
+  if (cleaned.startsWith('0') && cleaned.length > 1 && !cleaned.startsWith('0.')) {
+    cleaned = cleaned.replace(/^0+/, '') || '0';
+  }
+
+  return cleaned;
+}
+
 export default function SettleUpModal() {
   const router = useRouter();
   const { requireOnline } = useNetwork();
@@ -77,8 +119,8 @@ export default function SettleUpModal() {
   const [receiverId, setReceiverId] = useState<string>(() => params.creditorId || '');
   const [activePicker, setActivePicker] = useState<'payer' | 'receiver' | null>(null);
 
-  // 3. Amount Field
-  const [amount, setAmount] = useState(params.amount || '');
+  // 3. Amount Field (strict .2f from initial params)
+  const [amount, setAmount] = useState(() => (params.amount ? sanitizeSettlementAmountInput(params.amount) : ''));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 4. Pay via UPI Selection (By default UNSELECTED)
@@ -257,9 +299,9 @@ export default function SettleUpModal() {
   const isUpiLocked = !receiverId || isReceiverViewer || !hasUpiId;
   const effectivePayViaUpi = payViaUpi && !isUpiLocked;
 
-  // Amount parsing
-  const sanitizedAmount = amount.replace(',', '.');
-  const numAmount = parseFloat(sanitizedAmount) || 0;
+  // Amount parsing (Strict .2f numeric match)
+  const sanitizedAmount = sanitizeSettlementAmountInput(amount);
+  const numAmount = Math.round((parseFloat(sanitizedAmount) || 0) * 100) / 100;
   const isValidAmount = numAmount > 0;
   const isValidParties = Boolean(payerId && receiverId && payerId !== receiverId);
   const isValidSubmit = isValidAmount && isValidParties;
@@ -323,6 +365,7 @@ export default function SettleUpModal() {
   };
 
   const handleOpenQr = () => {
+    const exactAmtStr = numAmount > 0 ? (Math.round(numAmount * 100) / 100).toFixed(2) : '0';
     router.push({
       pathname: '/settle/qr',
       params: {
@@ -332,7 +375,7 @@ export default function SettleUpModal() {
         payeeId: receiverMember?.id || '',
         payeeName: receiverDisplayName,
         upiId: receiverUpiId || '',
-        amount: numAmount > 0 ? numAmount.toString() : '0',
+        amount: exactAmtStr,
         notes: 'SplitIt settlement',
       },
     });
@@ -369,10 +412,11 @@ export default function SettleUpModal() {
   const effectivePayerId = payerMember?.id || '';
   const effectiveReceiverId = receiverMember?.id || '';
 
-  // Record settlement callback
+  // Record settlement callback (Enforces exact value matching with zero float drift)
   const performRecordSettlement = useCallback(
     async (amt: number, method: 'upi' | 'cash') => {
       setIsSubmitting(true);
+      const exactAmt = Math.round(amt * 100) / 100;
       try {
         const res = await settlementService.recordSettlement({
           groupId: targetGId,
@@ -380,7 +424,7 @@ export default function SettleUpModal() {
           payerName: payerDisplayName,
           payeeId: effectiveReceiverId,
           payeeName: receiverDisplayName,
-          amount: amt,
+          amount: exactAmt,
           method,
           notes: 'SplitIt settlement',
         });
@@ -415,7 +459,7 @@ export default function SettleUpModal() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert(
           'Confirm Payment',
-          `Did your UPI payment of ₹${numAmount.toLocaleString('en-IN')} to ${receiverDisplayName} complete successfully?`,
+          `Did your UPI payment of ₹${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to ${receiverDisplayName} complete successfully?`,
           [
             {
               text: 'No, Cancel',
@@ -676,8 +720,13 @@ export default function SettleUpModal() {
                     style={styles.amountUnderlineInput}
                     value={amount}
                     onChangeText={(val) => {
-                      const sanitized = val.replace(',', '.');
+                      const sanitized = sanitizeSettlementAmountInput(val);
                       setAmount(sanitized);
+                    }}
+                    onBlur={() => {
+                      if (amount.endsWith('.')) {
+                        setAmount(amount.slice(0, -1));
+                      }
                     }}
                     keyboardType="decimal-pad"
                     returnKeyType="done"

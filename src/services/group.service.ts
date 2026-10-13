@@ -143,6 +143,146 @@ export const groupService = {
   },
 
   /**
+   * Apply an exact-value recorded settlement to the in-memory and storage group caches.
+   * Ensures instant UI updates with zero float drift.
+   */
+  async applyRecordedSettlement(settlement: GroupSettlementItem): Promise<void> {
+    let group = _groupDetailsMap.get(settlement.groupId);
+    if (!group) {
+      group = (await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(settlement.groupId))) || undefined;
+    }
+    if (!group) return;
+
+    // 1. Ensure settlement is prepended to settlements list without duplicates
+    const existing = group.settlements || [];
+    if (!existing.some((s) => s.id === settlement.id)) {
+      group.settlements = [settlement, ...existing];
+    }
+
+    // 2. Adjust netBalances with exact values
+    const exactAmount = Math.round(Number(settlement.amount) * 100) / 100;
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
+
+    if (group.members && group.members.length > 0) {
+      group.members = group.members.map((m) => {
+        if (m.id === settlement.payerId) {
+          return {
+            ...m,
+            netBalance: Math.round(((m.netBalance || 0) + exactAmount) * 100) / 100,
+          };
+        }
+        if (m.id === settlement.payeeId) {
+          return {
+            ...m,
+            netBalance: Math.round(((m.netBalance || 0) - exactAmount) * 100) / 100,
+          };
+        }
+        return m;
+      });
+
+      // Recalculate simplified debts
+      const coreDebts = simplifyDebts(
+        group.members.map((m) => ({ user: { uid: m.id }, netBalance: m.netBalance }))
+      );
+      const nameMap = new Map(group.members.map((m) => [m.id, m.name]));
+      group.simplifiedDebts = coreDebts.map((d) => ({
+        fromUserId: d.from.uid,
+        fromName: nameMap.get(d.from.uid) || 'Member',
+        toUserId: d.to.uid,
+        toName: nameMap.get(d.to.uid) || 'Member',
+        amount: Math.round(d.amount * 100) / 100,
+        currency: 'INR',
+      }));
+
+      // Update yourNetBalance
+      const userMember = group.members.find((m) => m.id === currentUserId);
+      if (userMember) {
+        group.yourNetBalance = userMember.netBalance;
+      }
+    }
+
+    // Update in-memory and persistent storage
+    _groupDetailsMap.set(settlement.groupId, { ...group });
+    await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(settlement.groupId), group);
+
+    // Also update _cachedGroups if present
+    if (_cachedGroups.length > 0) {
+      _cachedGroups = _cachedGroups.map((g) => {
+        if (g.id === settlement.groupId) {
+          const delta =
+            settlement.payerId === currentUserId
+              ? exactAmount
+              : settlement.payeeId === currentUserId
+              ? -exactAmount
+              : 0;
+          return {
+            ...g,
+            userNetBalance: Math.round(((g.userNetBalance || 0) + delta) * 100) / 100,
+          };
+        }
+        return g;
+      });
+      await storageService.setItem(STORAGE_KEYS.GROUPS, _cachedGroups);
+    }
+  },
+
+  /**
+   * Remove a settlement from in-memory and storage group caches.
+   */
+  async removeRecordedSettlement(settlementId: string, groupId: string, amount: number, payerId: string, payeeId: string): Promise<void> {
+    const group = _groupDetailsMap.get(groupId);
+    if (!group) return;
+
+    if (group.settlements) {
+      group.settlements = group.settlements.filter((s) => s.id !== settlementId);
+    }
+
+    const exactAmount = Math.round(Number(amount) * 100) / 100;
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
+
+    if (group.members && group.members.length > 0) {
+      group.members = group.members.map((m) => {
+        if (m.id === payerId) {
+          return {
+            ...m,
+            netBalance: Math.round(((m.netBalance || 0) - exactAmount) * 100) / 100,
+          };
+        }
+        if (m.id === payeeId) {
+          return {
+            ...m,
+            netBalance: Math.round(((m.netBalance || 0) + exactAmount) * 100) / 100,
+          };
+        }
+        return m;
+      });
+
+      const coreDebts = simplifyDebts(
+        group.members.map((m) => ({ user: { uid: m.id }, netBalance: m.netBalance }))
+      );
+      const nameMap = new Map(group.members.map((m) => [m.id, m.name]));
+      group.simplifiedDebts = coreDebts.map((d) => ({
+        fromUserId: d.from.uid,
+        fromName: nameMap.get(d.from.uid) || 'Member',
+        toUserId: d.to.uid,
+        toName: nameMap.get(d.to.uid) || 'Member',
+        amount: Math.round(d.amount * 100) / 100,
+        currency: 'INR',
+      }));
+
+      const userMember = group.members.find((m) => m.id === currentUserId);
+      if (userMember) {
+        group.yourNetBalance = userMember.netBalance;
+      }
+    }
+
+    _groupDetailsMap.set(groupId, { ...group });
+    await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), group);
+  },
+
+  /**
    * Fast tick lookup of user groups from persistent offline storage (0ms cold boot).
    */
   async getCachedUserGroups(): Promise<GroupListItem[]> {
