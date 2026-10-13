@@ -20,7 +20,8 @@ import {
 import { THEME } from '../../src/constants/theme';
 import { storageService } from '../../src/services/storage.service';
 import { groupService } from '../../src/services/group.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
+import { useHaptics } from '../../src/contexts/haptics.context';
 
 interface CurrencyOption {
   code: string;
@@ -42,18 +43,15 @@ const CURRENCY_OPTIONS: CurrencyOption[] = [
 export default function PreferencesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { enabled: hapticsEnabled, setEnabled: setHapticsEnabled } = useHaptics();
 
   const [selectedCurrency, setSelectedCurrency] = useState('INR');
-  const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [defaultGroupName, setDefaultGroupName] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadPrefs() {
       const curr = await storageService.getCurrencyPreference();
       setSelectedCurrency(curr);
-
-      const haptics = await storageService.getHapticsPreference();
-      setHapticsEnabled(haptics);
 
       const defaultGroupId = await groupService.getDefaultGroupId();
       if (defaultGroupId) {
@@ -68,25 +66,20 @@ export default function PreferencesScreen() {
   }, []);
 
   const handleSelectCurrency = async (curr: string) => {
-    if (hapticsEnabled) {
-      Haptics.selectionAsync();
-    }
+    haptics.tap();
     setSelectedCurrency(curr);
     await storageService.setCurrencyPreference(curr);
   };
 
-  const handleToggleHaptics = async (enabled: boolean) => {
-    if (enabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    setHapticsEnabled(enabled);
-    await storageService.setHapticsPreference(enabled);
+  const handleToggleHaptics = async (val: boolean) => {
+    // Update context ref immediately so the tick below is the last haptic
+    // if disabling, or the first if enabling.
+    await setHapticsEnabled(val);
+    if (val) haptics.tick();
   };
 
   const handleClearDefaultGroup = async () => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    haptics.tap();
     await groupService.setDefaultGroupId(null);
     setDefaultGroupName(null);
     Alert.alert('Default Group Reset', 'Default group has been cleared.');
@@ -98,7 +91,7 @@ export default function PreferencesScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            if (hapticsEnabled) Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.backButton}

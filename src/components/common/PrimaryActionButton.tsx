@@ -9,7 +9,7 @@ import {
   StyleProp,
 } from 'react-native';
 import { Check } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '@/services/haptics.service';
 import { THEME } from '@/constants/theme';
 
 export interface PrimaryActionButtonProps {
@@ -56,7 +56,7 @@ export function PrimaryActionButton({
 
   const handlePress = () => {
     if (!isInteractive) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
     onPress();
   };
 

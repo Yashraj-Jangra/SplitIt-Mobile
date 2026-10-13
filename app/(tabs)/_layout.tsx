@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { Home, Users, Activity, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { THEME } from '../../src/constants/theme';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -32,7 +32,7 @@ export default function TabsLayout() {
       }}
       screenListeners={{
         tabPress: () => {
-          Haptics.selectionAsync();
+          haptics.tap();
         },
       }}
     >

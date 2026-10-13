@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ShieldCheck, Lock, EyeOff } from 'lucide-react-native';
+import { ArrowLeft, ShieldCheck } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
@@ -15,7 +15,7 @@ export default function PrivacyPolicyScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.headerButton}

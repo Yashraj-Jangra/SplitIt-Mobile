@@ -22,7 +22,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { authService } from '../../src/services/auth.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function SecuritySettingsScreen() {
   const router = useRouter();
@@ -50,12 +50,12 @@ export default function SecuritySettingsScreen() {
       return;
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.confirm();
     setIsUpdating(true);
     try {
       const res = await authService.changePassword(currentPassword, newPassword);
       if (res.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.saveSuccess();
         Alert.alert('Success', 'Your password has been changed successfully.');
         setCurrentPassword('');
         setNewPassword('');
@@ -76,7 +76,7 @@ export default function SecuritySettingsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.backButton}
@@ -217,7 +217,7 @@ export default function SecuritySettingsScreen() {
           <TouchableOpacity
             style={styles.deleteBtn}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              haptics.destructive();
               router.push('/legal/delete-account');
             }}
             activeOpacity={0.8}

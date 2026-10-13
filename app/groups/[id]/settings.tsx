@@ -16,7 +16,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, UserPlus, Archive, Trash2, Check } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
 import { groupService } from '../../../src/services/group.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../../src/services/haptics.service';
 
 export default function GroupSettingsScreen() {
   const router = useRouter();
@@ -53,16 +53,16 @@ export default function GroupSettingsScreen() {
   const handleSave = async () => {
     if (!groupName.trim() || isSaving) return;
     setIsSaving(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
     await groupService.updateGroup(targetId, { name: groupName.trim() });
     setIsSaving(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.saveSuccess();
     router.back();
   };
 
   const handleArchive = () => {
     if (isArchiving) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptics.warning();
     Alert.alert(
       'Archive Group',
       `Are you sure you want to archive "${groupName}"? It will be moved to archived groups.`,
@@ -75,7 +75,7 @@ export default function GroupSettingsScreen() {
             setIsArchiving(true);
             await groupService.archiveGroup(targetId);
             setIsArchiving(false);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            haptics.saveSuccess();
             router.replace('/(tabs)/groups');
           },
         },
@@ -85,7 +85,7 @@ export default function GroupSettingsScreen() {
 
   const handleDelete = () => {
     if (isDeleting) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptics.warning();
     Alert.alert(
       'Delete Group Permanently',
       `Are you sure you want to permanently delete "${groupName}" and all associated expenses? This action cannot be undone.`,
@@ -98,7 +98,7 @@ export default function GroupSettingsScreen() {
             setIsDeleting(true);
             await groupService.deleteGroup(targetId);
             setIsDeleting(false);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            haptics.saveSuccess();
             router.replace('/(tabs)/groups');
           },
         },
@@ -107,7 +107,7 @@ export default function GroupSettingsScreen() {
   };
 
   const handleInvite = () => {
-    Haptics.selectionAsync();
+    haptics.tap();
     if (typeof (Alert as any).prompt === 'function') {
       (Alert as any).prompt(
         'Invite Member',
@@ -127,7 +127,7 @@ export default function GroupSettingsScreen() {
                     email: trimmed,
                   },
                 ]);
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                haptics.saveSuccess();
               }
             },
           },
@@ -145,7 +145,7 @@ export default function GroupSettingsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.iconButton}

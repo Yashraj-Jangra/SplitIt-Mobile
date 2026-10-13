@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../services/haptics.service';
 import {
   Plus,
   Handshake,
@@ -466,7 +466,7 @@ export function GroupHistoryTab({
   }, [history]);
 
   const toggleAccordion = useCallback((eventId: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setExpandedEvents((prev) => ({
       ...prev,
       [eventId]: !prev[eventId],
@@ -476,15 +476,15 @@ export function GroupHistoryTab({
   const handleRestore = useCallback(async (event: HistoryEventItem) => {
     try {
       setRestoringId(event.id);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
 
       if (event.eventType === 'expense_deleted') {
         await groupService.restoreExpense(event.id, currentUser?.id || 'u1');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.saveSuccess();
         Alert.alert('Expense Restored', 'The expense has been successfully restored.');
       } else if (event.eventType === 'settlement_deleted') {
         await groupService.restoreSettlement(event.id, currentUser?.id || 'u1');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.saveSuccess();
         Alert.alert('Settlement Restored', 'The settlement has been successfully restored.');
       }
       onRefresh?.();
@@ -501,7 +501,7 @@ export function GroupHistoryTab({
       return;
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    haptics.destructive();
     Alert.alert(
       'Delete History Event?',
       'This is for admin use only. This action is permanent and will remove this event from the audit trail. Are you sure?',
@@ -514,7 +514,7 @@ export function GroupHistoryTab({
             try {
               setDeletingId(event.id);
               await groupService.deleteHistoryEvent(event.id);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              haptics.saveSuccess();
               Alert.alert('Deleted', 'History event has been permanently deleted.');
               onRefresh?.();
             } catch (err: any) {
@@ -529,7 +529,7 @@ export function GroupHistoryTab({
   }, [isAdmin, onRefresh]);
 
   const handleNavigateToExpense = useCallback((expenseId: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     if (onViewExpense) {
       onViewExpense(expenseId);
     } else {

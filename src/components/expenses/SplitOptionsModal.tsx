@@ -28,7 +28,7 @@ import {
   SplitType,
 } from '@splitit/core';
 import { THEME } from '../../constants/theme';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../services/haptics.service';
 
 export interface SplitParticipantItem {
   id: string;
@@ -273,7 +273,7 @@ export function SplitOptionsModal({
   }, [selectedCount, splitType, exactRemaining, percentageRemaining, totalShares]);
 
   const toggleSelectMember = (id: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setItems((prev) => {
       const updated = prev.map((p) => (p.id === id ? { ...p, selected: !p.selected } : p));
       const sel = updated.filter((p) => p.selected);
@@ -323,7 +323,7 @@ export function SplitOptionsModal({
   };
 
   const handleToggleAll = () => {
-    Haptics.selectionAsync();
+    haptics.tap();
     const shouldSelectAll = selectedCount < items.length;
     setItems((prev) => {
       const updated = prev.map((p) => ({ ...p, selected: shouldSelectAll }));
@@ -359,7 +359,7 @@ export function SplitOptionsModal({
   };
 
   const handleAutoBalancePercentage = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tick();
     const selected = items.filter((p) => p.selected);
     if (selected.length === 0) return;
     const lastMember = selected[selected.length - 1];
@@ -373,7 +373,7 @@ export function SplitOptionsModal({
   };
 
   const handleAutoBalanceExact = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tick();
     const selected = items.filter((p) => p.selected);
     if (selected.length === 0) return;
     const lastMember = selected[selected.length - 1];
@@ -388,7 +388,7 @@ export function SplitOptionsModal({
 
   // Tab switching with smooth animated underline
   const handleTabPress = (type: SplitType) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setSplitType(type);
     setErrorMessage(null);
 
@@ -411,7 +411,7 @@ export function SplitOptionsModal({
     const targetMode = MODES[pageIndex]?.type;
 
     if (targetMode && targetMode !== splitType) {
-      Haptics.selectionAsync();
+      haptics.tap();
       setSplitType(targetMode);
       setErrorMessage(null);
 
@@ -452,7 +452,7 @@ export function SplitOptionsModal({
 
   const handleConfirm = () => {
     if (selectedCount === 0) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       setErrorMessage('Please select at least one person to split with.');
       return;
     }
@@ -472,7 +472,7 @@ export function SplitOptionsModal({
     });
 
     if (validation) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       if (validation.field === 'participants') {
         if (validation.kind === 'amounts') {
           setErrorMessage(
@@ -489,7 +489,7 @@ export function SplitOptionsModal({
       return;
     }
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.saveSuccess();
 
     const updatedParticipants: SplitParticipantItem[] = items.map((p) => {
       const isSelected = p.selected;
@@ -797,7 +797,7 @@ export function SplitOptionsModal({
                                     ]}
                                     disabled={!isSelected}
                                     onPress={() => {
-                                      Haptics.selectionAsync();
+                                      haptics.tap();
                                       const cur = sharesInputs[p.id] || 1;
                                       setSharesInputs((prev) => ({
                                         ...prev,
@@ -824,7 +824,7 @@ export function SplitOptionsModal({
                                     ]}
                                     disabled={!isSelected}
                                     onPress={() => {
-                                      Haptics.selectionAsync();
+                                      haptics.tap();
                                       const cur = sharesInputs[p.id] || 1;
                                       setSharesInputs((prev) => ({
                                         ...prev,

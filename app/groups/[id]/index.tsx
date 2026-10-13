@@ -45,7 +45,7 @@ import {
   BudgetTabSkeleton,
 } from '../../../src/components/skeletons/GroupTabSkeleton';
 import { GroupHistoryTab } from '../../../src/components/groups/GroupHistoryTab';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../../src/services/haptics.service';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
 type TabType = typeof TABS[number];
@@ -206,13 +206,13 @@ export default function GroupDetailScreen() {
     setRefreshing(true);
     setVisibleExpenseCount(PAGE_SIZE);
     setVisibleActivityCount(PAGE_SIZE);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     loadGroup();
   };
 
   const handleTabChange = (tab: TabType) => {
     if (tab === activeTab) return;
-    Haptics.selectionAsync();
+    haptics.tap();
     const tabIndex = TABS.indexOf(tab);
 
     // 1. Snappy native spring sliding indicator pill
@@ -257,7 +257,7 @@ export default function GroupDetailScreen() {
   };
 
   const handleAddExpense = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.confirm();
 
     // Spring trigger on FAB: slight scale pulse & 45deg rotation
     Animated.spring(fabPressAnim, {
@@ -687,7 +687,7 @@ export default function GroupDetailScreen() {
                             key={entry.id}
                             style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
                             onPress={() => {
-                              Haptics.selectionAsync();
+                              haptics.tap();
                               router.push({
                                 pathname: '/expenses/[id]',
                                 params: {
@@ -738,7 +738,7 @@ export default function GroupDetailScreen() {
                           key={entry.id}
                           style={[styles.settlementRow, !isLast && styles.settlementRowBorder]}
                           onPress={() => {
-                            Haptics.selectionAsync();
+                            haptics.tap();
                             router.push({
                               pathname: '/settlements/[id]',
                               params: {
@@ -836,7 +836,7 @@ export default function GroupDetailScreen() {
                       <Switch
                         value={isSimplified}
                         onValueChange={(val) => {
-                          Haptics.selectionAsync();
+                          haptics.tap();
                           setIsSimplified(val);
                         }}
                         trackColor={{
@@ -893,7 +893,7 @@ export default function GroupDetailScreen() {
                             style={styles.simplifiedTransferCard}
                             activeOpacity={0.7}
                             onPress={() => {
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              haptics.tap();
                               router.push({
                                 pathname: '/settle/new',
                                 params: {
@@ -1184,7 +1184,7 @@ export default function GroupDetailScreen() {
             <TouchableOpacity
               style={styles.heroSettleBtn}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                haptics.tap();
                 router.push({
                   pathname: '/settle/new',
                   params: { groupId: group.id, defaultDebtorId: 'u2', defaultCreditorId: 'u1' },
@@ -1203,7 +1203,7 @@ export default function GroupDetailScreen() {
       <View style={[styles.heroTopBarFixed, { top: topInset }]}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.heroGlassBtn}
@@ -1232,7 +1232,7 @@ export default function GroupDetailScreen() {
         <View style={styles.heroTopBarActions}>
           <TouchableOpacity
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               const targetId = Array.isArray(id) ? id[0] : (id || group.id);
               router.push(`/groups/${targetId}/search`);
             }}
@@ -1244,7 +1244,7 @@ export default function GroupDetailScreen() {
 
           <TouchableOpacity
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              haptics.tap();
               router.push({
                 pathname: '/ai/chat',
                 params: { groupId: group.id, groupName: group.name },
@@ -1258,7 +1258,7 @@ export default function GroupDetailScreen() {
 
           <TouchableOpacity
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               router.push(`/groups/${id}/settings`);
             }}
             style={styles.heroGlassBtn}

@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, FileText, AlertTriangle } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function TermsOfServiceScreen() {
   const router = useRouter();
@@ -15,7 +15,7 @@ export default function TermsOfServiceScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.headerButton}
@@ -55,7 +55,7 @@ export default function TermsOfServiceScreen() {
 
         <Text style={styles.subheading}>3. Limitation of Liability</Text>
         <Text style={styles.paragraph}>
-          SplitIt provides mathematical split algorithms and AI suggestions on an "as-is" basis. While our calculations are rigorously tested, users are advised to verify large financial settlements prior to payment confirmation.
+          SplitIt provides mathematical split algorithms and AI suggestions on an &quot;as-is&quot; basis. While our calculations are rigorously tested, users are advised to verify large financial settlements prior to payment confirmation.
         </Text>
       </ScrollView>
     </SafeAreaView>

@@ -1,6 +1,6 @@
 import { Linking } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../services/haptics.service';
 
 export interface UpiPaymentParams {
   upiId: string;
@@ -53,7 +53,7 @@ export async function launchUpiPayment(params: UpiPaymentParams): Promise<boolea
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await Clipboard.setStringAsync(text);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.saveSuccess();
     return true;
   } catch {
     return false;

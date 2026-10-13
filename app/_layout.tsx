@@ -7,6 +7,7 @@ import { enableFreeze } from 'react-native-screens';
 import { THEME } from '../src/constants/theme';
 import { AuthProvider, useAuth } from '../src/contexts/auth.context';
 import { NetworkProvider } from '../src/contexts/network.context';
+import { HapticsProvider } from '../src/contexts/haptics.context';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { ErrorBoundary as AppErrorBoundary, ErrorFallbackView } from '../src/components/common/ErrorBoundary';
 import { notificationService } from '../src/services/notification.service';
@@ -239,12 +240,14 @@ export default function RootLayout() {
       <GestureHandlerRootView style={styles.container}>
         <SafeAreaProvider>
           <StatusBar style="light" />
-          <NetworkProvider>
-            <AuthProvider>
-              <OfflineBanner />
-              <NavigationGate />
-            </AuthProvider>
-          </NetworkProvider>
+          <HapticsProvider>
+            <NetworkProvider>
+              <AuthProvider>
+                <OfflineBanner />
+                <NavigationGate />
+              </AuthProvider>
+            </NetworkProvider>
+          </HapticsProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </AppErrorBoundary>

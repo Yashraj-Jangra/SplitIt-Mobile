@@ -17,7 +17,7 @@ import { buildUpiUrl, copyToClipboard } from '../../src/utils/upi';
 import { settlementService } from '../../src/services/settlement.service';
 import { groupService } from '../../src/services/group.service';
 import { useAuth } from '../../src/contexts/auth.context';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 
 export default function UpiQrModal() {
@@ -84,7 +84,7 @@ export default function UpiQrModal() {
       Alert.alert('Invalid Settlement', 'You cannot record a payment to yourself.');
       return;
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     setLoading(true);
 
     const res = await settlementService.recordSettlement({
@@ -100,13 +100,13 @@ export default function UpiQrModal() {
     setLoading(false);
 
     if (res.success) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.settleSuccess();
       if (params.groupId) {
         groupService.getGroupDetails(params.groupId).catch(() => {});
       }
       router.dismissAll();
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       Alert.alert('Error', res.error || 'Failed to record settlement');
     }
   };
@@ -117,7 +117,7 @@ export default function UpiQrModal() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.closeButton}

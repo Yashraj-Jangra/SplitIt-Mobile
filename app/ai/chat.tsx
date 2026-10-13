@@ -40,7 +40,7 @@ import {
   Cpu,
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
 
@@ -301,7 +301,7 @@ export default function AiChatModal() {
   );
 
   const handleStop = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.tap();
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -314,7 +314,7 @@ export default function AiChatModal() {
     const text = (promptToSend || input).trim();
     if (!text || isStreaming) return;
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     setInput('');
 
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -371,7 +371,7 @@ export default function AiChatModal() {
   };
 
   const handleApplyProposal = async (proposalId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.saveSuccess();
     await aiService.applyBudgetProposal(proposalId);
 
     setMessages((prev) =>
@@ -388,7 +388,7 @@ export default function AiChatModal() {
 
   const handleCopyMessage = async (msgId: string, text: string) => {
     await Clipboard.setStringAsync(text);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.saveSuccess();
     setCopiedMsgId(msgId);
     setTimeout(() => setCopiedMsgId(null), 2000);
   };
@@ -403,7 +403,7 @@ export default function AiChatModal() {
           text: 'Clear',
           style: 'destructive',
           onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            haptics.destructive();
             handleStop();
             setMessages([
               {
@@ -441,7 +441,7 @@ export default function AiChatModal() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.headerIconButton}
@@ -466,7 +466,7 @@ export default function AiChatModal() {
         <View style={styles.headerRightActions}>
           <TouchableOpacity
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              haptics.tap();
               setIsInfoModalVisible(true);
             }}
             style={styles.headerIconButton}
@@ -728,7 +728,7 @@ export default function AiChatModal() {
                 <TouchableOpacity
                   style={styles.chipDismissButton}
                   onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    haptics.tap();
                     setArePillsDismissed(true);
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

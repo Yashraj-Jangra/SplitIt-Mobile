@@ -23,7 +23,7 @@ import {
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 type FilterType = 'all' | 'owed' | 'owe' | 'archived';
 
@@ -63,7 +63,7 @@ export default function GroupsScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
     loadGroups();
   };
 
@@ -97,7 +97,7 @@ export default function GroupsScreen() {
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            haptics.tap();
             router.push('/groups/new');
           }}
           activeOpacity={0.8}
@@ -121,7 +121,7 @@ export default function GroupsScreen() {
         {searchQuery.length > 0 && (
           <TouchableOpacity
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               setSearchQuery('');
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -146,7 +146,7 @@ export default function GroupsScreen() {
               style={[styles.filterPill, isActive && styles.filterPillActive]}
               activeOpacity={0.7}
               onPress={() => {
-                Haptics.selectionAsync();
+                haptics.tap();
                 setActiveFilter(pill.id as FilterType);
               }}
             >
@@ -211,7 +211,7 @@ export default function GroupsScreen() {
                   style={styles.cinematicCard}
                   activeOpacity={0.9}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     router.push(`/groups/${group.id}`);
                   }}
                 >

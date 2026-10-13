@@ -46,7 +46,7 @@ import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import { useNetwork } from '../../src/contexts/network.context';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 interface FormSnapshot {
   amount: string;
@@ -109,7 +109,7 @@ export default function NewExpenseModal() {
   const handleClose = useCallback(() => {
     if (isClosing) return;
     setIsClosing(true);
-    Haptics.selectionAsync();
+    haptics.tap();
     Animated.timing(expandAnim, {
       toValue: 0,
       duration: 220,
@@ -557,14 +557,14 @@ export default function NewExpenseModal() {
   }, [expenseDate]);
 
   const handleToggleParticipant = (id: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setParticipants((prev) =>
       prev.map((p) => (p.id === id ? { ...p, selected: !p.selected } : p))
     );
   };
 
   const handleSelectGroup = async (groupId: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setSelectedGroupId(groupId);
 
     if (isDefaultGroupChecked && !isEditMode) {
@@ -635,25 +635,25 @@ export default function NewExpenseModal() {
   const handleSave = async () => {
     if (!requireOnline(isEditMode ? 'edit this expense' : 'create an expense')) return;
     if (!description.trim()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       Alert.alert('Missing Description', 'Please enter a description for this expense.');
       return;
     }
 
     if (numAmount <= 0) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       Alert.alert('Invalid Amount', 'Please enter a valid expense amount.');
       return;
     }
 
     if (!selectedGroupId) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       setShowGroupModal(true);
       return;
     }
 
     if (selectedParticipants.length === 0) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       Alert.alert('No Participants', 'Please select at least one person to split with.');
       return;
     }
@@ -672,7 +672,7 @@ export default function NewExpenseModal() {
     });
 
     if (validation) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       if (validation.field === 'payers') {
         Alert.alert(
           'Unbalanced Payers',
@@ -723,10 +723,10 @@ export default function NewExpenseModal() {
         });
 
         if (res.success) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptics.saveSuccess();
           handleClose();
         } else {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics.error();
           Alert.alert('Error', res.error || 'Failed to update expense.');
         }
       } else {
@@ -744,15 +744,15 @@ export default function NewExpenseModal() {
         });
 
         if (res.success) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptics.saveSuccess();
           handleClose();
         } else {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics.error();
           Alert.alert('Error', res.error || 'Failed to record expense.');
         }
       }
     } catch (e: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       Alert.alert('Error', e.message || 'An unexpected error occurred.');
     } finally {
       setIsSaving(false);
@@ -835,7 +835,7 @@ export default function NewExpenseModal() {
             {activeGroup ? (
               <TouchableOpacity
                 onPress={() => {
-                  Haptics.selectionAsync();
+                  haptics.tap();
                   setShowGroupModal(true);
                 }}
                 activeOpacity={0.7}
@@ -849,7 +849,7 @@ export default function NewExpenseModal() {
             ) : (
               <TouchableOpacity
                 onPress={() => {
-                  Haptics.selectionAsync();
+                  haptics.tap();
                   setShowGroupModal(true);
                 }}
                 activeOpacity={0.7}
@@ -863,7 +863,7 @@ export default function NewExpenseModal() {
           {!isEditMode && (
             <TouchableOpacity
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                haptics.tap();
                 router.push('/ai/scanner');
               }}
               style={styles.scanBtn}
@@ -889,7 +889,7 @@ export default function NewExpenseModal() {
             <TouchableOpacity
               style={styles.categoryIconBtn}
               onPress={() => {
-                Haptics.selectionAsync();
+                haptics.tap();
                 setShowCategoryModal(true);
               }}
               activeOpacity={0.7}
@@ -928,7 +928,7 @@ export default function NewExpenseModal() {
                 <TouchableOpacity
                   style={styles.aiSuggestionChip}
                   onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    haptics.tap();
                     setCategory(predictedCategory.sub);
                     setMasterCategory(predictedCategory.master);
                     setUserOverriddenCategory(true);
@@ -967,7 +967,7 @@ export default function NewExpenseModal() {
               <Text style={styles.sentenceText}>Paid by </Text>
               <TouchableOpacity
                 onPress={() => {
-                  Haptics.selectionAsync();
+                  haptics.tap();
                   setShowPayerModal(true);
                 }}
                 style={styles.sentenceTriggerPill}
@@ -981,7 +981,7 @@ export default function NewExpenseModal() {
 
               <TouchableOpacity
                 onPress={() => {
-                  Haptics.selectionAsync();
+                  haptics.tap();
                   setShowSplitModal(true);
                 }}
                 style={styles.sentenceTriggerPill}
@@ -1046,7 +1046,7 @@ export default function NewExpenseModal() {
             <TouchableOpacity
               style={[styles.accessoryPill, showDateModal && styles.accessoryPillActive]}
               onPress={() => {
-                Haptics.selectionAsync();
+                haptics.tap();
                 setShowDateModal(true);
               }}
               activeOpacity={0.7}
@@ -1058,7 +1058,7 @@ export default function NewExpenseModal() {
             <TouchableOpacity
               style={[styles.accessoryPill, (showNotesInput || notes) && styles.accessoryPillActive]}
               onPress={() => {
-                Haptics.selectionAsync();
+                haptics.tap();
                 setShowNotesInput((prev) => !prev);
               }}
               activeOpacity={0.7}
@@ -1084,7 +1084,7 @@ export default function NewExpenseModal() {
               />
               <TouchableOpacity
                 onPress={() => {
-                  Haptics.selectionAsync();
+                  haptics.tap();
                   setShowNotesInput(false);
                 }}
                 style={styles.inlineNoteDoneBtn}
@@ -1183,7 +1183,7 @@ export default function NewExpenseModal() {
               <TouchableOpacity
                 style={styles.defaultToggleCard}
                 onPress={() => {
-                  Haptics.selectionAsync();
+                  haptics.tap();
                   setIsDefaultGroupChecked((prev) => !prev);
                 }}
                 activeOpacity={0.8}
@@ -1318,7 +1318,7 @@ export default function NewExpenseModal() {
                                 key={sub}
                                 style={[styles.categoryChoicePill, isSelected && styles.categoryChoiceActive]}
                                 onPress={() => {
-                                  Haptics.selectionAsync();
+                                  haptics.tap();
                                   setUserOverriddenCategory(true);
                                   setCategory(sub);
                                   setMasterCategory(master);
@@ -1375,7 +1375,7 @@ export default function NewExpenseModal() {
                       key={item.label}
                       style={[styles.dateChoiceRow, isSelected && styles.dateChoiceRowActive]}
                       onPress={() => {
-                        Haptics.selectionAsync();
+                        haptics.tap();
                         setExpenseDate(item.date);
                         setShowDateModal(false);
                       }}

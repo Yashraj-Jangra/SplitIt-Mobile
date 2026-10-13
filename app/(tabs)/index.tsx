@@ -31,7 +31,7 @@ import { BalanceSkeleton } from '../../src/components/skeletons/BalanceSkeleton'
 import { TransactionRowSkeleton } from '../../src/components/skeletons/TransactionRowSkeleton';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -97,13 +97,13 @@ export default function HomeScreen() {
 
   const handleAddExpense = () => {
     if (!requireOnline('create an expense')) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     router.push('/expenses/new');
   };
 
   const handleSettleUp = () => {
     if (!requireOnline('record settlements')) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     router.push('/settle/new');
   };
 
@@ -144,7 +144,7 @@ export default function HomeScreen() {
               style={styles.aiPill}
               activeOpacity={0.8}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                haptics.tap();
                 router.push('/ai/chat');
               }}
             >
@@ -156,7 +156,7 @@ export default function HomeScreen() {
               style={styles.iconCircle}
               activeOpacity={0.7}
               onPress={() => {
-                Haptics.selectionAsync();
+                haptics.tap();
                 router.push('/notifications');
               }}
             >
@@ -306,7 +306,7 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Your Groups</Text>
             <TouchableOpacity
               onPress={() => {
-                Haptics.selectionAsync();
+                haptics.tap();
                 router.push('/(tabs)/groups');
               }}
               style={styles.seeAllBtn}
@@ -328,7 +328,7 @@ export default function HomeScreen() {
                   style={styles.groupPebble}
                   activeOpacity={0.8}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     router.push(`/groups/${group.id}`);
                   }}
                 >
@@ -370,7 +370,7 @@ export default function HomeScreen() {
           style={styles.aiInsightCard}
           activeOpacity={0.8}
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            haptics.tap();
             router.push('/ai/chat');
           }}
         >
@@ -405,7 +405,7 @@ export default function HomeScreen() {
                     style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
                     activeOpacity={0.7}
                     onPress={() => {
-                      Haptics.selectionAsync();
+                      haptics.tap();
                       router.push({
                         pathname: '/expenses/[id]',
                         params: {

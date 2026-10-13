@@ -31,7 +31,7 @@ import { THEME } from '../../src/constants/theme';
 import { settlementService, SettlementDetailModel } from '../../src/services/settlement.service';
 import { authService } from '../../src/services/auth.service';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 
@@ -147,7 +147,7 @@ export default function SettlementDetailScreen() {
 
   const handleDelete = () => {
     if (!requireOnline('delete a settlement')) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptics.warning();
     Alert.alert(
       'Delete Settlement',
       'Are you sure you want to delete this settlement? All group balances will be recalculated.',
@@ -159,7 +159,7 @@ export default function SettlementDetailScreen() {
           onPress: async () => {
             const targetGroupId = settlement?.groupId || groupId;
             await settlementService.deleteSettlement(settlementId, targetGroupId);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            haptics.destructive();
             router.back();
           },
         },
@@ -173,7 +173,7 @@ export default function SettlementDetailScreen() {
     if (!text || isSendingComment) return;
 
     setIsSendingComment(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
 
     const newLog = await settlementService.addSettlementComment(settlementId, text);
     setSettlement((prev) => (prev ? { ...prev, logs: [...prev.logs, newLog] } : prev));
@@ -220,7 +220,7 @@ export default function SettlementDetailScreen() {
       <View style={styles.pinnedHeader}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.frostedIconButton}

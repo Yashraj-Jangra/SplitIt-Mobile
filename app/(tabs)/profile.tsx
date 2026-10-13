@@ -19,7 +19,7 @@ import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import { storageService } from '../../src/services/storage.service';
 import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 interface SettingsItem {
   icon: React.ElementType;
@@ -43,7 +43,7 @@ export default function ProfileScreen() {
   );
 
   const handleLogout = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     Alert.alert('Log Out', 'Are you sure you want to log out of SplitIt?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -161,7 +161,7 @@ export default function ProfileScreen() {
               key={item.title}
               style={[styles.itemRow, !isLast && styles.itemRowBorder]}
               onPress={() => {
-                Haptics.selectionAsync();
+                haptics.tap();
                 item.onPress();
               }}
               activeOpacity={0.7}

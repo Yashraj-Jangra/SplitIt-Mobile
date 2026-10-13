@@ -15,11 +15,6 @@ import {
   Bell,
   Smartphone,
   Mail,
-  Receipt,
-  Handshake,
-  Users,
-  Sparkles,
-  HelpCircle,
   Check,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
@@ -28,7 +23,7 @@ import {
   UserNotificationPreferences,
   DEFAULT_NOTIFICATION_PREFERENCES,
 } from '../../src/services/notification.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function NotificationPreferencesScreen() {
   const router = useRouter();
@@ -49,7 +44,7 @@ export default function NotificationPreferencesScreen() {
 
   const triggerSave = async (updated: UserNotificationPreferences) => {
     setPrefs(updated);
-    Haptics.selectionAsync();
+    haptics.tick();
     await notificationService.updatePreferences(updated);
     setSavedBanner(true);
     setTimeout(() => setSavedBanner(false), 2000);
@@ -81,7 +76,7 @@ export default function NotificationPreferencesScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.headerButton}

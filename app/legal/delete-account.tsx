@@ -13,11 +13,11 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Trash2, AlertTriangle, ShieldAlert } from 'lucide-react-native';
+import { ArrowLeft, Trash2, ShieldAlert } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import { authService, API_BASE_URL } from '../../src/services/auth.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -32,7 +32,7 @@ export default function DeleteAccountScreen() {
   const handleDeleteAccount = async () => {
     if (!isConfirmed || isDeleting) return;
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptics.warning();
 
     Alert.alert(
       'Final Confirmation',
@@ -56,7 +56,7 @@ export default function DeleteAccountScreen() {
               });
 
               if (res.ok) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                haptics.destructive();
                 await signOut();
                 router.replace('/(auth)/login');
               } else {
@@ -80,7 +80,7 @@ export default function DeleteAccountScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.headerButton}
@@ -132,7 +132,7 @@ export default function DeleteAccountScreen() {
           ) : null}
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>TYPE "DELETE" TO CONFIRM</Text>
+            <Text style={styles.inputLabel}>{'TYPE "DELETE" TO CONFIRM'}</Text>
             <TextInput
               style={styles.textInput}
               value={confirmationInput}

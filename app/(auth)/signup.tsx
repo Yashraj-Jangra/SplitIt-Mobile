@@ -21,7 +21,7 @@ import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import { GoogleLogo } from '../../src/components/brand/GoogleLogo';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 const HERO_IMAGE_HEIGHT = 190;
 
@@ -103,24 +103,24 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       setError('Please fill in all required fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       setError('Passwords do not match');
       return;
     }
 
     if (password.length < 8) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       setError('Password must be at least 8 characters long');
       return;
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
     setLoading(true);
     setError(null);
 
@@ -128,16 +128,16 @@ export default function SignupScreen() {
     setLoading(false);
 
     if (res.success) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.saveSuccess();
       router.replace('/(tabs)');
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       setError(res.error || 'Failed to create account. Please try again.');
     }
   };
 
   const handleGoogleSignup = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
     setGoogleLoading(true);
     setError(null);
 
@@ -145,10 +145,10 @@ export default function SignupScreen() {
     setGoogleLoading(false);
 
     if (res.success) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.saveSuccess();
       router.replace('/(tabs)');
     } else if (res.error && res.error !== 'Google sign-in was canceled') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       setError(res.error);
     }
   };
@@ -283,7 +283,7 @@ export default function SignupScreen() {
                 />
                 <TouchableOpacity
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     setShowPassword(!showPassword);
                   }}
                   style={styles.eyeButton}
@@ -362,7 +362,7 @@ export default function SignupScreen() {
               {Platform.OS === 'ios' && (
                 <TouchableOpacity
                   style={styles.appleButton}
-                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                  onPress={() => haptics.tap()}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.appleButtonText}> Continue with Apple</Text>
@@ -375,7 +375,7 @@ export default function SignupScreen() {
               <Text style={styles.footerText}>Already have an account?</Text>
               <TouchableOpacity
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  haptics.tap();
                   router.back();
                 }}
               >

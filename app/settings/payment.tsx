@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, QrCode, Check, ExternalLink } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 const UPI_SUFFIXES = ['@okaxis', '@okhdfc', '@paytm', '@ybl', '@ibl'];
 
@@ -31,7 +31,7 @@ export default function PaymentSettingsScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSuffixPick = (suffix: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     const prefix = upiId.includes('@') ? upiId.split('@')[0] : upiId || (user?.email ? user.email.split('@')[0] : 'user');
     setUpiId(`${prefix}${suffix}`);
   };
@@ -47,12 +47,12 @@ export default function PaymentSettingsScreen() {
       return;
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
     setIsSaving(true);
     try {
       const updated = await updateUserProfile({ upiId: trimmed });
       if (updated) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.saveSuccess();
         Alert.alert('Saved', 'Your UPI ID has been updated.');
       } else {
         Alert.alert('Failed', 'Could not save UPI ID. Please try again.');
@@ -65,7 +65,7 @@ export default function PaymentSettingsScreen() {
   };
 
   const handlePreviewQr = () => {
-    Haptics.selectionAsync();
+    haptics.tap();
     router.push('/settings/my-qr');
   };
 
@@ -75,7 +75,7 @@ export default function PaymentSettingsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.backButton}

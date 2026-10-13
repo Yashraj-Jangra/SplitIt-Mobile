@@ -22,7 +22,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { supportService, SupportTicketItem } from '../../src/services/support.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function SupportTicketsScreen() {
   const router = useRouter();
@@ -38,12 +38,21 @@ export default function SupportTicketsScreen() {
   };
 
   useEffect(() => {
-    loadTickets();
+    let isMounted = true;
+    supportService.getTickets().then((list) => {
+      if (isMounted) {
+        setTickets(list);
+        setLoading(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     loadTickets();
   };
 
@@ -86,7 +95,7 @@ export default function SupportTicketsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.headerButton}
@@ -98,7 +107,7 @@ export default function SupportTicketsScreen() {
 
         <TouchableOpacity
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            haptics.tap();
             router.push('/support/new');
           }}
           style={styles.newButton}
@@ -144,7 +153,7 @@ export default function SupportTicketsScreen() {
               <MessageSquare size={36} color={THEME.colors.textMuted} />
               <Text style={styles.emptyTitle}>No support tickets</Text>
               <Text style={styles.emptySubtitle}>
-                Have a question or encounter a bug? Tap "New" above to submit a ticket.
+                Have a question or encounter a bug? Tap &quot;New&quot; above to submit a ticket.
               </Text>
             </View>
           ) : (
@@ -156,7 +165,7 @@ export default function SupportTicketsScreen() {
                   key={t.id}
                   style={styles.ticketCard}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     router.push({
                       pathname: '/support/[id]',
                       params: { id: t.id },

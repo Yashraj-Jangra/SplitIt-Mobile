@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../services/haptics.service';
 
 interface NetworkContextValue {
   isOnline: boolean;
@@ -52,7 +52,7 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   const requireOnline = useCallback(
     (actionName: string = 'modify records') => {
       if (!isOnline) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        haptics.networkDown();
         Alert.alert(
           'Offline Mode',
           `You are currently offline. Please reconnect to the internet to ${actionName}.`,

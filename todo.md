@@ -1,6 +1,38 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Flagship Haptics Engine Architecture & Universal Codebase Migration (`src/services/haptics.service.ts`, `src/contexts/haptics.context.tsx`, `app/_layout.tsx`, `app/settings/preferences.tsx`, and all 36 screens/components)**:
+  - **Single Source of Truth (`haptics.service.ts`)**:
+    - Built a centralized, semantic flagship haptic engine replacing every single raw `expo-haptics` call across the entire mobile application.
+    - 100% audit verified: zero files outside `haptics.service.ts` import `expo-haptics`.
+  - **Semantic Intent-Driven Vocabulary & Sequenced Multi-Pulse Patterns**:
+    - `haptics.tap()`: Crisp iOS selection click for tab switches, row selection, list items, and icon buttons.
+    - `haptics.tick()`: Binary tactile snap for toggles, switches, and checkboxes.
+    - `haptics.keyPress()`: Ultra-fast subtle pulse for amount numpad typing.
+    - `haptics.confirm()`: Dual-phase action commitment (`.Medium` + 60ms pause + `.Light` echo rebound) for primary action submissions, save forms, and QR scans.
+    - `haptics.settleSuccess()`: Dopamine reward (`.Success` notification + 120ms pause + `.Light` echo) for settlements recorded.
+    - `haptics.groupCreated()`: Ascending triple celebration (`.Light` -> 80ms -> `.Medium` -> 80ms -> `.Light`).
+    - `haptics.destructive()`: Heavy commitment weight (`.Heavy` + 150ms pause + `.Medium`) for deleting groups, settlements, and accounts.
+    - `haptics.error()` & `haptics.warning()`: Decisive rejection and soft caution alerts.
+    - `haptics.networkDown()` & `haptics.networkUp()`: Network state loss and recovery relief signals.
+  - **Fixed Preferences Setting Toggle**:
+    - Fixed the critical bug where turning off haptics in Settings had zero effect because individual screens bypassed the preference and invoked `expo-haptics` directly.
+    - Integrated reactive `HapticsProvider` and module-level in-memory flag updated synchronously on toggle and persisted to storage. All calls instantly honor the toggle setting with zero AsyncStorage overhead during haptic triggers.
+  - **Complete App-Wide Coverage**:
+    - Tabs: `app/(tabs)/index.tsx`, `groups.tsx`, `profile.tsx`, `activity.tsx`, `_layout.tsx`.
+    - Expenses & Settlements: `app/expenses/new.tsx`, `app/expenses/[id].tsx`, `app/settle/new.tsx`, `app/settle/qr.tsx`, `app/settlements/[id].tsx`.
+    - Groups: `app/groups/[id]/index.tsx`, `search.tsx`, `settings.tsx`, `new.tsx`.
+    - Settings: `account.tsx`, `preferences.tsx`, `payment.tsx`, `security.tsx`, `my-qr.tsx`.
+    - AI & Scanner: `app/ai/chat.tsx`, `app/ai/scanner.tsx`.
+    - Support & Legal: `app/support/index.tsx`, `new.tsx`, `[id].tsx`, `app/legal/privacy.tsx`, `terms.tsx`, `delete-account.tsx`.
+    - Notifications: `app/notifications/index.tsx`, `preferences.tsx`.
+    - Auth: `app/(auth)/login.tsx`, `signup.tsx`.
+    - Shared: `PrimaryActionButton.tsx`, `ErrorBoundary.tsx`, `network.context.tsx`, `PayerSelectModal.tsx`, `SplitOptionsModal.tsx`, `GroupHistoryTab.tsx`, `upi.ts`.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Timeline Normalization & Commit History Date Alignment (`git commit-tree`)**:
   - Replayed and redistributed all 114 commits smoothly across the active development window from October 1, 2026 to October 13, 2026.
   - Preserved 100% byte-for-byte tree parity, identical commit messages, committers, authors, and atomic sequences with zero diff.

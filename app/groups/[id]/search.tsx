@@ -24,7 +24,7 @@ import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../../src/utils/category-icons';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../../src/services/haptics.service';
 
 export default function GroupSearchScreen() {
   const router = useRouter();
@@ -70,7 +70,7 @@ export default function GroupSearchScreen() {
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               router.back();
             }}
             style={styles.backBtn}
@@ -94,7 +94,7 @@ export default function GroupSearchScreen() {
             {query.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
-                  Haptics.selectionAsync();
+                  haptics.tap();
                   setQuery('');
                 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -149,7 +149,7 @@ export default function GroupSearchScreen() {
                       key={exp.id}
                       style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
                       onPress={() => {
-                        Haptics.selectionAsync();
+                        haptics.tap();
                         router.push({
                           pathname: '/expenses/[id]',
                           params: {

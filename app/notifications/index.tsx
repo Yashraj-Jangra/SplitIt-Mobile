@@ -34,7 +34,7 @@ import {
   notificationService,
   InAppNotification,
 } from '../../src/services/notification.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 type NotificationCategoryTab = 'all' | 'expenses' | 'settlements' | 'reminders' | 'other';
 
@@ -62,12 +62,12 @@ export default function NotificationsCenterScreen() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     loadNotifications();
   };
 
   const handleMarkAllRead = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.saveSuccess();
     setNotifications((prev) =>
       prev.map((n) => ({ ...n, read: true, isRead: true }))
     );
@@ -75,7 +75,7 @@ export default function NotificationsCenterScreen() {
   };
 
   const handleMarkSingleRead = async (id: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true, isRead: true } : n))
     );
@@ -83,7 +83,7 @@ export default function NotificationsCenterScreen() {
   };
 
   const handleTapNotification = async (item: InAppNotification) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     const isUnread = item.isRead !== undefined ? !item.isRead : !item.read;
     if (isUnread) {
       setNotifications((prev) =>
@@ -252,7 +252,7 @@ export default function NotificationsCenterScreen() {
       <View style={styles.topBar}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.circleButton}
@@ -264,7 +264,7 @@ export default function NotificationsCenterScreen() {
         <View style={styles.topBarActions}>
           <TouchableOpacity
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               router.push('/notifications/preferences');
             }}
             style={styles.settingsButton}
@@ -316,7 +316,7 @@ export default function NotificationsCenterScreen() {
               activeTab === 'all' && styles.tabPillActive,
             ]}
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               setActiveTab('all');
             }}
             activeOpacity={0.75}
@@ -345,7 +345,7 @@ export default function NotificationsCenterScreen() {
               activeTab === 'expenses' && styles.tabPillActive,
             ]}
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               setActiveTab('expenses');
             }}
             activeOpacity={0.75}
@@ -374,7 +374,7 @@ export default function NotificationsCenterScreen() {
               activeTab === 'settlements' && styles.tabPillActive,
             ]}
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               setActiveTab('settlements');
             }}
             activeOpacity={0.75}
@@ -403,7 +403,7 @@ export default function NotificationsCenterScreen() {
               activeTab === 'reminders' && styles.tabPillActive,
             ]}
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               setActiveTab('reminders');
             }}
             activeOpacity={0.75}
@@ -432,7 +432,7 @@ export default function NotificationsCenterScreen() {
               activeTab === 'other' && styles.tabPillActive,
             ]}
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               setActiveTab('other');
             }}
             activeOpacity={0.75}

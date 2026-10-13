@@ -43,7 +43,7 @@ import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import {
   areParticipantsValid,
 } from '@splitit/core';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBreakdownSkeleton';
@@ -193,7 +193,7 @@ export default function ExpenseDetailScreen() {
 
   const handleDelete = () => {
     if (!requireOnline('delete an expense')) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptics.warning();
     Alert.alert(
       'Delete Expense',
       `Are you sure you want to delete "${expense?.title || params.title || 'this expense'}"? All group balances will be recalculated.`,
@@ -205,7 +205,7 @@ export default function ExpenseDetailScreen() {
             const amt = expense?.amount || parseFloat(params.amount || '0') || 0;
             const targetGroupId = expense?.groupId || groupId;
             await expenseService.deleteExpense(expenseId, targetGroupId, amt);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            haptics.saveSuccess();
             router.back();
           },
         },
@@ -215,7 +215,7 @@ export default function ExpenseDetailScreen() {
 
   const handleOpenEdit = () => {
     if (!requireOnline('edit this expense')) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     router.push({
       pathname: '/expenses/new',
       params: {
@@ -231,7 +231,7 @@ export default function ExpenseDetailScreen() {
     if (!text || isSendingComment) return;
 
     setIsSendingComment(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
 
     const newLog = await expenseService.addExpenseComment(expenseId, text);
     setExpense((prev) => (prev ? { ...prev, logs: [...prev.logs, newLog] } : prev));
@@ -245,7 +245,7 @@ export default function ExpenseDetailScreen() {
   };
 
   const handleReceiptAction = async () => {
-    Haptics.selectionAsync();
+    haptics.tap();
     if (expense?.receiptImageUrl) {
       setIsReceiptModalOpen(true);
     } else {
@@ -262,7 +262,7 @@ export default function ExpenseDetailScreen() {
                 quality: 0.8,
               });
               if (!res.canceled && res.assets?.[0]?.uri) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                haptics.saveSuccess();
                 setExpense((prev) => (prev ? { ...prev, receiptImageUrl: res.assets[0].uri } : prev));
                 Alert.alert('Receipt Attached', 'Receipt image has been saved to this expense.');
               }
@@ -475,7 +475,7 @@ export default function ExpenseDetailScreen() {
         <View style={styles.pinnedHeader}>
           <TouchableOpacity
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               router.back();
             }}
             style={styles.frostedIconButton}
@@ -509,7 +509,7 @@ export default function ExpenseDetailScreen() {
       <View style={styles.pinnedHeader}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.frostedIconButton}

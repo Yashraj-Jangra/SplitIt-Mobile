@@ -19,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react-native';
 import { calculateEqualAmounts } from '@splitit/core';
 import { THEME } from '../../constants/theme';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../services/haptics.service';
 
 export interface PayerMember {
   id: string;
@@ -144,7 +144,7 @@ export function PayerSelectModal({
   }, [remaining, sumOfPaid]);
 
   const handleSelectSingle = (id: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setSelectedSingleId(id);
     onConfirm({
       payerType: 'single',
@@ -155,7 +155,7 @@ export function PayerSelectModal({
   };
 
   const toggleSelectPayer = (userId: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setSelectedPayers((prev) => {
       const nextVal = !prev[userId];
       const nextPayers = { ...prev, [userId]: nextVal };
@@ -172,7 +172,7 @@ export function PayerSelectModal({
   };
 
   const handleToggleAllPayers = () => {
-    Haptics.selectionAsync();
+    haptics.tap();
     const shouldSelectAll = selectedPayersCount < members.length;
     const nextPayers: Record<string, boolean> = {};
     members.forEach((m) => {
@@ -186,7 +186,7 @@ export function PayerSelectModal({
   };
 
   const handleModeTabPress = (type: 'single' | 'multiple') => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setPayerType(type);
     setErrorMessage(null);
     const idx = type === 'multiple' ? 1 : 0;
@@ -204,7 +204,7 @@ export function PayerSelectModal({
     const pageIndex = Math.round(offsetX / width);
     const targetType = pageIndex === 1 ? 'multiple' : 'single';
     if (targetType !== payerType) {
-      Haptics.selectionAsync();
+      haptics.tap();
       setPayerType(targetType);
       setErrorMessage(null);
       Animated.spring(tabUnderlineAnim, {
@@ -234,7 +234,7 @@ export function PayerSelectModal({
   };
 
   const handleQuickAssignAll = (userId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tick();
     setSelectedPayers((prev) => ({ ...prev, [userId]: true }));
     setPayerAmounts({
       [userId]: totalAmount.toFixed(2),
@@ -243,7 +243,7 @@ export function PayerSelectModal({
   };
 
   const handleSplitPaidEqually = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tick();
     if (members.length === 0 || totalAmount <= 0) return;
 
     let targetMembers = members.filter((m) => selectedPayers[m.id]);
@@ -267,7 +267,7 @@ export function PayerSelectModal({
   };
 
   const handleAutoBalancePayer = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tick();
     const activePayers = members.filter((m) => selectedPayers[m.id]);
     if (activePayers.length === 0) return;
     const lastPayer = activePayers[activePayers.length - 1];
@@ -292,7 +292,7 @@ export function PayerSelectModal({
     }
 
     if (!isBalanced) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       if (remaining > 0) {
         setErrorMessage(`₹${remaining.toFixed(2)} left to allocate.`);
       } else {
@@ -301,7 +301,7 @@ export function PayerSelectModal({
       return;
     }
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.saveSuccess();
     const entries: MultiPayerEntry[] = members
       .filter((m) => selectedPayers[m.id])
       .map((m) => ({

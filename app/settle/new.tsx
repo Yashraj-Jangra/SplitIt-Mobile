@@ -41,7 +41,7 @@ import {
 import { settlementService } from '../../src/services/settlement.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { launchUpiPayment } from '../../src/utils/upi';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 
 /**
@@ -218,7 +218,7 @@ export default function SettleUpModal() {
 
   // Handle switching group & syncing shared default group
   const handleSelectGroup = async (gId: string) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setSelectedGroupId(gId);
     setShowGroupModal(false);
 
@@ -314,7 +314,7 @@ export default function SettleUpModal() {
 
   // Double-arrow swap handler
   const handleSwapParties = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.keyPress();
     const prevPayer = payerId;
     const prevReceiver = receiverId;
     setPayerId(prevReceiver);
@@ -324,7 +324,7 @@ export default function SettleUpModal() {
   // Select member handler:
   // Shows all members. If selected party matches the opposite party, deselect opposite party.
   const handleSelectMember = (mId: string) => {
-    Haptics.selectionAsync();
+    haptics.keyPress();
     if (activePicker === 'payer') {
       setPayerId(mId);
       if (receiverId === mId) {
@@ -341,14 +341,14 @@ export default function SettleUpModal() {
 
   // QR Code Button Handler with comprehensive edge-case feedback
   const handleQrPress = () => {
-    Haptics.selectionAsync();
+    haptics.tap();
     if (!receiverId) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics.warning();
       Alert.alert('Select Recipient', 'Please select who receives the payment to view their QR code.');
       return;
     }
     if (isReceiverViewer) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics.warning();
       Alert.alert(
         'Cannot Pay Yourself',
         'You are selected as the recipient. QR payment code is only available when paying another member.'
@@ -356,7 +356,7 @@ export default function SettleUpModal() {
       return;
     }
     if (!hasUpiId) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics.warning();
       Alert.alert(
         'UPI VPA Not Configured',
         `${receiverDisplayName} has not added their UPI ID (VPA) yet. QR code cannot be generated.`
@@ -386,12 +386,12 @@ export default function SettleUpModal() {
   // Toggle UPI Checkbox Handler with edge-case feedback
   const handleToggleUpi = () => {
     if (!receiverId) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics.warning();
       Alert.alert('Select Recipient', 'Please select who receives the payment first.');
       return;
     }
     if (isReceiverViewer) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics.warning();
       Alert.alert(
         'Cannot Pay Yourself',
         'You are selected as the recipient. You cannot send a UPI payment to yourself. Record this settlement manually instead.'
@@ -399,14 +399,14 @@ export default function SettleUpModal() {
       return;
     }
     if (!hasUpiId) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics.warning();
       Alert.alert(
         'UPI VPA Not Configured',
         `${receiverDisplayName} has not added their UPI ID (VPA) yet. You can still record this settlement manually.`
       );
       return;
     }
-    Haptics.selectionAsync();
+    haptics.tap();
     setPayViaUpi((prev) => !prev);
   };
 
@@ -432,17 +432,17 @@ export default function SettleUpModal() {
         });
 
         if (res.success) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptics.settleSuccess();
           if (targetGId) {
             groupService.getGroupDetails(targetGId).catch(() => {});
           }
           router.back();
         } else {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics.error();
           Alert.alert('Error', res.error || 'Failed to record settlement.');
         }
       } catch (err: any) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        haptics.error();
         Alert.alert('Error', err?.message || 'An unexpected error occurred.');
       } finally {
         setIsSubmitting(false);
@@ -458,7 +458,7 @@ export default function SettleUpModal() {
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active' && isWaitingUpiReturn.current) {
         isWaitingUpiReturn.current = false;
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        haptics.warning();
         Alert.alert(
           'Confirm Payment',
           `Did your UPI payment of ₹${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to ${receiverDisplayName} complete successfully?`,
@@ -484,18 +484,18 @@ export default function SettleUpModal() {
   const handleSubmit = async () => {
     if (!requireOnline('record settlements')) return;
     if (!isValidAmount) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       Alert.alert('Invalid Amount', 'Please enter a settlement amount greater than 0.');
       return;
     }
     if (!isValidParties) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.error();
       Alert.alert('Select Parties', 'Please select both who paid and who receives the payment.');
       return;
     }
 
     if (effectivePayViaUpi && receiverUpiId) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
       isWaitingUpiReturn.current = true;
       const launched = await launchUpiPayment({
         upiId: receiverUpiId,
@@ -526,7 +526,7 @@ export default function SettleUpModal() {
     }
 
     // Direct manual record
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     await performRecordSettlement(numAmount, 'cash');
   };
 
@@ -536,7 +536,7 @@ export default function SettleUpModal() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.closeBtn}
@@ -551,7 +551,7 @@ export default function SettleUpModal() {
           <Text style={styles.headerTitle}>Settle Up</Text>
           <TouchableOpacity
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               setShowGroupModal(true);
             }}
             activeOpacity={0.7}
@@ -605,7 +605,7 @@ export default function SettleUpModal() {
                   style={styles.partyTile}
                   activeOpacity={0.75}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     setActivePicker('payer');
                   }}
                   accessibilityRole="button"
@@ -669,7 +669,7 @@ export default function SettleUpModal() {
                   style={styles.partyTile}
                   activeOpacity={0.75}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     setActivePicker('receiver');
                   }}
                   accessibilityRole="button"
@@ -977,7 +977,7 @@ export default function SettleUpModal() {
             <TouchableOpacity
               style={styles.defaultToggleCard}
               onPress={() => {
-                Haptics.selectionAsync();
+                haptics.keyPress();
                 setIsDefaultGroupChecked((prev) => !prev);
               }}
               activeOpacity={0.8}

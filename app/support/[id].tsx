@@ -28,7 +28,7 @@ import {
   SupportTicketItem,
   TicketMessage,
 } from '../../src/services/support.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function TicketThreadScreen() {
   const router = useRouter();
@@ -56,7 +56,7 @@ export default function TicketThreadScreen() {
     const text = replyText.trim();
     if (!text || isSending || !ticket) return;
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
     setIsSending(true);
 
     const newMsg: TicketMessage = {
@@ -99,7 +99,7 @@ export default function TicketThreadScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.headerButton}

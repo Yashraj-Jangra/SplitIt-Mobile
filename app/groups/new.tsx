@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { X, Check, Users, Plus, Trash2, Sparkles } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService } from '../../src/services/group.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function NewGroupModal() {
   const router = useRouter();
@@ -45,26 +45,26 @@ export default function NewGroupModal() {
   const handleAddMember = () => {
     const trimmed = memberInput.trim();
     if (!trimmed) return;
-    Haptics.selectionAsync();
+    haptics.tap();
     setMembers((prev) => [...prev, trimmed]);
     setMemberInput('');
   };
 
   const handleRemoveMember = (index: number) => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setMembers((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleCreate = async () => {
     if (!name.trim()) {
       setErrorMsg('Please enter a group name.');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics.warning();
       return;
     }
 
     setIsSubmitting(true);
     setErrorMsg('');
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.confirm();
 
     const res = await groupService.createGroup({
       name: name.trim(),
@@ -75,7 +75,7 @@ export default function NewGroupModal() {
 
     setIsSubmitting(false);
     if (res.success) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.groupCreated();
       router.replace(`/groups/${res.id}`);
     } else {
       setErrorMsg('Could not create group. Please check connection.');
@@ -88,7 +88,7 @@ export default function NewGroupModal() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.closeButton}
@@ -149,7 +149,7 @@ export default function NewGroupModal() {
                     category === item.key && styles.pillButtonActive,
                   ]}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     setCategory(item.key);
                   }}
                 >
@@ -178,7 +178,7 @@ export default function NewGroupModal() {
                     currency === item.code && styles.pillButtonActive,
                   ]}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     setCurrency(item.code);
                   }}
                 >

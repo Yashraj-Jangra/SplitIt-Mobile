@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 import {
   X,
   Zap,
@@ -42,7 +42,7 @@ export default function ReceiptScannerScreen() {
 
   const handleCapture = async () => {
     if (isProcessing) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.confirm();
 
     try {
       if (cameraRef.current) {
@@ -54,7 +54,7 @@ export default function ReceiptScannerScreen() {
 
         if (photo?.uri) {
           const result = await aiService.scanReceipt(photo.uri);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptics.saveSuccess();
           setScanResult(result);
         }
       }
@@ -68,7 +68,7 @@ export default function ReceiptScannerScreen() {
   };
 
   const handlePickFromGallery = async () => {
-    Haptics.selectionAsync();
+    haptics.tap();
     try {
       const pickerResult = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -79,7 +79,7 @@ export default function ReceiptScannerScreen() {
       if (!pickerResult.canceled && pickerResult.assets?.[0]?.uri) {
         setIsProcessing(true);
         const result = await aiService.scanReceipt(pickerResult.assets[0].uri);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.saveSuccess();
         setScanResult(result);
       }
     } catch {
@@ -90,19 +90,19 @@ export default function ReceiptScannerScreen() {
   };
 
   const handleUseMockReceipt = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     setIsProcessing(true);
     // Simulate OCR latency
     await new Promise((r) => setTimeout(r, 1200));
     const result = await aiService.scanReceipt('');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.saveSuccess();
     setScanResult(result);
     setIsProcessing(false);
   };
 
   const handleApplyResult = () => {
     if (!scanResult) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.confirm();
     router.replace({
       pathname: '/expenses/new',
       params: {
@@ -114,7 +114,7 @@ export default function ReceiptScannerScreen() {
   };
 
   const handleRetake = () => {
-    Haptics.selectionAsync();
+    haptics.tap();
     setScanResult(null);
   };
 
@@ -126,7 +126,7 @@ export default function ReceiptScannerScreen() {
           <TouchableOpacity
             style={styles.circleButton}
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               router.back();
             }}
           >
@@ -187,7 +187,7 @@ export default function ReceiptScannerScreen() {
           <TouchableOpacity
             style={styles.circleButton}
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tap();
               router.back();
             }}
           >
@@ -202,7 +202,7 @@ export default function ReceiptScannerScreen() {
           <TouchableOpacity
             style={[styles.circleButton, isTorchOn && styles.circleButtonActive]}
             onPress={() => {
-              Haptics.selectionAsync();
+              haptics.tick();
               setIsTorchOn((prev) => !prev);
             }}
           >

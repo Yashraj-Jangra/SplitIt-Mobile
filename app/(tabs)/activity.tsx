@@ -15,7 +15,7 @@ import { THEME } from '../../src/constants/theme';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function ActivityScreen() {
   const router = useRouter();
@@ -51,7 +51,7 @@ export default function ActivityScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     loadData();
   };
 
@@ -93,7 +93,7 @@ export default function ActivityScreen() {
                     style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
                     activeOpacity={0.7}
                     onPress={() => {
-                      Haptics.selectionAsync();
+                      haptics.tap();
                       router.push({
                         pathname: '/expenses/[id]',
                         params: {

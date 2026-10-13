@@ -12,10 +12,10 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { X, Send, HelpCircle, Check } from 'lucide-react-native';
+import { X, Send, HelpCircle } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { supportService, TicketCategory } from '../../src/services/support.service';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function NewSupportTicketModal() {
   const router = useRouter();
@@ -38,19 +38,19 @@ export default function NewSupportTicketModal() {
   const handleSubmit = async () => {
     if (!subject.trim() || !message.trim()) {
       setErrorMsg('Please enter both subject and message details.');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics.warning();
       return;
     }
 
     setIsSubmitting(true);
     setErrorMsg('');
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.confirm();
 
     const result = await supportService.createTicket(subject, category, message);
 
     setIsSubmitting(false);
     if (result.success) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.saveSuccess();
       router.back();
     } else {
       setErrorMsg('Failed to submit ticket. Please check connection.');
@@ -63,7 +63,7 @@ export default function NewSupportTicketModal() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.closeButton}
@@ -111,7 +111,7 @@ export default function NewSupportTicketModal() {
                     category === cat.key && styles.categoryChipActive,
                   ]}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    haptics.tap();
                     setCategory(cat.key);
                   }}
                 >

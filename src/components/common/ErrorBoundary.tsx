@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../services/haptics.service';
 import * as Clipboard from 'expo-clipboard';
 import { AlertTriangle, RefreshCw, ArrowLeft, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
@@ -33,7 +33,7 @@ export function ErrorFallbackView({
   const [copied, setCopied] = useState(false);
 
   const handleRetry = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.error();
     if (onRetry) {
       onRetry();
     } else {
@@ -42,7 +42,7 @@ export function ErrorFallbackView({
   };
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     if (onBack) {
       onBack();
     } else if (router.canGoBack()) {
@@ -54,7 +54,7 @@ export function ErrorFallbackView({
 
   const handleCopy = async () => {
     if (!error) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     const details = `${error.name}: ${error.message}\n\nStack:\n${error.stack ?? 'No stack trace available'}`;
     await Clipboard.setStringAsync(details);
     setCopied(true);

@@ -21,7 +21,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import { buildUpiUrl, copyToClipboard } from '../../src/utils/upi';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function MyQrScreen() {
   const router = useRouter();
@@ -50,7 +50,7 @@ export default function MyQrScreen() {
     if (!hasUpi) return;
     const success = await copyToClipboard(upiId);
     if (success) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.saveSuccess();
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
@@ -58,7 +58,7 @@ export default function MyQrScreen() {
 
   const handleShare = async () => {
     if (!hasUpi) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.tap();
     try {
       await Share.share({
         message: `Pay me via UPI: ${upiId}\n\nSend money to ${displayName} on SplitIt.`,
@@ -75,7 +75,7 @@ export default function MyQrScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.backButton}

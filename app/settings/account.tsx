@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, User, Mail, Check } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../src/services/haptics.service';
 
 export default function AccountSettingsScreen() {
   const router = useRouter();
@@ -50,7 +50,7 @@ export default function AccountSettingsScreen() {
       return;
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.confirm();
     setIsSaving(true);
     try {
       const updated = await updateUserProfile({
@@ -63,7 +63,7 @@ export default function AccountSettingsScreen() {
       });
 
       if (updated) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.saveSuccess();
         Alert.alert('Saved', 'Your profile has been updated.');
       } else {
         Alert.alert('Update Failed', 'Could not save profile changes. Please try again.');
@@ -81,7 +81,7 @@ export default function AccountSettingsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            Haptics.selectionAsync();
+            haptics.tap();
             router.back();
           }}
           style={styles.backButton}
