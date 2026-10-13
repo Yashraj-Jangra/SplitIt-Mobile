@@ -62,7 +62,7 @@ function NavigationGate() {
       // Redirect to main tabs if already authenticated
       router.replace('/(tabs)');
     }
-  }, [user, isLoading, segments]);
+  }, [user, isLoading, segments, router]);
 
   if (isLoading) {
     return (
@@ -205,6 +205,22 @@ function NavigationGate() {
           />
           <Stack.Screen
             name="legal/delete-account"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/account"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/preferences"
             options={{
               presentation: Platform.OS === 'android' ? 'card' : 'modal',
               animation: Platform.OS === 'android' ? 'fade' : 'default',

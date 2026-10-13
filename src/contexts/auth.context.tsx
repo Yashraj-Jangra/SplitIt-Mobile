@@ -8,6 +8,8 @@ interface AuthContextType {
   signUpWithEmail: (name: string, email: string, password: string) => Promise<AuthResponse>;
   signInWithGoogle: () => Promise<AuthResponse>;
   signOut: () => Promise<void>;
+  updateUserProfile: (updates: Partial<AuthUser>) => Promise<AuthUser | null>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,6 +17,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshUser = async () => {
+    try {
+      const cached = await authService.getCachedUser();
+      if (cached) {
+        setUser(cached);
+      }
+    } catch {
+      // safe fallback
+    }
+  };
 
   useEffect(() => {
     // Check for existing session in Keychain/Keystore
@@ -66,6 +79,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const updateUserProfile = async (updates: Partial<AuthUser>): Promise<AuthUser | null> => {
+    const updated = await authService.updateUserProfile(updates);
+    if (updated) {
+      setUser(updated);
+    }
+    return updated;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -75,6 +96,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUpWithEmail,
         signInWithGoogle,
         signOut,
+        updateUserProfile,
+        refreshUser,
       }}
     >
       {children}

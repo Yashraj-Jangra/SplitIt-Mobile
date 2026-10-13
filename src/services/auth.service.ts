@@ -36,6 +36,11 @@ export interface AuthUser {
   avatarUrl?: string;
   upiId?: string;
   role?: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  mobileNumber?: string;
+  countryCode?: string;
 }
 
 export interface AuthResponse {
@@ -250,6 +255,97 @@ export const authService = {
       return { success: false, error: 'Google sign-in was canceled' };
     } catch (err: any) {
       return { success: false, error: err.message || 'Google sign-in failed' };
+    }
+  },
+
+  /**
+   * Update user profile on backend and persist to SecureStore.
+   */
+  async updateUserProfile(updates: Partial<AuthUser>): Promise<AuthUser | null> {
+    try {
+      const currentUser = await this.getCachedUser();
+      const token = await this.getToken();
+
+      const mergedUser: AuthUser = {
+        ...(currentUser || { id: 'user_active', name: 'User', email: '' }),
+        ...updates,
+      };
+
+      if (updates.firstName !== undefined || updates.lastName !== undefined) {
+        const fname = updates.firstName ?? currentUser?.firstName ?? '';
+        const lname = updates.lastName ?? currentUser?.lastName ?? '';
+        mergedUser.name = `${fname} ${lname}`.trim() || mergedUser.name;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(token ? { Cookie: `better-auth.session_token=${token}` } : {}),
+          },
+          body: JSON.stringify({
+            firstName: updates.firstName,
+            lastName: updates.lastName,
+            username: updates.username,
+            mobileNumber: updates.mobileNumber,
+            countryCode: updates.countryCode,
+            upiId: updates.upiId,
+            avatarUrl: updates.avatarUrl,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.profile) {
+            mergedUser.firstName = data.profile.firstName ?? mergedUser.firstName;
+            mergedUser.lastName = data.profile.lastName ?? mergedUser.lastName;
+            mergedUser.username = data.profile.username ?? mergedUser.username;
+            mergedUser.upiId = data.profile.upiId ?? mergedUser.upiId;
+            mergedUser.avatarUrl = data.profile.avatarUrl ?? mergedUser.avatarUrl;
+            mergedUser.mobileNumber = data.profile.mobileNumber ?? mergedUser.mobileNumber;
+            mergedUser.countryCode = data.profile.countryCode ?? mergedUser.countryCode;
+            mergedUser.name = data.profile.name ?? mergedUser.name;
+          }
+        }
+      } catch {
+        // Safe fallback for local/offline usage
+      }
+
+      _cachedUser = mergedUser;
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(mergedUser));
+      return mergedUser;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Update user authentication password.
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const token = await this.getToken();
+      const res = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(token ? { Cookie: `better-auth.session_token=${token}` } : {}),
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        return { success: false, error: data.message || data.error || 'Failed to update password' };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error updating password' };
     }
   },
 };

@@ -1,16 +1,40 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { QrCode, Bell, HelpCircle, Shield, LogOut, Trash2, ChevronRight } from 'lucide-react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import {
+  User,
+  QrCode,
+  ShieldCheck,
+  Sliders,
+  Bell,
+  HelpCircle,
+  Sparkles,
+  Shield,
+  FileText,
+  LogOut,
+  ChevronRight,
+} from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { storageService } from '../../src/services/storage.service';
 import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
 import * as Haptics from 'expo-haptics';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshUser } = useAuth();
+  const [imageError, setImageError] = useState(false);
+  const [currencyCode, setCurrencyCode] = useState('INR');
+
+  // Refresh user and currency on focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+      setImageError(false);
+      storageService.getCurrencyPreference().then(setCurrencyCode);
+    }, [refreshUser])
+  );
 
   const handleLogout = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -27,35 +51,8 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const profileItems = [
-    {
-      icon: QrCode,
-      title: 'UPI & Payment QR',
-      subtitle: user?.email ? `${user.email.split('@')[0]}@okaxis` : 'yashraj@okaxis',
-      onPress: () =>
-        router.push(
-          `/settle/qr?amount=0&name=${encodeURIComponent(user?.name || 'You')}&upiId=${user?.email ? `${user.email.split('@')[0]}@okaxis` : 'yashraj@okaxis'}`
-        ),
-    },
-    {
-      icon: Bell,
-      title: 'Notifications',
-      subtitle: 'Push delivery & quiet hours',
-      onPress: () => router.push('/notifications/preferences'),
-    },
-    {
-      icon: HelpCircle,
-      title: 'Support Desk',
-      subtitle: 'Tickets & help center',
-      onPress: () => router.push('/support'),
-    },
-    {
-      icon: Shield,
-      title: 'Privacy & Legal',
-      subtitle: 'Zero tracking & App Store terms',
-      onPress: () => router.push('/legal/privacy'),
-    },
-  ];
+  const effectiveUpi = user?.upiId || (user?.email ? `${user.email.split('@')[0]}@okaxis` : 'yashraj@okaxis');
+  const effectiveName = user?.name || 'You';
 
   const initials = user?.name
     ? user.name
@@ -64,7 +61,73 @@ export default function ProfileScreen() {
         .join('')
         .slice(0, 2)
         .toUpperCase()
-    : 'YJ';
+    : 'U';
+
+  const accountItems = [
+    {
+      icon: User,
+      title: 'Account Information',
+      subtitle: user?.username ? `@${user.username} • Personal details` : 'Name, username, phone & email',
+      onPress: () => router.push('/settings/account'),
+    },
+    {
+      icon: QrCode,
+      title: 'UPI & Payment QR',
+      subtitle: effectiveUpi,
+      onPress: () =>
+        router.push(
+          `/settle/qr?amount=0&name=${encodeURIComponent(effectiveName)}&upiId=${encodeURIComponent(effectiveUpi)}`
+        ),
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Security & Password',
+      subtitle: 'Manage password & credentials',
+      onPress: () => router.push('/settings/account'),
+    },
+  ];
+
+  const preferenceItems = [
+    {
+      icon: Sliders,
+      title: 'App Preferences',
+      subtitle: `Currency (${currencyCode}) • Haptics & defaults`,
+      onPress: () => router.push('/settings/preferences'),
+    },
+    {
+      icon: Bell,
+      title: 'Notifications',
+      subtitle: 'Push delivery & quiet hours',
+      onPress: () => router.push('/notifications/preferences'),
+    },
+  ];
+
+  const supportAndLegalItems = [
+    {
+      icon: HelpCircle,
+      title: 'Support Desk',
+      subtitle: 'Tickets, FAQs & help center',
+      onPress: () => router.push('/support'),
+    },
+    {
+      icon: Sparkles,
+      title: 'AI Financial Assistant',
+      subtitle: 'Smart expense insights & suggestions',
+      onPress: () => router.push('/ai/chat'),
+    },
+    {
+      icon: Shield,
+      title: 'Privacy Policy',
+      subtitle: 'Zero tracking & data protection',
+      onPress: () => router.push('/legal/privacy'),
+    },
+    {
+      icon: FileText,
+      title: 'Terms of Service',
+      subtitle: 'App Store terms & acceptable use',
+      onPress: () => router.push('/legal/terms'),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -73,63 +136,140 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* User Profile Header (Open Canvas) */}
+        {/* User Profile Hero Header (Enlarged Avatar, Preserving Aesthetic) */}
         <View style={styles.userHeroSection}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            {user?.avatarUrl && !imageError ? (
+              <Image
+                source={{ uri: user.avatarUrl }}
+                style={styles.avatarImage}
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
           </View>
           <Text style={styles.userName}>{user?.name || 'Yashraj Jangra'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'jangrayash1505@gmail.com'}</Text>
+
+          {/* Active UPI ID Pill */}
+          <TouchableOpacity
+            style={styles.upiPill}
+            onPress={() => router.push('/settings/account')}
+            activeOpacity={0.7}
+          >
+            <QrCode size={12} color={THEME.colors.primary} />
+            <Text style={styles.upiPillText}>{effectiveUpi}</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Grouped Settings Stream */}
-        <View style={styles.settingsGroupCard}>
-          {profileItems.map((item, index) => {
-            const IconComponent = item.icon;
-            const isLast = index === profileItems.length - 1;
+        {/* ── GROUP 1: ACCOUNT & SECURITY ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionHeaderTitle}>ACCOUNT & SECURITY</Text>
+          <View style={styles.settingsGroupCard}>
+            {accountItems.map((item, index) => {
+              const IconComponent = item.icon;
+              const isLast = index === accountItems.length - 1;
 
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[styles.itemRow, !isLast && styles.itemRowBorder]}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  item.onPress();
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.itemIconCircle}>
-                  <IconComponent size={16} color={THEME.colors.textSecondary} />
-                </View>
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.itemRow, !isLast && styles.itemRowBorder]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    item.onPress();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.itemIconCircle}>
+                    <IconComponent size={16} color={THEME.colors.textSecondary} />
+                  </View>
 
-                <View style={styles.itemContent}>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                  <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-                </View>
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+                  </View>
 
-                <ChevronRight size={15} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            );
-          })}
+                  <ChevronRight size={15} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
-        {/* Action Triggers: Log Out / Delete Account */}
+        {/* ── GROUP 2: PREFERENCES & ALERTS ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionHeaderTitle}>PREFERENCES & ALERTS</Text>
+          <View style={styles.settingsGroupCard}>
+            {preferenceItems.map((item, index) => {
+              const IconComponent = item.icon;
+              const isLast = index === preferenceItems.length - 1;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.itemRow, !isLast && styles.itemRowBorder]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    item.onPress();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.itemIconCircle}>
+                    <IconComponent size={16} color={THEME.colors.textSecondary} />
+                  </View>
+
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+                  </View>
+
+                  <ChevronRight size={15} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── GROUP 3: SUPPORT & LEGAL ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionHeaderTitle}>SUPPORT & LEGAL</Text>
+          <View style={styles.settingsGroupCard}>
+            {supportAndLegalItems.map((item, index) => {
+              const IconComponent = item.icon;
+              const isLast = index === supportAndLegalItems.length - 1;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.itemRow, !isLast && styles.itemRowBorder]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    item.onPress();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.itemIconCircle}>
+                    <IconComponent size={16} color={THEME.colors.textSecondary} />
+                  </View>
+
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+                  </View>
+
+                  <ChevronRight size={15} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── GROUP 4: SESSION (LOG OUT ONLY) ── */}
         <View style={styles.dangerSection}>
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
             <LogOut size={16} color={THEME.colors.textSecondary} />
             <Text style={styles.logoutText}>Log Out</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push('/legal/delete-account');
-            }}
-            activeOpacity={0.8}
-          >
-            <Trash2 size={15} color={THEME.colors.negative} />
-            <Text style={styles.deleteText}>Delete Account</Text>
           </TouchableOpacity>
         </View>
 
@@ -151,9 +291,9 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   header: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 8,
   },
   title: {
     fontSize: 28,
@@ -162,33 +302,38 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   scrollContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 36,
-    gap: 24,
+    gap: 20,
   },
   userHeroSection: {
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
   avatarCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     marginBottom: 12,
   },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
   avatarText: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '900',
     color: THEME.colors.text,
   },
   userName: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
     color: THEME.colors.text,
     letterSpacing: -0.3,
@@ -198,12 +343,39 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginTop: 2,
   },
+  upiPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+    marginTop: 8,
+  },
+  upiPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+  },
+  sectionContainer: {
+    gap: 8,
+  },
+  sectionHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.6,
+    paddingHorizontal: 4,
+  },
   settingsGroupCard: {
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
   },
   itemRow: {
     flexDirection: 'row',
@@ -237,7 +409,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   dangerSection: {
-    gap: 10,
     marginTop: 4,
   },
   logoutBtn: {
@@ -256,40 +427,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.textSecondary,
   },
-  deleteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-  },
-  deleteText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.negative,
-  },
   brandFooter: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
+    paddingVertical: 16,
     gap: 4,
-    marginTop: 8,
   },
   brandFooterTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: THEME.colors.text,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
     marginTop: 4,
   },
   brandFooterTagline: {
     fontSize: 11,
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.textMuted,
   },
   brandFooterVersion: {
     fontSize: 10,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
+    color: THEME.colors.textMuted + '80',
     marginTop: 2,
   },
 });

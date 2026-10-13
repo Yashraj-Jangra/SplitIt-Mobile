@@ -15,6 +15,8 @@ export const STORAGE_KEYS = {
   BALANCE_SUMMARY: 'splitit_cache_balance_summary',
   CATEGORIES: 'splitit_cache_expense_categories',
   DEFAULT_GROUP: 'splitit_default_group_id',
+  CURRENCY_PREFERENCE: 'splitit_pref_currency',
+  HAPTICS_PREFERENCE: 'splitit_pref_haptics',
 } as const;
 
 export const storageService = {
@@ -86,5 +88,23 @@ export const storageService = {
     } catch {
       // Safe ignore
     }
+  },
+
+  async getCurrencyPreference(): Promise<string> {
+    const val = await this.getItem<string>(STORAGE_KEYS.CURRENCY_PREFERENCE);
+    return val || 'INR';
+  },
+
+  async setCurrencyPreference(currency: string): Promise<void> {
+    await this.setItem(STORAGE_KEYS.CURRENCY_PREFERENCE, currency);
+  },
+
+  async getHapticsPreference(): Promise<boolean> {
+    const val = await this.getItem<boolean>(STORAGE_KEYS.HAPTICS_PREFERENCE);
+    return val !== false;
+  },
+
+  async setHapticsPreference(enabled: boolean): Promise<void> {
+    await this.setItem(STORAGE_KEYS.HAPTICS_PREFERENCE, enabled);
   },
 };
