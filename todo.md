@@ -1,6 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Simplified Balance Card Full-Tap Action & Text Overlap Resolution (`app/groups/[id]/index.tsx`)**:
+  - **Full-Card Touchable Settle Action**:
+    - Converted the entire simplified balance row card (`simplifiedTransferCard`) from a static container into a `TouchableOpacity` with tactile haptic feedback (`Haptics.impactAsync`).
+    - Tapping anywhere on the card automatically routes to `/settle/new` with pre-filled debtor, creditor, group ID, amount, and recipient UPI ID.
+  - **Removed Separate Settle Button & Fixed Text Collision**:
+    - Eliminated the cramped, redundant `<TouchableOpacity style={styles.settleButton}>` and `<Zap>` icon from the right edge of the card.
+    - Added `flexShrink: 1` and `ellipsizeMode="tail"` to `transferNameText` across both debtor and creditor badges.
+    - Expanded center amount and direction arrow column with generous breathing room (`minWidth: 68`, `paddingHorizontal: 6`, `gap: 8`), completely eliminating the vertical collision where recipient name and arrow overlapped the debt amount.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Settings Redesign & Bottom Navigation Bar Fix (`app/(tabs)/profile.tsx`, `app/(tabs)/_layout.tsx`, `app/settings/account.tsx`, `app/settings/preferences.tsx`, `app/_layout.tsx`, `src/services/auth.service.ts`, `src/contexts/auth.context.tsx`, `src/services/storage.service.ts`)**:
   - **Bottom Navbar Icon Synchronization (`app/(tabs)/_layout.tsx`)**:
     - Replaced the mismatched `<User>` icon with `<Settings size={size - 1} color={color} strokeWidth={2.2} />` to match the `"Settings"` label.
