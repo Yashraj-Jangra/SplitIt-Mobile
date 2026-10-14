@@ -31,10 +31,11 @@
       "versionCode": 1,
       "backgroundColor": "#131417",
       "permissions": [
-        "INTERNET",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "POST_NOTIFICATIONS"
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#131417",
@@ -51,7 +52,10 @@
               "scheme": "splitit"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -73,6 +77,13 @@
           "photosPermission": "SplitIt needs photo library access to upload receipt images from your photo gallery."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "564133e2-dfca-4435-b76a-9fad3532cd14"
+      }
+    },
+    "owner": "cyber-verse"
   }
 }
