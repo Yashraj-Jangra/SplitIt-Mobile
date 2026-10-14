@@ -1,6 +1,25 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Group Budget Modal Parity, Flexible Pool & Bottom Sheet Docking Fix (`src/components/groups/SetBudgetModal.tsx`)**:
+  - **Fixed Bottom Lofting Bug**:
+    - Resolved the critical layout issue where the edit budget bottom sheet detached and floated in mid-air above the bottom edge when editing amounts or on devices with soft navigation bars.
+    - Integrated `useSafeAreaInsets` to provide precise dynamic bottom padding (`Math.max(insets.bottom, 16) + 12`).
+    - Configured `<Modal statusBarTranslucent={true}>` to eliminate Android dialog letterboxing and window shifts.
+    - Added full-screen backdrop touchable overlay with keyboard dismissal.
+    - Enforced `sheetContainer` docking with `justifyContent: 'flex-end'` and responsive `scrollBody` (`maxHeight: screenHeight * 0.54`, `flexShrink: 1`), keeping the sheet anchored flush to the bottom when the virtual keyboard is deployed.
+  - **Full Website Parity for Budget Allocation & Flexible Pool**:
+    - **Live Budget Allocation Meter**: Multi-segmented proportional progress bar with each allocated category cap rendered in its distinct category color, plus a dedicated flexible pool remainder segment.
+    - **Dynamic Flexible Pool Calculation**: Accurately computes `unallocatedAmount` and `unallocatedPct` from the total monthly budget and displays `${unallocatedAmount} flexible pool` alongside `${sum} capped`.
+    - **Over-Budget Warning & 1-Tap Sync**: When category caps exceed the monthly limit, the bar switches to a full-width destructive warning track with a 1-tap "Sync to ₹X" button to auto-adjust total budget.
+    - **Category Legend & Micro Explainer**: Added colored dots with percentage breakdown, flexible pool indicator pill, and guidance copy clarifying flexible pool behavior.
+    - **Header Quick Actions**: Added 1-tap "Sum (₹X)" quick button with Sparkles icon next to Total Monthly Limit header and "Clear All" in the category caps section.
+    - **Smooth Layout Transitions**: Enabled `LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)` across state changes (presets, typing, clearing, auto-syncing, and expanding) for smooth 60fps segment resizing.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint src/components/groups/SetBudgetModal.tsx` passed with 0 errors and 0 warnings.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Flagship Haptics Engine Architecture & Universal Codebase Migration (`src/services/haptics.service.ts`, `src/contexts/haptics.context.tsx`, `app/_layout.tsx`, `app/settings/preferences.tsx`, and all 36 screens/components)**:
   - **Single Source of Truth (`haptics.service.ts`)**:
     - Built a centralized, semantic flagship haptic engine replacing every single raw `expo-haptics` call across the entire mobile application.

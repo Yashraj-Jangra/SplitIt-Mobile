@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,12 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  LayoutAnimation,
+  UIManager,
+  Keyboard,
+  Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   X,
   Sliders,
@@ -23,6 +28,9 @@ import {
   Trash2,
   Check,
   Zap,
+  Sparkles,
+  Info,
+  PieChart,
 } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { groupService, GroupBudget } from '../../services/group.service';
@@ -62,6 +70,13 @@ const MASTER_CATEGORIES: MasterCategoryDef[] = [
   { key: 'Other', name: 'Miscellaneous', color: THEME.colors.categories.other },
 ];
 
+const triggerLayoutTransition = () => {
+  if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+};
+
 const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
   visible,
   onClose,
@@ -70,6 +85,9 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
   initialBudget,
   onSuccess,
 }) => {
+  const insets = useSafeAreaInsets();
+  const screenHeight = Dimensions.get('window').height;
+
   const initialLimit = Number(initialBudget?.monthlyLimit ?? initialBudget?.totalMonthlyLimit ?? 25000);
   const [monthlyLimitStr, setMonthlyLimitStr] = useState<string>(initialLimit > 0 ? String(initialLimit) : '25000');
 
@@ -101,26 +119,57 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
     return cleaned ? parseInt(cleaned, 10) : 0;
   }, [monthlyLimitStr]);
 
-  // Compute category allocations sum
+  // Compute category allocations sum and individual percentages
+  const currentTotal = monthlyLimitNum;
   const categoryAllocations = useMemo(() => {
+    const list: { cat: MasterCategoryDef; amount: number; pctOfTotal: number }[] = [];
     let sum = 0;
-    Object.values(categoryLimits).forEach((val) => {
-      const num = parseInt(val.replace(/[^0-9]/g, ''), 10) || 0;
-      sum += num;
+    const total = monthlyLimitNum;
+
+    MASTER_CATEGORIES.forEach((cat) => {
+      const val = parseInt((categoryLimits[cat.key] || '').replace(/[^0-9]/g, ''), 10) || 0;
+      if (val > 0) {
+        sum += val;
+        list.push({
+          cat,
+          amount: val,
+          pctOfTotal: total > 0 ? (val / total) * 100 : 0,
+        });
+      }
     });
+
     return {
+      list,
       sum,
-      isOverTotal: monthlyLimitNum > 0 && sum > monthlyLimitNum,
-      diff: sum - monthlyLimitNum,
+      isOverTotal: total > 0 && sum > total,
+      diff: sum - total,
     };
   }, [categoryLimits, monthlyLimitNum]);
 
+  // Flexible Pool calculations
+  const unallocatedAmount = Math.max(0, currentTotal - categoryAllocations.sum);
+  const unallocatedPct = currentTotal > 0 ? (unallocatedAmount / currentTotal) * 100 : 0;
+  const showDistributionGraph =
+    categoryAllocations.list.length > 0 || isCategoryExpanded || categoryAllocations.isOverTotal;
+
+  // Auto-fill monthly limit if it was 0 and user enters category caps
+  const prevCategorySumRef = useRef(categoryAllocations.sum);
+  useEffect(() => {
+    if (monthlyLimitNum === 0 && categoryAllocations.sum > 0 && prevCategorySumRef.current !== categoryAllocations.sum) {
+      triggerLayoutTransition();
+      setMonthlyLimitStr(String(categoryAllocations.sum));
+    }
+    prevCategorySumRef.current = categoryAllocations.sum;
+  }, [categoryAllocations.sum, monthlyLimitNum]);
+
   const handlePresetSelect = (preset: number) => {
     haptics.tap();
+    triggerLayoutTransition();
     setMonthlyLimitStr(String(preset));
   };
 
   const handleCategoryLimitChange = (key: string, val: string) => {
+    triggerLayoutTransition();
     const cleaned = val.replace(/[^0-9]/g, '');
     setCategoryLimits((prev) => {
       const copy = { ...prev };
@@ -136,8 +185,15 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
   const handleAutoSumToTotal = () => {
     if (categoryAllocations.sum > 0) {
       haptics.confirm();
+      triggerLayoutTransition();
       setMonthlyLimitStr(String(categoryAllocations.sum));
     }
+  };
+
+  const handleClearAllCategories = () => {
+    haptics.tick();
+    triggerLayoutTransition();
+    setCategoryLimits({});
   };
 
   const handleSave = async () => {
@@ -225,21 +281,44 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
     );
   };
 
-  const hasExistingBudget = Boolean(initialBudget && (initialBudget.monthlyLimit > 0 || (initialBudget.totalMonthlyLimit ?? 0) > 0));
+  const hasExistingBudget = Boolean(
+    initialBudget && (initialBudget.monthlyLimit > 0 || (initialBudget.totalMonthlyLimit ?? 0) > 0)
+  );
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
       transparent={true}
+      statusBarTranslucent={true}
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
+        {/* Tap outside backdrop to dismiss */}
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={() => {
+            Keyboard.dismiss();
+            haptics.tap();
+            onClose();
+          }}
+        />
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardAvoid}
+          keyboardVerticalOffset={0}
         >
-          <View style={styles.sheetContainer}>
+          <View
+            style={[
+              styles.sheetContainer,
+              {
+                maxHeight: screenHeight * 0.9,
+                paddingBottom: Math.max(insets.bottom, 16) + 12,
+              },
+            ]}
+          >
             {/* Top Drag Handle */}
             <View style={styles.handleWrap}>
               <View style={styles.handleBar} />
@@ -251,7 +330,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                 <View style={styles.headerIconWrap}>
                   <Sliders size={18} color={THEME.colors.primary} />
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.headerTitle}>
                     {hasExistingBudget ? 'Edit Monthly Budget' : 'Set Monthly Budget'}
                   </Text>
@@ -275,20 +354,39 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
             </View>
 
             <ScrollView
-              style={styles.scrollBody}
+              style={[styles.scrollBody, { maxHeight: screenHeight * 0.54 }]}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
               {/* SECTION: Hero Amount Input */}
               <View style={styles.inputSection}>
-                <Text style={styles.sectionLabel}>TOTAL MONTHLY LIMIT</Text>
+                <View style={styles.sectionTitleRow}>
+                  <Text style={styles.sectionLabel}>TOTAL MONTHLY LIMIT</Text>
+                  {categoryAllocations.sum > 0 && categoryAllocations.sum !== monthlyLimitNum && (
+                    <TouchableOpacity
+                      style={styles.quickSumBtn}
+                      onPress={handleAutoSumToTotal}
+                      activeOpacity={0.7}
+                    >
+                      <Sparkles size={12} color={THEME.colors.primaryLight} />
+                      <Text style={styles.quickSumBtnText}>
+                        Sum ({CURRENCY_SYMBOL}{categoryAllocations.sum.toLocaleString('en-IN')})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
                 <View style={styles.amountInputRow}>
                   <Text style={styles.currencyPrefix}>{CURRENCY_SYMBOL}</Text>
                   <TextInput
                     style={styles.heroAmountInput}
                     value={monthlyLimitStr}
-                    onChangeText={(val) => setMonthlyLimitStr(val.replace(/[^0-9]/g, ''))}
+                    onChangeText={(val) => {
+                      triggerLayoutTransition();
+                      setMonthlyLimitStr(val.replace(/[^0-9]/g, ''));
+                    }}
                     placeholder="25,000"
                     placeholderTextColor={THEME.colors.textMuted}
                     keyboardType="numeric"
@@ -324,6 +422,122 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                   })}
                 </View>
               </View>
+
+              {/* SECTION: Live Budget Allocation Bar & Flexible Pool */}
+              {showDistributionGraph && (
+                <View style={styles.meterContainer}>
+                  <View style={styles.meterHeader}>
+                    <Text style={styles.meterTitle}>Budget Allocation</Text>
+                    <Text
+                      style={[
+                        styles.meterSubtitle,
+                        categoryAllocations.isOverTotal && styles.meterSubtitleError,
+                      ]}
+                    >
+                      {categoryAllocations.isOverTotal
+                        ? `Over by ${CURRENCY_SYMBOL}${categoryAllocations.diff.toLocaleString('en-IN')}`
+                        : `${CURRENCY_SYMBOL}${categoryAllocations.sum.toLocaleString('en-IN')} capped • ${CURRENCY_SYMBOL}${unallocatedAmount.toLocaleString('en-IN')} flexible pool`}
+                    </Text>
+                  </View>
+
+                  {/* Multi-segmented Live Track */}
+                  <View style={styles.meterTrack}>
+                    {categoryAllocations.isOverTotal ? (
+                      <View style={styles.meterOverBar} />
+                    ) : (
+                      <>
+                        {categoryAllocations.list.map((item, index) => {
+                          const isFirst = index === 0;
+                          const isLast =
+                            index === categoryAllocations.list.length - 1 && unallocatedAmount <= 0;
+                          return (
+                            <View
+                              key={item.cat.key}
+                              style={[
+                                styles.meterSegment,
+                                {
+                                  flex: item.amount,
+                                  backgroundColor: item.cat.color,
+                                  borderTopLeftRadius: isFirst ? 4 : 0,
+                                  borderBottomLeftRadius: isFirst ? 4 : 0,
+                                  borderTopRightRadius: isLast ? 4 : 0,
+                                  borderBottomRightRadius: isLast ? 4 : 0,
+                                },
+                              ]}
+                            />
+                          );
+                        })}
+                        {unallocatedAmount > 0 && currentTotal > 0 && (
+                          <View
+                            style={[
+                              styles.meterSegment,
+                              styles.meterFlexibleSegment,
+                              {
+                                flex: unallocatedAmount,
+                                borderTopLeftRadius: categoryAllocations.list.length === 0 ? 4 : 0,
+                                borderBottomLeftRadius: categoryAllocations.list.length === 0 ? 4 : 0,
+                                borderTopRightRadius: 4,
+                                borderBottomRightRadius: 4,
+                              },
+                            ]}
+                          />
+                        )}
+                      </>
+                    )}
+                  </View>
+
+                  {/* Over Total Error Notice with 1-tap Sync */}
+                  {categoryAllocations.isOverTotal && (
+                    <View style={styles.meterWarningBanner}>
+                      <View style={styles.meterWarningLeft}>
+                        <AlertTriangle size={14} color={THEME.colors.negative} />
+                        <Text style={styles.meterWarningText}>
+                          Category caps exceed monthly limit.
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.meterSyncBtn}
+                        onPress={handleAutoSumToTotal}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.meterSyncBtnText}>
+                          Sync to {CURRENCY_SYMBOL}{categoryAllocations.sum.toLocaleString('en-IN')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Category Legend & Flexible Pool indicator */}
+                  {categoryAllocations.list.length > 0 && !categoryAllocations.isOverTotal && (
+                    <View style={styles.legendContainer}>
+                      {categoryAllocations.list.map((item) => (
+                        <View key={item.cat.key} style={styles.legendItem}>
+                          <View style={[styles.legendDot, { backgroundColor: item.cat.color }]} />
+                          <Text style={styles.legendLabel} numberOfLines={1}>{item.cat.name}</Text>
+                          <Text style={styles.legendPct}>({item.pctOfTotal.toFixed(0)}%)</Text>
+                        </View>
+                      ))}
+                      {unallocatedAmount > 0 && currentTotal > 0 && (
+                        <View style={[styles.legendItem, styles.legendFlexibleItem]}>
+                          <View style={[styles.legendDot, styles.legendFlexibleDot]} />
+                          <Text style={styles.legendFlexibleLabel}>
+                            Flexible Pool ({unallocatedPct.toFixed(0)}%)
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Micro Explainer Note */}
+                  <View style={styles.meterNoteRow}>
+                    <Info size={13} color={THEME.colors.textMuted} style={{ marginTop: 1 }} />
+                    <Text style={styles.meterNoteText}>
+                      Category caps are optional. Any unallocated amount stays in your{' '}
+                      <Text style={styles.meterNoteBold}>flexible group pool</Text> for other expenses.
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               {/* SECTION: Alert Thresholds */}
               <View style={styles.sectionCard}>
@@ -404,33 +618,43 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                   style={styles.categoryAccordionHeader}
                   onPress={() => {
                     haptics.tap();
+                    triggerLayoutTransition();
                     setIsCategoryExpanded(!isCategoryExpanded);
                   }}
                   activeOpacity={0.7}
                 >
                   <View style={styles.categoryAccordionLeft}>
-                    <Zap size={15} color={THEME.colors.primary} />
-                    <Text style={styles.sectionLabelInline}>CATEGORY CAPS (OPTIONAL)</Text>
+                    <PieChart size={16} color={THEME.colors.primary} />
+                    <View style={styles.categoryTitleWrap}>
+                      <View style={styles.categoryTitleRow}>
+                        <Text style={styles.sectionLabelInline}>CATEGORY CAPS (OPTIONAL)</Text>
+                        {categoryAllocations.list.length > 0 && (
+                          <View
+                            style={[
+                              styles.categoryCountBadge,
+                              categoryAllocations.isOverTotal && styles.categoryCountBadgeError,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.categoryCountBadgeText,
+                                categoryAllocations.isOverTotal && styles.categoryCountBadgeTextError,
+                              ]}
+                            >
+                              {categoryAllocations.list.length} active
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.categoryAccordionSubtext} numberOfLines={1}>
+                        {categoryAllocations.list.length > 0
+                          ? `${CURRENCY_SYMBOL}${categoryAllocations.sum.toLocaleString('en-IN')} capped • ${CURRENCY_SYMBOL}${unallocatedAmount.toLocaleString('en-IN')} flexible pool`
+                          : 'Optional caps per category • All expenses share the budget'}
+                      </Text>
+                    </View>
                   </View>
 
                   <View style={styles.categoryAccordionRight}>
-                    {categoryAllocations.sum > 0 && (
-                      <View
-                        style={[
-                          styles.categorySumBadge,
-                          categoryAllocations.isOverTotal && styles.categorySumBadgeError,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.categorySumBadgeText,
-                            categoryAllocations.isOverTotal && styles.categorySumBadgeTextError,
-                          ]}
-                        >
-                          {CURRENCY_SYMBOL}{categoryAllocations.sum.toLocaleString('en-IN')}
-                        </Text>
-                      </View>
-                    )}
                     {isCategoryExpanded ? (
                       <ChevronUp size={18} color={THEME.colors.textSecondary} />
                     ) : (
@@ -441,28 +665,17 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
 
                 {isCategoryExpanded && (
                   <View style={styles.categoryListContent}>
-                    <Text style={styles.sectionSubtext}>
-                      Allocate specific spending ceilings for major categories.
-                    </Text>
-
-                    {/* Over-allocation warning banner */}
-                    {categoryAllocations.isOverTotal && (
-                      <View style={styles.overAllocatedBanner}>
-                        <AlertTriangle size={16} color={THEME.colors.negative} style={{ marginTop: 2 }} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.overAllocatedText}>
-                            Categories exceed total by {CURRENCY_SYMBOL}{categoryAllocations.diff.toLocaleString('en-IN')}.
-                          </Text>
-                          <TouchableOpacity
-                            onPress={handleAutoSumToTotal}
-                            style={styles.autoAdjustBtn}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={styles.autoAdjustBtnText}>
-                              Auto-adjust total to {CURRENCY_SYMBOL}{categoryAllocations.sum.toLocaleString('en-IN')}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
+                    {categoryAllocations.list.length > 0 && (
+                      <View style={styles.clearAllRow}>
+                        <Text style={styles.categorySubtext}>
+                          {categoryAllocations.list.length} of {MASTER_CATEGORIES.length} allocated
+                        </Text>
+                        <TouchableOpacity
+                          onPress={handleClearAllCategories}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.clearAllText}>Clear All</Text>
+                        </TouchableOpacity>
                       </View>
                     )}
 
@@ -470,6 +683,8 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                       {MASTER_CATEGORIES.map((cat) => {
                         const IconComponent = MASTER_CATEGORY_ICONS[cat.key] || Zap;
                         const currentVal = categoryLimits[cat.key] || '';
+                        const numVal = parseInt(currentVal.replace(/[^0-9]/g, ''), 10) || 0;
+                        const pct = currentTotal > 0 && numVal > 0 ? (numVal / currentTotal) * 100 : 0;
 
                         return (
                           <View key={cat.key} style={styles.categoryInputRow}>
@@ -482,9 +697,18 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                               >
                                 <IconComponent size={14} color={cat.color} />
                               </View>
-                              <Text style={styles.categoryNameText} numberOfLines={1}>
-                                {cat.name}
-                              </Text>
+                              <View style={styles.categoryTextCol}>
+                                <Text style={styles.categoryNameText} numberOfLines={1}>
+                                  {cat.name}
+                                </Text>
+                                {pct > 0 ? (
+                                  <Text style={styles.categoryPctText}>
+                                    {pct.toFixed(0)}% of budget
+                                  </Text>
+                                ) : (
+                                  <Text style={styles.categoryNoCapText}>No cap</Text>
+                                )}
+                              </View>
                             </View>
 
                             <View style={styles.categoryAmountCol}>
@@ -493,7 +717,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                                 style={styles.categoryTextInput}
                                 value={currentVal}
                                 onChangeText={(val) => handleCategoryLimitChange(cat.key, val)}
-                                placeholder="None"
+                                placeholder="0"
                                 placeholderTextColor={THEME.colors.textMuted}
                                 keyboardType="numeric"
                                 maxLength={7}
@@ -536,9 +760,12 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+                style={[
+                  styles.saveBtn,
+                  (isSaving || categoryAllocations.isOverTotal) && styles.saveBtnDisabled,
+                ]}
                 onPress={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || categoryAllocations.isOverTotal}
                 activeOpacity={0.8}
               >
                 {isSaving ? (
@@ -571,6 +798,11 @@ const styles = StyleSheet.create({
   },
   keyboardAvoid: {
     width: '100%',
+    justifyContent: 'flex-end',
+    backgroundColor: THEME.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
   },
   sheetContainer: {
     backgroundColor: THEME.colors.surface,
@@ -579,8 +811,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.colors.border,
     borderBottomWidth: 0,
-    maxHeight: '90%',
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    width: '100%',
+    marginBottom: 0,
   },
   handleWrap: {
     alignItems: 'center',
@@ -629,7 +861,7 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   scrollBody: {
-    maxHeight: 520,
+    flexShrink: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -644,11 +876,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: THEME.colors.textMuted,
     letterSpacing: 0.8,
+  },
+  quickSumBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: THEME.colors.primaryMuted,
+  },
+  quickSumBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.primaryLight,
   },
   amountInputRow: {
     flexDirection: 'row',
@@ -699,6 +950,146 @@ const styles = StyleSheet.create({
     color: THEME.colors.primaryLight,
     fontWeight: '700',
   },
+
+  /* Budget Allocation Live Meter */
+  meterContainer: {
+    backgroundColor: THEME.colors.surfaceSubtle,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    gap: 10,
+  },
+  meterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  meterTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  meterSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+  },
+  meterSubtitleError: {
+    color: THEME.colors.negativeLight,
+    fontWeight: '700',
+  },
+  meterTrack: {
+    height: 8,
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  meterSegment: {
+    height: '100%',
+  },
+  meterFlexibleSegment: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+  },
+  meterOverBar: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: THEME.colors.negative,
+  },
+  meterWarningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 9,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.negativeMuted,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 63, 94, 0.3)',
+  },
+  meterWarningLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  meterWarningText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.negativeLight,
+  },
+  meterSyncBtn: {
+    backgroundColor: THEME.colors.negative,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  meterSyncBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+    paddingTop: 2,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  legendLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: THEME.colors.textSecondary,
+  },
+  legendPct: {
+    fontSize: 9,
+    color: THEME.colors.textMuted,
+  },
+  legendFlexibleItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  legendFlexibleDot: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  legendFlexibleLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+  },
+  meterNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.hairline,
+  },
+  meterNoteText: {
+    fontSize: 10.5,
+    color: THEME.colors.textMuted,
+    lineHeight: 15,
+    flex: 1,
+  },
+  meterNoteBold: {
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+  },
+
+  /* Alerts Section */
   sectionCard: {
     backgroundColor: THEME.colors.surfaceSubtle,
     borderRadius: 16,
@@ -757,6 +1148,8 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginTop: 1,
   },
+
+  /* Category Caps Accordion */
   categoryAccordionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -765,28 +1158,40 @@ const styles = StyleSheet.create({
   categoryAccordionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    flex: 1,
   },
-  categoryAccordionRight: {
+  categoryTitleWrap: {
+    flex: 1,
+  },
+  categoryTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  categorySumBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+  categoryAccordionSubtext: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  categoryAccordionRight: {
+    paddingLeft: 8,
+  },
+  categoryCountBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 5,
     backgroundColor: THEME.colors.primaryMuted,
   },
-  categorySumBadgeError: {
+  categoryCountBadgeError: {
     backgroundColor: THEME.colors.negativeMuted,
   },
-  categorySumBadgeText: {
-    fontSize: 11,
+  categoryCountBadgeText: {
+    fontSize: 10,
     fontWeight: '700',
     color: THEME.colors.primaryLight,
   },
-  categorySumBadgeTextError: {
+  categoryCountBadgeTextError: {
     color: THEME.colors.negativeLight,
   },
   categoryListContent: {
@@ -795,41 +1200,30 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: THEME.colors.hairline,
   },
-  overAllocatedBanner: {
+  clearAllRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: THEME.colors.negativeMuted,
-    borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.3)',
-    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 10,
   },
-  overAllocatedText: {
-    fontSize: 12,
-    color: THEME.colors.negativeLight,
-    fontWeight: '600',
-  },
-  autoAdjustBtn: {
-    marginTop: 4,
-  },
-  autoAdjustBtnText: {
+  categorySubtext: {
     fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.text,
+    color: THEME.colors.textMuted,
+  },
+  clearAllText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
     textDecorationLine: 'underline',
   },
   categoryGrid: {
-    marginTop: 8,
     gap: 8,
   },
   categoryInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 7,
     paddingHorizontal: 8,
     borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
@@ -841,23 +1235,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoryIconWrap: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  categoryTextCol: {
+    flex: 1,
+  },
   categoryNameText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
     color: THEME.colors.text,
+  },
+  categoryPctText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: THEME.colors.textMuted,
+    marginTop: 1,
+  },
+  categoryNoCapText: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.25)',
+    marginTop: 1,
   },
   categoryAmountCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: 90,
+    width: 95,
     backgroundColor: THEME.colors.surface,
-    borderRadius: 6,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: THEME.colors.border,
     paddingHorizontal: 8,
@@ -925,7 +1333,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.primary,
   },
   saveBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   saveBtnText: {
     fontSize: 14,
