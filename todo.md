@@ -1,6 +1,18 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Centered Arrow in Settlement Record & History (`app/settlements/[id].tsx`, `app/groups/[id]/index.tsx`)**:
+  - **Settlement Detail Record Screen (`app/settlements/[id].tsx`)**:
+    - Resolved vertical and horizontal arrow misalignment where the big directional transfer arrow was pushed downwards towards the user's name/subtext instead of connecting the avatars.
+    - Restructured layout into an `avatarsRow` (payer avatar, 44×44px green badge arrow, recipient avatar) with `alignItems: 'center'`, locking the arrow to the exact horizontal axis and vertical center (Y = 30px) between both avatars.
+    - Symmetrically placed names, YOU pills, and roles in a separate `transferNamesRow` with an exact-width `arrowSpacer` directly beneath the avatars.
+  - **Settlement Row in Group Transaction History (`app/groups/[id]/index.tsx`)**:
+    - Enforced `alignSelf: 'center'` and removed line wrapping on `settlementArrowIcon`, ensuring the arrow is aligned with text baselines between payer and payee names.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint app/settlements/[id].tsx` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Group Budget Modal Parity, Flexible Pool & Bottom Sheet Docking Fix (`src/components/groups/SetBudgetModal.tsx`)**:
   - **Fixed Bottom Lofting Bug**:
     - Resolved the critical layout issue where the edit budget bottom sheet detached and floated in mid-air above the bottom edge when editing amounts or on devices with soft navigation bars.

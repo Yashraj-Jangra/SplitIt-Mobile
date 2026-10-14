@@ -1664,7 +1664,6 @@ const styles = StyleSheet.create({
   settlementTransferRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 6,
     marginBottom: 3,
   },
@@ -1673,12 +1672,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.text,
     letterSpacing: -0.2,
+    flexShrink: 1,
   },
   settlementViewerHighlight: {
     fontWeight: '700',
   },
   settlementArrowIcon: {
     marginHorizontal: 1,
+    alignSelf: 'center',
   },
   settlementSubtitle: {
     fontSize: 11,

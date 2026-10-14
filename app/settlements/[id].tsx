@@ -275,61 +275,73 @@ export default function SettlementDetailScreen() {
               </Svg>
             </View>
 
-            {/* ── Avatar (name under) -> (big arrow) -> Avatar (name under) ── */}
-            <View style={styles.transferVisualRow}>
-              {/* Payer (Left) */}
-              <View style={styles.partyColumn}>
-                <View style={styles.avatarCircle}>
-                  {settlement?.payer?.avatarUrl ? (
-                    <Image source={{ uri: settlement.payer.avatarUrl }} style={styles.avatarImg} />
-                  ) : (
-                    <Text style={styles.avatarInitial}>
-                      {(payerDisplayName || 'M').charAt(0).toUpperCase()}
-                    </Text>
-                  )}
+            {/* ── Transfer Visual: Avatars & Center Arrow (Perfect Center Alignment) ── */}
+            <View style={styles.transferVisualContainer}>
+              <View style={styles.transferAvatarsRow}>
+                {/* Payer Avatar (Left) */}
+                <View style={styles.avatarColumn}>
+                  <View style={styles.avatarCircle}>
+                    {settlement?.payer?.avatarUrl ? (
+                      <Image source={{ uri: settlement.payer.avatarUrl }} style={styles.avatarImg} />
+                    ) : (
+                      <Text style={styles.avatarInitial}>
+                        {(payerDisplayName || 'M').charAt(0).toUpperCase()}
+                      </Text>
+                    )}
+                  </View>
                 </View>
 
-                <View style={styles.partyNameWrap}>
-                  <Text style={styles.partyNameText} numberOfLines={1}>
-                    {payerDisplayName}
-                  </Text>
-                  {isPayerViewer && (
-                    <View style={styles.youPill}>
-                      <Text style={styles.youPillText}>YOU</Text>
-                    </View>
-                  )}
+                {/* Big Sleek Center Arrow (Locked to vertical & horizontal center of avatars) */}
+                <View style={styles.bigArrowContainer}>
+                  <ArrowRight size={24} color={THEME.colors.palette.emerald} strokeWidth={2.4} />
                 </View>
-                <Text style={styles.partyRoleSubtext}>Payer</Text>
+
+                {/* Receiver Avatar (Right) */}
+                <View style={styles.avatarColumn}>
+                  <View style={styles.avatarCircle}>
+                    {settlement?.payee?.avatarUrl ? (
+                      <Image source={{ uri: settlement.payee.avatarUrl }} style={styles.avatarImg} />
+                    ) : (
+                      <Text style={styles.avatarInitial}>
+                        {(payeeDisplayName || 'M').charAt(0).toUpperCase()}
+                      </Text>
+                    )}
+                  </View>
+                </View>
               </View>
 
-              {/* Big Sleek Center Arrow */}
-              <View style={styles.bigArrowContainer}>
-                <ArrowRight size={26} color={THEME.colors.primary} strokeWidth={2.4} />
-              </View>
-
-              {/* Receiver (Right) */}
-              <View style={styles.partyColumn}>
-                <View style={styles.avatarCircle}>
-                  {settlement?.payee?.avatarUrl ? (
-                    <Image source={{ uri: settlement.payee.avatarUrl }} style={styles.avatarImg} />
-                  ) : (
-                    <Text style={styles.avatarInitial}>
-                      {(payeeDisplayName || 'M').charAt(0).toUpperCase()}
+              {/* Names and Role Subtext Row (Symmetrically positioned under respective avatars) */}
+              <View style={styles.transferNamesRow}>
+                <View style={styles.partyNameCol}>
+                  <View style={styles.partyNameWrap}>
+                    <Text style={styles.partyNameText} numberOfLines={1}>
+                      {payerDisplayName}
                     </Text>
-                  )}
+                    {isPayerViewer && (
+                      <View style={styles.youPill}>
+                        <Text style={styles.youPillText}>YOU</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.partyRoleSubtext}>Payer</Text>
                 </View>
 
-                <View style={styles.partyNameWrap}>
-                  <Text style={styles.partyNameText} numberOfLines={1}>
-                    {payeeDisplayName}
-                  </Text>
-                  {isPayeeViewer && (
-                    <View style={styles.youPill}>
-                      <Text style={styles.youPillText}>YOU</Text>
-                    </View>
-                  )}
+                {/* Spacer mirroring the center arrow width */}
+                <View style={styles.arrowSpacer} />
+
+                <View style={styles.partyNameCol}>
+                  <View style={styles.partyNameWrap}>
+                    <Text style={styles.partyNameText} numberOfLines={1}>
+                      {payeeDisplayName}
+                    </Text>
+                    {isPayeeViewer && (
+                      <View style={styles.youPill}>
+                        <Text style={styles.youPillText}>YOU</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.partyRoleSubtext}>Recipient</Text>
                 </View>
-                <Text style={styles.partyRoleSubtext}>Recipient</Text>
               </View>
             </View>
 
@@ -564,18 +576,21 @@ const styles = StyleSheet.create({
     right: 0,
     height: 160,
   },
-  transferVisualRow: {
+  transferVisualContainer: {
+    width: '100%',
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  transferAvatarsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    paddingVertical: 10,
-    gap: 20,
+    paddingHorizontal: 20,
   },
-  partyColumn: {
+  avatarColumn: {
+    flex: 1,
     alignItems: 'center',
-    minWidth: 90,
-    maxWidth: 120,
   },
   avatarCircle: {
     width: 60,
@@ -587,7 +602,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    marginBottom: 8,
   },
   avatarImg: {
     width: '100%',
@@ -598,11 +612,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.text,
   },
+  bigArrowContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 12,
+  },
+  transferNamesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+    marginTop: 8,
+  },
+  partyNameCol: {
+    flex: 1,
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  arrowSpacer: {
+    width: 44,
+    marginHorizontal: 12,
+  },
   partyNameWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     marginBottom: 2,
+    maxWidth: '100%',
   },
   partyNameText: {
     fontSize: 14,
@@ -631,17 +674,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-  },
-  bigArrowContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 4,
   },
   heroAmountBlock: {
     alignItems: 'center',
