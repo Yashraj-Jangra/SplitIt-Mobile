@@ -551,6 +551,34 @@ All 34+ files have been migrated to `THEME.colors.*` tokens. Single source of tr
 - [x] `app/(auth)/signup.tsx`
 - [x] `app/(auth)/login.tsx`
 
+## Group Budget Tab Remake & Analytical Engine Parity (Mobile)
+- **Ported Analytical Budget Engine (`src/utils/budget-utils.ts`)**:
+  - Implemented `calculateGroupBudgetStats` with 100% mathematical parity to the web application (`SplitWise-Clone/src/lib/budget-utils.ts`).
+  - Strict calendar month filtering using both ISO `rawDate` and formatted `date` strings.
+  - Real-time pacing metrics: `totalSpentThisMonth`, `remainingBudget`, `percentageUsed`, `daysInMonth`, `daysRemaining`, `averageDailySpend`, `dailySafeLimit`, `projectedMonthEndSpend`, and `projectedVariance`.
+  - Intelligent rules engine generating actionable recommendations: Overbudget alerts, predicted exhaustion date warning, healthy pacing surplus, safe daily allowance guidance, category spike detection (>40% of spend), and category cap breach warnings.
+  - Dynamic status classification: `healthy` (On Track), `caution` (75%), `warning` (90%), and `overbudget` (100%+).
+- **Service & Data Model Parity (`src/services/group.service.ts`)**:
+  - Replaced legacy dummy budget schema with authentic `GroupBudget` interface supporting `monthlyLimit`, `enabled`, `alertThresholds`, `categoryLimits`, `updatedAt`, and `updatedBy`.
+  - Eliminated hardcoded category multipliers (was `limit * 0.4`) and all-time spend assignment in `getGroupDetails`.
+  - Added `updateGroupBudget(groupId, budget)` with authenticated `PATCH /api/groups/${groupId}` API dispatch, in-memory cache synchronization, and offline persistent storage fallback.
+- **Set/Edit Budget Modal (`src/components/groups/SetBudgetModal.tsx`)**:
+  - Dark-mode minimalist bottom sheet modal matching `set-budget-dialog.tsx` design system.
+  - Hero amount input with dynamic formatting and quick preset chips (`₹10k`, `₹25k`, `₹50k`, `₹100k`).
+  - Automated alert milestone toggles for 75% Caution, 90% High Burn, and 100% Over Budget.
+  - Collapsible category caps section with master category icons, allocations sum tracking, over-allocation warning banners, and 1-tap "Auto-adjust total" helper.
+  - Destructive "Disable Budget Tracking" action with confirmation dialog.
+- **Group Budget Tab Component (`src/components/groups/GroupBudgetTab.tsx`)**:
+  - Month navigation bar with `<` Previous Month, `>` Next Month, and `Today` quick reset.
+  - Empty state centerpiece card with target icon and "+ Set [Month] Budget" CTA when no budget is active.
+  - Unified hero centerpiece card with status pill, days remaining, prominent remaining balance, smooth progress bar, and 3-column stats ribbon (`Spent So Far`, `Safe Daily Burn`, `Projected Finish`).
+  - Smart pacing recommendation banner with semantic styling (danger/warning/success/info).
+  - Category breakdown list with master category icons, expense counts, allocated caps, and progress bars.
+  - Top Payers ranking with member avatars, initials fallback, and total spend contributions.
+- **Screen Integration & Stat Strip (`app/groups/[id]/index.tsx`)**:
+  - Replaced deprecated `BudgetPacingRing` block in Tab 3 with `<GroupBudgetTab>`.
+  - Dynamically wired the `BUDGET` column in the 3-stat strip to display real-time current-month spend percentage computed from actual monthly velocity.
+
 ## Production Rules Verification Status
 - [x] **Theming (`theming.md`)**: Zero hardcoded colors across entire repo outside `theme.ts`. Open editorial & "no-div" design (continuous hairlines, timeline nodes, connecting stems, pills over text clutter). Typography & spacing scales adhered to.
 - [x] **Crash Prevention (`crash-prevention.md`)**: Root and route `ErrorBoundary` active, defensive null safety (`?.`), offline fallback states.
@@ -563,7 +591,6 @@ All 34+ files have been migrated to `THEME.colors.*` tokens. Single source of tr
 - [x] **State Management (`state-management.md`)**: Service layer + in-memory synchronous cache with optimistic update rollback patterns.
 
 ## Next Steps & Planned Work
-- [ ] **Set up Jest test infrastructure** (`jest-expo`, `@testing-library/react-native`) and configure pre-commit test runner (confirm with user before installing dependencies).
 - [ ] Test transition smoothness across high-refresh-rate physical Android & iOS devices.
 - [ ] Evaluate offline mutations queue sync resilience on intermittent network reconnections.
 - [ ] Verify receipt scanner camera permission handling in development builds.

@@ -35,7 +35,8 @@ import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
 import { GroupSettlementItem } from '../../../src/services/settlement.service';
 import { useAuth } from '../../../src/contexts/auth.context';
-import { BudgetPacingRing } from '../../../src/components/budget/BudgetPacingRing';
+import { GroupBudgetTab } from '../../../src/components/groups/GroupBudgetTab';
+import { calculateGroupBudgetStats } from '../../../src/utils/budget-utils';
 import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../../src/utils/category-icons';
 import { TransactionRowSkeleton } from '../../../src/components/skeletons/TransactionRowSkeleton';
@@ -399,15 +400,10 @@ export default function GroupDetailScreen() {
     },
     [currentUserId, user?.name]
   );
-  const budget = group?.budget || {
-    enabled: false,
-    totalMonthlyLimit: 0,
-    totalSpent: 0,
-    currency: 'INR',
-    daysRemaining: 10,
-    safeDailyAllowance: 0,
-    categories: [],
-  };
+  const currentMonthBudgetStats = useMemo(
+    () => calculateGroupBudgetStats(group, group?.expenses || [], new Date()),
+    [group, group?.expenses]
+  );
   const activities = group?.activities || [];
   const totalGroupSpend = group?.totalGroupSpend || 0;
   const yourNetBalance = group?.yourNetBalance || 0;
@@ -625,11 +621,11 @@ export default function GroupDetailScreen() {
             <Text
               style={[
                 styles.statValue,
-                { color: budget.enabled ? THEME.colors.primaryLight : THEME.colors.textMuted },
+                { color: currentMonthBudgetStats.isEnabled ? THEME.colors.primaryLight : THEME.colors.textMuted },
               ]}
             >
-              {budget.enabled && budget.totalMonthlyLimit > 0
-                ? `${Math.round(((budget.totalSpent || 0) / budget.totalMonthlyLimit) * 100)}%`
+              {currentMonthBudgetStats.isEnabled && currentMonthBudgetStats.monthlyLimit > 0
+                ? `${Math.round(currentMonthBudgetStats.percentageUsed)}%`
                 : '+ Set'}
             </Text>
           </TouchableOpacity>
@@ -1053,48 +1049,14 @@ export default function GroupDetailScreen() {
         {/* TAB 3: BUDGET & PACING */}
         {visitedTabs.budget && (
           <View style={[styles.tabSection, activeTab !== 'budget' && styles.tabHidden]}>
-            {loading && !budget.totalMonthlyLimit && budget.totalSpent === 0 ? (
+            {loading && !group ? (
               <BudgetTabSkeleton />
             ) : (
-              <>
-                <View style={styles.budgetCard}>
-                  <BudgetPacingRing
-                    totalSpent={budget.totalSpent || 0}
-                    totalLimit={budget.totalMonthlyLimit || 0}
-                    daysRemaining={budget.daysRemaining || 0}
-                    safeDailyAllowance={budget.safeDailyAllowance || 0}
-                  />
-                </View>
-
-                {/* Category Allocations */}
-                <View style={styles.categoryAllocationsCard}>
-                  <Text style={styles.sectionHeaderTitle}>CATEGORY BREAKDOWN</Text>
-                  {(budget.categories || []).length === 0 ? (
-                    <View style={{ paddingVertical: 14, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 12, color: THEME.colors.textMuted }}>No category limits configured</Text>
-                    </View>
-                  ) : (
-                    budget.categories.map((cat, idx) => {
-                      const limit = cat.limit || 1;
-                      const spent = cat.spent || 0;
-                      const percent = Math.min(100, Math.round((spent / limit) * 100));
-                      return (
-                        <View key={idx} style={styles.catRow}>
-                          <View style={styles.catLabelRow}>
-                            <Text style={styles.catName}>{cat.name}</Text>
-                            <Text style={styles.catNumbers}>
-                              ₹{spent.toLocaleString()} / ₹{limit.toLocaleString()} ({percent}%)
-                            </Text>
-                          </View>
-                          <View style={styles.catBarBackground}>
-                            <View style={[styles.catBarFill, { width: `${percent}%`, backgroundColor: cat.color || THEME.colors.primary }]} />
-                          </View>
-                        </View>
-                      );
-                    })
-                  )}
-                </View>
-              </>
+              <GroupBudgetTab
+                group={group}
+                expenses={group.expenses || []}
+                onBudgetUpdated={loadGroup}
+              />
             )}
           </View>
         )}
@@ -1968,48 +1930,6 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginBottom: 4,
   },
-  budgetCard: {
-    backgroundColor: THEME.colors.surface,
-    padding: 20,
-    borderRadius: THEME.radius.xl,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  categoryAllocationsCard: {
-    backgroundColor: THEME.colors.surface,
-    padding: 16,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    gap: 12,
-  },
-  catRow: {
-    gap: 6,
-  },
-  catLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  catName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: THEME.colors.text,
-  },
-  catNumbers: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-  },
-  catBarBackground: {
-    height: 5,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  catBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-
   // Activity Tab
   activityCard: {
     flexDirection: 'row',

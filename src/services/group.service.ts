@@ -47,18 +47,24 @@ export interface SimplifiedDebt {
 }
 
 export interface GroupBudget {
+  monthlyLimit: number;
   enabled: boolean;
-  totalMonthlyLimit: number;
-  totalSpent: number;
-  currency: string;
-  daysRemaining: number;
-  safeDailyAllowance: number;
-  categories: Array<{
+  alertThresholds?: number[];
+  categoryLimits?: Record<string, number>;
+  updatedAt?: string;
+  updatedBy?: string;
+  // Backward compatibility fields
+  totalMonthlyLimit?: number;
+  totalSpent?: number;
+  currency?: string;
+  daysRemaining?: number;
+  safeDailyAllowance?: number;
+  categories?: {
     name: string;
     limit: number;
     spent: number;
     color: string;
-  }>;
+  }[];
 }
 
 export interface GroupActivityItem {
@@ -308,7 +314,9 @@ export const groupService = {
         if (!fromStorage.history) fromStorage.history = [];
         if (!fromStorage.budget) {
           fromStorage.budget = {
+            monthlyLimit: 0,
             enabled: false,
+            alertThresholds: [75, 90, 100],
             totalMonthlyLimit: 0,
             totalSpent: 0,
             currency: 'INR',
@@ -652,10 +660,11 @@ export const groupService = {
               })
             : [];
 
-          // Map budget
+          // Map budget with full analytical parity
           const b = groupData.budget;
+          const limit = Number(b?.monthlyLimit ?? b?.totalMonthlyLimit ?? 0);
+          const enabled = Boolean(b?.enabled);
           const totalSpent = Number(groupData.totalExpenses || 0);
-          const limit = Number(b?.monthlyLimit || 0);
           const now = new Date();
           const daysRemaining = Math.max(1, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate());
           const safeDailyAllowance = limit > totalSpent ? Math.round((limit - totalSpent) / daysRemaining) : 0;
@@ -673,12 +682,17 @@ export const groupService = {
           const categories = catKeys.map((name, i) => ({
             name,
             limit: Number(catLimits[name] || 0),
-            spent: Math.round(Number(catLimits[name] || 0) * 0.4),
+            spent: 0,
             color: colors[i % colors.length],
           }));
 
           const budget: GroupBudget = {
-            enabled: !!b?.enabled,
+            monthlyLimit: limit,
+            enabled,
+            alertThresholds: Array.isArray(b?.alertThresholds) ? b.alertThresholds : [75, 90, 100],
+            categoryLimits: b?.categoryLimits || {},
+            updatedAt: b?.updatedAt,
+            updatedBy: b?.updatedBy,
             totalMonthlyLimit: limit,
             totalSpent,
             currency: 'INR',
@@ -1036,7 +1050,14 @@ export const groupService = {
       ],
       simplifiedDebts,
       budget: {
+        monthlyLimit: Math.max(30000, (matching.totalExpenses || 20000) * 1.3),
         enabled: true,
+        alertThresholds: [75, 90, 100],
+        categoryLimits: {
+          'Food and Drink': 20000,
+          'Housing': 30000,
+          'Utilities': 5000,
+        },
         totalMonthlyLimit: Math.max(30000, (matching.totalExpenses || 20000) * 1.3),
         totalSpent: matching.totalExpenses || 0,
         currency: 'INR',
@@ -1474,6 +1495,70 @@ export const groupService = {
           detail.history = detail.history.filter((e) => e.id !== historyEventId);
           await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId), detail);
         }
+      }
+    }
+  },
+
+  /**
+   * Update or disable group monthly budget (matches SplitWise-Clone PATCH /api/groups/:id).
+   */
+  async updateGroupBudget(groupId: string, budgetData: Partial<GroupBudget>): Promise<void> {
+    const token = await authService.getToken();
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || 'u1';
+
+    const normalizedBudget: GroupBudget = {
+      monthlyLimit: Number(budgetData.monthlyLimit || 0),
+      enabled: Boolean(budgetData.enabled),
+      alertThresholds: budgetData.alertThresholds || [75, 90, 100],
+      categoryLimits: budgetData.categoryLimits,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUserId,
+      totalMonthlyLimit: Number(budgetData.monthlyLimit || 0),
+    };
+
+    try {
+      if (token) {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+          Cookie: `better-auth.session_token=${token}`,
+        };
+
+        const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ budget: normalizedBudget }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || 'Failed to update group budget.');
+        }
+      }
+    } catch (err: any) {
+      console.warn('[groupService] updateGroupBudget server sync error:', err?.message);
+    }
+
+    // Optimistically update in-memory cache and persistent storage
+    const inMem = _groupDetailsMap.get(groupId);
+    if (inMem) {
+      inMem.budget = {
+        ...inMem.budget,
+        ...normalizedBudget,
+      };
+      _groupDetailsMap.set(groupId, { ...inMem });
+      await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), inMem);
+    } else {
+      const stored = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+      if (stored) {
+        stored.budget = {
+          ...stored.budget,
+          ...normalizedBudget,
+        };
+        _groupDetailsMap.set(groupId, { ...stored });
+        await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), stored);
       }
     }
   },
