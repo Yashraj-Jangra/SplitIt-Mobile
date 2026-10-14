@@ -1,6 +1,34 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Dynamic Group Sorting with Website Parity & Selector Icon (`app/(tabs)/groups.tsx`, `src/services/group.service.ts`, `src/services/storage.service.ts`)**:
+  - **1:1 Parity with Web Sort Options**:
+    - Implemented full sort suite matching the web app (`SplitWise-Clone/src/app/(app)/groups/page.tsx`):
+      1. `last_usage`: Last Activity (default) — sorts by most recently updated or created circles first (`updatedAt` / `createdAt`).
+      2. `name_asc`: Name (A–Z) — alphabetical sorting.
+      3. `name_desc`: Name (Z–A) — reverse alphabetical sorting.
+      4. `owed_desc`: Owed: High to Low — groups where you are owed the most first.
+      5. `owed_asc`: Owed: Low to High — groups where you are owed the least first.
+      6. `owes_desc`: Owes: High to Low — groups where you owe the most first.
+      7. `owes_asc`: Owes: Low to High — groups where you owe the least first.
+  - **Dynamic Sort Selector Button & Indicator**:
+    - Dedicated 44×44px sort trigger button placed adjacent to the search input in an aligned `searchRow`.
+    - Selector button dynamically changes its icon and color to reflect the active sort type (`Clock` for last used, `ArrowDownAZ` / `ArrowUpAZ` for alphabetical, `ArrowDownWideNarrow` / `ArrowUpNarrowWide` in theme green for owed, and theme red for owes).
+    - Subtle emerald active indicator dot displayed on the selector button whenever a non-default sort is active.
+  - **Dark-Mode Minimalist Bottom Sheet Selector**:
+    - Clean frosted bottom sheet modal with grab handle, title, subtitle, close button, and backdrop dismissal.
+    - Each sort option displays an icon pill, typography label, helper description, and emerald checkmark when selected.
+    - Integrated tactile haptic feedback (`haptics.tap()`) on selection.
+  - **Persistent Storage & Data Schema**:
+    - Centralized `STORAGE_KEYS.GROUPS_SORT_PREFERENCE` in `storage.service.ts`.
+    - Added `updatedAt` and `createdAt` timestamps to `GroupListItem` interface and fallback mock data for sorting reliability.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint app/(tabs)/groups.tsx` passed with 0 errors and 0 warnings.
+    - `npx eslint src/services/group.service.ts` passed with 0 errors and 0 warnings.
+    - `npx eslint src/services/storage.service.ts` passed with 0 errors and 0 warnings.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Centered Arrow in Settlement Record & History (`app/settlements/[id].tsx`, `app/groups/[id]/index.tsx`)**:
   - **Settlement Detail Record Screen (`app/settlements/[id].tsx`)**:
     - Resolved vertical and horizontal arrow misalignment where the big directional transfer arrow was pushed downwards towards the user's name/subtext instead of connecting the avatars.

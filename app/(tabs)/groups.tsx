@@ -9,6 +9,7 @@ import {
   Image,
   RefreshControl,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -16,16 +17,88 @@ import {
   Plus,
   Search,
   X,
-  Sparkles,
   ArrowDownLeft,
   ArrowUpRight,
+  Clock,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  Check,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
+import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
 import { useRouter } from 'expo-router';
 import { haptics } from '../../src/services/haptics.service';
 
 type FilterType = 'all' | 'owed' | 'owe' | 'archived';
+
+export type SortOptionType =
+  | 'last_usage'
+  | 'name_asc'
+  | 'name_desc'
+  | 'owed_desc'
+  | 'owed_asc'
+  | 'owes_desc'
+  | 'owes_asc';
+
+interface SortOptionItem {
+  id: SortOptionType;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  iconColor?: string;
+}
+
+const SORT_OPTIONS: SortOptionItem[] = [
+  {
+    id: 'last_usage',
+    label: 'Last Activity',
+    description: 'Recently updated or active circles first',
+    icon: Clock,
+  },
+  {
+    id: 'name_asc',
+    label: 'Name (A–Z)',
+    description: 'Alphabetical order from A to Z',
+    icon: ArrowDownAZ,
+  },
+  {
+    id: 'name_desc',
+    label: 'Name (Z–A)',
+    description: 'Reverse alphabetical from Z to A',
+    icon: ArrowUpAZ,
+  },
+  {
+    id: 'owed_desc',
+    label: 'Owed: High to Low',
+    description: 'Circles where you are owed the most',
+    icon: ArrowDownWideNarrow,
+    iconColor: THEME.colors.primary,
+  },
+  {
+    id: 'owed_asc',
+    label: 'Owed: Low to High',
+    description: 'Circles where you are owed the least',
+    icon: ArrowUpNarrowWide,
+    iconColor: THEME.colors.primary,
+  },
+  {
+    id: 'owes_desc',
+    label: 'Owes: High to Low',
+    description: 'Circles where you owe the most',
+    icon: ArrowDownWideNarrow,
+    iconColor: THEME.colors.negative,
+  },
+  {
+    id: 'owes_asc',
+    label: 'Owes: Low to High',
+    description: 'Circles where you owe the least',
+    icon: ArrowUpNarrowWide,
+    iconColor: THEME.colors.negative,
+  },
+];
 
 export default function GroupsScreen() {
   const router = useRouter();
@@ -34,6 +107,8 @@ export default function GroupsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [sortBy, setSortBy] = useState<SortOptionType>('last_usage');
+  const [showSortModal, setShowSortModal] = useState(false);
 
   const loadGroups = async () => {
     try {
@@ -50,15 +125,40 @@ export default function GroupsScreen() {
   };
 
   useEffect(() => {
-    if (groups.length === 0) {
-      groupService.getCachedUserGroups().then((cached) => {
-        if (cached && cached.length > 0) {
-          setGroups(cached);
-          setLoading(false);
+    let isMounted = true;
+
+    storageService.getItem<SortOptionType>(STORAGE_KEYS.GROUPS_SORT_PREFERENCE).then((saved) => {
+      if (isMounted && saved && SORT_OPTIONS.some((opt) => opt.id === saved)) {
+        setSortBy(saved);
+      }
+    });
+
+    groupService.getCachedUserGroups().then((cached) => {
+      if (isMounted && cached && cached.length > 0) {
+        setGroups(cached);
+        setLoading(false);
+      }
+    });
+
+    (async () => {
+      try {
+        const data = await groupService.getUserGroups();
+        if (isMounted && data && data.length > 0) {
+          setGroups(data);
         }
-      });
-    }
-    loadGroups();
+      } catch {
+        // Fallback
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const onRefresh = () => {
@@ -67,8 +167,39 @@ export default function GroupsScreen() {
     loadGroups();
   };
 
+  const handleSortChange = async (newSort: SortOptionType) => {
+    haptics.tap();
+    setSortBy(newSort);
+    setShowSortModal(false);
+    try {
+      await storageService.setItem(STORAGE_KEYS.GROUPS_SORT_PREFERENCE, newSort);
+    } catch {
+      // Non-blocking offline storage
+    }
+  };
+
+  const renderSortIcon = (type: SortOptionType, size = 18) => {
+    switch (type) {
+      case 'name_asc':
+        return <ArrowDownAZ size={size} color={THEME.colors.text} strokeWidth={2.2} />;
+      case 'name_desc':
+        return <ArrowUpAZ size={size} color={THEME.colors.text} strokeWidth={2.2} />;
+      case 'owed_desc':
+        return <ArrowDownWideNarrow size={size} color={THEME.colors.primary} strokeWidth={2.2} />;
+      case 'owed_asc':
+        return <ArrowUpNarrowWide size={size} color={THEME.colors.primary} strokeWidth={2.2} />;
+      case 'owes_desc':
+        return <ArrowDownWideNarrow size={size} color={THEME.colors.negative} strokeWidth={2.2} />;
+      case 'owes_asc':
+        return <ArrowUpNarrowWide size={size} color={THEME.colors.negative} strokeWidth={2.2} />;
+      case 'last_usage':
+      default:
+        return <Clock size={size} color={THEME.colors.textMuted} strokeWidth={2.2} />;
+    }
+  };
+
   const filteredGroups = useMemo(() => {
-    return groups.filter((g) => {
+    const filtered = groups.filter((g) => {
       // Filter tab
       if (activeFilter === 'archived' && !g.archived) return false;
       if (activeFilter !== 'archived' && g.archived) return false;
@@ -83,7 +214,41 @@ export default function GroupsScreen() {
         (g.description && g.description.toLowerCase().includes(q))
       );
     });
-  }, [groups, activeFilter, searchQuery]);
+
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'name_asc':
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        case 'name_desc':
+          return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' });
+        case 'owed_desc':
+          return (b.userNetBalance || 0) - (a.userNetBalance || 0);
+        case 'owed_asc':
+          return (a.userNetBalance || 0) - (b.userNetBalance || 0);
+        case 'owes_desc':
+          return (a.userNetBalance || 0) - (b.userNetBalance || 0);
+        case 'owes_asc':
+          return (b.userNetBalance || 0) - (a.userNetBalance || 0);
+        case 'last_usage':
+        default: {
+          const timeA = a.updatedAt
+            ? new Date(a.updatedAt).getTime()
+            : a.createdAt
+            ? new Date(a.createdAt).getTime()
+            : 0;
+          const timeB = b.updatedAt
+            ? new Date(b.updatedAt).getTime()
+            : b.createdAt
+            ? new Date(b.createdAt).getTime()
+            : 0;
+          if (timeA !== timeB) {
+            return timeB - timeA;
+          }
+          return a.name.localeCompare(b.name);
+        }
+      }
+    });
+  }, [groups, activeFilter, searchQuery, sortBy]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -106,29 +271,52 @@ export default function GroupsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Spotlight Search Input */}
-      <View style={styles.searchBar}>
-        <Search size={16} color={THEME.colors.textMuted} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search trips, flatmates, dinners..."
-          placeholderTextColor={THEME.colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCapitalize="none"
-          returnKeyType="search"
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity
-            onPress={() => {
-              haptics.tap();
-              setSearchQuery('');
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <X size={15} color={THEME.colors.textMuted} />
-          </TouchableOpacity>
-        )}
+      {/* Spotlight Search & Sort Row */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchBar}>
+          <Search size={16} color={THEME.colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search trips, flatmates, dinners..."
+            placeholderTextColor={THEME.colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                haptics.tap();
+                setSearchQuery('');
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+            >
+              <X size={15} color={THEME.colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.sortTriggerBtn,
+            sortBy !== 'last_usage' && styles.sortTriggerBtnActive,
+          ]}
+          onPress={() => {
+            haptics.tap();
+            setShowSortModal(true);
+          }}
+          activeOpacity={0.7}
+          accessibilityLabel={`Sort groups. Currently sorted by ${
+            SORT_OPTIONS.find((s) => s.id === sortBy)?.label || 'Last Activity'
+          }`}
+          accessibilityRole="button"
+        >
+          {renderSortIcon(sortBy, 19)}
+          {sortBy !== 'last_usage' && <View style={styles.sortActiveIndicator} />}
+        </TouchableOpacity>
       </View>
 
       {/* Filter Horizontal Pill Strip */}
@@ -307,6 +495,110 @@ export default function GroupsScreen() {
           )}
         </ScrollView>
       )}
+
+      {/* Sort Groups Bottom Sheet Modal */}
+      <Modal
+        visible={showSortModal}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setShowSortModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowSortModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.sheetContainer}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.sheetTitle}>Sort Groups</Text>
+                <Text style={styles.sheetSubtitle}>
+                  Choose how your circles are ordered
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.sheetCloseBtn}
+                onPress={() => {
+                  haptics.tap();
+                  setShowSortModal(false);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Close sort options"
+                accessibilityRole="button"
+              >
+                <X size={18} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.sortOptionsList}
+            >
+              {SORT_OPTIONS.map((option) => {
+                const isSelected = sortBy === option.id;
+                const IconComponent = option.icon;
+                const iconColor =
+                  option.iconColor || (isSelected ? THEME.colors.text : THEME.colors.textMuted);
+
+                return (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[
+                      styles.sortOptionRow,
+                      isSelected && styles.sortOptionRowActive,
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => handleSortChange(option.id)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${option.label}, ${option.description}`}
+                  >
+                    <View
+                      style={[
+                        styles.sortOptionIconBox,
+                        isSelected && styles.sortOptionIconBoxActive,
+                      ]}
+                    >
+                      <IconComponent
+                        size={18}
+                        color={iconColor}
+                        strokeWidth={isSelected ? 2.5 : 2}
+                      />
+                    </View>
+
+                    <View style={styles.sortOptionContent}>
+                      <Text
+                        style={[
+                          styles.sortOptionLabel,
+                          isSelected && styles.sortOptionLabelActive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                      <Text style={styles.sortOptionDesc} numberOfLines={1}>
+                        {option.description}
+                      </Text>
+                    </View>
+
+                    {isSelected && (
+                      <View style={styles.checkIconWrap}>
+                        <Check size={16} color={THEME.colors.primary} strokeWidth={2.5} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -350,18 +642,48 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // Spotlight Search
+  // Spotlight Search & Sort Row
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 12,
+  },
   searchBar: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     backgroundColor: THEME.colors.surface,
-    marginHorizontal: 12,
     paddingHorizontal: 14,
     height: 44,
     borderRadius: THEME.radius.lg,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
+  },
+  sortTriggerBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  sortTriggerBtnActive: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderColor: THEME.colors.hairlineLight,
+  },
+  sortActiveIndicator: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.primary,
   },
   searchInput: {
     flex: 1,
@@ -560,5 +882,114 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: THEME.colors.primaryForeground,
+  },
+
+  // Sort Modal & Bottom Sheet
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.68)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: THEME.colors.surface,
+    borderTopLeftRadius: THEME.radius['2xl'],
+    borderTopRightRadius: THEME.radius['2xl'],
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.hairline,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 36,
+    maxHeight: '75%',
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: THEME.colors.hairlineLight,
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    letterSpacing: -0.3,
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  sheetCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sortOptionsList: {
+    gap: 8,
+    paddingBottom: 8,
+  },
+  sortOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: THEME.colors.surfaceSubtle,
+  },
+  sortOptionRowActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  sortOptionIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  sortOptionIconBoxActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.14)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  sortOptionContent: {
+    flex: 1,
+    gap: 2,
+  },
+  sortOptionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  sortOptionLabelActive: {
+    color: THEME.colors.primary,
+  },
+  sortOptionDesc: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  checkIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

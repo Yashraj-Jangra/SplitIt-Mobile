@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   DEFAULT_GROUP: 'splitit_default_group_id',
   CURRENCY_PREFERENCE: 'splitit_pref_currency',
   HAPTICS_PREFERENCE: 'splitit_pref_haptics',
+  GROUPS_SORT_PREFERENCE: 'splitit_pref_groups_sort',
 } as const;
 
 export const storageService = {

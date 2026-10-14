@@ -76,7 +76,7 @@ export interface GroupActivityItem {
   diffData?: {
     monthlyBudgetUnchanged?: boolean;
     monthlyChange?: { old: number; new: number };
-    categoryChanges?: Array<{ name: string; old: number; new: number; type: 'added' | 'changed' | 'removed' }>;
+    categoryChanges?: { name: string; old: number; new: number; type: 'added' | 'changed' | 'removed' }[];
   };
 }
 
@@ -106,10 +106,12 @@ export interface GroupListItem {
   coverImageUrl?: string;
   categoryIcon?: string;
   membersCount: number;
-  members: Array<{ id: string; name: string; avatarUrl?: string }>;
+  members: { id: string; name: string; avatarUrl?: string }[];
   totalExpenses: number;
   userNetBalance: number;
   archived?: boolean;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 export interface GroupDetailData {
@@ -406,6 +408,8 @@ export const groupService = {
                 totalExpenses: g.totalExpenses || 0,
                 userNetBalance: computedNet,
                 archived: !!g.archivedAt,
+                updatedAt: g.updatedAt,
+                createdAt: g.createdAt,
               };
             });
             _cachedGroups = mapped;
@@ -445,6 +449,8 @@ export const groupService = {
         totalExpenses: 48200,
         userNetBalance: -1250,
         archived: false,
+        updatedAt: '2026-10-14T19:30:00.000Z',
+        createdAt: '2026-09-01T10:00:00.000Z',
       },
       {
         id: '2',
@@ -462,6 +468,8 @@ export const groupService = {
         totalExpenses: 12800,
         userNetBalance: 0,
         archived: false,
+        updatedAt: '2026-10-13T12:00:00.000Z',
+        createdAt: '2026-09-10T11:00:00.000Z',
       },
       {
         id: '3',
@@ -478,6 +486,8 @@ export const groupService = {
         totalExpenses: 18400,
         userNetBalance: 850,
         archived: false,
+        updatedAt: '2026-10-12T15:45:00.000Z',
+        createdAt: '2026-09-15T09:30:00.000Z',
       },
       {
         id: '4',
@@ -494,6 +504,8 @@ export const groupService = {
         totalExpenses: 9200,
         userNetBalance: 1200,
         archived: false,
+        updatedAt: '2026-10-10T08:15:00.000Z',
+        createdAt: '2026-09-20T14:20:00.000Z',
       },
     ];
 
