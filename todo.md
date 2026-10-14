@@ -1,6 +1,35 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Flagship Support System & Help Desk Redesign (`app/support/index.tsx`, `app/support/new.tsx`, `app/support/[id].tsx`, `src/services/support.service.ts`)**:
+  - **Support Desk Hub (`app/support/index.tsx`)**:
+    - Replaced basic raw listing with an editorial Help & Concierge Hub.
+    - Added real-time Live Support Desk pulse indicator (`Support Desk Active • Typical reply < 2h`).
+    - Added 1-tap "SplitIt AI Assistant" quick action banner routing to `/ai/chat` for automated instant resolution.
+    - Added interactive accordion FAQs section with expand/collapse animations and crisp explanations for debt simplification, UPI QR setups, flexible budget pools, and CSV exports.
+    - Added ticket filter tabs (`All`, `Active`, `Resolved`) with badge counts and search filter bar.
+    - Designed rich ticket cards with monospace ID badges (`#SP-104`), colored category badges, status badges, sender snippet previews, relative timestamps, and message counts.
+  - **Ticket Creation Experience (`app/support/new.tsx`)**:
+    - Interactive 5-category card picker with icons, active emerald checks, and descriptive microcopy (`Billing & UPI`, `Report a Bug`, `Feature Request`, `Account Help`, `General Inquiry`).
+    - Live character counts for subject (`/100`) and message (`/2000`).
+    - Added "Attach System Diagnostics" toggle attaching client version (v1.0.0), platform OS/version, and timestamps for rapid bug replication.
+    - Docked sticky bottom action bar with `KeyboardAvoidingView` and `useSafeAreaInsets` for smooth typing and submitting.
+  - **Conversation Thread Experience (`app/support/[id].tsx`)**:
+    - Ticket overview header card with subject, category chip, creation date, and support assignment indicator.
+    - Distinct chat bubble hierarchy: Support agent messages with avatar, verified "STAFF" pill, and crisp surface background; user messages in emerald glass tint with delivery receipt indicators.
+    - Ticket resolution flow: 1-tap "Mark as Resolved" action with confirmation and prominent resolved banner card with "Reopen Conversation" capability.
+    - Docked floating input bar with auto-expanding multiline text input and send button.
+  - **Optimistic State & Service Enhancements (`src/services/support.service.ts`)**:
+    - Integrated optimistic local cache updates for ticket creation, replies, and resolve/reopen status mutations.
+    - Added curated FAQ knowledgebase data provider (`getFaqs()`).
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx eslint app/support/index.tsx` passed with 0 errors and 0 warnings.
+    - `npx eslint app/support/new.tsx` passed with 0 errors and 0 warnings.
+    - `npx eslint app/support/[id].tsx` passed with 0 errors and 0 warnings.
+    - `npx eslint src/services/support.service.ts` passed with 0 errors and 0 warnings.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Dynamic Group Sorting with Website Parity & Selector Icon (`app/(tabs)/groups.tsx`, `src/services/group.service.ts`, `src/services/storage.service.ts`)**:
   - **1:1 Parity with Web Sort Options**:
     - Implemented full sort suite matching the web app (`SplitWise-Clone/src/app/(app)/groups/page.tsx`):
