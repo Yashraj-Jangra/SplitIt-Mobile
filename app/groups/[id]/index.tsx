@@ -158,9 +158,9 @@ export default function GroupDetailScreen() {
     }
   };
 
-  const loadGroup = async () => {
+  const loadGroup = async (forceRefresh = false) => {
     try {
-      const data = await groupService.getGroupDetails(targetId);
+      const data = await groupService.getGroupDetails(targetId, { forceRefresh });
       if (data) {
         setGroup(data);
       }
@@ -208,7 +208,7 @@ export default function GroupDetailScreen() {
     setVisibleExpenseCount(PAGE_SIZE);
     setVisibleActivityCount(PAGE_SIZE);
     haptics.tap();
-    loadGroup();
+    loadGroup(true);
   };
 
   const handleTabChange = (tab: TabType) => {

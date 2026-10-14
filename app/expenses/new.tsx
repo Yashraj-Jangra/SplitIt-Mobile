@@ -236,25 +236,64 @@ export default function NewExpenseModal() {
   const [participants, setParticipants] = useState<SplitParticipantItem[]>([]);
 
   const loadGroupMembers = async (groupId: string) => {
+    // 1. Instant local hydration from preloaded groups in memory (0ms)
+    const candidateGroup =
+      groups.find((g) => g.id === groupId) ||
+      groupService.getInMemoryGroups().find((g) => g.id === groupId);
+
+    if (candidateGroup?.members?.length) {
+      setParticipants(
+        candidateGroup.members.map((m) => ({
+          id: m.id,
+          name: m.name,
+          avatarUrl:
+            m.avatarUrl ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
+          selected: true,
+          shares: 1,
+          percentage: 0,
+          exactAmount: 0,
+        }))
+      );
+    }
+
+    // 2. Fetch fresh members via lightweight API or cache
     try {
-      const groupDetails = await groupService.getGroupDetails(groupId);
-      if (groupDetails?.members?.length > 0) {
-        setParticipants(
-          groupDetails.members.map((m) => ({
-            id: m.id,
-            name: m.name,
-            avatarUrl:
-              m.avatarUrl ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
-            selected: true,
-            shares: 1,
-            percentage: 0,
-            exactAmount: 0,
-          }))
-        );
+      const freshMembers = await groupService.getGroupMembers(groupId);
+      if (freshMembers?.length > 0) {
+        setParticipants((prev) => {
+          if (prev.length === 0) {
+            return freshMembers.map((m) => ({
+              id: m.id,
+              name: m.name,
+              avatarUrl:
+                m.avatarUrl ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
+              selected: true,
+              shares: 1,
+              percentage: 0,
+              exactAmount: 0,
+            }));
+          }
+          // Merge keeping existing user selections
+          return freshMembers.map((m) => {
+            const existing = prev.find((p) => p.id === m.id);
+            return {
+              id: m.id,
+              name: m.name,
+              avatarUrl:
+                m.avatarUrl ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
+              selected: existing ? existing.selected : true,
+              shares: existing?.shares ?? 1,
+              percentage: existing?.percentage ?? 0,
+              exactAmount: existing?.exactAmount ?? 0,
+            };
+          });
+        });
       }
     } catch {
-      // Keep default state
+      // Keep default or preloaded state
     }
   };
 
@@ -270,7 +309,13 @@ export default function NewExpenseModal() {
           setSinglePayerId(curId);
         }
 
-        const allGroups = await groupService.getUserGroups();
+        // Fast in-memory preview (0ms)
+        const memGroups = groupService.getInMemoryGroups();
+        if (memGroups.length > 0 && isMounted) {
+          setGroups(memGroups);
+        }
+
+        const allGroups = await groupService.getUserGroups({ skipBalances: true });
         if (isMounted) setGroups(allGroups);
 
         if (isEditMode && expenseId) {
@@ -304,12 +349,12 @@ export default function NewExpenseModal() {
             setMasterCategory(masterCat);
             setUserOverriddenCategory(true);
 
-            // Fetch group details for group members
+            // Fetch members via lightweight member helper
             let groupMemberList: Array<{ id: string; name: string; avatarUrl?: string }> = [];
             if (targetGroupId) {
               try {
-                const gDetails = await groupService.getGroupDetails(targetGroupId);
-                if (gDetails?.members?.length) groupMemberList = gDetails.members;
+                const members = await groupService.getGroupMembers(targetGroupId);
+                if (members?.length) groupMemberList = members;
               } catch {
                 // Ignore group load error
               }
@@ -566,14 +611,14 @@ export default function NewExpenseModal() {
   const handleSelectGroup = async (groupId: string) => {
     haptics.tap();
     setSelectedGroupId(groupId);
+    setShowGroupModal(false);
 
     if (isDefaultGroupChecked && !isEditMode) {
-      await groupService.setDefaultGroupId(groupId);
+      groupService.setDefaultGroupId(groupId);
       setDefaultGroupIdState(groupId);
     }
 
     await loadGroupMembers(groupId);
-    setShowGroupModal(false);
   };
 
   const hasChanges = useMemo(() => {

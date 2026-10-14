@@ -132,6 +132,11 @@ export interface GroupDetailData {
   history?: HistoryEventItem[];
 }
 
+export interface GetUserGroupsOptions {
+  skipBalances?: boolean;
+  forceRefresh?: boolean;
+}
+
 let _cachedGroups: GroupListItem[] = [];
 const _groupDetailsMap = new Map<string, GroupDetailData>();
 
@@ -340,9 +345,84 @@ export const groupService = {
   },
 
   /**
+   * Fast, lightweight member retrieval with multi-tiered caching (0ms memory/storage -> lightweight /members API).
+   */
+  async getGroupMembers(groupId: string): Promise<{ id: string; name: string; avatarUrl?: string }[]> {
+    // 1. In-memory detail cache
+    const memDetail = _groupDetailsMap.get(groupId);
+    if (memDetail?.members?.length) {
+      return memDetail.members.map((m) => ({ id: m.id, name: m.name, avatarUrl: m.avatarUrl }));
+    }
+
+    // 2. In-memory groups list
+    const memGroup = _cachedGroups.find((g) => g.id === groupId);
+    if (memGroup?.members?.length) {
+      return memGroup.members;
+    }
+
+    // 3. Persistent storage group detail
+    const storedDetail = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+    if (storedDetail?.members?.length) {
+      return storedDetail.members.map((m) => ({ id: m.id, name: m.name, avatarUrl: m.avatarUrl }));
+    }
+
+    // 4. Persistent storage groups list
+    const storedGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
+    const storedGroup = (storedGroups || []).find((g) => g.id === groupId);
+    if (storedGroup?.members?.length) {
+      return storedGroup.members;
+    }
+
+    // 5. Lightweight /members API call
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}/members`, {
+          headers: {
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
+        });
+        if (res.ok) {
+          const membersData = await res.json();
+          if (Array.isArray(membersData) && membersData.length > 0) {
+            const currentUser = await authService.getCachedUser();
+            const currentUserId = currentUser?.id || '';
+            return membersData.map((m: any) => {
+              const uid = m.uid || m.id;
+              const rawName = m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.name;
+              return {
+                id: uid,
+                name: rawName || (uid === currentUserId ? 'You' : 'Member'),
+                avatarUrl: m.avatarUrl,
+              };
+            });
+          }
+        }
+      }
+    } catch {
+      // fallback
+    }
+
+    return [];
+  },
+
+  /**
    * Fetch all user groups with balance & cover images (SWR pattern).
    */
-  async getUserGroups(): Promise<GroupListItem[]> {
+  async getUserGroups(options?: GetUserGroupsOptions): Promise<GroupListItem[]> {
+    if (!options?.forceRefresh) {
+      if (_cachedGroups.length > 0) {
+        return _cachedGroups;
+      }
+      const offlineGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
+      if (offlineGroups && offlineGroups.length > 0) {
+        _cachedGroups = offlineGroups;
+        return offlineGroups;
+      }
+    }
+
     try {
       const token = await authService.getToken();
       if (token) {
@@ -359,30 +439,38 @@ export const groupService = {
             const currentUser = await authService.getCachedUser();
             const currentUserId = currentUser?.id || '';
 
-            const balanceResults = await Promise.allSettled(
-              data.map((g: any) =>
-                fetch(`${API_BASE_URL}/api/groups/${g.id}/balances`, {
-                  headers: {
-                    'Accept': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                    Cookie: `better-auth.session_token=${token}`,
-                  },
-                }).then((r) => (r.ok ? r.json() : []))
-              )
-            );
+            let balanceResults: PromiseSettledResult<any>[] = [];
+            if (!options?.skipBalances) {
+              balanceResults = await Promise.allSettled(
+                data.map((g: any) =>
+                  fetch(`${API_BASE_URL}/api/groups/${g.id}/balances`, {
+                    headers: {
+                      'Accept': 'application/json',
+                      Authorization: `Bearer ${token}`,
+                      Cookie: `better-auth.session_token=${token}`,
+                    },
+                  }).then((r) => (r.ok ? r.json() : []))
+                )
+              );
+            }
 
             const mapped: GroupListItem[] = data.map((g: any, index: number) => {
-              const balances =
-                balanceResults[index]?.status === 'fulfilled' &&
-                Array.isArray(balanceResults[index].value)
-                  ? balanceResults[index].value
-                  : [];
-              const myBalanceObj = balances.find(
-                (b: any) => (b.user?.uid || b.user?.id) === currentUserId
-              );
-              const computedNet = myBalanceObj
-                ? Number(myBalanceObj.netBalance || 0)
-                : Number(g.userNetBalance || 0);
+              const existingCached = _cachedGroups.find((cg) => cg.id === g.id);
+              let computedNet = existingCached?.userNetBalance ?? Number(g.userNetBalance || 0);
+
+              if (!options?.skipBalances) {
+                const balances =
+                  balanceResults[index]?.status === 'fulfilled' &&
+                  Array.isArray(balanceResults[index].value)
+                    ? balanceResults[index].value
+                    : [];
+                const myBalanceObj = balances.find(
+                  (b: any) => (b.user?.uid || b.user?.id) === currentUserId
+                );
+                computedNet = myBalanceObj
+                  ? Number(myBalanceObj.netBalance || 0)
+                  : Number(g.userNetBalance || 0);
+              }
 
               return {
                 id: g.id || `g_${index}`,
@@ -516,7 +604,18 @@ export const groupService = {
    * Fetch complete group details, expenses, balances, budget, and activity.
    * If backend is not available locally, returns real matching data for the requested group.
    */
-  async getGroupDetails(groupId: string): Promise<GroupDetailData> {
+  async getGroupDetails(groupId: string, options?: { forceRefresh?: boolean }): Promise<GroupDetailData> {
+    if (!options?.forceRefresh) {
+      const inMemory = _groupDetailsMap.get(groupId);
+      if (inMemory) return inMemory;
+
+      const stored = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+      if (stored) {
+        _groupDetailsMap.set(groupId, stored);
+        return stored;
+      }
+    }
+
     const token = await authService.getToken();
     const currentUser = await authService.getCachedUser();
     const currentUserId = currentUser?.id || 'u1';

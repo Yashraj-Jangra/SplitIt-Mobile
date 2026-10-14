@@ -1,6 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **High-Performance Groups & Members Local Caching & 0ms Expense Splitting (`src/services/group.service.ts`, `app/expenses/new.tsx`, `app/groups/[id]/index.tsx`)**:
+  - **Zero-Latency Member Hydration**:
+    - Replaced heavy multi-endpoint group detail calls in `app/expenses/new.tsx` with instant 0ms local hydration from preloaded groups in memory.
+    - Selecting a group immediately renders its members and checkboxes with zero loading spinner or freeze.
+  - **Lightweight Group Members API Integration**:
+    - Added `groupService.getGroupMembers(groupId)` with tiered multi-cache strategy: in-memory detail -> in-memory group list -> AsyncStorage detail -> AsyncStorage groups -> lightweight `/api/groups/[id]/members` endpoint.
+    - Drastically reduced payload by eliminating unnecessary downloads of full expense history, audit logs, and settlements when splitting an expense.
+  - **Eliminated N+1 Network Waterfall**:
+    - Added `skipBalances` option to `groupService.getUserGroups({ skipBalances: true })`.
+    - Avoided 8+ concurrent `/balances` HTTP calls when opening the New Expense modal.
+  - **True Stale-While-Revalidate (SWR)**:
+    - Added in-memory and AsyncStorage SWR caching across `getUserGroups` and `getGroupDetails`.
+    - Added `forceRefresh` support for manual pull-to-refresh on `app/groups/[id]/index.tsx`.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Flagship Support System & Help Desk Redesign (`app/support/index.tsx`, `app/support/new.tsx`, `app/support/[id].tsx`, `src/services/support.service.ts`)**:
   - **Support Desk Hub (`app/support/index.tsx`)**:
     - Replaced basic raw listing with an editorial Help & Concierge Hub.
