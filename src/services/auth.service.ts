@@ -8,19 +8,7 @@ function resolveApiBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  // When running in Expo Go or dev mode, resolve the host PC's LAN IP from Metro debugger connection
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-      return `http://${ip}:3231`;
-    }
-  }
-  // Android emulator loopback fallback
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3231';
-  }
-  return 'http://localhost:3231';
+  return 'https://split.cvweb.qzz.io';
 }
 
 // Points to existing Next.js backend (dynamically resolves PC LAN IP in Expo Go)
