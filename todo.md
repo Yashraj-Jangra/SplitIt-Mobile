@@ -1,6 +1,30 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Deep Mobile vs. Web Parity Audit & Core Refinements (`src/services/balance.service.ts`, `src/services/notification.service.ts`, `src/services/settlement.service.ts`, `src/services/expense.service.ts`, `src/services/ai.service.ts`, `src/components/dashboard/ObligationsModal.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/activity.tsx`, `app/ai/scanner.tsx`, `app/expenses/[id].tsx`, `app/expenses/new.tsx`, `app/groups/[id]/index.tsx`, `app/groups/[id]/search.tsx`)**:
+  - **Comprehensive 360° Parity Audit**:
+    - Performed a line-by-line inspection comparing `SplitIt-Mobile` with `SplitWise-Clone` (Next.js web application) across dashboard metrics, activity streams, search functionality, receipt attachments, and debt settlement flows.
+  - **Phase 1: Dashboard Obligations Breakdown & Interactive Reminders**:
+    - **Obligations Calculation (`src/services/balance.service.ts`)**: Built `computeObligations` returning structured `owedToYou` (debtors) and `youOwe` (creditors) with name, email, avatar, upiId, amount, and shared group references.
+    - **Payment Reminders (`src/services/notification.service.ts`)**: Added `sendPaymentReminder` communicating with `POST /api/notifications/send` with UPI URI generation, payment disclaimer, and recipient email notifications.
+    - **Obligations Bottom Sheet Modal (`src/components/dashboard/ObligationsModal.tsx`)**: Built a reusable bottom sheet dialog with segmented "Owed to You" and "You Owe" tabs, individual "Remind" actions with sending state feedback, "Remind All" batch notifications, and one-tap routing to `/settle/new`.
+    - **Interactive Dashboard Stat Columns (`app/(tabs)/index.tsx`)**: Wired haptic tap triggers on "+ ₹ You are owed" and "- ₹ You owe" stat boxes on the home dashboard to seamlessly launch `ObligationsModal`.
+  - **Phase 2: Activity Tab Upgrade (Unified Ledger with Settlements & Filtering)**:
+    - **User Settlements Caching (`src/services/storage.service.ts`, `src/services/settlement.service.ts`)**: Added `USER_SETTLEMENTS` cache key and `getUserSettlements` fetching settlements across all user groups with offline caching.
+    - **Chronological Ledger Stream (`app/(tabs)/activity.tsx`)**: Unified user expenses and settlements into a single chronological stream sorted with sub-millisecond tiebreaking.
+    - **Segmented Type Filters & Live Search**: Added live search bar (matching title, merchant, payer, payee, notes, amounts) and segmented filter pills `[All | Expenses | Settlements]`.
+    - **Editorial Month/Year Grouping**: Grouped ledger entries by month and year (`MMMM yyyy`) with hairline separators and settlement transfer indicator rows.
+  - **Phase 3: Receipt Attachment Upload, Group Search & Filter Refinements**:
+    - **Receipt Upload & Persistence (`src/services/expense.service.ts`)**: Added `uploadReceiptImage` utilizing `expo-image-manipulator` to scale images to 1400px and upload via multipart `POST /api/upload/receipt`. Added `receiptImageUrl` support to `createExpense` and `updateExpense`.
+    - **AI Scanner Integration (`src/services/ai.service.ts`, `app/ai/scanner.tsx`)**: AI receipt scanner now returns remote `imageUrl` and passes it forward in navigation params to `/expenses/new`.
+    - **Expense Screen Attachments (`app/expenses/new.tsx`, `app/expenses/[id].tsx`)**:
+      - `new.tsx`: Added camera & gallery picking via `expo-image-picker`, attached thumbnail preview strip with remove button, full-screen zoomable receipt modal viewer, and persists `receiptImageUrl` on submission.
+      - `[id].tsx`: Added `persistReceipt` and `promptPickReceipt` so picking or replacing a receipt immediately uploads to server and updates the persistent expense record.
+    - **Group Search Screen Upgrade (`app/groups/[id]/search.tsx`)**: Upgraded group search to query both expenses and settlements with segmented pills `[All | Expenses | Settlements]` and dedicated settlement rows linking to `/settlements/[id]`.
+    - **Group Detail Activity Filter (`app/groups/[id]/index.tsx`)**: Added segmented filter slider `[All (N) | Expenses (N) | Settlements (N)]` above group activity stream, matching the website's activity card layout.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Real-Time Cross-Screen Reactivity & Deep Pull-to-Refresh Architecture (`src/services/event-emitter.ts`, `src/services/group.service.ts`, `src/services/expense.service.ts`, `src/services/balance.service.ts`, `src/services/settlement.service.ts`, `app/(tabs)/index.tsx`, `app/groups/[id]/index.tsx`, `app/(tabs)/groups.tsx`, `app/(tabs)/activity.tsx`)**:
   - **Identified Root Causes for Stale Data & Missing Auto-Refresh**:
     1. **Memory Cache Interception**: `groupService.getUserGroups` and `getGroupDetails` returned `_cachedGroups` or `_groupDetailsMap.get(id)` without contacting the backend when called without a force-refresh flag. Pull-to-refresh (`onRefresh`) did not pass `forceRefresh: true`, returning identical stale data on drag.
