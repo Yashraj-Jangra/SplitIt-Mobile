@@ -8,7 +8,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://split.cvweb.qzz.io"
+        "EXPO_PUBLIC_API_URL": "https://split.cvweb.qzz.io",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "178311275102-ph0shfc0dhs7cfnefre0q4bue6h0knvp.apps.googleusercontent.com"
       }
     },
     "preview": {
@@ -17,7 +18,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://split.cvweb.qzz.io"
+        "EXPO_PUBLIC_API_URL": "https://split.cvweb.qzz.io",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "178311275102-ph0shfc0dhs7cfnefre0q4bue6h0knvp.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -26,7 +28,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://split.cvweb.qzz.io"
+        "EXPO_PUBLIC_API_URL": "https://split.cvweb.qzz.io",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "178311275102-ph0shfc0dhs7cfnefre0q4bue6h0knvp.apps.googleusercontent.com"
       }
     }
   },

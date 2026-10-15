@@ -1,6 +1,19 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Native Phone Google Login via Google Play Services / Credential Manager (`src/services/auth.service.ts`, `app.json`, `eas.json`, `package.json`)**:
+  - **Native Phone Account Chooser**:
+    - Replaced the browser redirect to our website with native phone Google Sign-In using `@react-native-google-signin/google-signin`.
+    - Integrated `GoogleSignin.hasPlayServices()` and `GoogleSignin.signIn()` to present the device's native Google Account bottom sheet / credential chooser.
+  - **Direct ID Token Exchange with Better-Auth**:
+    - Extracted the cryptographically verified `idToken` from Google Play Services on the device.
+    - Exchanged the `idToken` directly with Better-Auth via `POST /api/auth/sign-in/social` (`{ provider: 'google', idToken: { token } }`), bypassing any web browser sessions or web redirect loops.
+    - Synchronized user profile and session token with SecureStore on sign-in and Google account disconnection on logout (`GoogleSignin.signOut()`).
+  - **Graceful WebBrowser Fallback**:
+    - Maintained browser session fallback for non-native sandboxes (e.g. Expo Go) so local development remains seamless.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Enforced Production Backend URL Across All Compilation Targets (`src/services/auth.service.ts`, `app.json`, `eas.json`)**:
   - **Runtime & Bundle URL Guard (`src/services/auth.service.ts`)**:
     - Centralized `PRODUCTION_API_URL = 'https://split.cvweb.qzz.io'`.

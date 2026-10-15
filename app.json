@@ -76,7 +76,8 @@
         {
           "photosPermission": "SplitIt needs photo library access to upload receipt images from your photo gallery."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "apiUrl": "https://split.cvweb.qzz.io",

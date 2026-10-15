@@ -2,8 +2,27 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 export const PRODUCTION_API_URL = 'https://split.cvweb.qzz.io';
+export const GOOGLE_WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  '178311275102-ph0shfc0dhs7cfnefre0q4bue6h0knvp.apps.googleusercontent.com';
+
+let isGoogleConfigured = false;
+function ensureGoogleConfigured(): void {
+  if (isGoogleConfigured) return;
+  try {
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      scopes: ['email', 'profile'],
+      offlineAccess: false,
+    });
+    isGoogleConfigured = true;
+  } catch {
+    // Graceful fallback if native module not available
+  }
+}
 
 function resolveApiBaseUrl(): string {
   const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
@@ -115,6 +134,7 @@ export const authService = {
       _cachedUser = null;
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       await SecureStore.deleteItemAsync(USER_KEY);
+      await GoogleSignin.signOut().catch(() => {});
     } catch {
       // SecureStore clear fallback
     }
@@ -193,14 +213,84 @@ export const authService = {
   },
 
   /**
-   * One-tap Google OAuth via WebBrowser session and Better-Auth.
+   * Native phone Google login via Google Play Services / Credential Manager.
+   * Exchanges the verified native ID token directly with Better-Auth backend.
    */
   async signInWithGoogle(): Promise<AuthResponse> {
+    try {
+      ensureGoogleConfigured();
+
+      // Check for Google Play Services availability
+      const hasPlay = await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      }).catch(() => false);
+
+      if (hasPlay) {
+        // Trigger native Android / iOS Google Sign-In prompt
+        const signInResult = await GoogleSignin.signIn();
+
+        if (signInResult.type === 'cancelled') {
+          return { success: false, error: 'Google sign-in was canceled' };
+        }
+
+        if (signInResult.type === 'success' && signInResult.data.idToken) {
+          const idToken = signInResult.data.idToken;
+
+          // Exchange native verified ID token directly with Better-Auth backend
+          const res = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify({
+              provider: 'google',
+              idToken: {
+                token: idToken,
+              },
+            }),
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || data.error) {
+            return {
+              success: false,
+              error: data.message || data.error || 'Failed to authenticate Google credentials with server',
+            };
+          }
+
+          const token = data.token || data.session?.token || 'session_active';
+          const user: AuthUser = {
+            id: data.user?.id || '',
+            name: data.user?.name || signInResult.data.user.name || 'SplitIt User',
+            email: data.user?.email || signInResult.data.user.email,
+            avatarUrl: data.user?.image || signInResult.data.user.photo || undefined,
+            role: data.user?.role || 'user',
+          };
+
+          await this.saveSession(token, user);
+          return { success: true, token, user };
+        }
+      }
+    } catch (nativeErr: any) {
+      if (nativeErr?.code === statusCodes.SIGN_IN_CANCELLED) {
+        return { success: false, error: 'Google sign-in was canceled' };
+      }
+      if (nativeErr?.code === statusCodes.IN_PROGRESS) {
+        return { success: false, error: 'Google sign-in is already in progress' };
+      }
+      if (nativeErr?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        return { success: false, error: 'Google Play Services is not available on this device' };
+      }
+      // Continue to fallback if native module failed in non-native build (e.g. Expo Go)
+    }
+
+    // WebBrowser fallback for environments without native binary link (e.g. Expo Go)
     try {
       const callbackUrl = Linking.createURL('auth/callback', { scheme: 'splitit' });
       let authUrl = `${API_BASE_URL}/api/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(callbackUrl)}`;
 
-      // Step 1: Pre-fetch direct Google OAuth URL via POST to skip redirect latency
       try {
         const postRes = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
           method: 'POST',
@@ -227,7 +317,6 @@ export const authService = {
         const token = (parsed.queryParams?.token as string) || (parsed.queryParams?.session_token as string);
 
         if (token) {
-          // Fetch verified user profile with token
           const profileRes = await fetch(`${API_BASE_URL}/api/user/profile`, {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -247,7 +336,6 @@ export const authService = {
           }
         }
 
-        // Fallback user if profile endpoint unreachable
         const fallbackUser: AuthUser = {
           id: 'google_user',
           name: 'SplitIt User',
