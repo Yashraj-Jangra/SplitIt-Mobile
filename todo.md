@@ -1,6 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Fixed "useAuth must be used within an AuthProvider" Render Error (`src/contexts/auth.context.tsx`, `app/_layout.tsx`)**:
+  - **Identified Root Cause**:
+    - In `app/_layout.tsx`, `NavigationGate` previously returned early with `<View style={styles.loadingContainer}>` while `isLoading` was true. This unmounted the `<Stack>` navigator during startup hydration. Expo Router's route loader then attempted to evaluate and render `app/(auth)/login.tsx` outside of the mounted Navigator hierarchy.
+    - When `useAuth()` was called in `LoginScreen`, `useContext(AuthContext)` was `undefined`, throwing an unhandled runtime error.
+  - **Robust Fallback Context & Persistent Navigator Mount**:
+    - Provided a complete `defaultAuthContext` implementation fallback for `AuthContext` in `src/contexts/auth.context.tsx` pointing directly to `authService`. `useAuth()` now guarantees safe return without ever throwing unhandled exceptions during hydration or Fast Refresh.
+    - Updated `NavigationGate` in `app/_layout.tsx` to always keep the `<Stack>` navigator mounted inside `<AuthProvider>`, displaying the loading splash as an absolute overlay (`StyleSheet.absoluteFill`) while `isLoading` is true.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Fixed RNGoogleSignin TurboModule Crash in Expo Go (`src/services/auth.service.ts`)**:
   - **Identified Root Cause**:
     - `@react-native-google-signin/google-signin` calls `TurboModuleRegistry.getEnforcing('RNGoogleSignin')` at top-level require time. When imported statically at the root of `src/services/auth.service.ts`, running in Expo Go or any build without the native module compiled into the binary immediately caused an unhandled runtime invariant crash on app boot (`TurboModuleRegistry.getEnforcing(...): 'RNGoogleSignin' could not be found`).

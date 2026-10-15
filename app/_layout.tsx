@@ -67,16 +67,6 @@ function NavigationGate() {
     }
   }, [user, isLoading, segments, router]);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <QuantumLogo size={76} />
-        <Text style={styles.loadingTitle}>SplitIt</Text>
-        <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginTop: 24 }} />
-      </View>
-    );
-  }
-
   return (
     <ThemeProvider value={splitItNavTheme}>
       <View style={styles.navContainer} collapsable={false}>
@@ -233,6 +223,14 @@ function NavigationGate() {
             }}
           />
         </Stack>
+
+        {isLoading && (
+          <View style={[StyleSheet.absoluteFill, styles.loadingContainer]} pointerEvents="auto">
+            <QuantumLogo size={76} />
+            <Text style={styles.loadingTitle}>SplitIt</Text>
+            <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginTop: 24 }} />
+          </View>
+        )}
       </View>
     </ThemeProvider>
   );
