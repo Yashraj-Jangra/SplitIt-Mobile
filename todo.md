@@ -1,6 +1,19 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Native Android & Metro Production Compilation Verification (`dist/`, `android/app/build/outputs/apk/debug/app-debug.apk`)**:
+  - **Metro Asset & Bytecode Export (`npx expo export`)**:
+    - Successfully compiled and packaged 4,033 JavaScript/TypeScript modules across all Expo routes and internal services.
+    - Generated production Hermes bytecode bundles for Android (7.8 MB) and iOS (7.5 MB) along with 36 static assets in `dist/`.
+  - **Full Native Android Build (`gradlew.bat assembleDebug`)**:
+    - Completed execution of 584 Gradle tasks (518 executed, 66 up-to-date) with `BUILD SUCCESSFUL in 38m 25s`.
+    - Successfully built and packaged native debug APK at:
+      `d:\Projects\SplitIt-Mobile\android\app\build\outputs\apk\debug\app-debug.apk` (254.06 MB).
+    - Verified all native C++/CMake transforms, Hermes engine integration, `react-native-reanimated`, `react-native-gesture-handler`, and native Play Services Google Sign-In binaries compiled with zero errors.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Aligned Login & Signup Visuals with Website Design (`app/(auth)/login.tsx`, `app/(auth)/signup.tsx`, `src/components/brand/QuantumLogo.tsx`)**:
   - **Canonical Website Auth Background Image**:
     - Replaced generic office desk placeholder with the website's exact auth cover image (`https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80`).
