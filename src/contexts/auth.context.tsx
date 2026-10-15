@@ -30,6 +30,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (cached) {
         setUser(cached);
       }
+      const remote = await authService.fetchUserProfile();
+      if (remote) {
+        setUser(remote);
+      }
     } catch {
       // safe fallback
     }
@@ -45,6 +49,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (cachedUser) {
             setUser(cachedUser);
           }
+          // Fetch authoritative profile with upiId in background
+          authService.fetchUserProfile(token).then((remote) => {
+            if (remote) setUser(remote);
+          });
         }
       } catch {
         // Rehydration fallback
@@ -69,6 +77,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.signInWithEmail(email, password);
     if (res.success && res.user) {
       setUser(res.user);
+      authService.fetchUserProfile(res.token).then((remote) => {
+        if (remote) setUser(remote);
+      });
     }
     return res;
   };
@@ -78,6 +89,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.signUpWithEmail(name, email, password);
     if (res.success && res.user) {
       setUser(res.user);
+      authService.fetchUserProfile(res.token).then((remote) => {
+        if (remote) setUser(remote);
+      });
     }
     return res;
   };
@@ -87,6 +101,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.signInWithGoogle();
     if (res.success && res.user) {
       setUser(res.user);
+      authService.fetchUserProfile(res.token).then((remote) => {
+        if (remote) setUser(remote);
+      });
     }
     return res;
   };

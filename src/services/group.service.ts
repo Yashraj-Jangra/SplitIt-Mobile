@@ -604,11 +604,13 @@ export const groupService = {
                 const rawName = b.user?.firstName
                   ? `${b.user.firstName} ${b.user.lastName || ''}`.trim()
                   : b.user?.name;
+                const isViewer = uid === currentUserId;
+                const viewerDefaultUpi = currentUser?.email ? `${currentUser.email.split('@')[0]}@okaxis` : undefined;
                 return {
                   id: uid,
-                  name: rawName || (uid === currentUserId ? 'You' : 'Member'),
+                  name: rawName || (isViewer ? 'You' : 'Member'),
                   avatarUrl: b.user?.avatarUrl,
-                  upiId: b.user?.upiId,
+                  upiId: b.user?.upiId || (isViewer ? (currentUser?.upiId || viewerDefaultUpi) : undefined),
                   netBalance: Number(b.netBalance || 0),
                 };
               })
@@ -617,11 +619,13 @@ export const groupService = {
                 const rawName = m.firstName
                   ? `${m.firstName} ${m.lastName || ''}`.trim()
                   : m.name;
+                const isViewer = uid === currentUserId;
+                const viewerDefaultUpi = currentUser?.email ? `${currentUser.email.split('@')[0]}@okaxis` : undefined;
                 return {
                   id: uid,
-                  name: rawName || (uid === currentUserId ? 'You' : 'Member'),
+                  name: rawName || (isViewer ? 'You' : 'Member'),
                   avatarUrl: m.avatarUrl,
-                  upiId: m.upiId,
+                  upiId: m.upiId || (isViewer ? (currentUser?.upiId || viewerDefaultUpi) : undefined),
                   netBalance: 0,
                 };
               });
@@ -947,7 +951,7 @@ export const groupService = {
       name: m.name,
       avatarUrl: m.avatarUrl,
       netBalance: 0,
-      upiId: m.name === 'You' ? (currentUser?.upiId || 'you@upi') : undefined,
+      upiId: m.name === 'You' ? (currentUser?.upiId || (currentUser?.email ? `${currentUser.email.split('@')[0]}@okaxis` : undefined)) : undefined,
     }));
 
     const fallbackResult: GroupDetailData = {

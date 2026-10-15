@@ -48,14 +48,19 @@ function resolveApiBaseUrl(): string {
   return PRODUCTION_API_URL;
 }
 
-function getAuthHeaders(extra?: Record<string, string>): Record<string, string> {
-  return {
+function getAuthHeaders(extra?: Record<string, string>, token?: string | null): Record<string, string> {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Origin': API_BASE_URL,
     'Referer': `${API_BASE_URL}/`,
     ...extra,
   };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+    headers['Cookie'] = `__Secure-better-auth.session_token=${token}; better-auth.session_token=${token}`;
+  }
+  return headers;
 }
 
 // Canonical API base URL for SplitIt (points to production backend)
@@ -122,6 +127,59 @@ export const authService = {
   /**
    * Retrieve active user profile from SecureStore.
    */
+  /**
+   * Fetches the authoritative user profile from /api/user/profile.
+   * Includes custom fields (upiId, firstName, lastName, username, etc.)
+   * which Better-Auth session tokens deliberately omit.
+   */
+  async fetchUserProfile(tokenOverride?: string): Promise<AuthUser | null> {
+    try {
+      const token = tokenOverride || (await this.getToken());
+      if (!token) return null;
+
+      const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
+        headers: getAuthHeaders({}, token),
+      });
+
+      if (res.ok) {
+        const profile = await res.json();
+        if (profile) {
+          const cached = await this.getCachedUser();
+          const nameParts = (profile.name || '').split(' ');
+          const resolvedName =
+            `${profile.firstName || ''} ${profile.lastName || ''}`.trim() ||
+            profile.name ||
+            cached?.name ||
+            'SplitIt User';
+
+          const emailVal = profile.email || cached?.email || '';
+          const defaultUpi = emailVal ? `${emailVal.split('@')[0]}@okaxis` : undefined;
+          const merged: AuthUser = {
+            ...(cached || {}),
+            id: profile.id || profile.uid || cached?.id || '',
+            name: resolvedName,
+            email: emailVal,
+            avatarUrl: profile.avatarUrl || profile.image || cached?.avatarUrl,
+            role: profile.role || cached?.role || 'user',
+            firstName: profile.firstName || nameParts[0] || cached?.firstName,
+            lastName: profile.lastName || nameParts.slice(1).join(' ') || cached?.lastName,
+            username: profile.username || (emailVal ? emailVal.split('@')[0] : cached?.username),
+            mobileNumber: profile.mobileNumber || cached?.mobileNumber,
+            countryCode: profile.countryCode || cached?.countryCode,
+            upiId: profile.upiId || cached?.upiId || defaultUpi,
+          };
+
+          _cachedUser = merged;
+          await SecureStore.setItemAsync(USER_KEY, JSON.stringify(merged));
+          return merged;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
   async getCachedUser(): Promise<AuthUser | null> {
     if (_cachedUser) return _cachedUser;
     try {
@@ -167,15 +225,23 @@ export const authService = {
       }
 
       const token = data.token || data.session?.token || (res.headers.get('set-cookie')?.match(/better-auth\.session_token=([^;]+)/)?.[1]) || 'session_active';
+      const defaultUpi = email ? `${email.trim().toLowerCase().split('@')[0]}@okaxis` : undefined;
       const user: AuthUser = {
         id: data.user?.id || data.session?.userId || '',
         name: data.user?.name || data.user?.firstName || 'User',
         email: data.user?.email || email,
         avatarUrl: data.user?.image || undefined,
         role: data.user?.role || data.session?.user?.role || 'user',
+        upiId: data.user?.upiId || defaultUpi,
       };
 
       await this.saveSession(token, user);
+
+      // Hydrate authoritative profile with database upiId in background
+      this.fetchUserProfile(token).then((profile) => {
+        if (profile) _cachedUser = profile;
+      });
+
       return { success: true, token, user };
     } catch (err: any) {
       return { success: false, error: err.message || 'Network error connecting to auth server' };
@@ -203,10 +269,12 @@ export const authService = {
       }
 
       const token = data.token || data.session?.token || 'session_active';
+      const defaultUpi = email ? `${email.trim().toLowerCase().split('@')[0]}@okaxis` : undefined;
       const user: AuthUser = {
         id: data.user?.id || '',
         name: data.user?.name || name,
         email: data.user?.email || email,
+        upiId: data.user?.upiId || defaultUpi,
       };
 
       await this.saveSession(token, user);
@@ -262,15 +330,24 @@ export const authService = {
           }
 
           const token = data.token || data.session?.token || (res.headers.get('set-cookie')?.match(/better-auth\.session_token=([^;]+)/)?.[1]) || 'session_active';
+          const emailVal = data.user?.email || signInResult.data.user.email || '';
+          const defaultUpi = emailVal ? `${emailVal.split('@')[0]}@okaxis` : undefined;
           const user: AuthUser = {
             id: data.user?.id || '',
             name: data.user?.name || signInResult.data.user.name || 'SplitIt User',
-            email: data.user?.email || signInResult.data.user.email,
+            email: emailVal,
             avatarUrl: data.user?.image || signInResult.data.user.photo || undefined,
             role: data.user?.role || 'user',
+            upiId: data.user?.upiId || defaultUpi,
           };
 
           await this.saveSession(token, user);
+
+          // Hydrate authoritative profile with database upiId in background
+          this.fetchUserProfile(token).then((profile) => {
+            if (profile) _cachedUser = profile;
+          });
+
           return { success: true, token, user };
         } else if (signInResult.type === 'success' && !signInResult.data.idToken) {
           return {
@@ -333,12 +410,14 @@ export const authService = {
 
           if (profileRes.ok) {
             const profileData = await profileRes.json();
+            const emailVal = profileData.email || '';
+            const defaultUpi = emailVal ? `${emailVal.split('@')[0]}@okaxis` : undefined;
             const user: AuthUser = {
               id: profileData.id || profileData.user?.id || '',
               name: `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || profileData.name || 'SplitIt User',
-              email: profileData.email || '',
+              email: emailVal,
               avatarUrl: profileData.avatarUrl,
-              upiId: profileData.upiId,
+              upiId: profileData.upiId || defaultUpi,
               role: profileData.role || profileData.user?.role || 'user',
             };
             await this.saveSession(token, user);
@@ -346,10 +425,13 @@ export const authService = {
           }
         }
 
+        const fallbackEmail = (parsed.queryParams?.email as string) || '';
+        const fallbackDefaultUpi = fallbackEmail ? `${fallbackEmail.split('@')[0]}@okaxis` : undefined;
         const fallbackUser: AuthUser = {
           id: 'google_user',
           name: 'SplitIt User',
-          email: (parsed.queryParams?.email as string) || '',
+          email: fallbackEmail,
+          upiId: fallbackDefaultUpi,
         };
         const fallbackToken = token || 'google_session_active';
         await this.saveSession(fallbackToken, fallbackUser);
@@ -384,12 +466,7 @@ export const authService = {
       try {
         const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(token ? { Cookie: `better-auth.session_token=${token}` } : {}),
-          },
+          headers: getAuthHeaders({}, token),
           body: JSON.stringify({
             firstName: updates.firstName,
             lastName: updates.lastName,

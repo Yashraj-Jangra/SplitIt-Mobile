@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Share,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -27,13 +28,18 @@ import { BRAND_QR_BADGE } from '../../src/components/brand/QuantumLogo';
 export default function MyQrScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, refreshUser, isLoading } = useAuth();
   const qrRef = useRef<any>(null);
 
   const [copied, setCopied] = useState(false);
 
-  const upiId = user?.upiId?.trim() || '';
-  const displayName = user?.name || 'You';
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
+  const defaultUpi = user?.email ? `${user.email.split('@')[0]}@okaxis` : '';
+  const upiId = user?.upiId?.trim() || defaultUpi;
+  const displayName = user?.name || (user?.email ? user.email.split('@')[0] : 'You');
   const hasUpi = Boolean(upiId && upiId.includes('@'));
 
   const upiUrl = hasUpi
@@ -69,6 +75,29 @@ export default function MyQrScreen() {
       // User cancelled share — no-op
     }
   };
+
+  if (isLoading && !user) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => {
+              haptics.tap();
+              router.back();
+            }}
+            style={styles.backButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ArrowLeft size={20} color={THEME.colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Payment QR</Text>
+        </View>
+        <View style={[styles.content, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={THEME.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>

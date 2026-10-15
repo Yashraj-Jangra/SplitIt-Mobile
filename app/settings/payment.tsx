@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,12 +23,24 @@ const UPI_SUFFIXES = ['@okaxis', '@okhdfc', '@paytm', '@ybl', '@ibl'];
 export default function PaymentSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, updateUserProfile } = useAuth();
+  const { user, updateUserProfile, refreshUser } = useAuth();
 
   const [upiId, setUpiId] = useState(
     () => user?.upiId || (user?.email ? `${user.email.split('@')[0]}@okaxis` : '')
   );
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
+  useEffect(() => {
+    if (user?.upiId) {
+      setUpiId(user.upiId);
+    } else if (user?.email && !upiId) {
+      setUpiId(`${user.email.split('@')[0]}@okaxis`);
+    }
+  }, [user?.upiId, user?.email]);
 
   const handleSuffixPick = (suffix: string) => {
     haptics.tap();

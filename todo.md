@@ -1,6 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Fixed Preview QR Setup State & Automatic UPI ID Profile Hydration (`app/settings/my-qr.tsx`, `app/settings/payment.tsx`, `app/settle/new.tsx`, `src/services/auth.service.ts`, `src/contexts/auth.context.tsx`, `src/services/group.service.ts`)**:
+  - **Identified Root Cause for "Set Up UPI ID First" on Login**:
+    - Better-Auth session tokens (`/api/auth/sign-in/email`, `/api/auth/sign-in/social`) deliberately return minimal session records (`id`, `name`, `email`, `role`) and omit custom user profile attributes like `upiId`, `firstName`, `lastName`, and `username`.
+    - Profile and Payment Settings screens visually fell back to deterministic default VPAs (`${email.split('@')[0]}@okaxis`), giving the impression that UPI was configured. However, `app/settings/my-qr.tsx` strictly checked `user?.upiId` with no fallback, flashing the "No UPI ID Configured" empty state until the user visited Payment Settings and pressed "Save UPI ID".
+  - **Authoritative Profile Hydration on Login & App Startup**:
+    - Added `authService.fetchUserProfile(tokenOverride?: string)` targeting `/api/user/profile` with authenticated origin headers, bearer tokens, and session cookies.
+    - Integrated automatic background hydration in `authService.signInWithEmail`, `signUpWithEmail`, `signInWithGoogle`, and on app rehydration in `auth.context.tsx`.
+    - Implemented `refreshUser` context hook updating cached user in SecureStore and React state.
+  - **Seamless Default UPI VPA Fallback Across Mobile Screens**:
+    - Updated `app/settings/my-qr.tsx` to automatically fall back to `${user.email.split('@')[0]}@okaxis`, allowing "Preview QR" to immediately display a working QR code on login without forcing a redundant save.
+    - Added `useEffect` in `app/settings/my-qr.tsx` and `app/settings/payment.tsx` to trigger `refreshUser()` on mount and sync incoming profile changes.
+    - Added auth rehydration loading state handling in `my-qr.tsx` to avoid flashing empty state before profile loads.
+    - Updated `app/settle/new.tsx` (payer and receiver member mapping) and `src/services/group.service.ts` to automatically supply the user's default VPA fallback when settling balances.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Purged Mock Data Leaks, Hardened API Headers, and Implemented Client-Side Demo Startup Guide (`src/services/api-headers.ts`, `src/services/demo.service.ts`, `src/data/demoData.ts`, `src/services/group.service.ts`, `src/services/balance.service.ts`, `src/services/expense.service.ts`, `src/services/notification.service.ts`, `src/services/ai.service.ts`, `src/contexts/auth.context.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`, `app/ai/chat.tsx`)**:
   - **Identified & Fixed Root Cause for Mixed Mock/Real Data**:
     - Better-Auth and Next.js backend enforce origin security (`Origin: https://split.cvweb.qzz.io`, `Referer`, and HTTPS `__Secure-better-auth.session_token` / `better-auth.session_token` cookies). Mobile requests previously omitted these, triggering 403 `MISSING_OR_NULL_ORIGIN` or 401 rejections.
