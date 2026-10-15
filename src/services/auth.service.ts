@@ -178,7 +178,6 @@ export const authService = {
             'SplitIt User';
 
           const emailVal = profile.email || cached?.email || '';
-          const defaultUpi = emailVal ? `${emailVal.split('@')[0]}@okaxis` : undefined;
           const merged: AuthUser = {
             ...(cached || {}),
             id: profile.id || profile.uid || cached?.id || '',
@@ -191,7 +190,7 @@ export const authService = {
             username: profile.username || (emailVal ? emailVal.split('@')[0] : cached?.username),
             mobileNumber: profile.mobileNumber || cached?.mobileNumber,
             countryCode: profile.countryCode || cached?.countryCode,
-            upiId: profile.upiId || cached?.upiId || defaultUpi,
+            upiId: profile.upiId || undefined,
           };
 
           _cachedUser = merged;
@@ -253,14 +252,13 @@ export const authService = {
       }
 
       const token = data.token || data.session?.token || (res.headers.get('set-cookie')?.match(/better-auth\.session_token=([^;]+)/)?.[1]) || 'session_active';
-      const defaultUpi = email ? `${email.trim().toLowerCase().split('@')[0]}@okaxis` : undefined;
       const user: AuthUser = {
         id: data.user?.id || data.session?.userId || '',
         name: data.user?.name || data.user?.firstName || 'User',
         email: data.user?.email || email,
         avatarUrl: data.user?.image || undefined,
         role: data.user?.role || data.session?.user?.role || 'user',
-        upiId: data.user?.upiId || defaultUpi,
+        upiId: data.user?.upiId || undefined,
       };
 
       await this.saveSession(token, user);
@@ -297,12 +295,11 @@ export const authService = {
       }
 
       const token = data.token || data.session?.token || 'session_active';
-      const defaultUpi = email ? `${email.trim().toLowerCase().split('@')[0]}@okaxis` : undefined;
       const user: AuthUser = {
         id: data.user?.id || '',
         name: data.user?.name || name,
         email: data.user?.email || email,
-        upiId: data.user?.upiId || defaultUpi,
+        upiId: data.user?.upiId || undefined,
       };
 
       await this.saveSession(token, user);
@@ -366,14 +363,13 @@ export const authService = {
               res.headers.get('set-cookie')?.match(/better-auth\.session_token=([^;]+)/)?.[1] ||
               'session_active';
             const emailVal = data.user?.email || signInResult.data.user.email || '';
-            const defaultUpi = emailVal ? `${emailVal.split('@')[0]}@okaxis` : undefined;
             const user: AuthUser = {
               id: data.user?.id || '',
               name: data.user?.name || signInResult.data.user.name || 'SplitIt User',
               email: emailVal,
               avatarUrl: data.user?.image || signInResult.data.user.photo || undefined,
               role: data.user?.role || 'user',
-              upiId: data.user?.upiId || defaultUpi,
+              upiId: data.user?.upiId || undefined,
             };
 
             await this.saveSession(token, user);
@@ -452,13 +448,12 @@ export const authService = {
           if (profileRes.ok) {
             const profileData = await profileRes.json();
             const emailVal = profileData.email || '';
-            const defaultUpi = emailVal ? `${emailVal.split('@')[0]}@okaxis` : undefined;
             const user: AuthUser = {
               id: profileData.id || profileData.user?.id || '',
               name: `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || profileData.name || 'SplitIt User',
               email: emailVal,
               avatarUrl: profileData.avatarUrl,
-              upiId: profileData.upiId || defaultUpi,
+              upiId: profileData.upiId || undefined,
               role: profileData.role || profileData.user?.role || 'user',
             };
             await this.saveSession(token, user);
@@ -467,12 +462,11 @@ export const authService = {
         }
 
         const fallbackEmail = (parsed.queryParams?.email as string) || '';
-        const fallbackDefaultUpi = fallbackEmail ? `${fallbackEmail.split('@')[0]}@okaxis` : undefined;
         const fallbackUser: AuthUser = {
           id: 'google_user',
           name: 'SplitIt User',
           email: fallbackEmail,
-          upiId: fallbackDefaultUpi,
+          upiId: undefined,
         };
         const fallbackToken = token || 'google_session_active';
         await this.saveSession(fallbackToken, fallbackUser);

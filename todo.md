@@ -1,6 +1,24 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Eradicated Synthetic `@okaxis` UPI Injection & Streamlined Payment Settings (`app/(tabs)/profile.tsx`, `app/settings/my-qr.tsx`, `app/settings/payment.tsx`, `app/settle/new.tsx`, `src/services/auth.service.ts`, `src/services/group.service.ts`)**:
+  - **Eliminated Duplicate "My Payment QR" Profile Menu Item**:
+    - Removed redundant `My Payment QR` entry from the Profile screen's `ACCOUNT` section (`app/(tabs)/profile.tsx`), consolidating payment management into the primary `UPI & Payment` entry.
+    - Updated `UPI & Payment` subtitle to show the configured UPI ID or `'Not configured · Tap to set up'` when empty.
+    - Updated the Profile header pill to show `'Set up UPI ID'` with a `CreditCard` icon when unconfigured.
+  - **Removed All Auto-Filled `@okaxis` Fallbacks**:
+    - Stripped hardcoded synthetic `${email.split('@')[0]}@okaxis` fallback VPAs across `auth.service.ts` (`fetchUserProfile`, `signInWithEmail`, `signUpWithEmail`, `signInWithGoogle`, Google OAuth), `group.service.ts` (member resolution), and `app/settle/new.tsx`.
+    - UPI ID is now strictly user-configured and defaults to empty/undefined when not set.
+  - **Clean Payment Settings Input (`app/settings/payment.tsx`)**:
+    - Input initializes empty if unconfigured; no automatic prefilling of email-based handles.
+    - Added user guidance placeholder: `"e.g. 9876543210@paytm or username@okhdfc"`.
+    - Allows saving an empty string to clear a previously configured UPI ID.
+  - **Explicit "QR Not Set Up" Empty State (`app/settings/my-qr.tsx`)**:
+    - When `user.upiId` is not configured, displays an empty state card titled **"QR Not Set Up"** with description: *"You haven't configured a UPI ID yet. Add your UPI VPA address in Payment Settings to generate and display your payment QR code."* and an ergonomic **"Set Up UPI ID"** CTA button.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Theme-Matched Redesign of Mock Data Banner (`src/components/common/MockDataBanner.tsx`)**:
   - Replaced the high-visibility amber warning box with a flagship SplitIt matte obsidian card (`THEME.colors.surface`) featuring a glowing mint teal top accent line (`THEME.colors.primary`).
   - Redesigned the header row with a `THEME.colors.primaryMuted` circular icon node, `SAMPLE PREVIEW MODE` label, and sleek circular dismiss button.

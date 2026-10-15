@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
   User,
-  QrCode,
   Shield,
   Sliders,
   Bell,
@@ -57,7 +56,7 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const effectiveUpi = user?.upiId || (user?.email ? `${user.email.split('@')[0]}@okaxis` : '–');
+  const effectiveUpi = user?.upiId?.trim() || '';
   const effectiveName = user?.name || 'You';
 
   const initials = user?.name
@@ -80,14 +79,8 @@ export default function ProfileScreen() {
     {
       icon: CreditCard,
       title: 'UPI & Payment',
-      subtitle: effectiveUpi !== '–' ? effectiveUpi : 'Configure your VPA address',
+      subtitle: effectiveUpi ? effectiveUpi : 'Not configured · Tap to set up',
       onPress: () => router.push('/settings/payment'),
-    },
-    {
-      icon: QrCode,
-      title: 'My Payment QR',
-      subtitle: 'Show your QR code to receive money',
-      onPress: () => router.push('/settings/my-qr'),
     },
   ];
 
@@ -204,14 +197,25 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>{effectiveName}</Text>
           <Text style={styles.userEmail}>{user?.email || ''}</Text>
 
-          <TouchableOpacity
-            style={styles.upiPill}
-            onPress={() => router.push('/settings/payment')}
-            activeOpacity={0.7}
-          >
-            <QrCode size={12} color={THEME.colors.primary} />
-            <Text style={styles.upiPillText}>{effectiveUpi}</Text>
-          </TouchableOpacity>
+          {effectiveUpi ? (
+            <TouchableOpacity
+              style={styles.upiPill}
+              onPress={() => router.push('/settings/payment')}
+              activeOpacity={0.7}
+            >
+              <CreditCard size={12} color={THEME.colors.primary} />
+              <Text style={styles.upiPillText}>{effectiveUpi}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.upiPill, { borderColor: THEME.colors.hairline }]}
+              onPress={() => router.push('/settings/payment')}
+              activeOpacity={0.7}
+            >
+              <CreditCard size={12} color={THEME.colors.textMuted} />
+              <Text style={[styles.upiPillText, { color: THEME.colors.textMuted }]}>Set up UPI ID</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {renderSection('ACCOUNT', accountItems)}

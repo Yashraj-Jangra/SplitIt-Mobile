@@ -18,16 +18,14 @@ import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import { haptics } from '../../src/services/haptics.service';
 
-const UPI_SUFFIXES = ['@okaxis', '@okhdfc', '@paytm', '@ybl', '@ibl'];
+const UPI_SUFFIXES = ['@okhdfc', '@paytm', '@ybl', '@ibl', '@okaxis'];
 
 export default function PaymentSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, updateUserProfile, refreshUser } = useAuth();
 
-  const [upiId, setUpiId] = useState(
-    () => user?.upiId || (user?.email ? `${user.email.split('@')[0]}@okaxis` : '')
-  );
+  const [upiId, setUpiId] = useState(() => user?.upiId?.trim() || '');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -37,25 +35,23 @@ export default function PaymentSettingsScreen() {
   useEffect(() => {
     if (user?.upiId) {
       setUpiId(user.upiId);
-    } else if (user?.email && !upiId) {
-      setUpiId(`${user.email.split('@')[0]}@okaxis`);
     }
-  }, [user?.upiId, user?.email]);
+  }, [user?.upiId]);
 
   const handleSuffixPick = (suffix: string) => {
     haptics.tap();
-    const prefix = upiId.includes('@') ? upiId.split('@')[0] : upiId || (user?.email ? user.email.split('@')[0] : 'user');
+    const prefix = upiId.includes('@') ? upiId.split('@')[0] : upiId;
+    if (!prefix) {
+      setUpiId(suffix);
+      return;
+    }
     setUpiId(`${prefix}${suffix}`);
   };
 
   const handleSave = async () => {
     const trimmed = upiId.trim();
-    if (!trimmed) {
-      Alert.alert('Validation', 'Please enter your UPI ID before saving.');
-      return;
-    }
-    if (!trimmed.includes('@')) {
-      Alert.alert('Validation', 'UPI ID must include an @ symbol (e.g. username@okaxis).');
+    if (trimmed && !trimmed.includes('@')) {
+      Alert.alert('Validation', 'UPI ID must include an @ symbol (e.g. 9876543210@paytm).');
       return;
     }
 
@@ -65,7 +61,7 @@ export default function PaymentSettingsScreen() {
       const updated = await updateUserProfile({ upiId: trimmed });
       if (updated) {
         haptics.saveSuccess();
-        Alert.alert('Saved', 'Your UPI ID has been updated.');
+        Alert.alert('Saved', trimmed ? 'Your UPI ID has been updated.' : 'Your UPI ID has been cleared.');
       } else {
         Alert.alert('Failed', 'Could not save UPI ID. Please try again.');
       }
@@ -126,7 +122,7 @@ export default function PaymentSettingsScreen() {
                 style={styles.input}
                 value={upiId}
                 onChangeText={setUpiId}
-                placeholder="e.g. username@okaxis or 9876543210@paytm"
+                placeholder="e.g. 9876543210@paytm or username@okhdfc"
                 placeholderTextColor={THEME.colors.textMuted}
                 autoCapitalize="none"
                 autoCorrect={false}

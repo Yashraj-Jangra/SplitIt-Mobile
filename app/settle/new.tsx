@@ -240,12 +240,11 @@ export default function SettleUpModal() {
     const found = members.find((m) => m.id === payerId);
     if (found) return found;
     if (payerId === currentUserId) {
-      const defaultViewerUpi = user?.email ? `${user.email.split('@')[0]}@okaxis` : undefined;
       return {
         id: currentUserId,
         name: currentUserName,
         avatarUrl: user?.avatarUrl,
-        upiId: user?.upiId || defaultViewerUpi,
+        upiId: user?.upiId,
         netBalance: 0,
       };
     }
@@ -255,19 +254,18 @@ export default function SettleUpModal() {
       avatarUrl: undefined,
       netBalance: 0,
     };
-  }, [members, payerId, currentUserId, currentUserName, user?.avatarUrl, user?.upiId, user?.email, params.debtorName]);
+  }, [members, payerId, currentUserId, currentUserName, user?.avatarUrl, user?.upiId, params.debtorName]);
 
   const receiverMember = useMemo(() => {
     if (!receiverId) return null;
     const found = members.find((m) => m.id === receiverId);
     if (found) return found;
     if (receiverId === currentUserId) {
-      const defaultViewerUpi = user?.email ? `${user.email.split('@')[0]}@okaxis` : undefined;
       return {
         id: currentUserId,
         name: currentUserName,
         avatarUrl: user?.avatarUrl,
-        upiId: user?.upiId || defaultViewerUpi,
+        upiId: user?.upiId,
         netBalance: 0,
       };
     }

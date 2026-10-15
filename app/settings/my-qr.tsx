@@ -37,8 +37,7 @@ export default function MyQrScreen() {
     refreshUser();
   }, [refreshUser]);
 
-  const defaultUpi = user?.email ? `${user.email.split('@')[0]}@okaxis` : '';
-  const upiId = user?.upiId?.trim() || defaultUpi;
+  const upiId = user?.upiId?.trim() || '';
   const displayName = user?.name || (user?.email ? user.email.split('@')[0] : 'You');
   const hasUpi = Boolean(upiId && upiId.includes('@'));
 
@@ -195,9 +194,9 @@ export default function MyQrScreen() {
             <View style={styles.emptyIconBox}>
               <QrCode size={32} color={THEME.colors.textMuted} />
             </View>
-            <Text style={styles.emptyTitle}>No UPI ID Configured</Text>
+            <Text style={styles.emptyTitle}>QR Not Set Up</Text>
             <Text style={styles.emptySubtitle}>
-              Add your UPI VPA address in Payment Settings so others can scan and pay you instantly.
+              You haven't configured a UPI ID yet. Add your UPI VPA address in Payment Settings to generate and display your payment QR code.
             </Text>
             <TouchableOpacity
               style={styles.setupBtn}

@@ -592,12 +592,11 @@ export const groupService = {
                   ? `${b.user.firstName} ${b.user.lastName || ''}`.trim()
                   : b.user?.name;
                 const isViewer = uid === currentUserId;
-                const viewerDefaultUpi = currentUser?.email ? `${currentUser.email.split('@')[0]}@okaxis` : undefined;
                 return {
                   id: uid,
                   name: rawName || (isViewer ? 'You' : 'Member'),
                   avatarUrl: b.user?.avatarUrl,
-                  upiId: b.user?.upiId || (isViewer ? (currentUser?.upiId || viewerDefaultUpi) : undefined),
+                  upiId: b.user?.upiId || (isViewer ? currentUser?.upiId : undefined),
                   netBalance: Number(b.netBalance || 0),
                 };
               })
@@ -607,12 +606,11 @@ export const groupService = {
                   ? `${m.firstName} ${m.lastName || ''}`.trim()
                   : m.name;
                 const isViewer = uid === currentUserId;
-                const viewerDefaultUpi = currentUser?.email ? `${currentUser.email.split('@')[0]}@okaxis` : undefined;
                 return {
                   id: uid,
                   name: rawName || (isViewer ? 'You' : 'Member'),
                   avatarUrl: m.avatarUrl,
-                  upiId: m.upiId || (isViewer ? (currentUser?.upiId || viewerDefaultUpi) : undefined),
+                  upiId: m.upiId || (isViewer ? currentUser?.upiId : undefined),
                   netBalance: 0,
                 };
               });
@@ -938,7 +936,7 @@ export const groupService = {
       name: m.name,
       avatarUrl: m.avatarUrl,
       netBalance: 0,
-      upiId: m.name === 'You' ? (currentUser?.upiId || (currentUser?.email ? `${currentUser.email.split('@')[0]}@okaxis` : undefined)) : undefined,
+      upiId: m.name === 'You' ? currentUser?.upiId : undefined,
     }));
 
     const fallbackResult: GroupDetailData = {
