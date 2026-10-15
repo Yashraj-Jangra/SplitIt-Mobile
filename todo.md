@@ -1,6 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Theme-Matched Redesign of Mock Data Banner (`src/components/common/MockDataBanner.tsx`)**:
+  - Replaced the high-visibility amber warning box with a flagship SplitIt matte obsidian card (`THEME.colors.surface`) featuring a glowing mint teal top accent line (`THEME.colors.primary`).
+  - Redesigned the header row with a `THEME.colors.primaryMuted` circular icon node, `SAMPLE PREVIEW MODE` label, and sleek circular dismiss button.
+  - Upgraded action controls into clean ergonomic buttons:
+    - Primary **"Create Group"** button in solid mint teal (`THEME.colors.primary`) with dark text (`THEME.colors.primaryForeground`).
+    - Secondary **"Clear Sample Data"** button with hairline outline and `Trash2` icon.
+  - Zero hardcoded colors — fully aligned with `THEME.colors.*` and dark-mode guidelines.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Added Sleek Empty State for Zero Balance Dashboard Graph (`src/components/dashboard/BalanceHistoryGraph.tsx`, `app/(tabs)/index.tsx`)**:
   - Implemented automatic zero-balance / no-balance detection in `BalanceHistoryGraph` (`isZeroBalance`).
   - When balance is 0 or no balance history exists, replaced the flat horizontal line with an open editorial financial chart track featuring a subtle dashed zero line, `TrendingUp` icon, and guidance:

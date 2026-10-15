@@ -33,64 +33,77 @@ export function MockDataBanner({ onRemove, onCreateGroup, style }: MockDataBanne
     <View
       style={[styles.container, style]}
       accessibilityRole="alert"
-      accessibilityLabel="Sample mock data notice banner"
+      accessibilityLabel="Sample preview data notice"
     >
-      {/* Eyebrow & Dismiss Icon */}
-      <View style={styles.headerRow}>
-        <View style={styles.badge}>
-          <Sparkles size={13} color={THEME.colors.warningLight} strokeWidth={2.2} />
-          <Text style={styles.badgeText}>SAMPLE PREVIEW DATA</Text>
+      {/* Subtle Glowing Brand Accent Bar */}
+      <View style={styles.topAccent} />
+
+      <View style={styles.innerContent}>
+        {/* Header Row */}
+        <View style={styles.headerRow}>
+          <View style={styles.badgeRow}>
+            <View style={styles.iconCircle}>
+              <Sparkles size={11} color={THEME.colors.primary} />
+            </View>
+            <Text style={styles.badgeLabel}>SAMPLE PREVIEW MODE</Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleRemove}
+            style={styles.closeBtn}
+            accessibilityLabel="Remove sample preview data"
+            accessibilityRole="button"
+            activeOpacity={0.7}
+            disabled={isRemoving}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {isRemoving ? (
+              <ActivityIndicator size="small" color={THEME.colors.primary} />
+            ) : (
+              <X size={15} color={THEME.colors.textMuted} />
+            )}
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          onPress={handleRemove}
-          style={styles.closeBtn}
-          accessibilityLabel="Remove sample mock data"
-          accessibilityRole="button"
-          activeOpacity={0.7}
-          disabled={isRemoving}
-        >
-          {isRemoving ? (
-            <ActivityIndicator size="small" color={THEME.colors.warningLight} />
-          ) : (
-            <X size={16} color={THEME.colors.textMuted} />
+        {/* Headline & Description */}
+        <Text style={styles.title}>Exploring with Sample Data</Text>
+        <Text style={styles.description}>
+          Interact with sample circles & debts to test calculations. Create your first group to start fresh, or clear preview data anytime.
+        </Text>
+
+        {/* Action Controls */}
+        <View style={styles.actionsRow}>
+          {onCreateGroup && (
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={handleCreateGroup}
+              activeOpacity={0.85}
+              accessibilityLabel="Create a group to start fresh"
+              accessibilityRole="button"
+            >
+              <Plus size={14} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
+              <Text style={styles.primaryBtnText}>Create Group</Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
-      </View>
 
-      {/* Descriptive notice */}
-      <Text style={styles.description}>
-        This is interactive sample data showing how SplitIt calculates debts, tracks splits, and simplifies balances. Remove it anytime to start fresh, or begin by making your first group.
-      </Text>
-
-      {/* Action Buttons */}
-      <View style={styles.actionsRow}>
-        <TouchableOpacity
-          style={styles.removeBtn}
-          onPress={handleRemove}
-          activeOpacity={0.8}
-          accessibilityLabel="Remove mock data and continue using app"
-          accessibilityRole="button"
-          disabled={isRemoving}
-        >
-          <Trash2 size={13} color={THEME.colors.textSecondary} strokeWidth={2} />
-          <Text style={styles.removeBtnText}>
-            {isRemoving ? 'Removing…' : 'Remove Mock Data'}
-          </Text>
-        </TouchableOpacity>
-
-        {onCreateGroup && (
           <TouchableOpacity
-            style={styles.createBtn}
-            onPress={handleCreateGroup}
-            activeOpacity={0.85}
-            accessibilityLabel="Create your first group"
+            style={styles.secondaryBtn}
+            onPress={handleRemove}
+            activeOpacity={0.75}
+            accessibilityLabel="Clear sample data"
             accessibilityRole="button"
+            disabled={isRemoving}
           >
-            <Plus size={14} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-            <Text style={styles.createBtnText}>Create a Group</Text>
+            {isRemoving ? (
+              <ActivityIndicator size="small" color={THEME.colors.textSecondary} />
+            ) : (
+              <>
+                <Trash2 size={13} color={THEME.colors.textSecondary} strokeWidth={2} />
+                <Text style={styles.secondaryBtnText}>Clear Sample Data</Text>
+              </>
+            )}
           </TouchableOpacity>
-        )}
+        </View>
       </View>
     </View>
   );
@@ -98,90 +111,107 @@ export function MockDataBanner({ onRemove, onCreateGroup, style }: MockDataBanne
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
-    borderRadius: THEME.radius.xl,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius['2xl'],
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.22)',
-    padding: THEME.spacing.md,
+    borderColor: THEME.colors.hairlineLight,
+    overflow: 'hidden',
     marginBottom: THEME.spacing.lg,
+  },
+  topAccent: {
+    height: 2,
+    backgroundColor: THEME.colors.primary,
+    opacity: 0.8,
+  },
+  innerContent: {
+    padding: 16,
+    gap: 8,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: THEME.spacing.xs,
   },
-  badge: {
+  badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(245, 158, 11, 0.16)',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
-  badgeText: {
-    color: THEME.colors.warningLight,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  closeBtn: {
-    width: 44,
-    height: 44,
+  iconCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: -10,
-    marginTop: -10,
+  },
+  badgeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.primary,
+    letterSpacing: 1.1,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    backgroundColor: THEME.colors.surfaceElevated,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    letterSpacing: -0.3,
+    marginTop: 2,
   },
   description: {
-    color: THEME.colors.textSecondary,
     fontSize: 12,
     lineHeight: 18,
-    marginTop: 4,
-    marginBottom: THEME.spacing.md,
+    color: THEME.colors.textSecondary,
+    fontWeight: '400',
   },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: THEME.spacing.sm,
+    gap: 10,
+    marginTop: 6,
   },
-  removeBtn: {
+  primaryBtn: {
+    flex: 1.1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: THEME.colors.primary,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: THEME.radius.lg,
+    minHeight: 44,
+  },
+  primaryBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: THEME.colors.primaryForeground,
+  },
+  secondaryBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     backgroundColor: THEME.colors.surfaceElevated,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: THEME.radius.md,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    minHeight: 44,
-  },
-  removeBtnText: {
-    color: THEME.colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  createBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: THEME.colors.primary,
-    paddingVertical: 10,
+    borderColor: THEME.colors.hairlineLight,
+    paddingVertical: 11,
     paddingHorizontal: 12,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.lg,
     minHeight: 44,
   },
-  createBtnText: {
-    color: THEME.colors.primaryForeground,
+  secondaryBtnText: {
     fontSize: 12,
     fontWeight: '700',
+    color: THEME.colors.textSecondary,
   },
 });
