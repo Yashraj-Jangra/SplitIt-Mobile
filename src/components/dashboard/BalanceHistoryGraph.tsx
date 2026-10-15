@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, LayoutChangeEvent, ViewStyle, StyleProp } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle, Text as SvgText } from 'react-native-svg';
 import { THEME } from '../../constants/theme';
+import { useCurrency } from '../../contexts/currency.context';
 
 export interface BalanceHistoryGraphProps {
   data: Array<{ date: string; balance: number }>;
@@ -46,6 +47,7 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   height = 75,
   style,
 }) => {
+  const { currencySymbol } = useCurrency();
   const [layoutWidth, setLayoutWidth] = useState<number>(340);
 
   const handleLayout = (e: LayoutChangeEvent) => {
@@ -162,7 +164,7 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
               fontSize={8}
               fontWeight="600"
             >
-              ₹0
+              {currencySymbol}0
             </SvgText>
           </>
         )}

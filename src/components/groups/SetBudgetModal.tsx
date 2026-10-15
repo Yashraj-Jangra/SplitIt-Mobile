@@ -36,7 +36,7 @@ import { THEME } from '../../constants/theme';
 import { groupService, GroupBudget } from '../../services/group.service';
 import { haptics } from '../../services/haptics.service';
 import { MASTER_CATEGORY_ICONS } from '../../utils/category-icons';
-import { CURRENCY_SYMBOL } from '../../utils/budget-utils';
+import { useCurrency } from '../../contexts/currency.context';
 
 interface SetBudgetModalProps {
   visible: boolean;
@@ -87,6 +87,8 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const screenHeight = Dimensions.get('window').height;
+  const { currencySymbol } = useCurrency();
+  const CURRENCY_SYMBOL = currencySymbol;
 
   const initialLimit = Number(initialBudget?.monthlyLimit ?? initialBudget?.totalMonthlyLimit ?? 25000);
   const [monthlyLimitStr, setMonthlyLimitStr] = useState<string>(initialLimit > 0 ? String(initialLimit) : '25000');
@@ -199,7 +201,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
   const handleSave = async () => {
     if (monthlyLimitNum < 100) {
       haptics.warning();
-      Alert.alert('Invalid Budget', 'Please enter a monthly limit of at least ₹100.');
+      Alert.alert('Invalid Budget', `Please enter a monthly limit of at least ${currencySymbol}100.`);
       return;
     }
 

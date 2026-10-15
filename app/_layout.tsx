@@ -9,6 +9,7 @@ import { QuantumLogo } from '../src/components/brand/QuantumLogo';
 import { AuthProvider, useAuth } from '../src/contexts/auth.context';
 import { NetworkProvider } from '../src/contexts/network.context';
 import { HapticsProvider } from '../src/contexts/haptics.context';
+import { CurrencyProvider } from '../src/contexts/currency.context';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { ErrorBoundary as AppErrorBoundary, ErrorFallbackView } from '../src/components/common/ErrorBoundary';
 import { notificationService } from '../src/services/notification.service';
@@ -246,8 +247,10 @@ export default function RootLayout() {
           <HapticsProvider>
             <NetworkProvider>
               <AuthProvider>
-                <OfflineBanner />
-                <NavigationGate />
+                <CurrencyProvider>
+                  <OfflineBanner />
+                  <NavigationGate />
+                </CurrencyProvider>
               </AuthProvider>
             </NetworkProvider>
           </HapticsProvider>

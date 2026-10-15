@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { THEME } from '../../constants/theme';
 import { Sparkles } from 'lucide-react-native';
+import { useCurrency } from '../../contexts/currency.context';
 
 interface BudgetPacingRingProps {
   totalSpent: number;
@@ -17,8 +18,10 @@ export const BudgetPacingRing: React.FC<BudgetPacingRingProps> = ({
   totalLimit,
   daysRemaining,
   safeDailyAllowance,
-  currency = '₹',
+  currency: currencyProp,
 }) => {
+  const { currencySymbol } = useCurrency();
+  const currency = currencyProp && currencyProp !== '₹' ? currencyProp : currencySymbol;
   const size = 140;
   const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;

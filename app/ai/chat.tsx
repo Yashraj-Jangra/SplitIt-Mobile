@@ -44,6 +44,7 @@ import { haptics } from '../../src/services/haptics.service';
 import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
+import { useCurrency, getActiveCurrencySymbol } from '../../src/contexts/currency.context';
 
 interface ChatMessage {
   id: string;
@@ -57,7 +58,9 @@ interface ChatMessage {
 // ── Rich Markdown & Financial Entity Renderer ───────────────────────────────
 function FormattedInlineText({ text }: { text: string }) {
   const parts: Array<{ type: 'text' | 'bold' | 'currency'; content: string }> = [];
-  const regex = /(\*\*[^*]+\*\*|₹[0-9,]+(?:\.[0-9]{2})?)/g;
+  const sym = getActiveCurrencySymbol();
+  const escapedSym = sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(\\*\\*[^*]+\\*\\*|(?:${escapedSym}|[₹$€£¥])[0-9,]+(?:\\.[0-9]{2})?)`, 'g');
   let lastIdx = 0;
   let match: RegExpExecArray | null;
 
@@ -74,7 +77,7 @@ function FormattedInlineText({ text }: { text: string }) {
         type: 'bold',
         content: token.slice(2, -2),
       });
-    } else if (token.startsWith('₹')) {
+    } else {
       parts.push({
         type: 'currency',
         content: token,
@@ -159,6 +162,7 @@ function RichMessageContent({ text, isStreaming }: { text: string; isStreaming?:
 export default function AiChatModal() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { currencySymbol } = useCurrency();
   const { groupId, groupName } = useLocalSearchParams<{ groupId?: string; groupName?: string }>();
 
   const [input, setInput] = useState('');
@@ -623,7 +627,7 @@ export default function AiChatModal() {
                             <View key={idx} style={styles.changeItem}>
                               <Text style={styles.changeCategory}>{ch.name}</Text>
                               <View style={styles.changeValues}>
-                                <Text style={styles.strikeText}>₹{ch.old.toLocaleString()}</Text>
+                                <Text style={styles.strikeText}>{currencySymbol}{ch.old.toLocaleString()}</Text>
                                 <Text style={styles.arrowSeparator}>➔</Text>
                                 <Text
                                   style={[
@@ -631,9 +635,9 @@ export default function AiChatModal() {
                                     { color: ch.diff >= 0 ? THEME.colors.primaryLight : THEME.colors.negativeLight },
                                   ]}
                                 >
-                                  ₹{ch.new.toLocaleString()}{' '}
+                                  {currencySymbol}{ch.new.toLocaleString()}{' '}
                                   <Text style={styles.diffPill}>
-                                    ({ch.diff >= 0 ? `+₹${ch.diff}` : `-₹${Math.abs(ch.diff)}`})
+                                    ({ch.diff >= 0 ? `+${currencySymbol}${ch.diff}` : `-${currencySymbol}${Math.abs(ch.diff)}`})
                                   </Text>
                                 </Text>
                               </View>

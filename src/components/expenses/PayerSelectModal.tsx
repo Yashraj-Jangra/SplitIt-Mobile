@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react-native';
 import { calculateEqualAmounts } from '@splitit/core';
 import { THEME } from '../../constants/theme';
+import { useCurrency } from '../../contexts/currency.context';
 import { haptics } from '../../services/haptics.service';
 
 export interface PayerMember {
@@ -64,6 +65,7 @@ export function PayerSelectModal({
   initialMultiPayers = [],
   onConfirm,
 }: PayerSelectModalProps) {
+  const { currencySymbol } = useCurrency();
   const { width } = useWindowDimensions();
   const horizontalScrollRef = useRef<ScrollView>(null);
   const tabUnderlineAnim = useRef(new Animated.Value(0)).current;
@@ -294,9 +296,9 @@ export function PayerSelectModal({
     if (!isBalanced) {
       haptics.error();
       if (remaining > 0) {
-        setErrorMessage(`₹${remaining.toFixed(2)} left to allocate.`);
+        setErrorMessage(`${currencySymbol}${remaining.toFixed(2)} left to allocate.`);
       } else {
-        setErrorMessage(`₹${Math.abs(remaining).toFixed(2)} over total expense amount.`);
+        setErrorMessage(`${currencySymbol}${Math.abs(remaining).toFixed(2)} over total expense amount.`);
       }
       return;
     }
@@ -426,7 +428,7 @@ export function PayerSelectModal({
                           {isCurrentUser ? ' (You)' : ''}
                         </Text>
                         <Text style={styles.memberSubline}>
-                          {isSelected ? `Paid full ₹${totalAmount.toFixed(2)}` : 'Tap to select'}
+                          {isSelected ? `Paid full ${currencySymbol}${totalAmount.toFixed(2)}` : 'Tap to select'}
                         </Text>
                       </View>
 
@@ -456,7 +458,7 @@ export function PayerSelectModal({
 
                 <View style={styles.multiHelperRight}>
                   <Text style={styles.totalRequiredText}>
-                    Total: ₹{totalAmount.toFixed(2)}
+                    Total: {currencySymbol}${totalAmount.toFixed(2)}
                   </Text>
 
                   {/* All [✓] Quick Toggle for Payers */}
@@ -577,7 +579,7 @@ export function PayerSelectModal({
                               !isSelected && styles.currencyPrefixLocked,
                             ]}
                           >
-                            ₹
+                            {currencySymbol}
                           </Text>
                           <TextInput
                             style={[
@@ -614,7 +616,7 @@ export function PayerSelectModal({
               <View style={styles.bottomStatRow}>
                 <View>
                   <Text style={styles.bottomMainStat}>
-                    ₹{sumOfPaid.toFixed(2)} of ₹{totalAmount.toFixed(2)}
+                    {currencySymbol}${sumOfPaid.toFixed(2)} of {currencySymbol}${totalAmount.toFixed(2)}
                   </Text>
                   {isBalanced ? (
                     <Text style={[styles.bottomSubStat, styles.textMint]}>
@@ -624,8 +626,8 @@ export function PayerSelectModal({
                     <TouchableOpacity onPress={handleAutoBalancePayer} activeOpacity={0.7}>
                       <Text style={[styles.bottomSubStat, styles.textWarning]}>
                         {remaining > 0
-                          ? `₹${remaining.toFixed(2)} left · Tap to balance`
-                          : `₹${Math.abs(remaining).toFixed(2)} over · Tap to balance`}
+                          ? `${currencySymbol}${remaining.toFixed(2)} left · Tap to balance`
+                          : `${currencySymbol}${Math.abs(remaining).toFixed(2)} over · Tap to balance`}
                       </Text>
                     </TouchableOpacity>
                   )}

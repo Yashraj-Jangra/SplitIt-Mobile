@@ -26,6 +26,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { aiService, ScannedReceiptResult } from '../../src/services/ai.service';
+import { useCurrency } from '../../src/contexts/currency.context';
 
 const { width } = Dimensions.get('window');
 const VIEWFINDER_WIDTH = width * 0.82;
@@ -33,6 +34,7 @@ const VIEWFINDER_HEIGHT = VIEWFINDER_WIDTH * 1.35;
 
 export default function ReceiptScannerScreen() {
   const router = useRouter();
+  const { currencySymbol } = useCurrency();
   const [permission, requestPermission] = useCameraPermissions();
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -247,7 +249,7 @@ export default function ReceiptScannerScreen() {
                   <Text style={styles.resultDate}>{scanResult.date}</Text>
                 </View>
               </View>
-              <Text style={styles.resultAmount}>₹{scanResult.amount.toFixed(2)}</Text>
+              <Text style={styles.resultAmount}>{currencySymbol}{scanResult.amount.toFixed(2)}</Text>
             </View>
 
             <View style={styles.resultCategoryRow}>

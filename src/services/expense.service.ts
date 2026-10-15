@@ -5,6 +5,7 @@ import { parseComplexChange, ParsedChange } from '@splitit/core';
 import { groupService } from './group.service';
 import { settingsService } from './settings.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
+import { getActiveCurrencySymbol } from '../contexts/currency.context';
 
 export interface CreateExpensePayload {
   groupId: string;
@@ -542,7 +543,7 @@ export const expenseService = {
                 year: 'numeric',
               }),
               timeAgo: createdDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
-              description: `Created this expense for ₹${Number(e.amount || 0).toFixed(2)}`,
+              description: `Created this expense for ${getActiveCurrencySymbol()}${Number(e.amount || 0).toFixed(2)}`,
             });
           }
 

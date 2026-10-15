@@ -1,4 +1,5 @@
 import { authService, API_BASE_URL } from './auth.service';
+import { getActiveCurrencySymbol } from '../contexts/currency.context';
 
 export type TicketCategory = 'general' | 'bug' | 'feature' | 'billing' | 'account';
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -83,7 +84,16 @@ export const supportService = {
    * Fetch curated frequently asked questions
    */
   getFaqs(): FaqItem[] {
-    return FAQS;
+    const sym = getActiveCurrencySymbol();
+    return FAQS.map((faq) => {
+      if (faq.id === 'faq-1') {
+        return {
+          ...faq,
+          answer: `SplitIt uses graph simplification algorithms to eliminate circular and redundant debts. For example, if Ananya owes Rohit ${sym}500 and Rohit owes Aman ${sym}500, SplitIt simplifies this so Ananya settles directly with Aman in one single payment.`,
+        };
+      }
+      return faq;
+    });
   },
 
   /**

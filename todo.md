@@ -1,6 +1,27 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Customizable Single-Currency System & Dynamic Logo/Symbol App-Wide (`src/contexts/currency.context.tsx`, `app/settings/preferences.tsx`, `app/(tabs)/profile.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`, `app/groups/[id]/index.tsx`, `app/groups/new.tsx`, `app/expenses/[id].tsx`, `app/expenses/new.tsx`, `app/settle/new.tsx`, `app/settle/qr.tsx`, `app/settlements/[id].tsx`, `app/ai/chat.tsx`, `app/ai/scanner.tsx`, `src/components/*`, `src/services/*`)**:
+  - **Single-Currency Guarantee with Custom Logo/Symbol Architecture**:
+    - Built a reactive `CurrencyContext` (`src/contexts/currency.context.tsx`) with persistent storage in `AsyncStorage` (`storageService`).
+    - Standardized single-currency paradigm: zero rate conversions, pure numeric data integrity in databases and APIs, with instant reactive symbol display rendering app-wide.
+    - Synchronous module-level accessor `getActiveCurrencySymbol()` for non-React contexts (formatters, advice algorithms, background audit logs, and demo data generator).
+  - **Preferences & Custom Logo Setup (`app/settings/preferences.tsx`)**:
+    - Created an interactive currency preference screen featuring 14 global presets (INR ₹, USD $, EUR €, GBP £, JPY ¥, AUD A$, CAD C$, AED, SGD S$, CHF, BRL R$, TRY ₺, THB ฿, KRW ₩) plus a dedicated **Custom Currency Logo / Symbol** section.
+    - Users can input custom currency logos (e.g. `Rs.`, `kr`, `Rp`, `₿`, `₺`, `zł`, `lei`) with instant live preview (`$1,499.00` / `kr 1,499.00`), validation warnings, haptic feedback, and an active badge in the list.
+    - Profile preferences subtitle dynamically updates (`Currency ($ USD)` or `Currency (Rs. Custom)`).
+  - **App-Wide Uniform Currency Coverage (Zero Hardcoded `₹` Left)**:
+    - **Home & Dashboard**: Net balance card, "Owed to you", "You owe", group pebble pill balances, and `BalanceHistoryGraph` baseline labels.
+    - **Groups & Exploration**: Group list net balances and total spent stats (`app/(tabs)/groups.tsx`), single active currency pill on group creation (`app/groups/new.tsx`), group details hero stats, debt transfer summaries, and member balances (`app/groups/[id]/index.tsx`).
+    - **Expenses & Modals**: Expense creation prefix, split summary cards, and quick presets (`app/expenses/new.tsx`), expense detail cards and delete alerts (`app/expenses/[id].tsx`), `ExpenseImpactCol`, `PayerSelectModal`, and `SplitOptionsModal`.
+    - **Settlements & UPI**: Settle Up form underline prefix, summary highlight, UPI confirmation alerts, and button titles (`app/settle/new.tsx`), QR code amount displays and confirm buttons (`app/settle/qr.tsx`), settlement detail hero amount and audit trail logs (`app/settlements/[id].tsx`).
+    - **Budgets & Pacing**: `BudgetPacingRing`, `SetBudgetModal` hero amount prefix, allocation tracks, preset chips, and validation alerts, `budget-utils.ts` smart advice messages, and `GroupHistoryTab.tsx` unchanged budget banners.
+    - **AI Chat & OCR Scanner**: Scanner preview amounts (`app/ai/scanner.tsx`), AI chat markdown entity regex tokenizer and budget proposal change values with difference badges (`app/ai/chat.tsx`).
+    - **Activity Logs & FAQ**: `settlement.service.ts`, `expense.service.ts`, `support.service.ts`, and `demoData.ts`.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Fixed Preview QR Setup State & Automatic UPI ID Profile Hydration (`app/settings/my-qr.tsx`, `app/settings/payment.tsx`, `app/settle/new.tsx`, `src/services/auth.service.ts`, `src/contexts/auth.context.tsx`, `src/services/group.service.ts`)**:
   - **Identified Root Cause for "Set Up UPI ID First" on Login**:
     - Better-Auth session tokens (`/api/auth/sign-in/email`, `/api/auth/sign-in/social`) deliberately return minimal session records (`id`, `name`, `email`, `role`) and omit custom user profile attributes like `upiId`, `firstName`, `lastName`, and `username`.

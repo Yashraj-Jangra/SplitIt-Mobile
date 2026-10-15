@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { THEME } from '../../constants/theme';
+import { getActiveCurrencySymbol } from '../../contexts/currency.context';
 
 export interface ExpenseImpactProps {
   amount?: number | string;
@@ -16,7 +17,7 @@ export interface ExpenseImpactProps {
 }
 
 export function getCurrencySymbol(currency?: string): string {
-  if (!currency) return '₹';
+  if (!currency || currency === 'INR') return getActiveCurrencySymbol();
   if (['₹', '$', '€', '£', '¥'].includes(currency)) return currency;
   switch (currency.toUpperCase()) {
     case 'USD':
@@ -28,12 +29,11 @@ export function getCurrencySymbol(currency?: string): string {
     case 'JPY':
       return '¥';
     case 'CAD':
-      return 'CA$';
+      return 'C$';
     case 'AUD':
-      return 'AU$';
-    case 'INR':
+      return 'A$';
     default:
-      return '₹';
+      return getActiveCurrencySymbol();
   }
 }
 

@@ -28,6 +28,7 @@ import {
   SplitType,
 } from '@splitit/core';
 import { THEME } from '../../constants/theme';
+import { useCurrency } from '../../contexts/currency.context';
 import { haptics } from '../../services/haptics.service';
 
 export interface SplitParticipantItem {
@@ -92,6 +93,7 @@ export function SplitOptionsModal({
   participants: initialParticipants,
   onConfirm,
 }: SplitOptionsModalProps) {
+  const { currencySymbol } = useCurrency();
   const { width } = useWindowDimensions();
   const horizontalScrollRef = useRef<ScrollView>(null);
 
@@ -476,7 +478,7 @@ export function SplitOptionsModal({
       if (validation.field === 'participants') {
         if (validation.kind === 'amounts') {
           setErrorMessage(
-            `Total allocated (₹${validation.totalOwed.toFixed(2)}) must equal ₹${validation.totalAmount.toFixed(2)}.`
+            `Total allocated (${currencySymbol}${validation.totalOwed.toFixed(2)}) must equal ${currencySymbol}${validation.totalAmount.toFixed(2)}.`
           );
         } else if (validation.kind === 'percentage') {
           setErrorMessage(
@@ -687,7 +689,7 @@ export function SplitOptionsModal({
                             {isSelected ? (
                               mode.type === 'equally' ? (
                                 <Text style={styles.memberSublineHighlight}>
-                                  = ₹{liveEqualPrice.toFixed(2)} ({liveEqualPct.toFixed(2)}%)
+                                  = {currencySymbol}${liveEqualPrice.toFixed(2)} ({liveEqualPct.toFixed(2)}%)
                                 </Text>
                               ) : mode.type === 'unequally' ? (
                                 <Text style={styles.memberSubline}>
@@ -695,11 +697,11 @@ export function SplitOptionsModal({
                                 </Text>
                               ) : mode.type === 'by_percentage' ? (
                                 <Text style={styles.memberSublineHighlight}>
-                                  = ₹{livePctPrice.toFixed(2)}
+                                  = {currencySymbol}${livePctPrice.toFixed(2)}
                                 </Text>
                               ) : mode.type === 'by_shares' ? (
                                 <Text style={styles.memberSublineHighlight}>
-                                  = ₹{liveSharePrice.toFixed(2)} ({liveSharePct.toFixed(2)}%)
+                                  = {currencySymbol}${liveSharePrice.toFixed(2)} ({liveSharePct.toFixed(2)}%)
                                 </Text>
                               ) : null
                             ) : (
@@ -711,9 +713,9 @@ export function SplitOptionsModal({
                           {mode.type === 'equally' ? (
                             <View style={styles.equalRightStatus}>
                               {isSelected ? (
-                                <Text style={styles.equalShareText}>₹{liveEqualPrice.toFixed(2)}</Text>
+                                <Text style={styles.equalShareText}>{currencySymbol}{liveEqualPrice.toFixed(2)}</Text>
                               ) : (
-                                <Text style={styles.equalShareTextMuted}>₹0.00</Text>
+                                <Text style={styles.equalShareTextMuted}>{currencySymbol}0.00</Text>
                               )}
                             </View>
                           ) : (
@@ -734,7 +736,7 @@ export function SplitOptionsModal({
                                       !isSelected && styles.currencyPrefixLocked,
                                     ]}
                                   >
-                                    ₹
+                                    {currencySymbol}
                                   </Text>
                                   <TextInput
                                     style={[
@@ -862,7 +864,7 @@ export function SplitOptionsModal({
                 {splitType === 'equally' ? (
                   <>
                     <Text style={styles.bottomMainStat}>
-                      ₹{(selectedCount > 0 ? totalAmount / selectedCount : 0).toFixed(2)}/person
+                      {currencySymbol}${(selectedCount > 0 ? totalAmount / selectedCount : 0).toFixed(2)}/person
                     </Text>
                     <Text style={[styles.bottomSubStat, styles.textMint]}>
                       {selectedCount} of {items.length} people included
@@ -871,7 +873,7 @@ export function SplitOptionsModal({
                 ) : splitType === 'unequally' ? (
                   <>
                     <Text style={styles.bottomMainStat}>
-                      ₹{exactSum.toFixed(2)} of ₹{totalAmount.toFixed(2)}
+                      {currencySymbol}${exactSum.toFixed(2)} of {currencySymbol}${totalAmount.toFixed(2)}
                     </Text>
                     {isModeBalanced ? (
                       <Text style={[styles.bottomSubStat, styles.textMint]}>
@@ -881,8 +883,8 @@ export function SplitOptionsModal({
                       <TouchableOpacity onPress={handleAutoBalanceExact} activeOpacity={0.7}>
                         <Text style={[styles.bottomSubStat, styles.textWarning]}>
                           {exactRemaining > 0
-                            ? `₹${exactRemaining.toFixed(2)} left · Tap to balance`
-                            : `₹${Math.abs(exactRemaining).toFixed(2)} over · Tap to balance`}
+                            ? `${currencySymbol}${exactRemaining.toFixed(2)} left · Tap to balance`
+                            : `${currencySymbol}${Math.abs(exactRemaining).toFixed(2)} over · Tap to balance`}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -910,7 +912,7 @@ export function SplitOptionsModal({
                       {totalShares} total {totalShares === 1 ? 'share' : 'shares'}
                     </Text>
                     <Text style={[styles.bottomSubStat, styles.textMint]}>
-                      ₹{(totalShares > 0 ? totalAmount / totalShares : 0).toFixed(2)}/share
+                      {currencySymbol}${(totalShares > 0 ? totalAmount / totalShares : 0).toFixed(2)}/share
                     </Text>
                   </>
                 )}

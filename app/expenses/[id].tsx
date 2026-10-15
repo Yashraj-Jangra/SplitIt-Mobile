@@ -46,6 +46,7 @@ import {
 import { haptics } from '../../src/services/haptics.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useCurrency } from '../../src/contexts/currency.context';
 import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBreakdownSkeleton';
 
 export default function ExpenseDetailScreen() {
@@ -277,7 +278,7 @@ export default function ExpenseDetailScreen() {
 
   const title = expense?.title || params.title || 'Expense';
   const amount = expense?.amount || parseFloat(params.amount || '0') || 0;
-  const currencySymbol = '₹';
+  const { currencySymbol } = useCurrency();
 
   const viewerName = useMemo(() => {
     if (user?.name && user.name !== 'You' && user.name !== 'undefined') {

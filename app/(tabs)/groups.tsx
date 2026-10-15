@@ -31,6 +31,7 @@ import { groupService, GroupListItem } from '../../src/services/group.service';
 import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
 import { useRouter } from 'expo-router';
 import { haptics } from '../../src/services/haptics.service';
+import { useCurrency } from '../../src/contexts/currency.context';
 
 type FilterType = 'all' | 'owed' | 'owe' | 'archived';
 
@@ -102,6 +103,7 @@ const SORT_OPTIONS: SortOptionItem[] = [
 
 export default function GroupsScreen() {
   const router = useRouter();
+  const { currencySymbol } = useCurrency();
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
   const [loading, setLoading] = useState(() => groupService.getInMemoryGroups().length === 0);
   const [refreshing, setRefreshing] = useState(false);
@@ -437,9 +439,9 @@ export default function GroupsScreen() {
                         ]}
                       >
                         {isOwed
-                          ? `+₹${group.userNetBalance.toLocaleString('en-IN')}`
+                          ? `+${currencySymbol}${group.userNetBalance.toLocaleString('en-IN')}`
                           : isOwe
-                          ? `-₹${Math.abs(group.userNetBalance).toLocaleString('en-IN')}`
+                          ? `-${currencySymbol}${Math.abs(group.userNetBalance).toLocaleString('en-IN')}`
                           : 'Settled'}
                       </Text>
                     </View>
@@ -483,7 +485,7 @@ export default function GroupsScreen() {
 
                       {/* Total Spent Stat */}
                       <Text style={styles.totalSpentText}>
-                        ₹{(group.totalExpenses || 0).toLocaleString('en-IN')} spent
+                        {currencySymbol}{(group.totalExpenses || 0).toLocaleString('en-IN')} spent
                       </Text>
                     </View>
                   </View>

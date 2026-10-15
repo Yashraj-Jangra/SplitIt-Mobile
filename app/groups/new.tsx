@@ -16,13 +16,14 @@ import { X, Check, Users, Plus, Trash2, Sparkles } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService } from '../../src/services/group.service';
 import { haptics } from '../../src/services/haptics.service';
+import { useCurrency } from '../../src/contexts/currency.context';
 
 export default function NewGroupModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currencyCode, currencySymbol } = useCurrency();
   const [name, setName] = useState('');
   const [category, setCategory] = useState<'trip' | 'home' | 'couple' | 'other'>('trip');
-  const [currency, setCurrency] = useState<'INR' | 'USD' | 'EUR' | 'GBP'>('INR');
   const [memberInput, setMemberInput] = useState('');
   const [members, setMembers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,13 +34,6 @@ export default function NewGroupModal() {
     { key: 'home', label: 'Home 🏠' },
     { key: 'couple', label: 'Couple 💑' },
     { key: 'other', label: 'Other 👥' },
-  ] as const;
-
-  const currencyOptions = [
-    { code: 'INR', symbol: '₹' },
-    { code: 'USD', symbol: '$' },
-    { code: 'EUR', symbol: '€' },
-    { code: 'GBP', symbol: '£' },
   ] as const;
 
   const handleAddMember = () => {
@@ -69,7 +63,7 @@ export default function NewGroupModal() {
     const res = await groupService.createGroup({
       name: name.trim(),
       category,
-      currency,
+      currency: currencyCode,
       memberEmails: members,
     });
 
@@ -166,32 +160,18 @@ export default function NewGroupModal() {
             </View>
           </View>
 
-          {/* Currency Selector */}
+          {/* Default Currency Badge */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>CURRENCY</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={styles.inputLabel}>DEFAULT CURRENCY</Text>
+              <Text style={{ fontSize: 11, color: THEME.colors.textMuted }}>Configured in Preferences</Text>
+            </View>
             <View style={styles.pillRow}>
-              {currencyOptions.map((item) => (
-                <TouchableOpacity
-                  key={item.code}
-                  style={[
-                    styles.pillButton,
-                    currency === item.code && styles.pillButtonActive,
-                  ]}
-                  onPress={() => {
-                    haptics.tap();
-                    setCurrency(item.code);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.pillText,
-                      currency === item.code && styles.pillTextActive,
-                    ]}
-                  >
-                    {item.symbol} {item.code}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              <View style={[styles.pillButton, styles.pillButtonActive, { paddingHorizontal: 16 }]}>
+                <Text style={[styles.pillText, styles.pillTextActive, { fontWeight: '700' }]}>
+                  {currencySymbol} {currencyCode}
+                </Text>
+              </View>
             </View>
           </View>
 

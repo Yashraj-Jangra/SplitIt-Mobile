@@ -91,12 +91,21 @@ export const storageService = {
     }
   },
 
-  async getCurrencyPreference(): Promise<string> {
-    const val = await this.getItem<string>(STORAGE_KEYS.CURRENCY_PREFERENCE);
-    return val || 'INR';
+  async getCurrencyPreference(): Promise<{ code: string; symbol: string; isCustom?: boolean }> {
+    const val = await this.getItem<any>(STORAGE_KEYS.CURRENCY_PREFERENCE);
+    if (!val) return { code: 'INR', symbol: '₹', isCustom: false };
+    if (typeof val === 'string') {
+      const symbols: Record<string, string> = {
+        INR: '₹', USD: '$', EUR: '€', GBP: '£', JPY: '¥', AUD: 'A$', CAD: 'C$', AED: 'AED',
+        SGD: 'S$', CHF: 'CHF', BRL: 'R$', TRY: '₺', THB: '฿', KRW: '₩',
+      };
+      const symbol = symbols[val.toUpperCase()] || val;
+      return { code: val, symbol, isCustom: !symbols[val.toUpperCase()] };
+    }
+    return val;
   },
 
-  async setCurrencyPreference(currency: string): Promise<void> {
+  async setCurrencyPreference(currency: { code: string; symbol: string; isCustom?: boolean } | string): Promise<void> {
     await this.setItem(STORAGE_KEYS.CURRENCY_PREFERENCE, currency);
   },
 

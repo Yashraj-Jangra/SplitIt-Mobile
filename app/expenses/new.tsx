@@ -46,6 +46,7 @@ import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import { useNetwork } from '../../src/contexts/network.context';
+import { useCurrency } from '../../src/contexts/currency.context';
 import { haptics } from '../../src/services/haptics.service';
 
 interface FormSnapshot {
@@ -67,6 +68,7 @@ export default function NewExpenseModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
+  const { formatCurrency, currencySymbol } = useCurrency();
   const params = useLocalSearchParams<{
     amount?: string;
     description?: string;
@@ -571,9 +573,9 @@ export default function NewExpenseModal() {
     const net = userPaid - userOwed;
 
     if (Math.abs(net) < 0.01) return 'You are all square.';
-    if (net > 0) return `You get back ₹${net.toFixed(2)}`;
-    return `You owe ₹${Math.abs(net).toFixed(2)}`;
-  }, [numAmount, selectedParticipants.length, payerType, singlePayerId, currentUserId, multiPayers, splitBreakdown]);
+    if (net > 0) return `You get back ${currencySymbol}${net.toFixed(2)}`;
+    return `You owe ${currencySymbol}${Math.abs(net).toFixed(2)}`;
+  }, [numAmount, selectedParticipants.length, payerType, singlePayerId, currentUserId, multiPayers, splitBreakdown, currencySymbol]);
 
   const activeGroup = useMemo(() => {
     return groups.find((g) => g.id === selectedGroupId) || groups[0];
@@ -721,13 +723,13 @@ export default function NewExpenseModal() {
       if (validation.field === 'payers') {
         Alert.alert(
           'Unbalanced Payers',
-          `The total paid (₹${validation.totalPaid.toFixed(2)}) must equal the expense amount (₹${validation.totalAmount.toFixed(2)}).`
+          `The total paid (${currencySymbol}${validation.totalPaid.toFixed(2)}) must equal the expense amount (${currencySymbol}${validation.totalAmount.toFixed(2)}).`
         );
       } else if (validation.field === 'participants') {
         if (validation.kind === 'amounts') {
           Alert.alert(
             'Unbalanced Split',
-            `The total owed (₹${validation.totalOwed.toFixed(2)}) must equal the expense amount (₹${validation.totalAmount.toFixed(2)}).`
+            `The total owed (${currencySymbol}${validation.totalOwed.toFixed(2)}) must equal the expense amount (${currencySymbol}${validation.totalAmount.toFixed(2)}).`
           );
         } else if (validation.kind === 'percentage') {
           Alert.alert(
@@ -990,7 +992,7 @@ export default function NewExpenseModal() {
 
               {/* Amount Input with Currency Symbol and Underline */}
               <View style={styles.amountUnderlineRow}>
-                <Text style={styles.currencyPrefix}>₹</Text>
+                <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                 <TextInput
                   ref={amountInputRef}
                   style={styles.amountUnderlineInput}
@@ -1075,7 +1077,7 @@ export default function NewExpenseModal() {
                   </Text>
                   {numAmount > 0 && member.selected && (
                     <Text style={styles.memberShareText}>
-                      ₹{(splitBreakdown[member.id] || 0).toFixed(2)}
+                      {currencySymbol}{(splitBreakdown[member.id] || 0).toFixed(2)}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -1156,10 +1158,10 @@ export default function NewExpenseModal() {
                 ? !hasChanges
                   ? 'No changes to save'
                   : numAmount > 0
-                  ? `Save Changes (₹${numAmount.toLocaleString('en-IN')})`
+                  ? `Save Changes (${currencySymbol}${numAmount.toLocaleString('en-IN')})`
                   : 'Save Changes'
                 : numAmount > 0
-                ? `Record ₹${numAmount.toLocaleString('en-IN')} Expense`
+                ? `Record ${currencySymbol}${numAmount.toLocaleString('en-IN')} Expense`
                 : 'Enter Amount to Save'
             }
             onPress={handleSave}

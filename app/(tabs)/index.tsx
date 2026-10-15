@@ -33,12 +33,14 @@ import { BalanceSkeleton } from '../../src/components/skeletons/BalanceSkeleton'
 import { TransactionRowSkeleton } from '../../src/components/skeletons/TransactionRowSkeleton';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useCurrency } from '../../src/contexts/currency.context';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { isOnline, requireOnline } = useNetwork();
   const { user: authUser } = useAuth();
+  const { formatCurrency, currencySymbol } = useCurrency();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authUser || authService.getInMemoryUser());
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
@@ -286,11 +288,7 @@ export default function HomeScreen() {
                     netBalance < -0.01 && { color: THEME.colors.negative },
                   ]}
                 >
-                  {netBalance > 0.01
-                    ? `+₹${netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : netBalance < -0.01
-                    ? `-₹${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : '₹0.00'}
+                  {formatCurrency(netBalance, { showSign: true, decimals: 2 })}
                 </Text>
                 <Text style={styles.widgetSubtitle}>
                   {netBalance > 0.01
@@ -324,7 +322,7 @@ export default function HomeScreen() {
                   <Text style={styles.statLabel}>Owed to you</Text>
                 </View>
                 <Text style={[styles.statValue, { color: THEME.colors.primary }]}>
-                  ₹{totalOwed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatCurrency(totalOwed, { decimals: 2 })}
                 </Text>
               </View>
 
@@ -336,7 +334,7 @@ export default function HomeScreen() {
                   <Text style={styles.statLabel}>You owe</Text>
                 </View>
                 <Text style={[styles.statValue, { color: THEME.colors.negative }]}>
-                  ₹{totalOwe.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatCurrency(totalOwe, { decimals: 2 })}
                 </Text>
               </View>
             </View>
@@ -418,10 +416,8 @@ export default function HomeScreen() {
                         isOwe && { color: THEME.colors.negative },
                       ]}
                     >
-                      {isOwed
-                        ? `+₹${group.userNetBalance.toLocaleString('en-IN')}`
-                        : isOwe
-                        ? `-₹${Math.abs(group.userNetBalance).toLocaleString('en-IN')}`
+                      {isOwed || isOwe
+                        ? formatCurrency(group.userNetBalance, { showSign: true, decimals: 0 })
                         : 'Settled'}
                     </Text>
                   </TouchableOpacity>

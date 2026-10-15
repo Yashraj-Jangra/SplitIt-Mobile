@@ -34,12 +34,14 @@ import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { haptics } from '../../src/services/haptics.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useCurrency, getActiveCurrencySymbol } from '../../src/contexts/currency.context';
 
 export default function SettlementDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
   const { user } = useAuth();
+  const { currencySymbol } = useCurrency();
   const params = useLocalSearchParams<{
     id: string;
     groupId?: string;
@@ -90,7 +92,7 @@ export default function SettlementDetailScreen() {
           actorName: params.payerName || 'Member',
           timestamp: params.date || 'Today',
           timeAgo: 'Recorded',
-          description: `Settlement recorded: ${params.payerName || 'Member'} paid ${params.payeeName || 'Member'} ₹${parsedAmt.toFixed(2)}.`,
+          description: `Settlement recorded: ${params.payerName || 'Member'} paid ${params.payeeName || 'Member'} ${getActiveCurrencySymbol()}${parsedAmt.toFixed(2)}.`,
         },
       ],
     };
@@ -348,7 +350,7 @@ export default function SettlementDetailScreen() {
             {/* High-Impact Centered Amount Display */}
             <View style={styles.heroAmountBlock}>
               <View style={styles.heroAmountRow}>
-                <Text style={[styles.heroCurrencySymbol, { color: THEME.colors.palette.emerald }]}>₹</Text>
+                <Text style={[styles.heroCurrencySymbol, { color: THEME.colors.palette.emerald }]}>{currencySymbol}</Text>
                 <Text style={styles.heroAmountWhole}>{amountParts.whole}</Text>
                 <Text style={styles.heroAmountDecimal}>.{amountParts.decimal}</Text>
               </View>

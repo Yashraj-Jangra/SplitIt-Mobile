@@ -33,6 +33,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
+import { useCurrency } from '../../../src/contexts/currency.context';
 import { GroupSettlementItem } from '../../../src/services/settlement.service';
 import { useAuth } from '../../../src/contexts/auth.context';
 import { GroupBudgetTab } from '../../../src/components/groups/GroupBudgetTab';
@@ -113,6 +114,7 @@ export default function GroupDetailScreen() {
   const SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
   const { user } = useAuth();
+  const { formatCurrency, currencySymbol } = useCurrency();
   const currentUserId = user?.id || 'u1';
   const [group, setGroup] = useState<GroupDetailData | null>(() => groupService.getInMemoryGroupDetail(targetId));
   const [activeTab, setActiveTab] = useState<TabType>('expenses');
@@ -593,7 +595,7 @@ export default function GroupDetailScreen() {
         >
           <View style={styles.statCol}>
             <Text style={styles.statLabel}>SPENT</Text>
-            <Text style={styles.statValue}>₹{totalGroupSpend.toLocaleString('en-IN')}</Text>
+            <Text style={styles.statValue}>{formatCurrency(totalGroupSpend, { decimals: 0 })}</Text>
           </View>
 
           <View style={styles.statDivider} />
@@ -606,7 +608,7 @@ export default function GroupDetailScreen() {
                 { color: yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
               ]}
             >
-              {yourNetBalance >= 0 ? `+₹${yourNetBalance}` : `-₹${Math.abs(yourNetBalance)}`}
+              {formatCurrency(yourNetBalance, { showSign: true, decimals: 0 })}
             </Text>
           </View>
 
@@ -781,7 +783,7 @@ export default function GroupDetailScreen() {
 
                           <View style={styles.settlementAmountCol}>
                             <Text style={styles.settlementAmountText}>
-                              ₹{Number(set.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {formatCurrency(Number(set.amount || 0), { decimals: 2 })}
                             </Text>
                             <Text style={styles.settlementStatusText}>Settled</Text>
                           </View>
@@ -935,7 +937,7 @@ export default function GroupDetailScreen() {
                               {/* Center Arrow & Amount */}
                               <View style={styles.transferCenterCol}>
                                 <Text style={styles.transferCenterAmount}>
-                                  ₹{debt.amount.toFixed(2)}
+                                  {formatCurrency(debt.amount, { decimals: 2 })}
                                 </Text>
                                 <View style={styles.transferArrowPill}>
                                   <ArrowRight size={13} color={THEME.colors.primary} />
@@ -1022,12 +1024,12 @@ export default function GroupDetailScreen() {
                           <View style={styles.balanceRightCol}>
                             {isOwed && (
                               <Text style={styles.balanceOwedText}>
-                                is owed ₹{(m.netBalance || 0).toFixed(2)}
+                                is owed {formatCurrency(m.netBalance || 0, { decimals: 2 })}
                               </Text>
                             )}
                             {isDebtor && (
                               <Text style={styles.balanceDebtorText}>
-                                owes ₹{Math.abs(m.netBalance || 0).toFixed(2)}
+                                owes {formatCurrency(Math.abs(m.netBalance || 0), { decimals: 2 })}
                               </Text>
                             )}
                             {isSettled && (

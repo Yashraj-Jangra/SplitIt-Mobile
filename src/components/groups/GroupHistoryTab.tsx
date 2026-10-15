@@ -31,6 +31,7 @@ import { parseComplexChange, ParsedChange } from '@splitit/core';
 import { HistoryEventItem, groupService } from '../../services/group.service';
 import { authService, AuthUser } from '../../services/auth.service';
 import { useAuth } from '../../contexts/auth.context';
+import { useCurrency } from '../../contexts/currency.context';
 import { THEME } from '../../constants/theme';
 
 import { ActivityTabSkeleton, ActivityRowSkeleton } from '../skeletons/GroupTabSkeleton';
@@ -243,6 +244,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
   onDelete,
   onNavigateToExpense,
 }: HistoryEventRowProps) {
+  const { currencySymbol } = useCurrency();
   const isAiBudget =
     event.eventType === 'budget_updated' && Boolean(event.data?.aiInitiated);
 
@@ -394,7 +396,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
                   <View style={styles.budgetUnchangedBanner}>
                     <CheckCircle2 size={13} color={THEME.colors.success} />
                     <Text style={styles.budgetUnchangedBannerText}>
-                      Total monthly budget was not changed (₹
+                      Total monthly budget was not changed ({currencySymbol}
                       {(event.data?.currentMonthlyLimit || 0).toLocaleString('en-IN')})
                     </Text>
                   </View>

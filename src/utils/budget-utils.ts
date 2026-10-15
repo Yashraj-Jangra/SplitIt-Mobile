@@ -1,6 +1,8 @@
 import { GroupExpense, GroupBudget } from '../services/group.service';
+import { getActiveCurrencySymbol } from '../contexts/currency.context';
 
-export const CURRENCY_SYMBOL = '₹';
+export const getCurrencySymbol = () => getActiveCurrencySymbol();
+export const CURRENCY_SYMBOL = getActiveCurrencySymbol();
 
 export type BudgetStatus = 'healthy' | 'caution' | 'warning' | 'overbudget' | 'no_budget';
 
@@ -285,6 +287,7 @@ export function generateSmartSuggestions(params: {
   topSpenders: TopSpender[];
 }): SmartSuggestion[] {
   const list: SmartSuggestion[] = [];
+  const sym = getActiveCurrencySymbol();
 
   if (!params.isEnabled) {
     list.push({
@@ -304,8 +307,8 @@ export function generateSmartSuggestions(params: {
     list.push({
       id: 'overbudget-alert',
       type: 'danger',
-      title: `Over Budget by ${CURRENCY_SYMBOL}${overAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
-      description: `The group has exceeded the ${params.monthName} limit of ${CURRENCY_SYMBOL}${params.monthlyLimit.toLocaleString('en-IN')}. Consider postponing non-essential shared expenses or revising the limit.`,
+      title: `Over Budget by ${sym}${overAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+      description: `The group has exceeded the ${params.monthName} limit of ${sym}${params.monthlyLimit.toLocaleString('en-IN')}. Consider postponing non-essential shared expenses or revising the limit.`,
       icon: 'TrendingDown',
       tag: 'Critical Alert',
     });
@@ -316,7 +319,7 @@ export function generateSmartSuggestions(params: {
       id: 'exhaustion-warning',
       type: 'warning',
       title: `Budget Projected to Run Out by Day ${params.predictedExhaustionDay}`,
-      description: `At the current spending velocity of ${CURRENCY_SYMBOL}${params.averageDailySpend.toFixed(0)}/day, the group will exhaust its budget before the end of the month.`,
+      description: `At the current spending velocity of ${sym}${params.averageDailySpend.toFixed(0)}/day, the group will exhaust its budget before the end of the month.`,
       icon: 'TrendingDown',
       tag: 'Pacing Warning',
     });
@@ -327,8 +330,8 @@ export function generateSmartSuggestions(params: {
     list.push({
       id: 'healthy-pacing',
       type: 'success',
-      title: `On Track for ${CURRENCY_SYMBOL}${projectedSavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })} Surplus`,
-      description: `Excellent pace! At current velocity, the group will finish ${params.monthName} well under budget with ~${CURRENCY_SYMBOL}${projectedSavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })} remaining.`,
+      title: `On Track for ${sym}${projectedSavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })} Surplus`,
+      description: `Excellent pace! At current velocity, the group will finish ${params.monthName} well under budget with ~${sym}${projectedSavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })} remaining.`,
       icon: 'TrendingUp',
       tag: 'On Track',
     });
@@ -339,8 +342,8 @@ export function generateSmartSuggestions(params: {
     list.push({
       id: 'daily-safe-limit',
       type: 'info',
-      title: `Safe Daily Allowance: ${CURRENCY_SYMBOL}${params.dailySafeLimit.toFixed(0)}/day`,
-      description: `To finish within budget for the remaining ${params.daysRemaining} days, keep group expenditures under ${CURRENCY_SYMBOL}${params.dailySafeLimit.toFixed(0)} daily.`,
+      title: `Safe Daily Allowance: ${sym}${params.dailySafeLimit.toFixed(0)}/day`,
+      description: `To finish within budget for the remaining ${params.daysRemaining} days, keep group expenditures under ${sym}${params.dailySafeLimit.toFixed(0)} daily.`,
       icon: 'ShieldCheck',
       tag: 'Daily Allowance',
     });
@@ -354,7 +357,7 @@ export function generateSmartSuggestions(params: {
         id: `dominant-cat-${dominantCat.category}`,
         type: 'warning',
         title: `${dominantCat.category} Dominates ${dominantCat.percentageOfSpend.toFixed(0)}% of Spend`,
-        description: `${dominantCat.category} accounts for ${CURRENCY_SYMBOL}${dominantCat.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })} across ${dominantCat.expenseCount} expenses this month. Reviewing shared alternatives here offers the highest savings.`,
+        description: `${dominantCat.category} accounts for ${sym}${dominantCat.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })} across ${dominantCat.expenseCount} expenses this month. Reviewing shared alternatives here offers the highest savings.`,
         icon: 'PieChart',
         tag: 'Category Spike',
       });
@@ -367,7 +370,7 @@ export function generateSmartSuggestions(params: {
         id: `cat-overlimit-${overLimitCat.category}`,
         type: 'danger',
         title: `${overLimitCat.category} Exceeded Allocated Limit`,
-        description: `Spent ${CURRENCY_SYMBOL}${overLimitCat.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })} out of the ${CURRENCY_SYMBOL}${overLimitCat.allocatedLimit.toLocaleString('en-IN', { maximumFractionDigits: 0 })} allocated ceiling for ${overLimitCat.category}.`,
+        description: `Spent ${sym}${overLimitCat.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })} out of the ${sym}${overLimitCat.allocatedLimit.toLocaleString('en-IN', { maximumFractionDigits: 0 })} allocated ceiling for ${overLimitCat.category}.`,
         icon: 'TrendingDown',
         tag: 'Category Limit',
       });

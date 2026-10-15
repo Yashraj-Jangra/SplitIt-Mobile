@@ -43,6 +43,7 @@ import { useNetwork } from '../../src/contexts/network.context';
 import { launchUpiPayment } from '../../src/utils/upi';
 import { haptics } from '../../src/services/haptics.service';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
+import { useCurrency } from '../../src/contexts/currency.context';
 
 /**
  * Sanitizes settlement numeric input with strict max .2f limit.
@@ -91,6 +92,7 @@ export default function SettleUpModal() {
   const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
   const { user } = useAuth();
+  const { currencySymbol } = useCurrency();
   const currentUserId = user?.id || '';
   const currentUserName = user?.name || 'You';
 
@@ -463,7 +465,7 @@ export default function SettleUpModal() {
         haptics.warning();
         Alert.alert(
           'Confirm Payment',
-          `Did your UPI payment of ₹${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to ${receiverDisplayName} complete successfully?`,
+          `Did your UPI payment of ${currencySymbol}${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to ${receiverDisplayName} complete successfully?`,
           [
             {
               text: 'No, Cancel',
@@ -719,7 +721,7 @@ export default function SettleUpModal() {
               {/* ── 2. Amount Section (No-Div Minimal Underline Design, No Other Text) ── */}
               <View style={styles.amountNoDivContainer}>
                 <View style={styles.amountUnderlineRow}>
-                  <Text style={styles.currencyPrefix}>₹</Text>
+                  <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                   <TextInput
                     style={styles.amountUnderlineInput}
                     value={amount}
@@ -748,7 +750,7 @@ export default function SettleUpModal() {
                   <Text style={styles.summarySentence}>
                     <Text style={styles.summaryHighlight}>{payerDisplayName}</Text> is paying{' '}
                     <Text style={styles.summaryAmountHighlight}>
-                      ₹{numAmount > 0 ? numAmount.toFixed(2) : '0.00'}
+                      {currencySymbol}{numAmount > 0 ? numAmount.toFixed(2) : '0.00'}
                     </Text>{' '}
                     to <Text style={styles.summaryHighlight}>{receiverDisplayName}</Text>
                   </Text>
@@ -844,7 +846,7 @@ export default function SettleUpModal() {
               : !isValidParties
               ? 'Select Members to Settle'
               : effectivePayViaUpi
-              ? `Pay ₹${formattedAmount} & Record`
+              ? `Pay ${currencySymbol}${formattedAmount} & Record`
               : 'Record Settlement'
           }
           onPress={handleSubmit}

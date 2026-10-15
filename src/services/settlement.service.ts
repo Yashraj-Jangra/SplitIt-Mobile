@@ -2,6 +2,7 @@ import { authService, API_BASE_URL } from './auth.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { groupService } from './group.service';
 import { ExpenseHistoryLog } from './expense.service';
+import { getActiveCurrencySymbol } from '../contexts/currency.context';
 
 export interface RecordSettlementParams {
   groupId: string;
@@ -256,7 +257,7 @@ export const settlementService = {
                   year: 'numeric',
                 }),
                 timeAgo: 'Recorded',
-                description: `Settlement recorded: ${payerName} paid ${payeeName} ₹${Number(found.amount || 0).toFixed(2)}.`,
+                description: `Settlement recorded: ${payerName} paid ${payeeName} ${getActiveCurrencySymbol()}${Number(found.amount || 0).toFixed(2)}.`,
               });
             }
 
@@ -438,7 +439,7 @@ export const settlementService = {
                 actorName: params.payerName,
                 timestamp: 'Today',
                 timeAgo: 'Just now',
-                description: `Settlement recorded: ${params.payerName} paid ${params.payeeName} ₹${exactAmount.toFixed(2)}.`,
+                description: `Settlement recorded: ${params.payerName} paid ${params.payeeName} ${getActiveCurrencySymbol()}${exactAmount.toFixed(2)}.`,
               },
             ],
           };

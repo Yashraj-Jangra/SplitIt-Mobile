@@ -1,6 +1,7 @@
 import { GroupListItem, GroupDetailData, GroupMember } from '../services/group.service';
 import { UserTransactionItem, ExpenseDetailModel } from '../services/expense.service';
 import { UserBalanceSummary } from '../services/balance.service';
+import { getActiveCurrencySymbol } from '../contexts/currency.context';
 
 export const DEMO_USER_ID = 'demo_user_viewer';
 
@@ -215,7 +216,7 @@ export function getDemoGroupDetails(groupId: string, userName?: string): GroupDe
           eventType: 'expense_created',
           timestamp: new Date(Date.now() - 86400000).toISOString(),
           actor: { uid: DEMO_USER_ID, name: viewerName },
-          description: `Added "High-Speed Fiber Wi-Fi (1 Gbps)" (₹1,499.00)`,
+          description: `Added "High-Speed Fiber Wi-Fi (1 Gbps)" (${getActiveCurrencySymbol()}1,499.00)`,
         },
         {
           id: 'demo_h_2',
@@ -223,7 +224,7 @@ export function getDemoGroupDetails(groupId: string, userName?: string): GroupDe
           eventType: 'settlement_created',
           timestamp: new Date(Date.now() - 86400000 * 5).toISOString(),
           actor: { uid: DEMO_MEMBERS.aryan.id, name: DEMO_MEMBERS.aryan.name },
-          description: `Aryan settled ₹1,200.00 with Tanya via UPI`,
+          description: `Aryan settled ${getActiveCurrencySymbol()}1,200.00 with Tanya via UPI`,
         },
       ],
     };
@@ -342,7 +343,7 @@ export function getDemoGroupDetails(groupId: string, userName?: string): GroupDe
           eventType: 'expense_created',
           timestamp: new Date(Date.now() - 86400000 * 5).toISOString(),
           actor: { uid: DEMO_USER_ID, name: viewerName },
-          description: `Added "Sunset Beach Shack Seafood Dinner" (₹4,800.00)`,
+          description: `Added "Sunset Beach Shack Seafood Dinner" (${getActiveCurrencySymbol()}4,800.00)`,
         },
       ],
     };

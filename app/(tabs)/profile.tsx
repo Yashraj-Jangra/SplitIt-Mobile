@@ -17,6 +17,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useCurrency } from '../../src/contexts/currency.context';
 import { storageService } from '../../src/services/storage.service';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { haptics } from '../../src/services/haptics.service';
@@ -31,14 +32,13 @@ interface SettingsItem {
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut, refreshUser } = useAuth();
+  const { currencyCode, currencySymbol, isCustom } = useCurrency();
   const [imageError, setImageError] = useState(false);
-  const [currencyCode, setCurrencyCode] = useState('INR');
 
   useFocusEffect(
     useCallback(() => {
       refreshUser();
       setImageError(false);
-      storageService.getCurrencyPreference().then(setCurrencyCode);
     }, [refreshUser])
   );
 
@@ -106,7 +106,7 @@ export default function ProfileScreen() {
     {
       icon: Sliders,
       title: 'App Preferences',
-      subtitle: `Currency (${currencyCode}) · Haptics & defaults`,
+      subtitle: `Currency (${currencySymbol} ${isCustom ? 'Custom' : currencyCode}) · Haptics & defaults`,
       onPress: () => router.push('/settings/preferences'),
     },
     {

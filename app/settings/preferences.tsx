@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,43 +17,25 @@ import {
   Vibrate,
   Layers,
   Check,
+  Sparkles,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
-import { storageService } from '../../src/services/storage.service';
 import { groupService } from '../../src/services/group.service';
 import { haptics } from '../../src/services/haptics.service';
 import { useHaptics } from '../../src/contexts/haptics.context';
-
-interface CurrencyOption {
-  code: string;
-  symbol: string;
-  name: string;
-  flag: string;
-}
-
-const CURRENCY_OPTIONS: CurrencyOption[] = [
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee', flag: '🇮🇳' },
-  { code: 'USD', symbol: '$', name: 'US Dollar', flag: '🇺🇸' },
-  { code: 'EUR', symbol: '€', name: 'Euro', flag: '🇪🇺' },
-  { code: 'GBP', symbol: '£', name: 'British Pound', flag: '🇬🇧' },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', flag: '🇦🇺' },
-  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar', flag: '🇨🇦' },
-  { code: 'AED', symbol: 'AED', name: 'UAE Dirham', flag: '🇦🇪' },
-];
+import { useCurrency, PRESET_CURRENCIES } from '../../src/contexts/currency.context';
 
 export default function PreferencesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { enabled: hapticsEnabled, setEnabled: setHapticsEnabled } = useHaptics();
+  const { currencyCode, currencySymbol, isCustom, setCurrency, formatCurrency } = useCurrency();
 
-  const [selectedCurrency, setSelectedCurrency] = useState('INR');
+  const [customSymbolInput, setCustomSymbolInput] = useState(isCustom ? currencySymbol : '');
   const [defaultGroupName, setDefaultGroupName] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadPrefs() {
-      const curr = await storageService.getCurrencyPreference();
-      setSelectedCurrency(curr);
-
       const defaultGroupId = await groupService.getDefaultGroupId();
       if (defaultGroupId) {
         const groups = await groupService.getUserGroups();
@@ -65,15 +48,23 @@ export default function PreferencesScreen() {
     loadPrefs();
   }, []);
 
-  const handleSelectCurrency = async (curr: string) => {
+  const handleSelectCurrency = async (code: string) => {
     haptics.tap();
-    setSelectedCurrency(curr);
-    await storageService.setCurrencyPreference(curr);
+    await setCurrency(code);
+  };
+
+  const handleApplyCustomSymbol = async () => {
+    const trimmed = customSymbolInput.trim();
+    if (!trimmed) {
+      Alert.alert('Invalid Logo', 'Please enter a currency symbol or logo (e.g. Rs., kr, ₿).');
+      return;
+    }
+    haptics.saveSuccess();
+    await setCurrency('CUSTOM', trimmed);
+    Alert.alert('Currency Updated', `Default currency logo set to "${trimmed}". All amounts in the app will now display with this symbol.`);
   };
 
   const handleToggleHaptics = async (val: boolean) => {
-    // Update context ref immediately so the tick below is the last haptic
-    // if disabling, or the first if enabling.
     await setHapticsEnabled(val);
     if (val) haptics.tick();
   };
@@ -113,15 +104,69 @@ export default function PreferencesScreen() {
               <Coins size={16} color={THEME.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Default Currency</Text>
-              <Text style={styles.cardSubtitle}>Preferred currency symbol for calculations</Text>
+              <Text style={styles.cardTitle}>Default Currency Logo</Text>
+              <Text style={styles.cardSubtitle}>
+                Single-currency model · Changes the display logo without converting values
+              </Text>
             </View>
           </View>
 
+          {/* Active Currency Live Preview */}
+          <View style={styles.previewBox}>
+            <Text style={styles.previewLabel}>ACTIVE CURRENCY PREVIEW</Text>
+            <View style={styles.previewRow}>
+              <Text style={styles.previewSymbolBadge}>{currencySymbol}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.previewSampleText}>
+                  {formatCurrency(1499, { decimals: 2 })}
+                </Text>
+                <Text style={styles.previewSubtext}>
+                  {isCustom ? `Custom Logo ("${currencySymbol}")` : `${currencyCode} · Everywhere in app`}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Custom Currency Logo / Symbol Input */}
+          <View style={styles.customCurrencyCard}>
+            <View style={styles.customCurrencyHeader}>
+              <Sparkles size={14} color={THEME.colors.primary} />
+              <Text style={styles.customCurrencyTitle}>Custom Currency Logo</Text>
+            </View>
+            <Text style={styles.customCurrencySubtitle}>
+              Type any custom currency symbol, abbreviation, or crypto sign (e.g. Rs., kr, Rp, ₿, CHF).
+            </Text>
+            <View style={styles.customInputRow}>
+              <TextInput
+                style={styles.customInput}
+                value={customSymbolInput}
+                onChangeText={setCustomSymbolInput}
+                placeholder="e.g. Rs., kr, ₿"
+                placeholderTextColor={THEME.colors.textMuted}
+                maxLength={8}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.customApplyBtn}
+                onPress={handleApplyCustomSymbol}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.customApplyBtnText}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+            {isCustom && (
+              <View style={styles.customActiveBadge}>
+                <Check size={12} color={THEME.colors.primary} strokeWidth={2.5} />
+                <Text style={styles.customActiveText}>Custom logo "{currencySymbol}" is currently active</Text>
+              </View>
+            )}
+          </View>
+
+          <Text style={styles.presetSectionLabel}>POPULAR CURRENCY PRESETS</Text>
           <View style={styles.currencyList}>
-            {CURRENCY_OPTIONS.map((item, index) => {
-              const isSelected = selectedCurrency === item.code;
-              const isLast = index === CURRENCY_OPTIONS.length - 1;
+            {PRESET_CURRENCIES.map((item, index) => {
+              const isSelected = !isCustom && currencyCode === item.code;
+              const isLast = index === PRESET_CURRENCIES.length - 1;
 
               return (
                 <TouchableOpacity
@@ -373,5 +418,117 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: THEME.colors.negative,
+  },
+  previewBox: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    padding: 12,
+    gap: 8,
+  },
+  previewLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.5,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  previewSymbolBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: THEME.colors.primary + '20',
+    color: THEME.colors.primary,
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 44,
+  },
+  previewSampleText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    letterSpacing: -0.5,
+  },
+  previewSubtext: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  customCurrencyCard: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    padding: 12,
+    gap: 8,
+  },
+  customCurrencyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  customCurrencyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  customCurrencySubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    lineHeight: 16,
+  },
+  customInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  customInput: {
+    flex: 1,
+    height: 42,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    borderRadius: THEME.radius.md,
+    paddingHorizontal: 12,
+    color: THEME.colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  customApplyBtn: {
+    height: 42,
+    paddingHorizontal: 16,
+    backgroundColor: THEME.colors.primary,
+    borderRadius: THEME.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customApplyBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.primaryForeground,
+  },
+  customActiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 4,
+  },
+  customActiveText: {
+    fontSize: 11,
+    color: THEME.colors.primary,
+    fontWeight: '600',
+  },
+  presetSectionLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.5,
+    marginTop: 6,
   },
 });

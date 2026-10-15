@@ -20,11 +20,13 @@ import { useAuth } from '../../src/contexts/auth.context';
 import { haptics } from '../../src/services/haptics.service';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 import { BRAND_QR_BADGE } from '../../src/components/brand/QuantumLogo';
+import { useCurrency } from '../../src/contexts/currency.context';
 
 export default function UpiQrModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { currencySymbol } = useCurrency();
   const params = useLocalSearchParams<{
     groupId?: string;
     payerId?: string;
@@ -133,7 +135,7 @@ export default function UpiQrModal() {
         <View style={styles.payeeSection}>
           <Text style={styles.payeeLabel}>PAYING TO</Text>
           <Text style={styles.payeeName}>{payeeName}</Text>
-          <Text style={styles.amountDisplay}>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+          <Text style={styles.amountDisplay}>{currencySymbol}{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
 
         {/* High-Contrast QR Code Card */}
@@ -208,7 +210,7 @@ export default function UpiQrModal() {
 
         {/* Primary Confirmation Action */}
         <PrimaryActionButton
-          title={`I Have Paid ₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          title={`I Have Paid ${currencySymbol}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           onPress={handleConfirmPaid}
           disabled={loading || amount <= 0}
           loading={loading}
