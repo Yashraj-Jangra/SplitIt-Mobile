@@ -1,17 +1,35 @@
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
+export const PRODUCTION_API_URL = 'https://split.cvweb.qzz.io';
+
 function resolveApiBaseUrl(): string {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  // Ensure we never inadvertently use localhost, 127.0.0.1, or emulator test URLs
+  if (
+    envUrl &&
+    !envUrl.includes('localhost') &&
+    !envUrl.includes('127.0.0.1') &&
+    !envUrl.includes('10.0.2.2')
+  ) {
+    return envUrl;
   }
-  return 'https://split.cvweb.qzz.io';
+  const extraUrl = (Constants.expoConfig?.extra as Record<string, any> | undefined)?.apiUrl;
+  if (
+    extraUrl &&
+    typeof extraUrl === 'string' &&
+    !extraUrl.includes('localhost') &&
+    !extraUrl.includes('127.0.0.1') &&
+    !extraUrl.includes('10.0.2.2')
+  ) {
+    return extraUrl;
+  }
+  return PRODUCTION_API_URL;
 }
 
-// Points to existing Next.js backend (dynamically resolves PC LAN IP in Expo Go)
+// Canonical API base URL for SplitIt (points to production backend)
 export const API_BASE_URL = resolveApiBaseUrl();
 
 const TOKEN_KEY = 'splitit_session_token';

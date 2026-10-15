@@ -1,6 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Enforced Production Backend URL Across All Compilation Targets (`src/services/auth.service.ts`, `app.json`, `eas.json`)**:
+  - **Runtime & Bundle URL Guard (`src/services/auth.service.ts`)**:
+    - Centralized `PRODUCTION_API_URL = 'https://split.cvweb.qzz.io'`.
+    - Sanitized `resolveApiBaseUrl()` so any `process.env.EXPO_PUBLIC_API_URL` or `extra.apiUrl` containing `localhost`, `127.0.0.1`, or `10.0.2.2` is strictly rejected and always falls back to canonical `https://split.cvweb.qzz.io`.
+  - **Embedded Manifest Constant (`app.json`)**:
+    - Added `apiUrl: "https://split.cvweb.qzz.io"` to `expo.extra` so it is permanently baked into native app manifests regardless of environment loading.
+  - **EAS Build Environment Injection (`eas.json`)**:
+    - Injected `"env": { "EXPO_PUBLIC_API_URL": "https://split.cvweb.qzz.io" }` across `development`, `preview`, and `production` profiles, ensuring cloud/remote EAS builds compile directly with the correct URL even when `.env` is git-ignored.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **High-Performance Groups & Members Local Caching & 0ms Expense Splitting (`src/services/group.service.ts`, `app/expenses/new.tsx`, `app/groups/[id]/index.tsx`)**:
   - **Zero-Latency Member Hydration**:
     - Replaced heavy multi-endpoint group detail calls in `app/expenses/new.tsx` with instant 0ms local hydration from preloaded groups in memory.

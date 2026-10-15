@@ -79,6 +79,7 @@
       ]
     ],
     "extra": {
+      "apiUrl": "https://split.cvweb.qzz.io",
       "router": {},
       "eas": {
         "projectId": "564133e2-dfca-4435-b76a-9fad3532cd14"
