@@ -180,15 +180,16 @@ export default function SignupScreen() {
             >
               <Image
                 source={{
-                  uri: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80',
+                  uri: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80',
                 }}
                 style={styles.heroImage}
                 resizeMode="cover"
               />
               <View style={styles.imageOverlay} />
               <View style={styles.heroBrandOverlay}>
-                <View style={styles.logoBadge}>
-                  <QuantumLogo size={52} />
+                <View style={styles.brandRow}>
+                  <QuantumLogo size={40} useGradient={false} color={THEME.colors.primary} />
+                  <Text style={styles.brandName}>SplitIt</Text>
                 </View>
               </View>
             </Animated.View>
@@ -415,27 +416,23 @@ const styles = StyleSheet.create({
   },
   imageOverlay: {
     ...(StyleSheet.absoluteFill as object),
-    backgroundColor: 'rgba(0, 0, 0, 0.60)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   heroBrandOverlay: {
     ...(StyleSheet.absoluteFill as object),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+  brandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: THEME.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    gap: 12,
+  },
+  brandName: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   compactHeader: {
     flexDirection: 'row',

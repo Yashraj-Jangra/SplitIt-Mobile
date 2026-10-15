@@ -1,6 +1,19 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Aligned Login & Signup Visuals with Website Design (`app/(auth)/login.tsx`, `app/(auth)/signup.tsx`, `src/components/brand/QuantumLogo.tsx`)**:
+  - **Canonical Website Auth Background Image**:
+    - Replaced generic office desk placeholder with the website's exact auth cover image (`https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80`).
+    - Balanced the dark overlay (`rgba(0, 0, 0, 0.45)`) to showcase the starry night mountain peak while keeping optimal contrast for foreground text.
+  - **Zero-Gradient Solid QuantumLogo with App Name**:
+    - Refined `QuantumLogo` component to default to clean, solid vector paths (`useGradient = false`) with 5px strokes and solid concentric center circles (`r=10` with 0.5 opacity, `r=5`), matching the website's `Icons.Logo` with 100% precision.
+    - Removed gradient glows, heavy circular badge containers, and rainbow halos from the hero overlay.
+    - Replaced the standalone icon badge with a clean horizontal brand lockup: solid QuantumLogo alongside the bold white "SplitIt" brand name.
+    - Ensured the compact sliding keyboard header also renders the clean non-gradient logo with name.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Customizable Single-Currency System & Dynamic Logo/Symbol App-Wide (`src/contexts/currency.context.tsx`, `app/settings/preferences.tsx`, `app/(tabs)/profile.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`, `app/groups/[id]/index.tsx`, `app/groups/new.tsx`, `app/expenses/[id].tsx`, `app/expenses/new.tsx`, `app/settle/new.tsx`, `app/settle/qr.tsx`, `app/settlements/[id].tsx`, `app/ai/chat.tsx`, `app/ai/scanner.tsx`, `src/components/*`, `src/services/*`)**:
   - **Single-Currency Guarantee with Custom Logo/Symbol Architecture**:
     - Built a reactive `CurrencyContext` (`src/contexts/currency.context.tsx`) with persistent storage in `AsyncStorage` (`storageService`).

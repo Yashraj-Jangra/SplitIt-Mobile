@@ -20,7 +20,7 @@ export function QuantumLogo({
   size = 36,
   color = THEME.colors.primary,
   glowColor = THEME.colors.primaryLight,
-  useGradient = true,
+  useGradient = false,
   style,
 }: QuantumLogoProps) {
   // Radius of the main arc circle is ~47.5, circumference is ~298.45
@@ -34,19 +34,21 @@ export function QuantumLogo({
   return (
     <View style={[{ width: size, height: size }, style]}>
       <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-        <Defs>
-          <LinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor={glowColor} stopOpacity="1" />
-            <Stop offset="60%" stopColor={color} stopOpacity="1" />
-            <Stop offset="100%" stopColor={THEME.colors.success} stopOpacity="0.9" />
-          </LinearGradient>
-        </Defs>
+        {useGradient && (
+          <Defs>
+            <LinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={glowColor} stopOpacity="1" />
+              <Stop offset="60%" stopColor={color} stopOpacity="1" />
+              <Stop offset="100%" stopColor={THEME.colors.success} stopOpacity="0.9" />
+            </LinearGradient>
+          </Defs>
+        )}
 
         {/* Orbit Arc 1 */}
         <Path
           d="M50 2.5C23.79 2.5 2.5 23.79 2.5 50C2.5 76.21 23.79 97.5 50 97.5C76.21 97.5 97.5 76.21 97.5 50"
           stroke={useGradient ? `url(#${gradientId})` : color}
-          strokeWidth={5.5}
+          strokeWidth={5}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeDasharray={`${dashOn} ${dashOff}`}
@@ -57,17 +59,26 @@ export function QuantumLogo({
         <Path
           d="M50 2.5C76.21 2.5 97.5 23.79 97.5 50C97.5 76.21 76.21 97.5 50 97.5"
           stroke={useGradient ? `url(#${gradientId})` : color}
-          strokeWidth={5.5}
+          strokeWidth={5}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeDasharray={`${dashOn} ${dashOff}`}
           strokeDashoffset={dashOffset2}
         />
 
-        {/* Nucleus Glow & Core */}
-        <Circle cx={50} cy={50} r={13} fill={color} opacity={0.2} />
-        <Circle cx={50} cy={50} r={8.5} fill={color} opacity={0.5} />
-        <Circle cx={50} cy={50} r={4.5} fill={glowColor} />
+        {/* Nucleus Core (clean solid center matching website) */}
+        {useGradient ? (
+          <>
+            <Circle cx={50} cy={50} r={13} fill={color} opacity={0.2} />
+            <Circle cx={50} cy={50} r={8.5} fill={color} opacity={0.5} />
+            <Circle cx={50} cy={50} r={4.5} fill={glowColor} />
+          </>
+        ) : (
+          <>
+            <Circle cx={50} cy={50} r={10} fill={color} opacity={0.5} />
+            <Circle cx={50} cy={50} r={5} fill={color} />
+          </>
+        )}
       </Svg>
     </View>
   );
