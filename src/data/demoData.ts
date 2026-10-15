@@ -439,6 +439,38 @@ export function getDemoBalanceSummary(): UserBalanceSummary {
     gradientOffset: 0.78,
     minBalance: -5350,
     maxBalance: 999.34,
+    obligations: {
+      owedToYou: [
+        {
+          user: {
+            id: DEMO_MEMBERS.tanya.id,
+            name: DEMO_MEMBERS.tanya.name,
+            avatarUrl: DEMO_MEMBERS.tanya.avatarUrl,
+            upiId: 'tanya.sen@okaxis',
+            email: DEMO_MEMBERS.tanya.email,
+          },
+          amount: 999.34,
+          sharedGroups: [
+            { groupId: 'demo_grp_flat', groupName: 'Flat 302 Flatmates 🏡', amount: 999.34 },
+          ],
+        },
+      ],
+      youOwe: [
+        {
+          user: {
+            id: DEMO_MEMBERS.kabir.id,
+            name: DEMO_MEMBERS.kabir.name,
+            avatarUrl: DEMO_MEMBERS.kabir.avatarUrl,
+            upiId: 'kabir.joshi@okhdfcbank',
+            email: DEMO_MEMBERS.kabir.email,
+          },
+          amount: 1200.0,
+          sharedGroups: [
+            { groupId: 'demo_grp_goa', groupName: 'Goa Weekend Getaway 🌊', amount: 1200.0 },
+          ],
+        },
+      ],
+    },
   };
 }
 

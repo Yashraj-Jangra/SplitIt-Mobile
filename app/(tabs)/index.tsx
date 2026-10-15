@@ -38,6 +38,7 @@ import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { haptics } from '../../src/services/haptics.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
+import { ObligationsModal } from '../../src/components/dashboard/ObligationsModal';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -48,6 +49,7 @@ export default function HomeScreen() {
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
   const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(() => balanceService.getInMemoryUserBalanceSummary());
+  const [obligationsType, setObligationsType] = useState<'owed' | 'owes' | null>(null);
   const [loading, setLoading] = useState(() => {
     return (
       groupService.getInMemoryGroups().length === 0 &&
@@ -316,29 +318,45 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* TIER 3: Unboxed Stat Breakdown Footer */}
+            {/* TIER 3: Interactive Stat Breakdown Footer with Obligations Drilldown */}
             <View style={styles.widgetFooter}>
-              <View style={styles.statColumn}>
+              <TouchableOpacity
+                style={styles.statColumn}
+                activeOpacity={0.7}
+                onPress={() => {
+                  haptics.tap();
+                  setObligationsType('owed');
+                }}
+              >
                 <View style={styles.statLabelRow}>
                   <ArrowDownLeft size={12} color={THEME.colors.primary} strokeWidth={2.5} />
                   <Text style={styles.statLabel}>Owed to you</Text>
+                  <ChevronRight size={11} color={THEME.colors.textMuted} />
                 </View>
                 <Text style={[styles.statValue, { color: THEME.colors.primary }]}>
                   {formatCurrency(totalOwed, { decimals: 2 })}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               <View style={styles.statDivider} />
 
-              <View style={styles.statColumn}>
+              <TouchableOpacity
+                style={styles.statColumn}
+                activeOpacity={0.7}
+                onPress={() => {
+                  haptics.tap();
+                  setObligationsType('owes');
+                }}
+              >
                 <View style={styles.statLabelRow}>
                   <ArrowUpRight size={12} color={THEME.colors.negative} strokeWidth={2.5} />
                   <Text style={styles.statLabel}>You owe</Text>
+                  <ChevronRight size={11} color={THEME.colors.textMuted} />
                 </View>
                 <Text style={[styles.statValue, { color: THEME.colors.negative }]}>
                   {formatCurrency(totalOwe, { decimals: 2 })}
                 </Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -528,6 +546,20 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {obligationsType && (
+        <ObligationsModal
+          visible={Boolean(obligationsType)}
+          onClose={() => setObligationsType(null)}
+          type={obligationsType}
+          obligations={
+            obligationsType === 'owed'
+              ? balanceSummary?.obligations?.owedToYou || []
+              : balanceSummary?.obligations?.youOwe || []
+          }
+          totalAmount={obligationsType === 'owed' ? totalOwed : totalOwe}
+        />
+      )}
     </SafeAreaView>
   );
 }

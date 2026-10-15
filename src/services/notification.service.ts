@@ -345,6 +345,63 @@ export const notificationService = {
       return { remove: () => {} };
     }
   },
+
+  /**
+   * Send settle-up payment reminder notification (push + email)
+   */
+  async sendPaymentReminder(params: {
+    debtorId: string;
+    amount: number;
+    groupName?: string;
+    groupId?: string;
+    sendEmail?: boolean;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const token = await authService.getToken();
+      const currentUser = await authService.getCachedUser();
+      const actorId = currentUser?.id || 'u1';
+      const actorName = currentUser?.name || 'Member';
+      const actorUpiId = currentUser?.upiId;
+
+      const upiUri = actorUpiId
+        ? `upi://pay?pa=${encodeURIComponent(actorUpiId)}&pn=${encodeURIComponent(actorName)}&am=${Number(params.amount || 0).toFixed(2)}&cu=INR&tn=${encodeURIComponent('SplitWise Settlement')}`
+        : undefined;
+
+      const disclaimer =
+        "Note: You'll need to update it manually in SplitIt that the amount is paid, because we don't directly receive or track payments and it is a free platform with zero usage fee.";
+
+      const bodyPayload = {
+        type: 'payment_reminder',
+        recipientIds: [params.debtorId],
+        title: 'Settle Up Reminder',
+        body: `A member is asking you to settle up ₹${Number(params.amount || 0).toFixed(2)}${params.groupName ? ` in "${params.groupName}"` : ''}.\n\n${disclaimer}`,
+        actorId,
+        groupId: params.groupId,
+        target: 'specific_users',
+        balanceAmount: `₹${Number(params.amount || 0).toFixed(2)}`,
+        groupName: params.groupName || 'your group',
+        upiUrl: upiUri,
+        forceEmail: params.sendEmail !== false,
+        disclaimer,
+      };
+
+      const res = await fetch(`${API_BASE_URL}/api/notifications/send`, {
+        method: 'POST',
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify(bodyPayload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { success: false, error: err.error || 'Failed to send reminder' };
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Network error' };
+    }
+  },
+
   clearCache(): void {
     _cachedNotifications = [];
   },

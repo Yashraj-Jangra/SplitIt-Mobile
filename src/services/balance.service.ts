@@ -10,6 +10,28 @@ import {
   BalanceHistoryCalculation,
 } from '@splitit/core';
 
+export interface ObligationUser {
+  id: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  upiId?: string;
+  email?: string;
+}
+
+export interface SharedGroupBalance {
+  groupId: string;
+  groupName: string;
+  amount: number;
+}
+
+export interface ObligationItem {
+  user: ObligationUser;
+  amount: number; // positive number
+  sharedGroups: SharedGroupBalance[];
+}
+
 export interface UserBalanceSummary {
   netBalance: number;
   totalOwed: number; // Owed to you (positive sum of creditor positions)
@@ -20,6 +42,10 @@ export interface UserBalanceSummary {
   gradientOffset: number;
   minBalance: number;
   maxBalance: number;
+  obligations?: {
+    owedToYou: ObligationItem[];
+    youOwe: ObligationItem[];
+  };
 }
 
 let _cachedBalanceSummary: UserBalanceSummary | null = null;
@@ -128,14 +154,58 @@ export const balanceService = {
         groupBalanceResults.forEach((res) => {
           if (res.status === 'fulfilled' && Array.isArray(res.value)) {
             groupBalancesArrays.push(res.value);
+          } else {
+            groupBalancesArrays.push([]);
           }
         });
       }
 
+      // User profile cache across all groups and balances
+      const userProfileMap = new Map<string, ObligationUser>();
+      // Track shared group obligations: userKey -> map of groupId -> amount
+      const userSharedGroupsMap = new Map<string, Map<string, { groupName: string; amount: number }>>();
+
+      // Seed profiles from group member rosters
+      groups.forEach((g) => {
+        (g.members || []).forEach((m: any) => {
+          const mId = m.id || m.uid;
+          if (mId && !userProfileMap.has(mId)) {
+            userProfileMap.set(mId, {
+              id: mId,
+              name: m.name || 'Member',
+              avatarUrl: m.avatarUrl,
+              email: m.email,
+              upiId: m.upiId,
+            });
+          }
+        });
+      });
+
       // 1. Calculate P2P balances across all groups via simplifyDebts
       const userP2PBalanceMap = new Map<string, number>();
 
-      groupBalancesArrays.forEach((groupBalances) => {
+      groupBalancesArrays.forEach((groupBalances, gIdx) => {
+        const currentGroup = groups[gIdx];
+        const gId = currentGroup?.id || `g_${gIdx}`;
+        const gName = currentGroup?.name || 'Group';
+
+        // Collect profiles from group balances payload
+        groupBalances.forEach((b: any) => {
+          const bUser = b.user;
+          const uId = bUser?.uid || bUser?.id;
+          if (uId && !userProfileMap.has(uId)) {
+            userProfileMap.set(uId, {
+              id: uId,
+              name: bUser.name || `${bUser.firstName || ''} ${bUser.lastName || ''}`.trim() || 'Member',
+              firstName: bUser.firstName,
+              lastName: bUser.lastName,
+              avatarUrl: bUser.avatarUrl,
+              email: bUser.email,
+              upiId: bUser.upiId,
+            });
+          }
+        });
+
         const debtInputs = groupBalances.map((b: any) => ({
           user: { uid: b.user?.uid || b.user?.id || 'm' },
           netBalance: Number(b.netBalance) || 0,
@@ -143,21 +213,82 @@ export const balanceService = {
         const simplified = simplifyDebts(debtInputs);
 
         simplified.forEach((s) => {
-          if (s.from.uid === currentUserId) {
-            userP2PBalanceMap.set(s.to.uid, (userP2PBalanceMap.get(s.to.uid) || 0) - s.amount);
-          } else if (s.to.uid === currentUserId) {
-            userP2PBalanceMap.set(s.from.uid, (userP2PBalanceMap.get(s.from.uid) || 0) + s.amount);
+          const fromId = s.from.uid;
+          const toId = s.to.uid;
+
+          if (fromId === currentUserId) {
+            // User owes toId
+            userP2PBalanceMap.set(toId, (userP2PBalanceMap.get(toId) || 0) - s.amount);
+            
+            let groupMap = userSharedGroupsMap.get(toId);
+            if (!groupMap) {
+              groupMap = new Map();
+              userSharedGroupsMap.set(toId, groupMap);
+            }
+            const existingGroupAmt = groupMap.get(gId)?.amount || 0;
+            groupMap.set(gId, { groupName: gName, amount: existingGroupAmt - s.amount });
+          } else if (toId === currentUserId) {
+            // fromId owes user
+            userP2PBalanceMap.set(fromId, (userP2PBalanceMap.get(fromId) || 0) + s.amount);
+
+            let groupMap = userSharedGroupsMap.get(fromId);
+            if (!groupMap) {
+              groupMap = new Map();
+              userSharedGroupsMap.set(fromId, groupMap);
+            }
+            const existingGroupAmt = groupMap.get(gId)?.amount || 0;
+            groupMap.set(gId, { groupName: gName, amount: existingGroupAmt + s.amount });
           }
         });
       });
 
       let calculatedTotalOwed = 0;
       let calculatedTotalOwe = 0;
+      const owedToYouList: ObligationItem[] = [];
+      const youOweList: ObligationItem[] = [];
 
-      for (const net of userP2PBalanceMap.values()) {
-        if (net > 0.01) calculatedTotalOwed += net;
-        else if (net < -0.01) calculatedTotalOwe += Math.abs(net);
+      for (const [otherUid, net] of userP2PBalanceMap.entries()) {
+        const userProf = userProfileMap.get(otherUid) || {
+          id: otherUid,
+          name: 'Member',
+        };
+
+        const groupMap = userSharedGroupsMap.get(otherUid);
+        const sharedGroups: SharedGroupBalance[] = [];
+        if (groupMap) {
+          groupMap.forEach((val, groupId) => {
+            if (Math.abs(val.amount) > 0.01) {
+              sharedGroups.push({
+                groupId,
+                groupName: val.groupName,
+                amount: parseFloat(Math.abs(val.amount).toFixed(2)),
+              });
+            }
+          });
+          sharedGroups.sort((a, b) => b.amount - a.amount);
+        }
+
+        if (net > 0.01) {
+          const amt = parseFloat(net.toFixed(2));
+          calculatedTotalOwed += amt;
+          owedToYouList.push({
+            user: userProf,
+            amount: amt,
+            sharedGroups,
+          });
+        } else if (net < -0.01) {
+          const amt = parseFloat(Math.abs(net).toFixed(2));
+          calculatedTotalOwe += amt;
+          youOweList.push({
+            user: userProf,
+            amount: amt,
+            sharedGroups,
+          });
+        }
       }
+
+      owedToYouList.sort((a, b) => b.amount - a.amount);
+      youOweList.sort((a, b) => b.amount - a.amount);
 
       // If P2P map has no live debts, check real group userNetBalance sums
       if (calculatedTotalOwed === 0 && calculatedTotalOwe === 0 && groups.length > 0) {
@@ -219,6 +350,10 @@ export const balanceService = {
         gradientOffset: history.gradientOffset,
         minBalance: history.minBalance,
         maxBalance: history.maxBalance,
+        obligations: {
+          owedToYou: owedToYouList,
+          youOwe: youOweList,
+        },
       };
 
       _cachedBalanceSummary = result;
@@ -243,6 +378,10 @@ export const balanceService = {
         gradientOffset: defaultHistory.gradientOffset,
         minBalance: defaultHistory.minBalance,
         maxBalance: defaultHistory.maxBalance,
+        obligations: {
+          owedToYou: [],
+          youOwe: [],
+        },
       };
     }
   },
