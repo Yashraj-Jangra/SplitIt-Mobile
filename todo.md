@@ -1,6 +1,31 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Brand Logo Overhaul & Auth Origin/CSRF Hardening (`assets/`, `app.json`, `src/components/brand/QuantumLogo.tsx`, `src/services/auth.service.ts`, native drawables)**:
+  - **Identified & Fixed Root Cause for Missing Logo**:
+    - Discovered `assets/android-icon-background.png` was Expo default light-blue (`#E6F4FE`) paired with a faint white line arc, rendering the home screen launcher icon completely blank/invisible on phones.
+    - Generated full suite of studio-quality brand assets: `assets/icon.png` (1024x1024), `assets/android-icon-foreground.png` (512x512 with safe-zone margin), `assets/android-icon-background.png` (`#131417`), `assets/android-icon-monochrome.png` (432x432 white silhouette), `assets/splash-icon.png` (512x512), and `assets/brand/logo-badge.png` (256x256).
+    - Refreshed all native Android mipmap densities (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) and splashscreen drawables.
+  - **Vector QuantumLogo Hardware-Accelerated Integration**:
+    - Upgraded `src/components/brand/QuantumLogo.tsx` with native SVG linear gradient (`#3FE3BF` to `#1CC29F` and `#059669`) and glowing multi-layered nucleus.
+    - Replaced low-contrast raster fallbacks with vector `QuantumLogo` across `app/(auth)/login.tsx`, `app/(auth)/signup.tsx`, `app/(tabs)/index.tsx`, and `app/(tabs)/profile.tsx`.
+    - Added branded logo boot screen with `QuantumLogo` and "SplitIt" title to `app/_layout.tsx` loading state.
+    - Added SplitIt brand badge in center of generated UPI QR codes in `app/settings/my-qr.tsx` and `app/settle/qr.tsx`.
+    - Integrated AI-tinted `QuantumLogo` in `app/ai/chat.tsx` header.
+  - **Configured Splash & Push Icons in `app.json`**:
+    - Added `"splash"` (`./assets/splash-icon.png`, resizeMode `contain`, backgroundColor `#131417`).
+    - Added `"notification"` (`./assets/android-icon-monochrome.png`, color `#1CC29F`).
+    - Set Android native `colors.xml` and `values-night/colors.xml` to `#131417` and `#1CC29F`.
+  - **Fixed "Missing or null Origin" on Better-Auth**:
+    - Identified that native React Native `fetch()` does not send `Origin` header by default, triggering Better-Auth's `MISSING_OR_NULL_ORIGIN` 403 error.
+    - Added `getAuthHeaders()` to `src/services/auth.service.ts` injecting `Origin: API_BASE_URL` (`https://split.cvweb.qzz.io`) and `Referer: ${API_BASE_URL}/` across all auth endpoints.
+  - **Eliminated Silent PWA Redirect on Google Sign-In**:
+    - Prevented `signInWithGoogle` from silently falling back to `WebBrowser.openAuthSessionAsync` on native error, which caused Android to intercept `https://split.cvweb.qzz.io` with the installed PWA.
+    - Extracted debug keystore SHA-1 (`5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`) for Android OAuth client configuration.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - Android release APK (`./gradlew assembleRelease`) compiled successfully (133.2 MB).
+
 - **Native Phone Google Login via Google Play Services / Credential Manager (`src/services/auth.service.ts`, `app.json`, `eas.json`, `package.json`)**:
   - **Native Phone Account Chooser**:
     - Replaced the browser redirect to our website with native phone Google Sign-In using `@react-native-google-signin/google-signin`.
