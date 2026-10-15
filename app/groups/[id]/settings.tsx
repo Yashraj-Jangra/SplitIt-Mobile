@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,62 +10,250 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, UserPlus, Archive, Trash2, Check } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  UserPlus,
+  Archive,
+  RotateCcw,
+  Trash2,
+  Check,
+  Search,
+  X,
+  Sliders,
+  DollarSign,
+  Lock,
+  UserMinus,
+} from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
-import { groupService } from '../../../src/services/group.service';
+import { groupService, GroupDetailData, GroupMember, RegisteredUser } from '../../../src/services/group.service';
+import { authService, AuthUser } from '../../../src/services/auth.service';
 import { haptics } from '../../../src/services/haptics.service';
+import { BottomSheetModal } from '../../../src/components/common/BottomSheetModal';
+import { SetBudgetModal } from '../../../src/components/groups/SetBudgetModal';
 
 export default function GroupSettingsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
-  const inMem = groupService.getInMemoryGroupDetail(targetId);
-  const [groupName, setGroupName] = useState(() => inMem?.name || '');
-  const [members, setMembers] = useState<Array<{ id: string; name: string; email?: string }>>(() =>
-    inMem?.members?.map((m) => ({
-      id: m.id,
-      name: m.name,
-      email: `${m.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-    })) || []
+
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [group, setGroup] = useState<GroupDetailData | null>(() =>
+    groupService.getInMemoryGroupDetail(targetId)
   );
+  const [groupName, setGroupName] = useState(() => group?.name || '');
+  const [groupDescription, setGroupDescription] = useState(() => group?.description || '');
+  const [isLoading, setIsLoading] = useState(!group);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    groupService.getGroupDetails(targetId).then((g) => {
-      if (g) {
-        setGroupName(g.name);
-        setMembers(
-          g.members.map((m) => ({
-            id: m.id,
-            name: m.name,
-            email: `${m.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-          }))
-        );
-      }
-    });
+  // Modals state
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+
+  // Add Member state
+  const [allUsers, setAllUsers] = useState<RegisteredUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedNewMembers, setSelectedNewMembers] = useState<RegisteredUser[]>([]);
+  const [isSubmittingMembers, setIsSubmittingMembers] = useState(false);
+
+  const refreshGroup = useCallback(async () => {
+    const data = await groupService.getGroupDetails(targetId, { forceRefresh: true });
+    if (data) {
+      setGroup(data);
+      setGroupName(data.name);
+      setGroupDescription(data.description || '');
+    }
   }, [targetId]);
 
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const user = await authService.getCachedUser();
+      if (isMounted) setCurrentUser(user);
+
+      const data = await groupService.getGroupDetails(targetId);
+      if (isMounted && data) {
+        setGroup(data);
+        setGroupName(data.name);
+        setGroupDescription(data.description || '');
+        setIsLoading(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [targetId]);
+
+  // Load registered users when Add Member sheet opens
+  useEffect(() => {
+    if (isAddMemberOpen && allUsers.length === 0) {
+      setLoadingUsers(true);
+      groupService
+        .getAllRegisteredUsers()
+        .then((users) => {
+          setAllUsers(users);
+        })
+        .finally(() => {
+          setLoadingUsers(false);
+        });
+    }
+    if (!isAddMemberOpen) {
+      setSearchTerm('');
+      setSelectedNewMembers([]);
+    }
+  }, [isAddMemberOpen, allUsers.length]);
+
+  const isCreator = useMemo(() => {
+    if (!currentUser || !group) return false;
+    return (
+      currentUser.id === group.createdById ||
+      group.members.some((m) => m.id === currentUser.id && m.isCreator)
+    );
+  }, [currentUser, group]);
+
+  const isArchived = Boolean(group?.archived || group?.archivedAt);
+  const isSettled = useMemo(() => {
+    if (!group?.members) return true;
+    return group.members.every((m) => Math.abs(m.netBalance || 0) < 0.01);
+  }, [group?.members]);
+
+  const existingMemberIds = useMemo(() => {
+    return new Set(group?.members.map((m) => m.id) || []);
+  }, [group?.members]);
+
+  const memberSearchResults = useMemo(() => {
+    const trimmed = searchTerm.trim().toLowerCase();
+    if (trimmed.length < 1) return [];
+    const selectedIds = new Set(selectedNewMembers.map((m) => m.id));
+
+    return allUsers
+      .filter((u) => {
+        if (existingMemberIds.has(u.id) || selectedIds.has(u.id)) return false;
+        return (
+          u.name.toLowerCase().includes(trimmed) ||
+          u.username.toLowerCase().includes(trimmed) ||
+          u.email.toLowerCase().includes(trimmed)
+        );
+      })
+      .slice(0, 6);
+  }, [searchTerm, allUsers, existingMemberIds, selectedNewMembers]);
+
+  const handleSelectNewMember = (user: RegisteredUser) => {
+    haptics.tap();
+    setSelectedNewMembers((prev) => [...prev, user]);
+    setSearchTerm('');
+  };
+
+  const handleRemoveNewMember = (userId: string) => {
+    haptics.tap();
+    setSelectedNewMembers((prev) => prev.filter((m) => m.id !== userId));
+  };
+
+  const handleAddMembersSubmit = async () => {
+    if (selectedNewMembers.length === 0) return;
+    setIsSubmittingMembers(true);
+    haptics.confirm();
+    try {
+      await groupService.addMembersToGroup(
+        targetId,
+        selectedNewMembers.map((m) => m.id)
+      );
+      haptics.saveSuccess();
+      setIsAddMemberOpen(false);
+      await refreshGroup();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to add members.');
+      haptics.warning();
+    } finally {
+      setIsSubmittingMembers(false);
+    }
+  };
+
   const handleSave = async () => {
-    if (!groupName.trim() || isSaving) return;
+    if (!groupName.trim() || isSaving || isArchived) return;
+    if (groupName.trim().length < 3) {
+      Alert.alert('Invalid Name', 'Group name must be at least 3 characters.');
+      return;
+    }
     setIsSaving(true);
     haptics.confirm();
-    await groupService.updateGroup(targetId, { name: groupName.trim() });
-    setIsSaving(false);
-    haptics.saveSuccess();
-    router.back();
+    try {
+      await groupService.updateGroup(targetId, {
+        name: groupName.trim(),
+        description: groupDescription.trim(),
+      });
+      haptics.saveSuccess();
+      await refreshGroup();
+      router.back();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to save changes.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveMember = (member: GroupMember) => {
+    if (member.isCreator || member.id === group?.createdById) {
+      Alert.alert('Cannot Remove', 'The group creator cannot be removed from the group.');
+      return;
+    }
+    if (Math.abs(member.netBalance || 0) >= 0.01) {
+      Alert.alert(
+        'Cannot Remove Member',
+        `All debts must be settled before removing ${member.name}. Member has an unsettled balance of ₹${Math.abs(member.netBalance).toLocaleString('en-IN')}.`
+      );
+      return;
+    }
+
+    Alert.alert(
+      `Remove ${member.name}?`,
+      'Are you sure you want to remove this member? They will lose access to this group.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              haptics.warning();
+              await groupService.removeMemberFromGroup(targetId, member.id);
+              haptics.saveSuccess();
+              await refreshGroup();
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to remove member.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleArchive = () => {
-    if (isArchiving) return;
-    haptics.warning();
+    if (!isSettled) {
+      Alert.alert(
+        'Cannot Archive Group',
+        'All debts must be settled before you can archive the group.'
+      );
+      return;
+    }
+    if (!isCreator) {
+      Alert.alert(
+        'Action Not Allowed',
+        `Only the group creator can archive this group.`
+      );
+      return;
+    }
+
     Alert.alert(
       'Archive Group',
-      `Are you sure you want to archive "${groupName}"? It will be moved to archived groups.`,
+      `Are you sure you want to archive "${groupName}"? It will become read-only.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -73,10 +261,46 @@ export default function GroupSettingsScreen() {
           style: 'default',
           onPress: async () => {
             setIsArchiving(true);
-            await groupService.archiveGroup(targetId);
-            setIsArchiving(false);
-            haptics.saveSuccess();
-            router.replace('/(tabs)/groups');
+            try {
+              await groupService.archiveGroup(targetId);
+              haptics.saveSuccess();
+              router.replace('/(tabs)/groups');
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to archive group.');
+            } finally {
+              setIsArchiving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRestore = () => {
+    if (!isCreator) {
+      Alert.alert('Action Not Allowed', 'Only the group creator can restore this group.');
+      return;
+    }
+
+    Alert.alert(
+      'Restore Group',
+      `Restore "${groupName}" to active status?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          style: 'default',
+          onPress: async () => {
+            setIsArchiving(true);
+            try {
+              await groupService.restoreGroup(targetId);
+              haptics.saveSuccess();
+              await refreshGroup();
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to restore group.');
+            } finally {
+              setIsArchiving(false);
+            }
           },
         },
       ]
@@ -84,11 +308,14 @@ export default function GroupSettingsScreen() {
   };
 
   const handleDelete = () => {
-    if (isDeleting) return;
-    haptics.warning();
+    if (!isCreator) {
+      Alert.alert('Action Not Allowed', 'Only the group creator can permanently delete this group.');
+      return;
+    }
+
     Alert.alert(
       'Delete Group Permanently',
-      `Are you sure you want to permanently delete "${groupName}" and all associated expenses? This action cannot be undone.`,
+      `Are you sure you want to permanently delete "${groupName}" and all associated expenses and records? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -96,48 +323,30 @@ export default function GroupSettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             setIsDeleting(true);
-            await groupService.deleteGroup(targetId);
-            setIsDeleting(false);
-            haptics.saveSuccess();
-            router.replace('/(tabs)/groups');
+            try {
+              await groupService.deleteGroup(targetId);
+              haptics.saveSuccess();
+              router.replace('/(tabs)/groups');
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to delete group.');
+            } finally {
+              setIsDeleting(false);
+            }
           },
         },
       ]
     );
   };
 
-  const handleInvite = () => {
-    haptics.tap();
-    if (typeof (Alert as any).prompt === 'function') {
-      (Alert as any).prompt(
-        'Invite Member',
-        'Enter email address of the person you want to invite:',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Invite',
-            onPress: (email?: string) => {
-              if (email && email.trim()) {
-                const trimmed = email.trim();
-                setMembers((prev) => [
-                  ...prev,
-                  {
-                    id: `inv_${Date.now()}`,
-                    name: trimmed.split('@')[0],
-                    email: trimmed,
-                  },
-                ]);
-                haptics.saveSuccess();
-              }
-            },
-          },
-        ],
-        'plain-text'
-      );
-    } else {
-      Alert.alert('Invite Link Ready', 'Group invite link copied to your clipboard!');
-    }
-  };
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={THEME.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -149,14 +358,23 @@ export default function GroupSettingsScreen() {
             router.back();
           }}
           style={styles.iconButton}
+          accessibilityLabel="Back"
+          accessibilityRole="button"
         >
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>Group Settings</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          Group Settings
+        </Text>
         <TouchableOpacity
           onPress={handleSave}
-          disabled={isSaving}
-          style={[styles.saveButton, isSaving && { opacity: 0.6 }]}
+          disabled={isSaving || isArchived || !isCreator}
+          style={[
+            styles.saveButton,
+            (isSaving || isArchived || !isCreator) && { opacity: 0.5 },
+          ]}
+          accessibilityLabel="Save Changes"
+          accessibilityRole="button"
         >
           {isSaving ? (
             <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
@@ -171,87 +389,426 @@ export default function GroupSettingsScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {/* Group Name Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>GROUP NAME</Text>
-            <TextInput
-              style={styles.textInput}
-              value={groupName}
-              onChangeText={setGroupName}
-              placeholder="Group Name"
-              placeholderTextColor={THEME.colors.textMuted}
-              returnKeyType="done"
-            />
+          {/* Archived Banner if applicable */}
+          {isArchived && (
+            <View style={styles.archivedBanner}>
+              <Lock size={16} color={THEME.colors.warning} />
+              <Text style={styles.archivedBannerText}>
+                This group is archived and is in read-only mode.
+              </Text>
+            </View>
+          )}
+
+          {/* General Settings Card */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>GENERAL SETTINGS</Text>
+              <Text style={styles.cardSubtitle}>
+                Update group name and purpose description.
+              </Text>
+            </View>
+
+            <View style={styles.inputField}>
+              <Text style={styles.fieldLabel}>GROUP NAME</Text>
+              <TextInput
+                style={styles.textInput}
+                value={groupName}
+                onChangeText={setGroupName}
+                placeholder="Group Name"
+                placeholderTextColor={THEME.colors.textMuted}
+                editable={!isArchived && isCreator}
+                maxLength={50}
+              />
+            </View>
+
+            <View style={styles.inputField}>
+              <Text style={styles.fieldLabel}>DESCRIPTION (OPTIONAL)</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea]}
+                value={groupDescription}
+                onChangeText={setGroupDescription}
+                placeholder="A brief description of this group's purpose"
+                placeholderTextColor={THEME.colors.textMuted}
+                editable={!isArchived && isCreator}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+              />
+            </View>
+
+            {isCreator && !isArchived && (
+              <TouchableOpacity
+                style={[styles.actionBtn, isSaving && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                ) : (
+                  <Text style={styles.actionBtnText}>Save Details</Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
-        {/* Member Management */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>MEMBERS ({members.length})</Text>
+          {/* Monthly Budget Card */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.budgetHeaderRow}>
+                <View style={styles.budgetHeaderInfo}>
+                  <Text style={styles.cardTitle}>MONTHLY BUDGET</Text>
+                  <Text style={styles.cardSubtitle}>
+                    Configure spending targets and alert thresholds for this group.
+                  </Text>
+                </View>
+                {group?.budget?.enabled && (
+                  <View style={styles.budgetPill}>
+                    <Text style={styles.budgetPillText}>
+                      ₹{Number(group.budget.monthlyLimit).toLocaleString('en-IN')}/mo
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <Text style={styles.bodyDescription}>
+              {group?.budget?.enabled
+                ? `Budget tracking is active with a monthly target of ₹${Number(
+                    group.budget.monthlyLimit
+                  ).toLocaleString('en-IN')}.`
+                : 'No budget target is currently active for this group.'}
+            </Text>
+
             <TouchableOpacity
-              style={styles.addMemberButton}
-              onPress={handleInvite}
+              style={styles.outlineBtn}
+              onPress={() => {
+                haptics.tap();
+                setIsBudgetModalOpen(true);
+              }}
+              disabled={!isCreator || isArchived}
             >
-              <UserPlus size={14} color={THEME.colors.primary} />
-              <Text style={styles.addMemberText}>Invite</Text>
+              <Sliders size={15} color={THEME.colors.primary} />
+              <Text style={styles.outlineBtnText}>
+                {group?.budget?.enabled ? 'Modify Budget' : 'Configure Budget'}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {members.map((m, index) => (
-            <View key={m.id} style={[styles.memberRow, index > 0 && styles.rowBorder]}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{m.name.charAt(0)}</Text>
-              </View>
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>{m.name}</Text>
-                <Text style={styles.memberEmail}>{m.email}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Danger Zone */}
-        <View style={styles.dangerGroup}>
-          <TouchableOpacity
-            style={[styles.dangerRow, isArchiving && { opacity: 0.6 }]}
-            onPress={handleArchive}
-            disabled={isArchiving}
-          >
-            {isArchiving ? (
-              <ActivityIndicator size="small" color={THEME.colors.textSecondary} />
-            ) : (
-              <>
-                <Archive size={16} color={THEME.colors.textSecondary} />
-                <Text style={styles.dangerText}>Archive Group</Text>
-              </>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.dangerRow, styles.deleteRow, isDeleting && { opacity: 0.6 }]}
-            onPress={handleDelete}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <ActivityIndicator size="small" color={THEME.colors.negative} />
-            ) : (
-              <>
-                <Trash2 size={16} color={THEME.colors.negative} />
-                <Text style={[styles.dangerText, { color: THEME.colors.negative }]}>
-                  Delete Group Permanently
+          {/* Members Management Card */}
+          <View style={styles.card}>
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.cardTitle}>
+                  GROUP MEMBERS ({group?.members.length || 0})
                 </Text>
-              </>
+                <Text style={styles.cardSubtitle}>
+                  People sharing expenses in this group.
+                </Text>
+              </View>
+              {isCreator && !isArchived && (
+                <TouchableOpacity
+                  style={styles.addMemberBtn}
+                  onPress={() => {
+                    haptics.tap();
+                    setIsAddMemberOpen(true);
+                  }}
+                >
+                  <UserPlus size={14} color={THEME.colors.primary} />
+                  <Text style={styles.addMemberBtnText}>Add Member</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.membersList}>
+              {group?.members.map((m, idx) => {
+                const isViewer = m.id === currentUser?.id;
+                const canRemove =
+                  isCreator && !m.isCreator && m.id !== group.createdById && !isArchived;
+
+                return (
+                  <View
+                    key={m.id}
+                    style={[styles.memberRow, idx > 0 && styles.memberRowBorder]}
+                  >
+                    {m.avatarUrl ? (
+                      <Image source={{ uri: m.avatarUrl }} style={styles.memberAvatar} />
+                    ) : (
+                      <View style={styles.memberAvatarPlaceholder}>
+                        <Text style={styles.memberAvatarText}>
+                          {m.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={styles.memberInfo}>
+                      <View style={styles.memberNameRow}>
+                        <Text style={styles.memberName} numberOfLines={1}>
+                          {m.name}
+                        </Text>
+                        {m.isCreator && (
+                          <View style={styles.creatorTag}>
+                            <Text style={styles.creatorTagText}>Creator</Text>
+                          </View>
+                        )}
+                        {isViewer && !m.isCreator && (
+                          <View style={styles.youTag}>
+                            <Text style={styles.youTagText}>You</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.memberEmail} numberOfLines={1}>
+                        {m.email || 'Group Member'}
+                      </Text>
+                    </View>
+
+                    {/* Net balance display */}
+                    <View style={styles.memberBalanceContainer}>
+                      <Text
+                        style={[
+                          styles.memberBalanceText,
+                          m.netBalance > 0.01 && styles.positiveBalance,
+                          m.netBalance < -0.01 && styles.negativeBalance,
+                        ]}
+                      >
+                        {m.netBalance > 0.01
+                          ? `+₹${m.netBalance.toLocaleString('en-IN')}`
+                          : m.netBalance < -0.01
+                          ? `-₹${Math.abs(m.netBalance).toLocaleString('en-IN')}`
+                          : 'Settled'}
+                      </Text>
+                    </View>
+
+                    {/* Remove Action */}
+                    {canRemove && (
+                      <TouchableOpacity
+                        style={styles.removeActionBtn}
+                        onPress={() => handleRemoveMember(m)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <UserMinus size={16} color={THEME.colors.negative} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Danger Zone */}
+          <View style={[styles.card, styles.dangerCard]}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.cardTitle, { color: THEME.colors.negative }]}>
+                DANGER ZONE
+              </Text>
+              <Text style={styles.cardSubtitle}>
+                These actions affect the visibility and accessibility of this group.
+              </Text>
+            </View>
+
+            {/* Archive or Restore */}
+            <View style={styles.dangerActionBlock}>
+              <View style={styles.dangerActionInfo}>
+                <Text style={styles.dangerActionTitle}>
+                  {isArchived ? 'Restore Group' : 'Archive Group'}
+                </Text>
+                <Text style={styles.dangerActionDesc}>
+                  {isArchived
+                    ? 'Restore this group to active state and resume adding expenses.'
+                    : 'Archiving makes the group read-only. All debts must be settled first.'}
+                </Text>
+              </View>
+
+              {isArchived ? (
+                <TouchableOpacity
+                  style={[styles.outlineBtn, styles.restoreBtn]}
+                  onPress={handleRestore}
+                  disabled={!isCreator || isArchiving}
+                >
+                  <RotateCcw size={15} color={THEME.colors.primary} />
+                  <Text style={styles.restoreBtnText}>Restore Group</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.dangerBtn,
+                    (!isSettled || !isCreator || isArchiving) && { opacity: 0.5 },
+                  ]}
+                  onPress={handleArchive}
+                  disabled={!isSettled || !isCreator || isArchiving}
+                >
+                  <Archive size={15} color={THEME.colors.negative} />
+                  <Text style={styles.dangerBtnText}>Archive Group</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Permanent Deletion */}
+            {isCreator && (
+              <View style={[styles.dangerActionBlock, styles.dangerBorder]}>
+                <View style={styles.dangerActionInfo}>
+                  <Text style={[styles.dangerActionTitle, { color: THEME.colors.negative }]}>
+                    Delete Group Permanently
+                  </Text>
+                  <Text style={styles.dangerActionDesc}>
+                    Permanently delete this group and all its expenses, settlements, and history. This cannot be undone.
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.dangerBtn, styles.deleteSolidBtn, isDeleting && { opacity: 0.6 }]}
+                  onPress={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color={THEME.colors.negative} />
+                  ) : (
+                    <>
+                      <Trash2 size={15} color={THEME.colors.negative} />
+                      <Text style={styles.dangerBtnText}>Delete Group</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Set Monthly Budget Modal */}
+      {group && (
+        <SetBudgetModal
+          visible={isBudgetModalOpen}
+          onClose={() => setIsBudgetModalOpen(false)}
+          groupId={targetId}
+          groupName={group.name}
+          initialBudget={group.budget}
+          onSuccess={() => {
+            setIsBudgetModalOpen(false);
+            refreshGroup();
+          }}
+        />
+      )}
+
+      {/* Add Member Bottom Sheet Modal */}
+      <BottomSheetModal
+        visible={isAddMemberOpen}
+        onClose={() => setIsAddMemberOpen(false)}
+        title="Add Members"
+        subtitle={`Select registered users to add to "${group?.name || 'Group'}"`}
+        maxHeight="85%"
+      >
+        <View style={styles.sheetContent}>
+          {/* Selected chips */}
+          {selectedNewMembers.length > 0 && (
+            <View style={styles.sheetChipsRow}>
+              {selectedNewMembers.map((m) => (
+                <View key={m.id} style={styles.sheetChip}>
+                  <Text style={styles.sheetChipText}>{m.name}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveNewMember(m.id)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <X size={12} color={THEME.colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Search Input */}
+          <View style={styles.searchBar}>
+            <Search size={16} color={THEME.colors.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholder="Search by name, @username, or email..."
+              placeholderTextColor={THEME.colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {loadingUsers && (
+              <ActivityIndicator size="small" color={THEME.colors.textMuted} />
+            )}
+            {!!searchTerm && !loadingUsers && (
+              <TouchableOpacity onPress={() => setSearchTerm('')}>
+                <X size={16} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Search Results */}
+          <ScrollView
+            style={styles.sheetResultsList}
+            keyboardShouldPersistTaps="handled"
+          >
+            {memberSearchResults.map((user) => (
+              <TouchableOpacity
+                key={user.id}
+                style={styles.userResultRow}
+                onPress={() => handleSelectNewMember(user)}
+              >
+                {user.avatarUrl ? (
+                  <Image source={{ uri: user.avatarUrl }} style={styles.resultAvatar} />
+                ) : (
+                  <View style={styles.resultAvatarPlaceholder}>
+                    <Text style={styles.resultAvatarText}>
+                      {user.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.resultUserInfo}>
+                  <Text style={styles.resultUserName}>{user.name}</Text>
+                  <Text style={styles.resultUserEmail}>
+                    {user.username ? `@${user.username} • ` : ''}
+                    {user.email}
+                  </Text>
+                </View>
+                <View style={styles.addMemberBadge}>
+                  <Text style={styles.addMemberBadgeText}>Select</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {searchTerm.trim().length > 0 && memberSearchResults.length === 0 && !loadingUsers && (
+              <View style={styles.noResultsBox}>
+                <Text style={styles.noResultsText}>
+                  No users found matching "{searchTerm}"
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Submit Button */}
+          <TouchableOpacity
+            style={[
+              styles.actionBtn,
+              (selectedNewMembers.length === 0 || isSubmittingMembers) && {
+                opacity: 0.5,
+              },
+            ]}
+            onPress={handleAddMembersSubmit}
+            disabled={selectedNewMembers.length === 0 || isSubmittingMembers}
+          >
+            {isSubmittingMembers ? (
+              <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+            ) : (
+              <Text style={styles.actionBtnText}>
+                Add {selectedNewMembers.length > 0 ? `${selectedNewMembers.length} ` : ''}Member
+                {selectedNewMembers.length > 1 ? 's' : ''}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  </SafeAreaView>
-);
+      </BottomSheetModal>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -259,11 +816,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
@@ -281,74 +843,170 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: THEME.colors.primary,
-    padding: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: THEME.radius.sm,
   },
   content: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 16,
     gap: 20,
   },
-  inputGroup: {
-    gap: 6,
+  archivedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.3)',
+    borderRadius: THEME.radius.md,
+    padding: 12,
   },
-  inputLabel: {
-    fontSize: 10,
+  archivedBannerText: {
+    fontSize: 13,
+    color: THEME.colors.warning,
+    fontWeight: '600',
+  },
+  card: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.md,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    padding: 16,
+    gap: 14,
+  },
+  cardHeader: {
+    gap: 4,
+  },
+  cardTitle: {
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.2,
     color: THEME.colors.textMuted,
   },
+  cardSubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+  },
+  bodyDescription: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    lineHeight: 18,
+  },
+  inputField: {
+    gap: 6,
+  },
+  fieldLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    color: THEME.colors.textMuted,
+  },
   textInput: {
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: THEME.radius.md,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    fontSize: 15,
+    fontSize: 14,
     color: THEME.colors.text,
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
-  sectionCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    gap: 12,
+  textArea: {
+    minHeight: 70,
+    textAlignVertical: 'top',
   },
-  sectionHeader: {
+  actionBtn: {
+    backgroundColor: THEME.colors.primary,
+    paddingVertical: 12,
+    borderRadius: THEME.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  actionBtnText: {
+    color: THEME.colors.primaryForeground,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  budgetHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    color: THEME.colors.textMuted,
-  },
-  addMemberButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  budgetHeaderInfo: {
+    flex: 1,
     gap: 4,
   },
-  addMemberText: {
+  budgetPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  budgetPillText: {
     fontSize: 12,
     fontWeight: '700',
     color: THEME.colors.primary,
+  },
+  outlineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    paddingVertical: 10,
+    borderRadius: THEME.radius.md,
+    backgroundColor: THEME.colors.surfaceElevated,
+  },
+  outlineBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  addMemberBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  addMemberBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  membersList: {
+    gap: 0,
   },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
-  rowBorder: {
+  memberRowBorder: {
     borderTopWidth: 1,
     borderTopColor: THEME.colors.border,
   },
-  avatar: {
+  memberAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: THEME.radius.sm,
+  },
+  memberAvatarPlaceholder: {
     width: 36,
     height: 36,
     borderRadius: THEME.radius.sm,
@@ -356,46 +1014,226 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
+  memberAvatarText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: THEME.colors.text,
   },
   memberInfo: {
     flex: 1,
+    gap: 2,
+  },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   memberName: {
     fontSize: 13,
     fontWeight: '600',
     color: THEME.colors.text,
   },
+  creatorTag: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  creatorTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+    textTransform: 'uppercase',
+  },
+  youTag: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  youTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME.colors.textMuted,
+    textTransform: 'uppercase',
+  },
   memberEmail: {
     fontSize: 11,
     color: THEME.colors.textMuted,
-    marginTop: 1,
   },
-  dangerGroup: {
-    gap: 10,
-    marginTop: 8,
+  memberBalanceContainer: {
+    alignItems: 'flex-end',
   },
-  dangerRow: {
+  memberBalanceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+  },
+  positiveBalance: {
+    color: THEME.colors.success,
+  },
+  negativeBalance: {
+    color: THEME.colors.negative,
+  },
+  removeActionBtn: {
+    padding: 6,
+    marginLeft: 4,
+  },
+  dangerCard: {
+    borderColor: 'rgba(244, 63, 94, 0.25)',
+  },
+  dangerActionBlock: {
+    gap: 8,
+  },
+  dangerBorder: {
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.border,
+    paddingTop: 12,
+  },
+  dangerActionInfo: {
+    gap: 3,
+  },
+  dangerActionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  dangerActionDesc: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    lineHeight: 16,
+  },
+  dangerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: THEME.colors.surface,
-    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 63, 94, 0.3)',
+    backgroundColor: 'rgba(244, 63, 94, 0.08)',
+    paddingVertical: 10,
     borderRadius: THEME.radius.md,
+    marginTop: 4,
+  },
+  deleteSolidBtn: {
+    backgroundColor: 'rgba(244, 63, 94, 0.12)',
+  },
+  dangerBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.negative,
+  },
+  restoreBtn: {
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+  },
+  restoreBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  sheetContent: {
+    gap: 14,
+    paddingBottom: 20,
+  },
+  sheetChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  sheetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
-  deleteRow: {
-    borderColor: 'rgba(244, 63, 94, 0.2)',
-    backgroundColor: 'rgba(244, 63, 94, 0.05)',
+  sheetChipText: {
+    fontSize: 12,
+    color: THEME.colors.text,
+    fontWeight: '600',
   },
-  dangerText: {
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: THEME.radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: THEME.colors.text,
+    padding: 0,
+  },
+  sheetResultsList: {
+    maxHeight: 220,
+  },
+  userResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.border,
+  },
+  resultAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: THEME.radius.sm,
+  },
+  resultAvatarPlaceholder: {
+    width: 34,
+    height: 34,
+    borderRadius: THEME.radius.sm,
+    backgroundColor: THEME.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resultAvatarText: {
     fontSize: 13,
     fontWeight: '700',
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.text,
+  },
+  resultUserInfo: {
+    flex: 1,
+  },
+  resultUserName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  resultUserEmail: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  addMemberBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  addMemberBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  noResultsBox: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
   },
 });

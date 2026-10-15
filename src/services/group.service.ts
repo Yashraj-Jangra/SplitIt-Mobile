@@ -13,9 +13,20 @@ const DEFAULT_GROUP_STORAGE_KEY = 'splitit_default_group_id';
 export interface GroupMember {
   id: string;
   name: string;
+  email?: string;
   avatarUrl?: string;
   upiId?: string;
   netBalance: number;
+  isCreator?: boolean;
+}
+
+export interface RegisteredUser {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  avatarUrl?: string;
+  upiId?: string;
 }
 
 export interface GroupExpense {
@@ -132,6 +143,15 @@ export interface GroupDetailData {
   budget: GroupBudget;
   activities: GroupActivityItem[];
   history?: HistoryEventItem[];
+  createdById?: string;
+  createdBy?: {
+    id: string;
+    name: string;
+    email?: string;
+    avatarUrl?: string;
+  };
+  archived?: boolean;
+  archivedAt?: string | null;
 }
 
 export interface GetUserGroupsOptions {
@@ -584,6 +604,8 @@ export const groupService = {
           const historyData = historyRes.status === 'fulfilled' && historyRes.value.ok ? await historyRes.value.json() : [];
           const settlementsData = settlementsRes.status === 'fulfilled' && settlementsRes.value.ok ? await settlementsRes.value.json() : [];
 
+          const creatorId = groupData.createdById || groupData.createdBy?.uid || groupData.createdBy?.id || '';
+
           // Map members and net balances
           const members: GroupMember[] = Array.isArray(balancesData) && balancesData.length > 0
             ? balancesData.map((b: any) => {
@@ -595,9 +617,11 @@ export const groupService = {
                 return {
                   id: uid,
                   name: rawName || (isViewer ? 'You' : 'Member'),
+                  email: b.user?.email,
                   avatarUrl: b.user?.avatarUrl,
                   upiId: b.user?.upiId || (isViewer ? currentUser?.upiId : undefined),
                   netBalance: Number(b.netBalance || 0),
+                  isCreator: uid === creatorId,
                 };
               })
             : (groupData.members || []).map((m: any) => {
@@ -609,9 +633,11 @@ export const groupService = {
                 return {
                   id: uid,
                   name: rawName || (isViewer ? 'You' : 'Member'),
+                  email: m.email,
                   avatarUrl: m.avatarUrl,
                   upiId: m.upiId || (isViewer ? currentUser?.upiId : undefined),
                   netBalance: 0,
+                  isCreator: uid === creatorId,
                 };
               });
 
@@ -851,6 +877,15 @@ export const groupService = {
             budget,
             activities,
             history,
+            createdById: creatorId,
+            createdBy: groupData.createdBy ? {
+              id: creatorId,
+              name: `${groupData.createdBy.firstName || ''} ${groupData.createdBy.lastName || ''}`.trim() || groupData.createdBy.name || 'Creator',
+              email: groupData.createdBy.email,
+              avatarUrl: groupData.createdBy.avatarUrl,
+            } : undefined,
+            archived: Boolean(groupData.archivedAt),
+            archivedAt: groupData.archivedAt || null,
           };
 
           // Cache group details offline and in-memory
@@ -965,55 +1000,106 @@ export const groupService = {
   },
 
   /**
+   * Search and fetch registered users from platform
+   */
+  async getAllRegisteredUsers(): Promise<RegisteredUser[]> {
+    try {
+      const token = await authService.getToken();
+      const res = await fetch(`${API_BASE_URL}/api/users`, {
+        headers: getAuthenticatedHeaders(token),
+      });
+      if (res.ok) {
+        const users = await res.json();
+        if (Array.isArray(users)) {
+          return users.map((u: any) => ({
+            id: u.uid || u.id,
+            name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.name || u.username || 'User',
+            username: u.username || '',
+            email: u.email || '',
+            avatarUrl: u.avatarUrl || u.image,
+            upiId: u.upiId,
+          }));
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+    return [];
+  },
+
+  /**
    * Create a new group
    */
   async createGroup(data: {
     name: string;
-    category: string;
-    currency: string;
+    description?: string;
+    category?: string;
+    currency?: string;
+    memberIds?: string[];
+    coverImageUrl?: string;
+    // Backward compatibility
     memberEmails?: string[];
-  }): Promise<{ success: boolean; id: string }> {
+  }): Promise<{ success: boolean; id: string; error?: string }> {
     const currentUser = await authService.getCachedUser();
     const currentUserId = currentUser?.id || '';
 
     // Permanently dismiss demo mode whenever a user creates a group
     await demoService.dismissDemoMode(currentUserId);
 
+    const resolvedMemberIds = Array.from(
+      new Set([currentUserId, ...(data.memberIds || [])].filter(Boolean))
+    );
+
+    const payload = {
+      name: data.name,
+      description: data.description || '',
+      memberIds: resolvedMemberIds,
+      coverImageUrl:
+        data.coverImageUrl ||
+        'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2029&auto=format&fit=crop',
+      currency: '₹',
+    };
+
     try {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/groups`, {
         method: 'POST',
         headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
+
       if (res.ok) {
         const result = await res.json();
         // Clear cached groups so next fetch reloads authoritatively from server
         _cachedGroups = [];
+        _groupDetailsMap.delete(result.id);
         await storageService.removeItem(STORAGE_KEYS.GROUPS(currentUserId));
-        return result;
+        return { success: true, id: result.id };
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        const message = errData.error || `Server returned ${res.status}`;
+        return { success: false, id: '', error: message };
       }
-    } catch {
-      // Offline fallback
+    } catch (err: any) {
+      // Offline fallback only when network completely unreachable
+      const newId = `grp_${Date.now()}`;
+      const newGroup: GroupListItem = {
+        id: newId,
+        name: data.name,
+        description: data.description || `Created group in ${data.category || 'General'}`,
+        categoryIcon: data.category === 'Travel' ? 'Plane' : (data.category === 'Home' ? 'Home' : 'Users'),
+        membersCount: resolvedMemberIds.length,
+        members: [
+          { id: currentUserId || 'u1', name: currentUser?.name || 'You' },
+        ],
+        totalExpenses: 0,
+        userNetBalance: 0,
+        archived: false,
+      };
+      _cachedGroups = [newGroup, ..._cachedGroups.filter((g) => !g.id.startsWith('demo_'))];
+      await storageService.setItem(STORAGE_KEYS.GROUPS(currentUserId), _cachedGroups);
+      return { success: true, id: newId };
     }
-    const newId = `grp_${Date.now()}`;
-    const newGroup: GroupListItem = {
-      id: newId,
-      name: data.name,
-      description: `Created group in ${data.category}`,
-      categoryIcon: data.category === 'Travel' ? 'Plane' : (data.category === 'Home' ? 'Home' : 'Users'),
-      membersCount: (data.memberEmails?.length || 0) + 1,
-      members: [
-        { id: currentUserId || 'u1', name: currentUser?.name || 'You' },
-        ...(data.memberEmails || []).map((email, idx) => ({ id: `new_m_${idx}`, name: email.split('@')[0] })),
-      ],
-      totalExpenses: 0,
-      userNetBalance: 0,
-      archived: false,
-    };
-    _cachedGroups = [newGroup, ..._cachedGroups.filter((g) => !g.id.startsWith('demo_'))];
-    await storageService.setItem(STORAGE_KEYS.GROUPS(currentUserId), _cachedGroups);
-    return { success: true, id: newId };
   },
 
   /**
@@ -1029,6 +1115,7 @@ export const groupService = {
           body: JSON.stringify(updates),
         });
         if (res.ok) {
+          _groupDetailsMap.delete(groupId);
           const match = _cachedGroups.find((g) => g.id === groupId);
           if (match) {
             if (updates.name) match.name = updates.name;
@@ -1050,6 +1137,58 @@ export const groupService = {
   },
 
   /**
+   * Add members to group
+   */
+  async addMembersToGroup(groupId: string, memberIds: string[]): Promise<boolean> {
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}/members`, {
+          method: 'POST',
+          headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ memberIds }),
+        });
+        if (res.ok) {
+          _groupDetailsMap.delete(groupId);
+          return true;
+        }
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add members');
+      }
+    } catch (e: any) {
+      throw e;
+    }
+    return false;
+  },
+
+  /**
+   * Remove member from group
+   */
+  async removeMemberFromGroup(groupId: string, memberId: string): Promise<boolean> {
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(
+          `${API_BASE_URL}/api/groups/${groupId}/members?userId=${encodeURIComponent(memberId)}`,
+          {
+            method: 'DELETE',
+            headers: getAuthenticatedHeaders(token),
+          }
+        );
+        if (res.ok) {
+          _groupDetailsMap.delete(groupId);
+          return true;
+        }
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to remove member');
+      }
+    } catch (e: any) {
+      throw e;
+    }
+    return false;
+  },
+
+  /**
    * Archive group
    */
   async archiveGroup(groupId: string): Promise<boolean> {
@@ -1063,15 +1202,49 @@ export const groupService = {
         if (res.ok) {
           const match = _cachedGroups.find((g) => g.id === groupId);
           if (match) match.archived = true;
+          _groupDetailsMap.delete(groupId);
           return true;
         }
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to archive group');
       }
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      throw e;
     }
     const match = _cachedGroups.find((g) => g.id === groupId);
     if (match) {
       match.archived = true;
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Restore archived group
+   */
+  async restoreGroup(groupId: string): Promise<boolean> {
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}/archive`, {
+          method: 'DELETE',
+          headers: getAuthenticatedHeaders(token),
+        });
+        if (res.ok) {
+          const match = _cachedGroups.find((g) => g.id === groupId);
+          if (match) match.archived = false;
+          _groupDetailsMap.delete(groupId);
+          return true;
+        }
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to restore group');
+      }
+    } catch (e: any) {
+      throw e;
+    }
+    const match = _cachedGroups.find((g) => g.id === groupId);
+    if (match) {
+      match.archived = false;
       return true;
     }
     return false;
@@ -1090,13 +1263,17 @@ export const groupService = {
         });
         if (res.ok) {
           _cachedGroups = _cachedGroups.filter((g) => g.id !== groupId);
+          _groupDetailsMap.delete(groupId);
           return true;
         }
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to delete group');
       }
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      throw e;
     }
     _cachedGroups = _cachedGroups.filter((g) => g.id !== groupId);
+    _groupDetailsMap.delete(groupId);
     return true;
   },
 

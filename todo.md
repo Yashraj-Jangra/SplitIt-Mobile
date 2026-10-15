@@ -1,6 +1,31 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Group Creation & Management 1:1 Parity with Web Platform (`src/services/group.service.ts`, `app/groups/new.tsx`, `app/groups/[id]/settings.tsx`, `app/groups/[id]/index.tsx`)**:
+  - **Identified & Resolved Backend Group Creation Failure**:
+    - Mobile app previously sent `memberEmails: members` and `category: category`, which failed backend validation and triggered an offline catch block that saved only local client groups (`grp_${Date.now()}`).
+    - Defensively guarded `groupData.memberIds` in `SplitWise-Clone/src/lib/services/group.service.ts` so `createdById` is automatically included and null/undefined values cannot throw runtime map errors.
+  - **Re-Architected Group Creation Screen (`app/groups/new.tsx`)**:
+    - Implemented platform-wide registered user search via `GET /api/users` (`groupService.getAllRegisteredUsers()`).
+    - Added live search box filtering registered users by name, `@username`, or email.
+    - Added selected members badge list with avatar chips and removal buttons, with "You (Creator)" permanently pinned.
+    - Added visual horizontal cover image selector featuring curated Unsplash covers matching site defaults.
+    - Added optional group description input (up to 200 characters) and 3-50 char validation on group name.
+    - Properly routes to server `POST /api/groups` and invalidates caches on success.
+  - **Re-Architected Group Settings Screen (`app/groups/[id]/settings.tsx`)**:
+    - **General Settings**: Edit Group Name and Description with save state (`PATCH /api/groups/${groupId}`).
+    - **Monthly Budget**: Card showing active group budget or inactive status with direct link to launch `SetBudgetModal`.
+    - **Member Management**:
+      - Lists all real group members with avatars, full names, emails, and net balances (`+₹`, `-₹`, `Settled`).
+      - "Add Member" button launching `BottomSheetModal` with live user search and multi-select (`POST /api/groups/${groupId}/members`).
+      - "Remove Member" with debt protection: only allows removal if net balance is zero, with creator removal protected (`DELETE /api/groups/${groupId}/members?userId=${memberId}`).
+    - **Danger Zone**:
+      - "Archive Group": Checks that all debts are settled before archiving (`POST /api/groups/${groupId}/archive`).
+      - "Restore Group": Restores archived group to active status (`DELETE /api/groups/${groupId}/archive`).
+      - "Delete Group Permanently": Permanently deletes group and records (`DELETE /api/groups/${groupId}`).
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
 - **Fixed RNGoogleSignin TurboModule Crash on Logout (`src/services/auth.service.ts`)**:
   - **Identified Root Cause**:
     - During logout in `authService.clearSession()`, `getNativeGoogleSignin()` called `require('@react-native-google-signin/google-signin')`.

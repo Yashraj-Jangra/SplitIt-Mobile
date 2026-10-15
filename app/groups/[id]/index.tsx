@@ -1223,7 +1223,7 @@ export default function GroupDetailScreen() {
           <TouchableOpacity
             onPress={() => {
               haptics.tap();
-              router.push(`/groups/${id}/settings`);
+              router.push(`/groups/${targetId}/settings`);
             }}
             style={styles.heroGlassBtn}
             activeOpacity={0.8}
