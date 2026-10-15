@@ -48,6 +48,16 @@ function resolveApiBaseUrl(): string {
   return PRODUCTION_API_URL;
 }
 
+function getAuthHeaders(extra?: Record<string, string>): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Origin': API_BASE_URL,
+    'Referer': `${API_BASE_URL}/`,
+    ...extra,
+  };
+}
+
 // Canonical API base URL for SplitIt (points to production backend)
 export const API_BASE_URL = resolveApiBaseUrl();
 
@@ -147,10 +157,7 @@ export const authService = {
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/sign-in/email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
@@ -182,10 +189,7 @@ export const authService = {
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/sign-up/email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim().toLowerCase(),
@@ -239,10 +243,7 @@ export const authService = {
           // Exchange native verified ID token directly with Better-Auth backend
           const res = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
               provider: 'google',
               idToken: {
@@ -260,7 +261,7 @@ export const authService = {
             };
           }
 
-          const token = data.token || data.session?.token || 'session_active';
+          const token = data.token || data.session?.token || (res.headers.get('set-cookie')?.match(/better-auth\.session_token=([^;]+)/)?.[1]) || 'session_active';
           const user: AuthUser = {
             id: data.user?.id || '',
             name: data.user?.name || signInResult.data.user.name || 'SplitIt User',
@@ -271,6 +272,11 @@ export const authService = {
 
           await this.saveSession(token, user);
           return { success: true, token, user };
+        } else if (signInResult.type === 'success' && !signInResult.data.idToken) {
+          return {
+            success: false,
+            error: 'Google sign-in succeeded on device but no ID token was returned. Check OAuth Web Client configuration.',
+          };
         }
       }
     } catch (nativeErr: any) {
@@ -283,7 +289,11 @@ export const authService = {
       if (nativeErr?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         return { success: false, error: 'Google Play Services is not available on this device' };
       }
-      // Continue to fallback if native module failed in non-native build (e.g. Expo Go)
+      // Return exact native error instead of silently opening browser / PWA
+      return {
+        success: false,
+        error: `Native Google Sign-In failed (${nativeErr?.code || 'error'}): ${nativeErr?.message || 'Check SHA-1 fingerprint in Google Cloud Console'}`,
+      };
     }
 
     // WebBrowser fallback for environments without native binary link (e.g. Expo Go)
@@ -424,12 +434,10 @@ export const authService = {
       const token = await this.getToken();
       const res = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
+        headers: getAuthHeaders({
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(token ? { Cookie: `better-auth.session_token=${token}` } : {}),
-        },
+        }),
         body: JSON.stringify({ currentPassword, newPassword }),
       });
 

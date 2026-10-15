@@ -18,7 +18,7 @@ import {
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import { storageService } from '../../src/services/storage.service';
-import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
+import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { haptics } from '../../src/services/haptics.service';
 
 interface SettingsItem {
@@ -230,7 +230,7 @@ export default function ProfileScreen() {
 
         {/* Brand Footer */}
         <View style={styles.brandFooter}>
-          <BrandLogoImage size={28} />
+          <QuantumLogo size={36} />
           <Text style={styles.brandTitle}>SplitIt</Text>
           <Text style={styles.brandTagline}>Shared expenses, settled simply.</Text>
           <Text style={styles.brandVersion}>v1.0.0 · Mobile & Web Synchronized</Text>

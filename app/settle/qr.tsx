@@ -19,6 +19,7 @@ import { groupService } from '../../src/services/group.service';
 import { useAuth } from '../../src/contexts/auth.context';
 import { haptics } from '../../src/services/haptics.service';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
+import { BRAND_QR_BADGE } from '../../src/components/brand/QuantumLogo';
 
 export default function UpiQrModal() {
   const router = useRouter();
@@ -152,6 +153,10 @@ export default function UpiQrModal() {
                 size={210}
                 color={THEME.colors.palette.black}
                 backgroundColor={THEME.colors.palette.white}
+                logo={BRAND_QR_BADGE}
+                logoSize={46}
+                logoBackgroundColor={THEME.colors.background}
+                logoBorderRadius={23}
               />
             </View>
             <Text style={styles.qrInstruction}>

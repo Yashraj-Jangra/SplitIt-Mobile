@@ -43,6 +43,7 @@ import * as Clipboard from 'expo-clipboard';
 import { haptics } from '../../src/services/haptics.service';
 import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
+import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 
 interface ChatMessage {
   id: string;
@@ -453,7 +454,7 @@ export default function AiChatModal() {
 
         <View style={styles.headerCenter}>
           <View style={styles.headerTitleRow}>
-            <View style={styles.aiGlowDot} />
+            <QuantumLogo size={18} color={THEME.colors.aiLight} glowColor={THEME.colors.primaryLight} style={{ marginRight: 6 }} />
             <Text style={styles.headerTitle}>SplitIt Financial AI</Text>
           </View>
           <View style={styles.headerStatusRow}>

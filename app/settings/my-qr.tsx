@@ -22,6 +22,7 @@ import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import { buildUpiUrl, copyToClipboard } from '../../src/utils/upi';
 import { haptics } from '../../src/services/haptics.service';
+import { BRAND_QR_BADGE } from '../../src/components/brand/QuantumLogo';
 
 export default function MyQrScreen() {
   const router = useRouter();
@@ -109,6 +110,10 @@ export default function MyQrScreen() {
                   size={220}
                   color={THEME.colors.palette.black}
                   backgroundColor={THEME.colors.palette.white}
+                  logo={BRAND_QR_BADGE}
+                  logoSize={46}
+                  logoBackgroundColor={THEME.colors.background}
+                  logoBorderRadius={23}
                 />
               </View>
               <Text style={styles.qrSubLabel}>

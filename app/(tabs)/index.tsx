@@ -23,7 +23,7 @@ import { groupService, GroupListItem } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { balanceService, UserBalanceSummary } from '../../src/services/balance.service';
-import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
+import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { BalanceHistoryGraph } from '../../src/components/dashboard/BalanceHistoryGraph';
@@ -130,7 +130,7 @@ export default function HomeScreen() {
         {/* Minimalist Header with Official Branding */}
         <View style={styles.header}>
           <View style={styles.brandHeaderLeft}>
-            <BrandLogoImage size={34} />
+            <QuantumLogo size={36} />
             <View style={{ marginLeft: 10 }}>
               <Text style={styles.brandTitleText}>SplitIt</Text>
               <Text style={styles.greetingText}>

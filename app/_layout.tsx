@@ -2,9 +2,10 @@ import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, Theme, ErrorBo
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator, Platform } from 'react-native';
 import { enableFreeze } from 'react-native-screens';
 import { THEME } from '../src/constants/theme';
+import { QuantumLogo } from '../src/components/brand/QuantumLogo';
 import { AuthProvider, useAuth } from '../src/contexts/auth.context';
 import { NetworkProvider } from '../src/contexts/network.context';
 import { HapticsProvider } from '../src/contexts/haptics.context';
@@ -68,7 +69,9 @@ function NavigationGate() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={THEME.colors.primary} />
+        <QuantumLogo size={76} />
+        <Text style={styles.loadingTitle}>SplitIt</Text>
+        <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginTop: 24 }} />
       </View>
     );
   }
@@ -268,5 +271,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loadingTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: THEME.colors.text,
+    letterSpacing: -0.5,
+    marginTop: 16,
   },
 });

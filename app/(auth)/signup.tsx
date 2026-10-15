@@ -19,7 +19,7 @@ import { useRouter } from 'expo-router';
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
-import { BrandLogoImage } from '../../src/components/brand/QuantumLogo';
+import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { GoogleLogo } from '../../src/components/brand/GoogleLogo';
 import { haptics } from '../../src/services/haptics.service';
 
@@ -188,7 +188,7 @@ export default function SignupScreen() {
               <View style={styles.imageOverlay} />
               <View style={styles.heroBrandOverlay}>
                 <View style={styles.logoBadge}>
-                  <BrandLogoImage size={52} />
+                  <QuantumLogo size={52} />
                 </View>
               </View>
             </Animated.View>
@@ -203,7 +203,7 @@ export default function SignupScreen() {
                 },
               ]}
             >
-              <BrandLogoImage size={28} />
+              <QuantumLogo size={28} />
               <Text style={styles.compactHeaderTitle}>SplitIt</Text>
             </Animated.View>
 
