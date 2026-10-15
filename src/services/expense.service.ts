@@ -36,6 +36,7 @@ export interface UserTransactionItem {
   payers?: any[];
   participants?: any[];
   date: string;
+  rawDate?: string;
   category: string;
   masterCategory: string;
   paidByName: string;
@@ -330,6 +331,7 @@ export const expenseService = {
           payers: e.payers,
           participants: e.participants,
           date: formattedDate,
+          rawDate: rawDate.toISOString(),
           category: subCategory,
           masterCategory,
           paidByName: payerName,

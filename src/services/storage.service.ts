@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   GROUPS: (userId?: string) => (userId ? `splitit_cache_groups_${userId}` : 'splitit_cache_groups'),
   GROUP_DETAIL: (id: string, userId?: string) => (userId ? `splitit_cache_group_detail_${userId}_${id}` : `splitit_cache_group_detail_${id}`),
   USER_TRANSACTIONS: (userId?: string) => (userId ? `splitit_cache_user_transactions_${userId}` : 'splitit_cache_user_transactions'),
+  USER_SETTLEMENTS: (userId?: string) => (userId ? `splitit_cache_user_settlements_${userId}` : 'splitit_cache_user_settlements'),
   EXPENSE_DETAIL: (id: string, userId?: string) => (userId ? `splitit_cache_expense_detail_${userId}_${id}` : `splitit_cache_expense_detail_${id}`),
   SETTLEMENT_DETAIL: (id: string, userId?: string) => (userId ? `splitit_cache_settlement_detail_${userId}_${id}` : `splitit_cache_settlement_detail_${id}`),
   BALANCE_SUMMARY: (userId?: string) => (userId ? `splitit_cache_balance_summary_${userId}` : 'splitit_cache_balance_summary'),

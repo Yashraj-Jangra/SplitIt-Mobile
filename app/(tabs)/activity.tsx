@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,35 +7,62 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Receipt } from 'lucide-react-native';
+import {
+  Receipt,
+  Search,
+  X,
+  Handshake,
+  ArrowRight,
+  Filter,
+} from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
+import { settlementService, GroupSettlementItem } from '../../src/services/settlement.service';
 import { groupService } from '../../src/services/group.service';
 import { balanceService } from '../../src/services/balance.service';
 import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
 import { demoService } from '../../src/services/demo.service';
 import { MockDataBanner } from '../../src/components/common/MockDataBanner';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useCurrency } from '../../src/contexts/currency.context';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { haptics } from '../../src/services/haptics.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
 
+export type ActivityEntry =
+  | { type: 'expense'; id: string; date: string; rawDate: string; data: UserTransactionItem }
+  | { type: 'settlement'; id: string; date: string; rawDate: string; data: GroupSettlementItem };
+
 export default function ActivityScreen() {
   const router = useRouter();
   const { user: authUser } = useAuth();
-  const [transactions, setTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
-  const [loading, setLoading] = useState(() => expenseService.getInMemoryUserExpenses().length === 0);
+  const { formatCurrency } = useCurrency();
+
+  const [expenses, setExpenses] = useState<UserTransactionItem[]>(() =>
+    expenseService.getInMemoryUserExpenses()
+  );
+  const [settlements, setSettlements] = useState<GroupSettlementItem[]>([]);
+  const [loading, setLoading] = useState(
+    () => expenseService.getInMemoryUserExpenses().length === 0
+  );
   const [refreshing, setRefreshing] = useState(false);
-  const [isDemoDismissed, setIsDemoDismissed] = useState(() => demoService.isDemoDismissedSync(authUser?.id));
+  const [isDemoDismissed, setIsDemoDismissed] = useState(() =>
+    demoService.isDemoDismissedSync(authUser?.id)
+  );
+
+  // Search & Filtering
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'expenses' | 'settlements'>('all');
 
   const isDemoActive =
     !isDemoDismissed &&
     !demoService.isDemoDismissedSync(authUser?.id) &&
-    transactions.some((t) => t.id.startsWith('demo_'));
+    expenses.some((t) => t.id.startsWith('demo_'));
 
   const handleDismissDemo = async () => {
     haptics.saveSuccess();
@@ -47,15 +74,21 @@ export default function ActivityScreen() {
     balanceService.clearCache();
     await storageService.setItem(STORAGE_KEYS.GROUPS(uid), []);
     await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS(uid), []);
+    await storageService.setItem(STORAGE_KEYS.USER_SETTLEMENTS(uid), []);
     await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY(uid), null);
-    setTransactions([]);
+    setExpenses([]);
+    setSettlements([]);
     await loadData(true);
   };
 
   const loadData = async (forceRefresh = false) => {
     try {
-      const data = await expenseService.getUserExpenses(30, { forceRefresh });
-      setTransactions(data || []);
+      const [expData, setttData] = await Promise.all([
+        expenseService.getUserExpenses(50, { forceRefresh }),
+        settlementService.getUserSettlements({ forceRefresh }),
+      ]);
+      setExpenses(expData || []);
+      setSettlements(setttData || []);
     } catch {
       // Graceful fallback
     } finally {
@@ -71,8 +104,13 @@ export default function ActivityScreen() {
     }
     expenseService.getCachedUserExpenses(uid).then((cached) => {
       if (cached && cached.length > 0) {
-        setTransactions(cached);
+        setExpenses(cached);
         setLoading(false);
+      }
+    });
+    settlementService.getUserSettlements().then((cachedSet) => {
+      if (cachedSet && cachedSet.length > 0) {
+        setSettlements(cachedSet);
       }
     });
     loadData(false);
@@ -99,12 +137,203 @@ export default function ActivityScreen() {
     loadData(true);
   };
 
+  // Combine and sort unified activity feed
+  const unifiedActivity: ActivityEntry[] = useMemo(() => {
+    const expEntries: ActivityEntry[] = expenses.map((e) => ({
+      type: 'expense' as const,
+      id: `exp_${e.id}`,
+      date: e.date,
+      rawDate: e.rawDate || e.date,
+      data: e,
+    }));
+
+    const setEntries: ActivityEntry[] = settlements.map((s) => ({
+      type: 'settlement' as const,
+      id: `stl_${s.id}`,
+      date: s.date,
+      rawDate: s.rawDate || s.date,
+      data: s,
+    }));
+
+    const combined = [...expEntries, ...setEntries];
+    return combined.sort((a, b) => {
+      const timeA = new Date(a.rawDate).getTime() || 0;
+      const timeB = new Date(b.rawDate).getTime() || 0;
+      return timeB - timeA;
+    });
+  }, [expenses, settlements]);
+
+  // Filter by search query and segmented filter
+  const filteredActivity = useMemo(() => {
+    let result = unifiedActivity;
+
+    if (activeFilter === 'expenses') {
+      result = result.filter((item) => item.type === 'expense');
+    } else if (activeFilter === 'settlements') {
+      result = result.filter((item) => item.type === 'settlement');
+    }
+
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      result = result.filter((item) => {
+        if (item.type === 'expense') {
+          const exp = item.data;
+          const title = (exp.title || '').toLowerCase();
+          const payer = (exp.paidByName || '').toLowerCase();
+          const grp = (exp.groupName || '').toLowerCase();
+          const cat = (exp.category || '').toLowerCase();
+          const amt = String(exp.amount || '');
+          return (
+            title.includes(query) ||
+            payer.includes(query) ||
+            grp.includes(query) ||
+            cat.includes(query) ||
+            amt.includes(query)
+          );
+        } else {
+          const stl = item.data;
+          const payer = (stl.payerName || '').toLowerCase();
+          const payee = (stl.payeeName || '').toLowerCase();
+          const grp = (stl.groupName || '').toLowerCase();
+          const notes = (stl.notes || '').toLowerCase();
+          const amt = String(stl.amount || '');
+          return (
+            payer.includes(query) ||
+            payee.includes(query) ||
+            grp.includes(query) ||
+            notes.includes(query) ||
+            amt.includes(query) ||
+            'settlement'.includes(query)
+          );
+        }
+      });
+    }
+
+    return result;
+  }, [unifiedActivity, activeFilter, searchQuery]);
+
+  // Group by Month & Year (e.g., "October 2026")
+  const groupedActivity = useMemo(() => {
+    const groupsMap = new Map<string, ActivityEntry[]>();
+
+    filteredActivity.forEach((entry) => {
+      const parsedDate = new Date(entry.rawDate);
+      let monthLabel = 'Recent';
+      if (!isNaN(parsedDate.getTime())) {
+        monthLabel = parsedDate.toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        });
+      }
+
+      if (!groupsMap.has(monthLabel)) {
+        groupsMap.set(monthLabel, []);
+      }
+      groupsMap.get(monthLabel)!.push(entry);
+    });
+
+    return Array.from(groupsMap.entries()).map(([month, items]) => ({
+      month,
+      items,
+    }));
+  }, [filteredActivity]);
+
+  const expenseCount = useMemo(
+    () => unifiedActivity.filter((i) => i.type === 'expense').length,
+    [unifiedActivity]
+  );
+  const settlementCount = useMemo(
+    () => unifiedActivity.filter((i) => i.type === 'settlement').length,
+    [unifiedActivity]
+  );
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Activity</Text>
-        <Text style={styles.subtitle}>Recent transactions & group changes</Text>
+        <Text style={styles.subtitle}>Recent transactions & settlements ledger</Text>
+      </View>
+
+      {/* Sleek Search Bar */}
+      <View style={styles.searchBarWrapper}>
+        <View style={styles.searchBar}>
+          <Search size={15} color={THEME.colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search transactions, members, categories..."
+            placeholderTextColor={THEME.colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                haptics.tap();
+                setSearchQuery('');
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <X size={15} color={THEME.colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Segmented Filter Pills */}
+      <View style={styles.filterPillsRow}>
+        <TouchableOpacity
+          style={[styles.filterPill, activeFilter === 'all' && styles.filterPillActive]}
+          activeOpacity={0.7}
+          onPress={() => {
+            haptics.tap();
+            setActiveFilter('all');
+          }}
+        >
+          <Text
+            style={[styles.filterPillText, activeFilter === 'all' && styles.filterPillTextActive]}
+          >
+            All ({unifiedActivity.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.filterPill, activeFilter === 'expenses' && styles.filterPillActive]}
+          activeOpacity={0.7}
+          onPress={() => {
+            haptics.tap();
+            setActiveFilter('expenses');
+          }}
+        >
+          <Text
+            style={[
+              styles.filterPillText,
+              activeFilter === 'expenses' && styles.filterPillTextActive,
+            ]}
+          >
+            Expenses ({expenseCount})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.filterPill, activeFilter === 'settlements' && styles.filterPillActive]}
+          activeOpacity={0.7}
+          onPress={() => {
+            haptics.tap();
+            setActiveFilter('settlements');
+          }}
+        >
+          <Text
+            style={[
+              styles.filterPillText,
+              activeFilter === 'settlements' && styles.filterPillTextActive,
+            ]}
+          >
+            Settlements ({settlementCount})
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -128,77 +357,134 @@ export default function ActivityScreen() {
           />
         )}
 
-        {loading && transactions.length === 0 ? (
+        {loading && unifiedActivity.length === 0 ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="small" color={THEME.colors.primary} />
           </View>
-        ) : transactions.length > 0 ? (
-          <View style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            <View style={styles.ledgerCard}>
-              {transactions.map((tx, index) => {
-                const isLast = index === transactions.length - 1;
-                const isGet = tx.yourImpact === 'get';
-                const isOwe = tx.yourImpact === 'owe';
+        ) : groupedActivity.length > 0 ? (
+          groupedActivity.map((group) => (
+            <View key={group.month} style={styles.sectionWrap}>
+              <Text style={styles.sectionTitle}>{group.month}</Text>
+              <View style={styles.ledgerCard}>
+                {group.items.map((entry, index) => {
+                  const isLast = index === group.items.length - 1;
 
-                return (
-                  <TouchableOpacity
-                    key={tx.id}
-                    style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      haptics.tap();
-                      router.push({
-                        pathname: '/expenses/[id]',
-                        params: {
-                          id: tx.id,
-                          groupId: tx.groupId,
-                          title: tx.title,
-                          amount: String(tx.amount),
-                          paidByName: tx.paidByName,
-                          date: tx.date,
-                          category: tx.category,
-                        },
-                      });
-                    }}
-                  >
-                    <View style={styles.iconCircle}>
-                      <CategoryIcon
-                        subCategory={tx.category}
-                        masterCategory={tx.masterCategory}
-                        size={20}
-                        color={
-                          isGet
-                            ? THEME.colors.primary
-                            : isOwe
-                            ? THEME.colors.negative
-                            : THEME.colors.textSecondary
-                        }
-                      />
-                    </View>
+                  if (entry.type === 'expense') {
+                    const tx = entry.data;
+                    const isGet = tx.yourImpact === 'get';
+                    const isOwe = tx.yourImpact === 'owe';
 
-                    <View style={styles.details}>
-                      <Text style={styles.activityTitle} numberOfLines={1}>
-                        {tx.title}
-                      </Text>
-                      <Text style={styles.activitySubtitle} numberOfLines={1}>
-                        {tx.paidByName} • {tx.groupName}
-                      </Text>
-                      <Text style={styles.activityTime}>{tx.date}</Text>
-                    </View>
+                    return (
+                      <TouchableOpacity
+                        key={entry.id}
+                        style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          haptics.tap();
+                          router.push({
+                            pathname: '/expenses/[id]',
+                            params: {
+                              id: tx.id,
+                              groupId: tx.groupId,
+                              title: tx.title,
+                              amount: String(tx.amount),
+                              paidByName: tx.paidByName,
+                              date: tx.date,
+                              category: tx.category,
+                            },
+                          });
+                        }}
+                      >
+                        <View style={styles.iconCircle}>
+                          <CategoryIcon
+                            subCategory={tx.category}
+                            masterCategory={tx.masterCategory}
+                            size={18}
+                            color={
+                              isGet
+                                ? THEME.colors.primary
+                                : isOwe
+                                ? THEME.colors.negative
+                                : THEME.colors.textSecondary
+                            }
+                          />
+                        </View>
 
-                    <ExpenseImpactCol expense={tx} />
-                  </TouchableOpacity>
-                );
-              })}
+                        <View style={styles.details}>
+                          <Text style={styles.activityTitle} numberOfLines={1}>
+                            {tx.title}
+                          </Text>
+                          <Text style={styles.activitySubtitle} numberOfLines={1}>
+                            {tx.paidByName} • {tx.groupName}
+                          </Text>
+                          <Text style={styles.activityTime}>{tx.date}</Text>
+                        </View>
+
+                        <ExpenseImpactCol expense={tx} currentUserId={authUser?.id} />
+                      </TouchableOpacity>
+                    );
+                  }
+
+                  // Settlement Entry
+                  const stl = entry.data;
+                  return (
+                    <TouchableOpacity
+                      key={entry.id}
+                      style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        haptics.tap();
+                        router.push({
+                          pathname: '/settlements/[id]',
+                          params: {
+                            id: stl.id,
+                            groupId: stl.groupId,
+                          },
+                        });
+                      }}
+                    >
+                      <View style={[styles.iconCircle, styles.settleIconCircle]}>
+                        <Handshake size={18} color={THEME.colors.primary} />
+                      </View>
+
+                      <View style={styles.details}>
+                        <View style={styles.settleTitleRow}>
+                          <Text style={styles.activityTitle} numberOfLines={1}>
+                            Payment Recorded
+                          </Text>
+                          <View style={styles.settledBadge}>
+                            <Text style={styles.settledBadgeText}>Settled</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.activitySubtitle} numberOfLines={1}>
+                          {stl.payerName} paid {stl.payeeName}
+                          {stl.groupName ? ` • ${stl.groupName}` : ''}
+                        </Text>
+                        <Text style={styles.activityTime}>{stl.date}</Text>
+                      </View>
+
+                      <View style={styles.amountCol}>
+                        <Text style={styles.settleAmountText}>
+                          {formatCurrency(stl.amount, { decimals: 2 })}
+                        </Text>
+                        <Text style={styles.settleSub}>via {stl.method || 'UPI'}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-          </View>
+          ))
         ) : (
           <View style={styles.emptyContainer}>
             <Receipt size={32} color={THEME.colors.textMuted} />
-            <Text style={styles.emptyTitle}>No activity yet</Text>
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? 'No matching records' : 'No activity yet'}
+            </Text>
             <Text style={styles.emptySubtitle}>
-              Shared expenses and updates will appear here automatically.
+              {searchQuery
+                ? 'Try searching for a different keyword or member.'
+                : 'Shared expenses and settlements will appear here automatically.'}
             </Text>
           </View>
         )}
@@ -213,9 +499,9 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   header: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 10,
   },
   title: {
     fontSize: 24,
@@ -228,9 +514,57 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
     marginTop: 2,
   },
-  listContent: {
+  searchBarWrapper: {
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingBottom: 32,
+    height: 40,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: THEME.colors.text,
+    fontSize: 13,
+    padding: 0,
+  },
+  filterPillsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+    gap: 8,
+    marginBottom: 14,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  filterPillActive: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderColor: THEME.colors.primary,
+  },
+  filterPillText: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    fontWeight: '500',
+  },
+  filterPillTextActive: {
+    color: THEME.colors.primary,
+    fontWeight: '700',
+  },
+  listContent: {
+    paddingHorizontal: 14,
+    paddingBottom: 36,
   },
   loadingBox: {
     paddingVertical: 48,
@@ -266,9 +600,9 @@ const styles = StyleSheet.create({
     borderBottomColor: THEME.colors.hairline,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
@@ -276,19 +610,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
+  settleIconCircle: {
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+    borderColor: 'rgba(52, 211, 153, 0.25)',
+  },
   details: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
+  },
+  settleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   activityTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: THEME.colors.text,
   },
+  settledBadge: {
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  settledBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
   activitySubtitle: {
     fontSize: 12,
     color: THEME.colors.textSecondary,
-    marginTop: 1,
+    marginTop: 2,
   },
   activityTime: {
     fontSize: 11,
@@ -298,15 +652,16 @@ const styles = StyleSheet.create({
   amountCol: {
     alignItems: 'flex-end',
   },
-  amountText: {
+  settleAmountText: {
     fontSize: 14,
     fontWeight: '700',
-    color: THEME.colors.text,
+    color: THEME.colors.primary,
   },
-  impactSub: {
+  settleSub: {
     fontSize: 10,
     color: THEME.colors.textMuted,
     marginTop: 2,
+    textTransform: 'uppercase',
   },
   emptyContainer: {
     paddingVertical: 56,

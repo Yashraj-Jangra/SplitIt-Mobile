@@ -20,6 +20,7 @@ export interface RecordSettlementParams {
 export interface GroupSettlementItem {
   id: string;
   groupId: string;
+  groupName?: string;
   amount: number;
   currency?: string;
   date: string;
@@ -86,6 +87,97 @@ export const settlementService = {
       return fromStorage;
     }
     return null;
+  },
+
+  /**
+   * Fetch all global settlements involving the current user across groups
+   */
+  async getUserSettlements(options?: { forceRefresh?: boolean }): Promise<GroupSettlementItem[]> {
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || 'u1';
+
+    if (!options?.forceRefresh) {
+      const fromStorage = await storageService.getItem<GroupSettlementItem[]>(
+        STORAGE_KEYS.USER_SETTLEMENTS(currentUserId)
+      );
+      if (fromStorage && Array.isArray(fromStorage) && fromStorage.length > 0) {
+        return fromStorage;
+      }
+    }
+
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/settlements`, {
+          headers: {
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const userGroups = await groupService.getUserGroups();
+            const groupNameMap = new Map(userGroups.map((g) => [g.id, g.name]));
+
+            const normalized: GroupSettlementItem[] = data.map((s: any) => {
+              const payerId = s.paidBy?.uid || s.paidBy?.id || s.paidById || s.payerId || '';
+              const payeeId = s.paidTo?.uid || s.paidTo?.id || s.paidToId || s.payeeId || '';
+              const payerName =
+                payerId === currentUserId
+                  ? 'You'
+                  : s.paidBy?.firstName
+                  ? `${s.paidBy.firstName} ${s.paidBy.lastName || ''}`.trim()
+                  : s.paidBy?.name || s.payerName || 'Member';
+              const payeeName =
+                payeeId === currentUserId
+                  ? 'You'
+                  : s.paidTo?.firstName
+                  ? `${s.paidTo.firstName} ${s.paidTo.lastName || ''}`.trim()
+                  : s.paidTo?.name || s.payeeName || 'Member';
+
+              const rawDate = s.date ? new Date(s.date) : new Date();
+              const formattedDate = rawDate.toLocaleDateString('en-IN', {
+                month: 'short',
+                day: 'numeric',
+              });
+
+              const resolvedGroupId = s.groupId || '';
+              const resolvedGroupName = s.group?.name || groupNameMap.get(resolvedGroupId) || 'Group Settlement';
+
+              return {
+                id: s.id,
+                groupId: resolvedGroupId,
+                groupName: resolvedGroupName,
+                amount: Number(s.amount || 0),
+                currency: s.currency || 'INR',
+                date: formattedDate,
+                rawDate: rawDate.toISOString(),
+                payerId,
+                payerName,
+                payerAvatarUrl: s.paidBy?.avatarUrl,
+                payeeId,
+                payeeName,
+                payeeAvatarUrl: s.paidTo?.avatarUrl,
+                notes: s.notes,
+                method: s.method,
+              };
+            });
+
+            await storageService.setItem(STORAGE_KEYS.USER_SETTLEMENTS(currentUserId), normalized);
+            return normalized;
+          }
+        }
+      }
+    } catch {
+      // Fallback to storage
+      const cached = await storageService.getItem<GroupSettlementItem[]>(
+        STORAGE_KEYS.USER_SETTLEMENTS(currentUserId)
+      );
+      if (cached) return cached;
+    }
+    return [];
   },
 
   async getSettlementsByGroupId(groupId: string): Promise<GroupSettlementItem[]> {
