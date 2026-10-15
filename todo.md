@@ -1,6 +1,21 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Fixed RNGoogleSignin TurboModule Crash on Logout (`src/services/auth.service.ts`)**:
+  - **Identified Root Cause**:
+    - During logout in `authService.clearSession()`, `getNativeGoogleSignin()` called `require('@react-native-google-signin/google-signin')`.
+    - In Expo Go, `@react-native-google-signin/google-signin` invokes `TurboModuleRegistry.getEnforcing('RNGoogleSignin')` at file evaluation time, which throws a fatal native invariant before JavaScript `try/catch` can catch it.
+  - **Pre-Flight Native Registration Check**:
+    - Implemented `isNativeGoogleSigninAvailable()` using non-throwing inspections:
+      1. Returns `false` immediately if `Constants.appOwnership === 'expo'`.
+      2. Safe TurboModule check via `TurboModuleRegistry.get('RNGoogleSignin')` (which returns `null` instead of throwing `invariant`).
+      3. Safe Legacy / Bridgeless check via `NativeModules.RNGoogleSignin`.
+    - If native registration is not confirmed, `require('@react-native-google-signin/google-signin')` is NEVER invoked.
+    - Logout and Google Sign-in flow seamlessly in Expo Go without crashing.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Universal Bottom Sheet Dismissability & Reanimated Swipe-Down Integration (`src/components/common/BottomSheetModal.tsx`, `app/expenses/new.tsx`, `app/settle/new.tsx`, `app/(tabs)/groups.tsx`)**:
   - **Identified Root Causes of "Choose Group" Modal Trap**:
     - `app/expenses/new.tsx` Choose Group `<Modal>` had NO `onRequestClose` prop. On Android, pressing the system hardware back button or swipe-back navigation gesture was swallowed by the native dialog and did nothing.

@@ -1,3 +1,4 @@
+import { NativeModules, TurboModuleRegistry } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -8,11 +9,47 @@ type GoogleSigninModuleType = typeof import('@react-native-google-signin/google-
 let _googleSigninModule: GoogleSigninModuleType | null = null;
 let _hasAttemptedLoad = false;
 
+/**
+ * Safely inspects whether RNGoogleSignin is registered in the native binary
+ * BEFORE calling require(), preventing invariant crash in Expo Go.
+ */
+function isNativeGoogleSigninAvailable(): boolean {
+  try {
+    // 1. In Expo Go, native third-party TurboModules are never registered
+    if (Constants.appOwnership === 'expo') {
+      return false;
+    }
+
+    // 2. Safe TurboModule check (get returns null without throwing invariant)
+    const turbo =
+      typeof TurboModuleRegistry !== 'undefined' &&
+      typeof TurboModuleRegistry.get === 'function'
+        ? TurboModuleRegistry.get('RNGoogleSignin')
+        : null;
+    if (turbo) return true;
+
+    // 3. Safe Legacy / Bridgeless NativeModules check
+    if (NativeModules && NativeModules.RNGoogleSignin) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function getNativeGoogleSignin(): GoogleSigninModuleType | null {
   if (_hasAttemptedLoad) return _googleSigninModule;
   _hasAttemptedLoad = true;
+
+  if (!isNativeGoogleSigninAvailable()) {
+    _googleSigninModule = null;
+    return null;
+  }
+
   try {
-    // Lazy, resilient load of native TurboModule to prevent top-level runtime crash in Expo Go
+    // Only require once native module registration is confirmed
     const mod = require('@react-native-google-signin/google-signin');
     if (mod && mod.GoogleSignin) {
       _googleSigninModule = mod;
