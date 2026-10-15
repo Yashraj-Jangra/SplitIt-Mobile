@@ -33,6 +33,7 @@ import { balanceService } from '../../src/services/balance.service';
 import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
 import { demoService } from '../../src/services/demo.service';
 import { MockDataBanner } from '../../src/components/common/MockDataBanner';
+import { BottomSheetModal } from '../../src/components/common/BottomSheetModal';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useRouter } from 'expo-router';
 import { haptics } from '../../src/services/haptics.service';
@@ -538,108 +539,73 @@ export default function GroupsScreen() {
       )}
 
       {/* Sort Groups Bottom Sheet Modal */}
-      <Modal
+      <BottomSheetModal
         visible={showSortModal}
-        transparent
-        animationType="slide"
-        statusBarTranslucent
-        onRequestClose={() => setShowSortModal(false)}
+        onClose={() => setShowSortModal(false)}
+        title="Sort Groups"
+        subtitle="Choose how your circles are ordered"
+        maxHeight="70%"
       >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowSortModal(false)}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.sortOptionsList}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.sheetContainer}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.sheetHandle} />
+          {SORT_OPTIONS.map((option) => {
+            const isSelected = sortBy === option.id;
+            const IconComponent = option.icon;
+            const iconColor =
+              option.iconColor || (isSelected ? THEME.colors.text : THEME.colors.textMuted);
 
-            <View style={styles.sheetHeader}>
-              <View>
-                <Text style={styles.sheetTitle}>Sort Groups</Text>
-                <Text style={styles.sheetSubtitle}>
-                  Choose how your circles are ordered
-                </Text>
-              </View>
+            return (
               <TouchableOpacity
-                style={styles.sheetCloseBtn}
-                onPress={() => {
-                  haptics.tap();
-                  setShowSortModal(false);
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityLabel="Close sort options"
-                accessibilityRole="button"
+                key={option.id}
+                style={[
+                  styles.sortOptionRow,
+                  isSelected && styles.sortOptionRowActive,
+                ]}
+                activeOpacity={0.7}
+                onPress={() => handleSortChange(option.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={`${option.label}, ${option.description}`}
               >
-                <X size={18} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            </View>
+                <View
+                  style={[
+                    styles.sortOptionIconBox,
+                    isSelected && styles.sortOptionIconBoxActive,
+                  ]}
+                >
+                  <IconComponent
+                    size={18}
+                    color={iconColor}
+                    strokeWidth={isSelected ? 2.5 : 2}
+                  />
+                </View>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.sortOptionsList}
-            >
-              {SORT_OPTIONS.map((option) => {
-                const isSelected = sortBy === option.id;
-                const IconComponent = option.icon;
-                const iconColor =
-                  option.iconColor || (isSelected ? THEME.colors.text : THEME.colors.textMuted);
-
-                return (
-                  <TouchableOpacity
-                    key={option.id}
+                <View style={styles.sortOptionContent}>
+                  <Text
                     style={[
-                      styles.sortOptionRow,
-                      isSelected && styles.sortOptionRowActive,
+                      styles.sortOptionLabel,
+                      isSelected && styles.sortOptionLabelActive,
                     ]}
-                    activeOpacity={0.7}
-                    onPress={() => handleSortChange(option.id)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`${option.label}, ${option.description}`}
                   >
-                    <View
-                      style={[
-                        styles.sortOptionIconBox,
-                        isSelected && styles.sortOptionIconBoxActive,
-                      ]}
-                    >
-                      <IconComponent
-                        size={18}
-                        color={iconColor}
-                        strokeWidth={isSelected ? 2.5 : 2}
-                      />
-                    </View>
+                    {option.label}
+                  </Text>
+                  <Text style={styles.sortOptionDesc} numberOfLines={1}>
+                    {option.description}
+                  </Text>
+                </View>
 
-                    <View style={styles.sortOptionContent}>
-                      <Text
-                        style={[
-                          styles.sortOptionLabel,
-                          isSelected && styles.sortOptionLabelActive,
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                      <Text style={styles.sortOptionDesc} numberOfLines={1}>
-                        {option.description}
-                      </Text>
-                    </View>
-
-                    {isSelected && (
-                      <View style={styles.checkIconWrap}>
-                        <Check size={16} color={THEME.colors.primary} strokeWidth={2.5} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+                {isSelected && (
+                  <View style={styles.checkIconWrap}>
+                    <Check size={16} color={THEME.colors.primary} strokeWidth={2.5} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }

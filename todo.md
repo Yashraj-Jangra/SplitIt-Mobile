@@ -1,6 +1,30 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Universal Bottom Sheet Dismissability & Reanimated Swipe-Down Integration (`src/components/common/BottomSheetModal.tsx`, `app/expenses/new.tsx`, `app/settle/new.tsx`, `app/(tabs)/groups.tsx`)**:
+  - **Identified Root Causes of "Choose Group" Modal Trap**:
+    - `app/expenses/new.tsx` Choose Group `<Modal>` had NO `onRequestClose` prop. On Android, pressing the system hardware back button or swipe-back navigation gesture was swallowed by the native dialog and did nothing.
+    - Backdrop tap handler had `if (selectedGroupId) { setShowGroupModal(false); }`. When opening from homescreen / FAB or before selecting a group, `selectedGroupId` is empty, causing empty-area backdrop clicks to be ignored completely and trapping the user in the modal.
+    - No downward swipe-to-dismiss gesture handling existed.
+    - No Close (`X`) button was provided in the header.
+  - **Built Reusable Hardware-Accelerated `BottomSheetModal` (`src/components/common/BottomSheetModal.tsx`)**:
+    - **Native Gesture & PanResponder Integration**:
+      - Separate `handlePanResponder` on the drag handle for instantaneous 0-delay downward tracking.
+      - Non-blocking `headerPanResponder` on the title/header row claiming only on downward gestures (`dy > 5` and mostly vertical) without blocking button taps.
+      - Interactive 60fps Reanimated transform tracking (`translateY` with `useSharedValue`), with smooth spring-back physics (`withSpring`) or velocity-based dismissal exit (`withTiming`).
+    - **Universal Dismissibility**:
+      - Full-screen sibling backdrop touchable (`StyleSheet.absoluteFill`) to dismiss immediately on tapping empty space outside the sheet.
+      - Android back button support via `onRequestClose={handleClose}`.
+      - Prominent tactile Close (`X`) button in the header.
+      - Safe-area bottom inset padding (`useSafeAreaInsets().bottom`).
+  - **Replaced All Bottom Sheet Modals with `BottomSheetModal`**:
+    - `app/expenses/new.tsx`: Choose Group, Choose Category, and Expense Date picker.
+    - `app/settle/new.tsx`: Group Selection Modal and Member Selection Modal.
+    - `app/(tabs)/groups.tsx`: Sort Groups Modal.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Eradicated Synthetic `@okaxis` UPI Injection & Streamlined Payment Settings (`app/(tabs)/profile.tsx`, `app/settings/my-qr.tsx`, `app/settings/payment.tsx`, `app/settle/new.tsx`, `src/services/auth.service.ts`, `src/services/group.service.ts`)**:
   - **Eliminated Duplicate "My Payment QR" Profile Menu Item**:
     - Removed redundant `My Payment QR` entry from the Profile screen's `ACCOUNT` section (`app/(tabs)/profile.tsx`), consolidating payment management into the primary `UPI & Payment` entry.

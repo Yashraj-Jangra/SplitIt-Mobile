@@ -44,6 +44,7 @@ import { settingsService } from '../../src/services/settings.service';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
+import { BottomSheetModal } from '../../src/components/common/BottomSheetModal';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useCurrency } from '../../src/contexts/currency.context';
@@ -1209,243 +1210,219 @@ export default function NewExpenseModal() {
         />
 
         {/* MODAL 3: GROUP PICKER SHEET (WITH DEFAULT TOGGLE) */}
-        <Modal visible={showGroupModal} transparent animationType="slide">
+        <BottomSheetModal
+          visible={showGroupModal}
+          onClose={() => setShowGroupModal(false)}
+          title="Choose Group"
+          subtitle="Select which group this expense will be added to"
+          maxHeight="82%"
+        >
+          {/* Set as Default Toggle Card */}
           <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
+            style={styles.defaultToggleCard}
             onPress={() => {
-              if (selectedGroupId) {
-                setShowGroupModal(false);
-              }
+              haptics.tap();
+              setIsDefaultGroupChecked((prev) => !prev);
             }}
+            activeOpacity={0.8}
           >
-            <View style={[styles.sheetContainer, { maxHeight: '80%' }]}>
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>Choose Group</Text>
-              <Text style={styles.sheetSubtitle}>
-                Select which group this expense will be added to
-              </Text>
-
-              {/* Set as Default Toggle Card */}
-              <TouchableOpacity
-                style={styles.defaultToggleCard}
-                onPress={() => {
-                  haptics.tap();
-                  setIsDefaultGroupChecked((prev) => !prev);
-                }}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.defaultCheckbox, isDefaultGroupChecked && styles.defaultCheckboxActive]}>
-                  {isDefaultGroupChecked && <Check size={12} color={THEME.colors.primaryForeground} strokeWidth={3} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.defaultToggleTitle}>Set as default group</Text>
-                  <Text style={styles.defaultToggleSub}>Auto-select when adding from homescreen</Text>
-                </View>
-                <Star
-                  size={18}
-                  color={isDefaultGroupChecked ? THEME.colors.primary : THEME.colors.textMuted}
-                  fill={isDefaultGroupChecked ? THEME.colors.primary : 'transparent'}
-                />
-              </TouchableOpacity>
-
-              <View style={styles.sheetSearchBox}>
-                <Search size={15} color={THEME.colors.textMuted} />
-                <TextInput
-                  style={styles.sheetSearchInput}
-                  placeholder="Search your groups..."
-                  placeholderTextColor={THEME.colors.textMuted}
-                  value={groupSearch}
-                  onChangeText={setGroupSearch}
-                />
-              </View>
-
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {groups
-                  .filter((g) => g.name.toLowerCase().includes(groupSearch.toLowerCase()))
-                  .map((grp) => {
-                    const isSelected = grp.id === selectedGroupId;
-                    const isDefault = grp.id === defaultGroupId;
-                    return (
-                      <TouchableOpacity
-                        key={grp.id}
-                        style={[styles.sheetGroupRow, isSelected && styles.sheetGroupRowActive]}
-                        onPress={() => handleSelectGroup(grp.id)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.groupAvatarWrap}>
-                          {grp.coverImageUrl ? (
-                            <Image source={{ uri: grp.coverImageUrl }} style={styles.groupAvatarImg} />
-                          ) : (
-                            <Text style={styles.groupAvatarInitial}>{grp.name.charAt(0)}</Text>
-                          )}
-                        </View>
-                        <View style={styles.groupInfoCol}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
-                              {grp.name}
-                            </Text>
-                            {isDefault && (
-                              <View style={styles.defaultBadge}>
-                                <Star size={9} color={THEME.colors.primary} fill={THEME.colors.primary} />
-                                <Text style={styles.defaultBadgeText}>Default</Text>
-                              </View>
-                            )}
-                          </View>
-                          <Text style={styles.groupMetaText}>{grp.membersCount || 0} members</Text>
-                        </View>
-                        {isSelected && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
-                      </TouchableOpacity>
-                    );
-                  })}
-              </ScrollView>
+            <View style={[styles.defaultCheckbox, isDefaultGroupChecked && styles.defaultCheckboxActive]}>
+              {isDefaultGroupChecked && <Check size={12} color={THEME.colors.primaryForeground} strokeWidth={3} />}
             </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.defaultToggleTitle}>Set as default group</Text>
+              <Text style={styles.defaultToggleSub}>Auto-select when adding from homescreen</Text>
+            </View>
+            <Star
+              size={18}
+              color={isDefaultGroupChecked ? THEME.colors.primary : THEME.colors.textMuted}
+              fill={isDefaultGroupChecked ? THEME.colors.primary : 'transparent'}
+            />
           </TouchableOpacity>
-        </Modal>
+
+          <View style={styles.sheetSearchBox}>
+            <Search size={15} color={THEME.colors.textMuted} />
+            <TextInput
+              style={styles.sheetSearchInput}
+              placeholder="Search your groups..."
+              placeholderTextColor={THEME.colors.textMuted}
+              value={groupSearch}
+              onChangeText={setGroupSearch}
+            />
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {groups
+              .filter((g) => g.name.toLowerCase().includes(groupSearch.toLowerCase()))
+              .map((grp) => {
+                const isSelected = grp.id === selectedGroupId;
+                const isDefault = grp.id === defaultGroupId;
+                return (
+                  <TouchableOpacity
+                    key={grp.id}
+                    style={[styles.sheetGroupRow, isSelected && styles.sheetGroupRowActive]}
+                    onPress={() => handleSelectGroup(grp.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.groupAvatarWrap}>
+                      {grp.coverImageUrl ? (
+                        <Image source={{ uri: grp.coverImageUrl }} style={styles.groupAvatarImg} />
+                      ) : (
+                        <Text style={styles.groupAvatarInitial}>{grp.name.charAt(0)}</Text>
+                      )}
+                    </View>
+                    <View style={styles.groupInfoCol}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
+                          {grp.name}
+                        </Text>
+                        {isDefault && (
+                          <View style={styles.defaultBadge}>
+                            <Star size={9} color={THEME.colors.primary} fill={THEME.colors.primary} />
+                            <Text style={styles.defaultBadgeText}>Default</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.groupMetaText}>{grp.membersCount || 0} members</Text>
+                    </View>
+                    {isSelected && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
+                  </TouchableOpacity>
+                );
+              })}
+          </ScrollView>
+        </BottomSheetModal>
 
         {/* MODAL 4: CATEGORY PICKER SHEET */}
-        <Modal visible={showCategoryModal} transparent animationType="slide">
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowCategoryModal(false)}
-          >
-            <View style={[styles.sheetContainer, { maxHeight: '75%' }]}>
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>Choose Category</Text>
+        <BottomSheetModal
+          visible={showCategoryModal}
+          onClose={() => setShowCategoryModal(false)}
+          title="Choose Category"
+          maxHeight="78%"
+        >
+          <View style={styles.sheetSearchBox}>
+            <Search size={15} color={THEME.colors.textMuted} />
+            <TextInput
+              style={styles.sheetSearchInput}
+              placeholder="Search categories..."
+              placeholderTextColor={THEME.colors.textMuted}
+              value={categorySearch}
+              onChangeText={setCategorySearch}
+            />
+          </View>
 
-              <View style={styles.sheetSearchBox}>
-                <Search size={15} color={THEME.colors.textMuted} />
-                <TextInput
-                  style={styles.sheetSearchInput}
-                  placeholder="Search categories..."
-                  placeholderTextColor={THEME.colors.textMuted}
-                  value={categorySearch}
-                  onChangeText={setCategorySearch}
-                />
-              </View>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {Object.entries(categories)
+              .filter(([master, masterCategoryData]) => {
+                if (!categorySearch.trim()) return true;
+                const q = categorySearch.toLowerCase().trim();
+                if (master.toLowerCase().includes(q)) return true;
+                const subNames = Object.keys(masterCategoryData.subCategories || {});
+                return subNames.some((sub) => {
+                  const lowerSub = sub.toLowerCase();
+                  if (lowerSub.includes(q) || (lowerSub === 'other' && q.startsWith('other'))) return true;
+                  const kw = masterCategoryData.subCategories[sub]?.keywords || [];
+                  return kw.some((k) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()));
+                });
+              })
+              .map(([master, masterCategoryData]) => {
+                const q = categorySearch.toLowerCase().trim();
+                const subNames = Object.keys(masterCategoryData.subCategories || {}).filter((sub) => {
+                  if (!q || master.toLowerCase().includes(q)) return true;
+                  const lowerSub = sub.toLowerCase();
+                  if (lowerSub.includes(q) || (lowerSub === 'other' && q.startsWith('other'))) return true;
+                  const kw = masterCategoryData.subCategories[sub]?.keywords || [];
+                  return kw.some((k) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()));
+                });
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {Object.entries(categories)
-                  .filter(([master, masterCategoryData]) => {
-                    if (!categorySearch.trim()) return true;
-                    const q = categorySearch.toLowerCase().trim();
-                    if (master.toLowerCase().includes(q)) return true;
-                    const subNames = Object.keys(masterCategoryData.subCategories || {});
-                    return subNames.some((sub) => {
-                      const lowerSub = sub.toLowerCase();
-                      if (lowerSub.includes(q) || (lowerSub === 'other' && q.startsWith('other'))) return true;
-                      const kw = masterCategoryData.subCategories[sub]?.keywords || [];
-                      return kw.some((k) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()));
-                    });
-                  })
-                  .map(([master, masterCategoryData]) => {
-                    const q = categorySearch.toLowerCase().trim();
-                    const subNames = Object.keys(masterCategoryData.subCategories || {}).filter((sub) => {
-                      if (!q || master.toLowerCase().includes(q)) return true;
-                      const lowerSub = sub.toLowerCase();
-                      if (lowerSub.includes(q) || (lowerSub === 'other' && q.startsWith('other'))) return true;
-                      const kw = masterCategoryData.subCategories[sub]?.keywords || [];
-                      return kw.some((k) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()));
-                    });
+                if (subNames.length === 0) return null;
 
-                    if (subNames.length === 0) return null;
-
-                    return (
-                      <View key={master} style={{ marginBottom: 16 }}>
-                        <View style={styles.categoryHeaderRow}>
-                          <CategoryIcon masterCategory={master} size={16} color={THEME.colors.primary} />
-                          <Text style={styles.categoryGroupTitle}>{master}</Text>
-                        </View>
-                        <View style={styles.categoryPillsWrap}>
-                          {subNames.map((sub) => {
-                            const isSelected = category === sub;
-                            return (
-                              <TouchableOpacity
-                                key={sub}
-                                style={[styles.categoryChoicePill, isSelected && styles.categoryChoiceActive]}
-                                onPress={() => {
-                                  haptics.tap();
-                                  setUserOverriddenCategory(true);
-                                  setCategory(sub);
-                                  setMasterCategory(master);
-                                  setShowCategoryModal(false);
-                                }}
-                              >
-                                <CategoryIcon
-                                  subCategory={sub}
-                                  masterCategory={master}
-                                  size={13}
-                                  color={isSelected ? THEME.colors.primary : THEME.colors.textMuted}
-                                />
-                                <Text style={[styles.categoryChoiceText, isSelected && styles.categoryChoiceTextActive]}>
-                                  {sub}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    );
-                  })}
-              </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+                return (
+                  <View key={master} style={{ marginBottom: 16 }}>
+                    <View style={styles.categoryHeaderRow}>
+                      <CategoryIcon masterCategory={master} size={16} color={THEME.colors.primary} />
+                      <Text style={styles.categoryGroupTitle}>{master}</Text>
+                    </View>
+                    <View style={styles.categoryPillsWrap}>
+                      {subNames.map((sub) => {
+                        const isSelected = category === sub;
+                        return (
+                          <TouchableOpacity
+                            key={sub}
+                            style={[styles.categoryChoicePill, isSelected && styles.categoryChoiceActive]}
+                            onPress={() => {
+                              haptics.tap();
+                              setUserOverriddenCategory(true);
+                              setCategory(sub);
+                              setMasterCategory(master);
+                              setShowCategoryModal(false);
+                            }}
+                          >
+                            <CategoryIcon
+                              subCategory={sub}
+                              masterCategory={master}
+                              size={13}
+                              color={isSelected ? THEME.colors.primary : THEME.colors.textMuted}
+                            />
+                            <Text style={[styles.categoryChoiceText, isSelected && styles.categoryChoiceTextActive]}>
+                              {sub}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })}
+          </ScrollView>
+        </BottomSheetModal>
 
         {/* MODAL 5: DATE PICKER SHEET */}
-        <Modal visible={showDateModal} transparent animationType="slide">
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowDateModal(false)}
-          >
-            <View style={[styles.sheetContainer, { maxHeight: '60%' }]}>
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>Expense Date</Text>
+        <BottomSheetModal
+          visible={showDateModal}
+          onClose={() => setShowDateModal(false)}
+          title="Expense Date"
+          maxHeight="60%"
+        >
+          <View style={{ marginTop: 4 }}>
+            {[
+              { label: 'Today', date: new Date() },
+              { label: 'Yesterday', date: new Date(Date.now() - 86400000) },
+              { label: '2 days ago', date: new Date(Date.now() - 2 * 86400000) },
+              { label: '3 days ago', date: new Date(Date.now() - 3 * 86400000) },
+              { label: '1 week ago', date: new Date(Date.now() - 7 * 86400000) },
+            ].map((item) => {
+              const isSelected =
+                expenseDate.getDate() === item.date.getDate() &&
+                expenseDate.getMonth() === item.date.getMonth() &&
+                expenseDate.getFullYear() === item.date.getFullYear();
 
-              <View style={{ marginTop: 12 }}>
-                {[
-                  { label: 'Today', date: new Date() },
-                  { label: 'Yesterday', date: new Date(Date.now() - 86400000) },
-                  { label: '2 days ago', date: new Date(Date.now() - 2 * 86400000) },
-                  { label: '3 days ago', date: new Date(Date.now() - 3 * 86400000) },
-                  { label: '1 week ago', date: new Date(Date.now() - 7 * 86400000) },
-                ].map((item) => {
-                  const isSelected =
-                    expenseDate.getDate() === item.date.getDate() &&
-                    expenseDate.getMonth() === item.date.getMonth() &&
-                    expenseDate.getFullYear() === item.date.getFullYear();
-
-                  return (
-                    <TouchableOpacity
-                      key={item.label}
-                      style={[styles.dateChoiceRow, isSelected && styles.dateChoiceRowActive]}
-                      onPress={() => {
-                        haptics.tap();
-                        setExpenseDate(item.date);
-                        setShowDateModal(false);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.dateChoiceLabel, isSelected && styles.dateChoiceLabelActive]}>
-                        {item.label}
-                      </Text>
-                      <Text style={styles.dateChoiceSub}>
-                        {item.date.toLocaleDateString('en-IN', {
-                          month: 'short',
-                          day: 'numeric',
-                          weekday: 'short',
-                        })}
-                      </Text>
-                      {isSelected && <Check size={16} color={THEME.colors.primary} strokeWidth={2.5} />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.dateChoiceRow, isSelected && styles.dateChoiceRowActive]}
+                  onPress={() => {
+                    haptics.tap();
+                    setExpenseDate(item.date);
+                    setShowDateModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateChoiceLabel, isSelected && styles.dateChoiceLabelActive]}>
+                    {item.label}
+                  </Text>
+                  <Text style={styles.dateChoiceSub}>
+                    {item.date.toLocaleDateString('en-IN', {
+                      month: 'short',
+                      day: 'numeric',
+                      weekday: 'short',
+                    })}
+                  </Text>
+                  {isSelected && <Check size={16} color={THEME.colors.primary} strokeWidth={2.5} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </BottomSheetModal>
             </KeyboardAvoidingView>
           </Animated.View>
         </SafeAreaView>

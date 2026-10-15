@@ -43,6 +43,7 @@ import { useNetwork } from '../../src/contexts/network.context';
 import { launchUpiPayment } from '../../src/utils/upi';
 import { haptics } from '../../src/services/haptics.service';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
+import { BottomSheetModal } from '../../src/components/common/BottomSheetModal';
 import { useCurrency } from '../../src/contexts/currency.context';
 
 /**
@@ -855,204 +856,168 @@ export default function SettleUpModal() {
       </View>
 
       {/* ── 5. User Selection Modal (Shows ALL Members; Auto-Deselects Opposite Party If Same) ── */}
-      <Modal
+      <BottomSheetModal
         visible={activePicker !== null}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setActivePicker(null)}
+        onClose={() => setActivePicker(null)}
+        title={activePicker === 'payer' ? 'Select Payer (Who Paid)' : 'Select Recipient (Paid To)'}
+        maxHeight="75%"
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalBackdropTap}
-            activeOpacity={1}
-            onPress={() => setActivePicker(null)}
-          />
-
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {activePicker === 'payer' ? 'Select Payer (Who Paid)' : 'Select Recipient (Paid To)'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setActivePicker(null)}
-                style={styles.modalCloseBtn}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <X size={18} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              style={styles.modalList}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {members.length === 0 ? (
-                <View style={styles.modalEmptyBox}>
-                  <Text style={styles.modalEmptyText}>No members available</Text>
-                </View>
-              ) : (
-                members.map((m, idx) => {
-                  const isSelected = activePicker === 'payer' ? m.id === payerId : m.id === receiverId;
-                  const isViewer = m.id === currentUserId;
-                  const memberName = isViewer && currentUserName && currentUserName !== 'You'
-                    ? currentUserName
-                    : m.name;
-                  const isLast = idx === members.length - 1;
-
-                  return (
-                    <TouchableOpacity
-                      key={m.id || idx}
-                      style={[styles.memberOptionRow, !isLast && styles.memberOptionBorder]}
-                      activeOpacity={0.7}
-                      onPress={() => handleSelectMember(m.id)}
-                    >
-                      <View style={styles.memberLeft}>
-                        <View style={styles.avatarCircleSmall}>
-                          {m.avatarUrl ? (
-                            <Image source={{ uri: m.avatarUrl }} style={styles.avatarImg} />
-                          ) : (
-                            <Text style={styles.avatarSmallText}>
-                              {(memberName || 'M').charAt(0).toUpperCase()}
-                            </Text>
-                          )}
-                        </View>
-
-                        <View style={styles.memberNameBox}>
-                          <View style={styles.nameBadgeRow}>
-                            <Text
-                              style={[
-                                styles.optionMemberName,
-                                isViewer && styles.optionMemberNameUser,
-                              ]}
-                            >
-                              {memberName}
-                            </Text>
-                            {isViewer && (
-                              <View style={styles.youBadge}>
-                                <Text style={styles.youBadgeText}>YOU</Text>
-                              </View>
-                            )}
-                          </View>
-                          {m.upiId && (
-                            <Text style={styles.optionVpaText}>{m.upiId}</Text>
-                          )}
-                        </View>
-                      </View>
-
-                      {isSelected ? (
-                        <View style={styles.selectedCheck}>
-                          <Check size={14} color={THEME.colors.primaryForeground} strokeWidth={3} />
-                        </View>
-                      ) : (
-                        <View style={styles.unselectedRadio} />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── 6. Group Selection Modal (Website Parity & Shared Default Group) ── */}
-      <Modal
-        visible={showGroupModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowGroupModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.sheetBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowGroupModal(false)}
+        <ScrollView
+          style={styles.modalList}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.sheetContainer}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Select Group</Text>
-            <Text style={styles.sheetSubtitle}>
-              Select which group this settlement belongs to
-            </Text>
-
-            {/* Set as Default Toggle Card */}
-            <TouchableOpacity
-              style={styles.defaultToggleCard}
-              onPress={() => {
-                haptics.keyPress();
-                setIsDefaultGroupChecked((prev) => !prev);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.defaultCheckbox, isDefaultGroupChecked && styles.defaultCheckboxActive]}>
-                {isDefaultGroupChecked && <Check size={12} color={THEME.colors.primaryForeground} strokeWidth={3} />}
-              </View>
-              <View style={styles.defaultToggleTextCol}>
-                <Text style={styles.defaultToggleTitle}>Set as default group</Text>
-                <Text style={styles.defaultToggleSub}>Auto-select when settling from homescreen</Text>
-              </View>
-              <Star
-                size={18}
-                color={isDefaultGroupChecked ? THEME.colors.primary : THEME.colors.textMuted}
-                fill={isDefaultGroupChecked ? THEME.colors.primary : 'transparent'}
-              />
-            </TouchableOpacity>
-
-            {/* Search Box */}
-            <View style={styles.sheetSearchBox}>
-              <Search size={15} color={THEME.colors.textMuted} />
-              <TextInput
-                style={styles.sheetSearchInput}
-                placeholder="Search your groups..."
-                placeholderTextColor={THEME.colors.textMuted}
-                value={groupSearch}
-                onChangeText={setGroupSearch}
-              />
+          {members.length === 0 ? (
+            <View style={styles.modalEmptyBox}>
+              <Text style={styles.modalEmptyText}>No members available</Text>
             </View>
+          ) : (
+            members.map((m, idx) => {
+              const isSelected = activePicker === 'payer' ? m.id === payerId : m.id === receiverId;
+              const isViewer = m.id === currentUserId;
+              const memberName = isViewer && currentUserName && currentUserName !== 'You'
+                ? currentUserName
+                : m.name;
+              const isLast = idx === members.length - 1;
 
-            {/* Groups List */}
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetList}>
-              {groups
-                .filter((g) => g.name.toLowerCase().includes(groupSearch.toLowerCase()))
-                .map((grp) => {
-                  const isSelected = grp.id === selectedGroupId;
-                  const isDefault = grp.id === defaultGroupId;
-                  return (
-                    <TouchableOpacity
-                      key={grp.id}
-                      style={[styles.sheetGroupRow, isSelected && styles.sheetGroupRowActive]}
-                      onPress={() => handleSelectGroup(grp.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.groupAvatarWrap}>
-                        {grp.coverImageUrl ? (
-                          <Image source={{ uri: grp.coverImageUrl }} style={styles.groupAvatarImg} />
-                        ) : (
-                          <Text style={styles.groupAvatarInitial}>{grp.name.charAt(0)}</Text>
+              return (
+                <TouchableOpacity
+                  key={m.id || idx}
+                  style={[styles.memberOptionRow, !isLast && styles.memberOptionBorder]}
+                  activeOpacity={0.7}
+                  onPress={() => handleSelectMember(m.id)}
+                >
+                  <View style={styles.memberLeft}>
+                    <View style={styles.avatarCircleSmall}>
+                      {m.avatarUrl ? (
+                        <Image source={{ uri: m.avatarUrl }} style={styles.avatarImg} />
+                      ) : (
+                        <Text style={styles.avatarSmallText}>
+                          {(memberName || 'M').charAt(0).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={styles.memberNameBox}>
+                      <View style={styles.nameBadgeRow}>
+                        <Text
+                          style={[
+                            styles.optionMemberName,
+                            isViewer && styles.optionMemberNameUser,
+                          ]}
+                        >
+                          {memberName}
+                        </Text>
+                        {isViewer && (
+                          <View style={styles.youBadge}>
+                            <Text style={styles.youBadgeText}>YOU</Text>
+                          </View>
                         )}
                       </View>
-                      <View style={styles.groupInfoCol}>
-                        <View style={styles.groupNameRow}>
-                          <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
-                            {grp.name}
-                          </Text>
-                          {isDefault && (
-                            <View style={styles.defaultBadge}>
-                              <Star size={9} color={THEME.colors.primary} fill={THEME.colors.primary} />
-                              <Text style={styles.defaultBadgeText}>Default</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.groupMetaText}>{grp.membersCount || 0} members</Text>
-                      </View>
-                      {isSelected && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
-                    </TouchableOpacity>
-                  );
-                })}
-            </ScrollView>
+                      {m.upiId && (
+                        <Text style={styles.optionVpaText}>{m.upiId}</Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {isSelected ? (
+                    <View style={styles.selectedCheck}>
+                      <Check size={14} color={THEME.colors.primaryForeground} strokeWidth={3} />
+                    </View>
+                  ) : (
+                    <View style={styles.unselectedRadio} />
+                  )}
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      </BottomSheetModal>
+
+      {/* ── 6. Group Selection Modal (Website Parity & Shared Default Group) ── */}
+      <BottomSheetModal
+        visible={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        title="Select Group"
+        subtitle="Select which group this settlement belongs to"
+        maxHeight="82%"
+      >
+        {/* Set as Default Toggle Card */}
+        <TouchableOpacity
+          style={styles.defaultToggleCard}
+          onPress={() => {
+            haptics.keyPress();
+            setIsDefaultGroupChecked((prev) => !prev);
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.defaultCheckbox, isDefaultGroupChecked && styles.defaultCheckboxActive]}>
+            {isDefaultGroupChecked && <Check size={12} color={THEME.colors.primaryForeground} strokeWidth={3} />}
           </View>
+          <View style={styles.defaultToggleTextCol}>
+            <Text style={styles.defaultToggleTitle}>Set as default group</Text>
+            <Text style={styles.defaultToggleSub}>Auto-select when settling from homescreen</Text>
+          </View>
+          <Star
+            size={18}
+            color={isDefaultGroupChecked ? THEME.colors.primary : THEME.colors.textMuted}
+            fill={isDefaultGroupChecked ? THEME.colors.primary : 'transparent'}
+          />
         </TouchableOpacity>
-      </Modal>
+
+        {/* Search Box */}
+        <View style={styles.sheetSearchBox}>
+          <Search size={15} color={THEME.colors.textMuted} />
+          <TextInput
+            style={styles.sheetSearchInput}
+            placeholder="Search your groups..."
+            placeholderTextColor={THEME.colors.textMuted}
+            value={groupSearch}
+            onChangeText={setGroupSearch}
+          />
+        </View>
+
+        {/* Groups List */}
+        <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetList}>
+          {groups
+            .filter((g) => g.name.toLowerCase().includes(groupSearch.toLowerCase()))
+            .map((grp) => {
+              const isSelected = grp.id === selectedGroupId;
+              const isDefault = grp.id === defaultGroupId;
+              return (
+                <TouchableOpacity
+                  key={grp.id}
+                  style={[styles.sheetGroupRow, isSelected && styles.sheetGroupRowActive]}
+                  onPress={() => handleSelectGroup(grp.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.groupAvatarWrap}>
+                    {grp.coverImageUrl ? (
+                      <Image source={{ uri: grp.coverImageUrl }} style={styles.groupAvatarImg} />
+                    ) : (
+                      <Text style={styles.groupAvatarInitial}>{grp.name.charAt(0)}</Text>
+                    )}
+                  </View>
+                  <View style={styles.groupInfoCol}>
+                    <View style={styles.groupNameRow}>
+                      <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
+                        {grp.name}
+                      </Text>
+                      {isDefault && (
+                        <View style={styles.defaultBadge}>
+                          <Star size={9} color={THEME.colors.primary} fill={THEME.colors.primary} />
+                          <Text style={styles.defaultBadgeText}>Default</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.groupMetaText}>{grp.membersCount || 0} members</Text>
+                  </View>
+                  {isSelected && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
+                </TouchableOpacity>
+              );
+            })}
+        </ScrollView>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }
