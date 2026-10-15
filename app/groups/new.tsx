@@ -21,7 +21,7 @@ import { useCurrency } from '../../src/contexts/currency.context';
 export default function NewGroupModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { currencyCode, currencySymbol } = useCurrency();
+  const { currencyCode } = useCurrency();
   const [name, setName] = useState('');
   const [category, setCategory] = useState<'trip' | 'home' | 'couple' | 'other'>('trip');
   const [memberInput, setMemberInput] = useState('');
@@ -160,20 +160,6 @@ export default function NewGroupModal() {
             </View>
           </View>
 
-          {/* Default Currency Badge */}
-          <View style={styles.inputGroup}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <Text style={styles.inputLabel}>DEFAULT CURRENCY</Text>
-              <Text style={{ fontSize: 11, color: THEME.colors.textMuted }}>Configured in Preferences</Text>
-            </View>
-            <View style={styles.pillRow}>
-              <View style={[styles.pillButton, styles.pillButtonActive, { paddingHorizontal: 16 }]}>
-                <Text style={[styles.pillText, styles.pillTextActive, { fontWeight: '700' }]}>
-                  {currencySymbol} {currencyCode}
-                </Text>
-              </View>
-            </View>
-          </View>
 
           {/* Members Field */}
           <View style={styles.inputGroup}>

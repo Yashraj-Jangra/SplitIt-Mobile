@@ -1,6 +1,14 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Removed Default Currency Option from Group Creation & Settings (`app/groups/new.tsx`, `app/groups/[id]/settings.tsx`)**:
+  - Removed the visual "DEFAULT CURRENCY" badge / input section (`{currencySymbol} {currencyCode}`) from `app/groups/new.tsx`.
+  - Preserved background payload default (`currency: currencyCode`) for API contract consistency with backend endpoints.
+  - Verified `app/groups/[id]/settings.tsx` and related group settings screens remain free of redundant currency selection options.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Fixed "useAuth must be used within an AuthProvider" Render Error (`src/contexts/auth.context.tsx`, `app/_layout.tsx`)**:
   - **Identified Root Cause**:
     - In `app/_layout.tsx`, `NavigationGate` previously returned early with `<View style={styles.loadingContainer}>` while `isLoading` was true. This unmounted the `<Stack>` navigator during startup hydration. Expo Router's route loader then attempted to evaluate and render `app/(auth)/login.tsx` outside of the mounted Navigator hierarchy.
