@@ -17,12 +17,14 @@ import {
   ShoppingBag,
   Palmtree,
   Home,
+  X,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { balanceService, UserBalanceSummary } from '../../src/services/balance.service';
+import { demoService } from '../../src/services/demo.service';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
@@ -49,6 +51,22 @@ export default function HomeScreen() {
     );
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [isDemoDismissed, setIsDemoDismissed] = useState(() => demoService.isDemoDismissedSync(currentUser?.id));
+
+  // Surface interactive sample data indicator
+  const isDemoActive =
+    !isDemoDismissed &&
+    (groups.some((g) => g.id.startsWith('demo_')) || recentTransactions.some((t) => t.id.startsWith('demo_')));
+
+  const handleDismissDemo = async () => {
+    haptics.saveSuccess();
+    setIsDemoDismissed(true);
+    await demoService.dismissDemoMode(currentUser?.id);
+    groupService.clearCache();
+    expenseService.clearCache();
+    balanceService.clearCache();
+    await loadData();
+  };
 
   const loadData = async () => {
     try {
@@ -72,6 +90,9 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (authUser && !currentUser) setCurrentUser(authUser);
+    if (authUser?.id) {
+      setIsDemoDismissed(demoService.isDemoDismissedSync(authUser.id));
+    }
     // 0ms Fast Tick: Hydrate immediately from persistent offline storage
     Promise.all([
       authService.getCachedUser(),
@@ -165,6 +186,49 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Interactive Startup Guide / Demo Mode Notice Banner */}
+        {isDemoActive && (
+          <View style={styles.demoBanner}>
+            <View style={styles.demoBannerHeader}>
+              <View style={styles.demoBadge}>
+                <Sparkles size={12} color={THEME.colors.primary} />
+                <Text style={styles.demoBadgeText}>SAMPLE DATA · STARTUP GUIDE</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleDismissDemo}
+                style={styles.demoDismissIconBtn}
+                accessibilityLabel="Dismiss sample data banner"
+                activeOpacity={0.7}
+              >
+                <X size={16} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.demoBannerDescription}>
+              This is interactive sample data to show how SplitIt tracks balances, simplifies debts, and visualizes spending. Add your first real expense or tap dismiss to start fresh.
+            </Text>
+
+            <View style={styles.demoActionsRow}>
+              <TouchableOpacity
+                style={styles.demoDismissBtn}
+                onPress={handleDismissDemo}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.demoDismissBtnText}>Dismiss Sample Data</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.demoAddExpenseBtn}
+                onPress={handleAddExpense}
+                activeOpacity={0.85}
+              >
+                <Plus size={14} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
+                <Text style={styles.demoAddExpenseBtnText}>Add Expense</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Modern Fintech Balance Widget with Dedicated Non-Overlapping Sparkline Track */}
         {loading && !balanceSummary ? (
@@ -318,50 +382,69 @@ export default function HomeScreen() {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pebblesScroll}>
-            {groups.slice(0, 5).map((group) => {
-              const isOwed = group.userNetBalance > 0;
-              const isOwe = group.userNetBalance < 0;
+            {groups.length > 0 ? (
+              groups.slice(0, 5).map((group) => {
+                const isOwed = group.userNetBalance > 0;
+                const isOwe = group.userNetBalance < 0;
 
-              return (
-                <TouchableOpacity
-                  key={group.id}
-                  style={styles.groupPebble}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    haptics.tap();
-                    router.push(`/groups/${group.id}`);
-                  }}
-                >
-                  <View style={styles.pebbleIconBox}>
-                    {group.coverImageUrl ? (
-                      <Image source={{ uri: group.coverImageUrl }} style={styles.pebbleCoverImage} />
-                    ) : (
-                      <View style={styles.pebbleInitialBox}>
-                        <Text style={styles.pebbleInitialText}>{group.name.charAt(0)}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <Text style={styles.pebbleTitle} numberOfLines={1}>
-                    {group.name}
-                  </Text>
-
-                  <Text
-                    style={[
-                      styles.pebbleBalance,
-                      isOwed && { color: THEME.colors.primary },
-                      isOwe && { color: THEME.colors.negative },
-                    ]}
+                return (
+                  <TouchableOpacity
+                    key={group.id}
+                    style={styles.groupPebble}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      haptics.tap();
+                      router.push(`/groups/${group.id}`);
+                    }}
                   >
-                    {isOwed
-                      ? `+₹${group.userNetBalance.toLocaleString('en-IN')}`
-                      : isOwe
-                      ? `-₹${Math.abs(group.userNetBalance).toLocaleString('en-IN')}`
-                      : 'Settled'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+                    <View style={styles.pebbleIconBox}>
+                      {group.coverImageUrl ? (
+                        <Image source={{ uri: group.coverImageUrl }} style={styles.pebbleCoverImage} />
+                      ) : (
+                        <View style={styles.pebbleInitialBox}>
+                          <Text style={styles.pebbleInitialText}>{group.name.charAt(0)}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text style={styles.pebbleTitle} numberOfLines={1}>
+                      {group.name}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.pebbleBalance,
+                        isOwed && { color: THEME.colors.primary },
+                        isOwe && { color: THEME.colors.negative },
+                      ]}
+                    >
+                      {isOwed
+                        ? `+₹${group.userNetBalance.toLocaleString('en-IN')}`
+                        : isOwe
+                        ? `-₹${Math.abs(group.userNetBalance).toLocaleString('en-IN')}`
+                        : 'Settled'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <TouchableOpacity
+                style={styles.emptyGroupCard}
+                activeOpacity={0.8}
+                onPress={() => {
+                  haptics.tap();
+                  router.push('/groups/new');
+                }}
+              >
+                <View style={styles.emptyGroupIconCircle}>
+                  <Plus size={18} color={THEME.colors.primary} />
+                </View>
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={styles.emptyGroupTitle}>No groups yet</Text>
+                  <Text style={styles.emptyGroupSubtitle}>Create a circle to start splitting</Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
 
@@ -832,5 +915,118 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: THEME.colors.textMuted,
     marginTop: 1,
+  },
+  // Startup Guide Banner
+  demoBanner: {
+    backgroundColor: 'rgba(16, 185, 129, 0.07)',
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.28)',
+    padding: 16,
+    marginVertical: 8,
+    gap: 12,
+  },
+  demoBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  demoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  demoBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: THEME.colors.primary,
+  },
+  demoDismissIconBtn: {
+    padding: 4,
+  },
+  demoBannerDescription: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: THEME.colors.textSecondary,
+    fontWeight: '400',
+  },
+  demoActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 2,
+  },
+  demoDismissBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: THEME.radius.md,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  demoDismissBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+  },
+  demoAddExpenseBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: THEME.radius.md,
+    backgroundColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  demoAddExpenseBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primaryForeground,
+  },
+
+  // Empty Group Card
+  emptyGroupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    borderRadius: THEME.radius.xl,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginRight: 12,
+    width: 240,
+  },
+  emptyGroupIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  emptyGroupTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  emptyGroupSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
   },
 });

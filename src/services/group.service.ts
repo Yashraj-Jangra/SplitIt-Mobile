@@ -1,6 +1,8 @@
 import { simplifyDebts } from '@splitit/core';
 import * as SecureStore from 'expo-secure-store';
-import { authService, API_BASE_URL } from './auth.service';
+import { authService } from './auth.service';
+import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
+import { demoService } from './demo.service';
 import { settingsService } from './settings.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { THEME } from '../constants/theme';
@@ -378,11 +380,7 @@ export const groupService = {
       const token = await authService.getToken();
       if (token) {
         const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}/members`, {
-          headers: {
-            'Accept': 'application/json',
-            Authorization: `Bearer ${token}`,
-            Cookie: `better-auth.session_token=${token}`,
-          },
+          headers: getAuthenticatedHeaders(token),
         });
         if (res.ok) {
           const membersData = await res.json();
@@ -414,41 +412,46 @@ export const groupService = {
   async getUserGroups(options?: GetUserGroupsOptions): Promise<GroupListItem[]> {
     if (!options?.forceRefresh) {
       if (_cachedGroups.length > 0) {
-        return _cachedGroups;
+        const valid = _cachedGroups.filter((g) => g.id !== '1' && g.id !== '2' && g.id !== '3' && g.id !== '4');
+        if (valid.length !== _cachedGroups.length) {
+          _cachedGroups = valid;
+        }
+        if (_cachedGroups.length > 0) return _cachedGroups;
       }
       const offlineGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
       if (offlineGroups && offlineGroups.length > 0) {
-        _cachedGroups = offlineGroups;
-        return offlineGroups;
+        const sanitized = offlineGroups.filter((g) => g.id !== '1' && g.id !== '2' && g.id !== '3' && g.id !== '4');
+        if (sanitized.length > 0) {
+          _cachedGroups = sanitized;
+          return sanitized;
+        } else {
+          await storageService.removeItem(STORAGE_KEYS.GROUPS);
+        }
       }
     }
 
     try {
       const token = await authService.getToken();
+      const currentUser = await authService.getCachedUser();
+      const currentUserId = currentUser?.id || '';
+
       if (token) {
         const res = await fetch(`${API_BASE_URL}/api/groups`, {
-          headers: {
-            'Accept': 'application/json',
-            Authorization: `Bearer ${token}`,
-            Cookie: `better-auth.session_token=${token}`,
-          },
+          headers: getAuthenticatedHeaders(token),
         });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
-            const currentUser = await authService.getCachedUser();
-            const currentUserId = currentUser?.id || '';
+            if (data.length > 0) {
+              await demoService.dismissDemoMode(currentUserId);
+            }
 
             let balanceResults: PromiseSettledResult<any>[] = [];
-            if (!options?.skipBalances) {
+            if (!options?.skipBalances && data.length > 0) {
               balanceResults = await Promise.allSettled(
                 data.map((g: any) =>
                   fetch(`${API_BASE_URL}/api/groups/${g.id}/balances`, {
-                    headers: {
-                      'Accept': 'application/json',
-                      Authorization: `Bearer ${token}`,
-                      Cookie: `better-auth.session_token=${token}`,
-                    },
+                    headers: getAuthenticatedHeaders(token),
                   }).then((r) => (r.ok ? r.json() : []))
                 )
               );
@@ -500,9 +503,20 @@ export const groupService = {
                 createdAt: g.createdAt,
               };
             });
+
             _cachedGroups = mapped;
             await storageService.setItem(STORAGE_KEYS.GROUPS, mapped);
-            return mapped;
+
+            if (mapped.length > 0) {
+              return mapped;
+            }
+
+            const isDemoActive = await demoService.isDemoModeActive(currentUserId);
+            if (isDemoActive) {
+              return demoService.getDemoGroups(currentUser?.name);
+            }
+
+            return [];
           }
         }
       }
@@ -510,94 +524,29 @@ export const groupService = {
       // Offline fallback
     }
 
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
+
     const offlineGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
     if (offlineGroups && offlineGroups.length > 0) {
-      _cachedGroups = offlineGroups;
-      return offlineGroups;
+      const sanitized = offlineGroups.filter((g) => g.id !== '1' && g.id !== '2' && g.id !== '3' && g.id !== '4');
+      if (sanitized.length > 0) {
+        _cachedGroups = sanitized;
+        return sanitized;
+      }
     }
 
     if (_cachedGroups.length > 0) {
-      return _cachedGroups;
+      const sanitized = _cachedGroups.filter((g) => g.id !== '1' && g.id !== '2' && g.id !== '3' && g.id !== '4');
+      if (sanitized.length > 0) return sanitized;
     }
 
-    _cachedGroups = [
-      {
-        id: '1',
-        name: 'Apartment Flatmates 🏠',
-        description: 'Rent, groceries, Wi-Fi, electricity, and house supplies',
-        coverImageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
-        categoryIcon: 'Home',
-        membersCount: 4,
-        members: [
-          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u4', name: 'Aman Verma', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' },
-        ],
-        totalExpenses: 48200,
-        userNetBalance: -1250,
-        archived: false,
-        updatedAt: '2026-10-14T19:30:00.000Z',
-        createdAt: '2026-09-01T10:00:00.000Z',
-      },
-      {
-        id: '2',
-        name: 'Weekend Treks ⛰️',
-        description: 'Kalsubai peak sunrise trail and camping tents',
-        coverImageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop',
-        categoryIcon: 'Mountain',
-        membersCount: 4,
-        members: [
-          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u4', name: 'Aman Verma', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u5', name: 'Sneha Rao', avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=120&auto=format&fit=crop' },
-        ],
-        totalExpenses: 12800,
-        userNetBalance: 0,
-        archived: false,
-        updatedAt: '2026-10-13T12:00:00.000Z',
-        createdAt: '2026-09-10T11:00:00.000Z',
-      },
-      {
-        id: '3',
-        name: 'Foodies & Dinners ☕',
-        description: 'Friday craft beer tastings and weekend buffet brunches',
-        coverImageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1200&auto=format&fit=crop',
-        categoryIcon: 'Utensils',
-        membersCount: 3,
-        members: [
-          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u3', name: 'Priya Patel', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u5', name: 'Sneha Rao', avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=120&auto=format&fit=crop' },
-        ],
-        totalExpenses: 18400,
-        userNetBalance: 850,
-        archived: false,
-        updatedAt: '2026-10-12T15:45:00.000Z',
-        createdAt: '2026-09-15T09:30:00.000Z',
-      },
-      {
-        id: '4',
-        name: 'Office Lunch Crew 🥗',
-        description: 'Daily team lunches and coffee runs',
-        coverImageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop',
-        categoryIcon: 'Coffee',
-        membersCount: 3,
-        members: [
-          { id: 'u1', name: 'You', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u2', name: 'Rohit Sharma', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
-          { id: 'u4', name: 'Aman Verma', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' },
-        ],
-        totalExpenses: 9200,
-        userNetBalance: 1200,
-        archived: false,
-        updatedAt: '2026-10-10T08:15:00.000Z',
-        createdAt: '2026-09-20T14:20:00.000Z',
-      },
-    ];
+    const isDemoActive = await demoService.isDemoModeActive(currentUserId);
+    if (isDemoActive) {
+      return demoService.getDemoGroups(currentUser?.name);
+    }
 
-    return _cachedGroups;
+    return [];
   },
 
   /**
@@ -605,6 +554,15 @@ export const groupService = {
    * If backend is not available locally, returns real matching data for the requested group.
    */
   async getGroupDetails(groupId: string, options?: { forceRefresh?: boolean }): Promise<GroupDetailData> {
+    if (groupId.startsWith('demo_')) {
+      const currentUser = await authService.getCachedUser();
+      const demoDetail = demoService.getDemoGroupDetails(groupId, currentUser?.name);
+      if (demoDetail) {
+        _groupDetailsMap.set(groupId, demoDetail);
+        return demoDetail;
+      }
+    }
+
     if (!options?.forceRefresh) {
       const inMemory = _groupDetailsMap.get(groupId);
       if (inMemory) return inMemory;
@@ -622,11 +580,7 @@ export const groupService = {
 
     try {
       if (token) {
-        const headers: Record<string, string> = {
-          'Accept': 'application/json',
-          Authorization: `Bearer ${token}`,
-          Cookie: `better-auth.session_token=${token}`,
-        };
+        const headers = getAuthenticatedHeaders(token);
 
         const [groupRes, expensesRes, balancesRes, historyRes, settlementsRes] = await Promise.allSettled([
           fetch(`${API_BASE_URL}/api/groups/${groupId}`, { headers }),
@@ -986,272 +940,35 @@ export const groupService = {
 
     // Match requested group by ID from active user groups
     const allUserGroups = await this.getUserGroups();
-    const matching = allUserGroups.find((g) => g.id === groupId) || allUserGroups[0];
+    const matching = allUserGroups.find((g) => g.id === groupId);
 
-    const baseMembers: GroupMember[] = matching?.members?.map((m, idx) => ({
+    const baseMembers: GroupMember[] = (matching?.members || []).map((m) => ({
       id: m.id,
       name: m.name,
       avatarUrl: m.avatarUrl,
-      netBalance: m.name === 'You' ? (matching.userNetBalance || 0) : (idx === 1 ? -(matching.userNetBalance || 0) : 0),
-      upiId: m.name === 'You' ? (currentUser?.upiId || 'you@upi') : `${m.id}@okhdfc`,
-    })) || [
-      { id: 'u1', name: 'You', netBalance: matching?.userNetBalance || 0, avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
-      { id: 'u2', name: 'Rohit Sharma', netBalance: -(matching?.userNetBalance || 0), avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
-    ];
-
-    const debts = simplifyDebts(
-      baseMembers.map((m) => ({ user: { uid: m.id }, netBalance: m.netBalance }))
-    );
-    const memberNameMap = new Map(baseMembers.map((m) => [m.id, m.name]));
-    const simplifiedDebts: SimplifiedDebt[] = debts.map((d) => ({
-      fromUserId: d.from.uid,
-      fromName: memberNameMap.get(d.from.uid) || 'Member',
-      toUserId: d.to.uid,
-      toName: memberNameMap.get(d.to.uid) || 'Member',
-      amount: d.amount,
-      currency: 'INR',
+      netBalance: 0,
+      upiId: m.name === 'You' ? (currentUser?.upiId || 'you@upi') : undefined,
     }));
 
-    // Generate matching expenses tailored to the group's theme
-    let groupExpenses: GroupExpense[] = [];
-    if (matching.name.includes('Apartment') || matching.name.includes('Flatmates')) {
-      groupExpenses = [
-        {
-          id: 'exp_apt_1',
-          title: 'Monthly Flat Rent & Maintenance',
-          amount: 28000,
-          currency: 'INR',
-          paidById: 'u2',
-          paidByName: 'Rohit Sharma',
-          date: '01 Oct',
-          rawDate: '2026-10-01T09:00:00.000Z',
-          category: { master: 'Housing', sub: 'Rent' },
-          yourShare: 7000,
-          yourImpact: 'owe',
-          userShareStatus: 'owe',
-          netAmount: -7000,
-        },
-        {
-          id: 'exp_apt_2',
-          title: 'High-Speed Fiber Internet Bill',
-          amount: 1499,
-          currency: 'INR',
-          paidById: 'u1',
-          paidByName: 'You',
-          date: 'Yesterday, 8:30 PM',
-          rawDate: new Date(Date.now() - 86400000).toISOString(),
-          category: { master: 'Utilities', sub: 'Internet' },
-          yourShare: 1124.25,
-          yourImpact: 'get',
-          userShareStatus: 'lent',
-          netAmount: 1124.25,
-        },
-        {
-          id: 'exp_apt_3',
-          title: 'Supermarket Groceries & Water Cans',
-          amount: 3850,
-          currency: 'INR',
-          paidById: 'u1',
-          paidByName: 'You',
-          date: '04 Oct, 7:15 PM',
-          rawDate: '2026-10-04T19:15:00.000Z',
-          category: { master: 'Food and Drink', sub: 'Groceries' },
-          yourShare: 2887.5,
-          yourImpact: 'get',
-          userShareStatus: 'lent',
-          netAmount: 2887.5,
-        },
-      ];
-    } else if (matching.name.includes('Trek') || matching.name.includes('Mountain')) {
-      groupExpenses = [
-        {
-          id: 'exp_trk_1',
-          title: 'Camping Tents & Sleeping Bags',
-          amount: 4800,
-          currency: 'INR',
-          paidById: 'u1',
-          paidByName: 'You',
-          date: 'Yesterday',
-          rawDate: new Date(Date.now() - 86400000).toISOString(),
-          category: { master: 'Entertainment', sub: 'Sports' },
-          yourShare: 3600,
-          yourImpact: 'get',
-          userShareStatus: 'lent',
-          netAmount: 3600,
-        },
-        {
-          id: 'exp_trk_2',
-          title: 'Trail Guide & Forest Entry Permits',
-          amount: 2200,
-          currency: 'INR',
-          paidById: 'u2',
-          paidByName: 'Rohit Sharma',
-          date: '03 Oct',
-          rawDate: '2026-10-03T10:00:00.000Z',
-          category: { master: 'Transportation', sub: 'Taxi' },
-          yourShare: 550,
-          yourImpact: 'owe',
-          userShareStatus: 'owe',
-          netAmount: -550,
-        },
-      ];
-    } else if (matching.name.includes('Foodies') || matching.name.includes('Dinner') || matching.name.includes('Lunch')) {
-      groupExpenses = [
-        {
-          id: 'exp_foo_1',
-          title: 'Friday Craft Brewery & Taproom',
-          amount: 5400,
-          currency: 'INR',
-          paidById: 'u1',
-          paidByName: 'You',
-          date: 'Today, 9:00 PM',
-          rawDate: new Date().toISOString(),
-          category: { master: 'Food and Drink', sub: 'Dining Out' },
-          yourShare: 3600,
-          yourImpact: 'get',
-          userShareStatus: 'lent',
-          netAmount: 3600,
-        },
-        {
-          id: 'exp_foo_2',
-          title: 'Sunday Brunch Buffet',
-          amount: 3200,
-          currency: 'INR',
-          paidById: 'u3',
-          paidByName: 'Priya Patel',
-          date: 'Yesterday',
-          rawDate: new Date(Date.now() - 86400000).toISOString(),
-          category: { master: 'Food and Drink', sub: 'Dining Out' },
-          yourShare: 1066.67,
-          yourImpact: 'owe',
-          userShareStatus: 'owe',
-          netAmount: -1066.67,
-        },
-      ];
-    }
-
     const fallbackResult: GroupDetailData = {
-      id: matching.id || groupId,
-      name: matching.name,
-      description: matching.description,
-      coverImageUrl: matching.coverImageUrl,
+      id: matching?.id || groupId,
+      name: matching?.name || 'Group',
+      description: matching?.description,
+      coverImageUrl: matching?.coverImageUrl,
       currency: 'INR',
-      categoryIcon: matching.categoryIcon || 'Users',
-      totalGroupSpend: matching.totalExpenses || 0,
-      yourNetBalance: matching.userNetBalance || 0,
+      categoryIcon: matching?.categoryIcon || 'Users',
+      totalGroupSpend: matching?.totalExpenses || 0,
+      yourNetBalance: matching?.userNetBalance || 0,
       members: baseMembers,
-      expenses: groupExpenses,
-      settlements: [
-        {
-          id: `stl_${matching.id || groupId}_1`,
-          groupId: matching.id || groupId,
-          amount: 1500,
-          currency: 'INR',
-          date: '02 Oct',
-          rawDate: '2026-10-02T10:00:00.000Z',
-          payerId: baseMembers[1]?.id || 'u2',
-          payerName: baseMembers[1]?.name || 'Rohit Sharma',
-          payerAvatarUrl: baseMembers[1]?.avatarUrl,
-          payeeId: baseMembers[0]?.id || 'u1',
-          payeeName: baseMembers[0]?.name || 'You',
-          payeeAvatarUrl: baseMembers[0]?.avatarUrl,
-          notes: 'Monthly settlement adjustment',
-          method: 'upi',
-        },
-      ],
-      simplifiedDebts,
+      expenses: [],
+      settlements: [],
+      simplifiedDebts: [],
       budget: {
-        monthlyLimit: Math.max(30000, (matching.totalExpenses || 20000) * 1.3),
-        enabled: true,
-        alertThresholds: [75, 90, 100],
-        categoryLimits: {
-          'Food and Drink': 20000,
-          'Housing': 30000,
-          'Utilities': 5000,
-        },
-        totalMonthlyLimit: Math.max(30000, (matching.totalExpenses || 20000) * 1.3),
-        totalSpent: matching.totalExpenses || 0,
-        currency: 'INR',
-        daysRemaining: 10,
-        safeDailyAllowance: 1250,
-        categories: [
-          { name: 'Food and Drink', limit: 20000, spent: 14000, color: THEME.colors.categories.food },
-          { name: 'Housing', limit: 30000, spent: 28000, color: THEME.colors.categories.housing },
-          { name: 'Utilities', limit: 5000, spent: 2500, color: THEME.colors.categories.utilities },
-        ],
+        monthlyLimit: 0,
+        enabled: false,
       },
-      activities: [
-        {
-          id: 'act_1',
-          type: 'expense_created',
-          actorName: 'You',
-          description: `recorded expense in ${matching.name}`,
-          timeAgo: '2h ago',
-        },
-      ],
-      history: [
-        {
-          id: 'hist_exp_1',
-          groupId: matching.id || groupId,
-          eventType: 'expense_created',
-          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-          actor: { uid: 'u1', name: 'You', firstName: 'You', role: 'user' },
-          description: `You added "${groupExpenses[0]?.title || 'Expense'}"`,
-          data: {
-            expenseId: groupExpenses[0]?.id || 'exp_1',
-            date: new Date().toISOString(),
-          },
-          restored: false,
-        },
-        {
-          id: 'hist_exp_2',
-          groupId: matching.id || groupId,
-          eventType: 'expense_updated',
-          timestamp: new Date(Date.now() - 3600000 * 6).toISOString(),
-          actor: { uid: 'u2', name: 'Rohit Sharma', firstName: 'Rohit', lastName: 'Sharma', role: 'user' },
-          description: `Rohit Sharma updated "${groupExpenses[1]?.title || 'Expense'}"`,
-          data: {
-            expenseId: groupExpenses[1]?.id || 'exp_2',
-            date: new Date(Date.now() - 86400000).toISOString(),
-            changes: [
-              { field: 'Amount', from: '₹1,200', to: '₹1,499', type: 'changed' },
-              { field: 'Split', from: "changed Rohit's share from ₹600 to ₹750; added Priya who paid ₹0", type: 'changed' },
-            ],
-          },
-          restored: false,
-        },
-        {
-          id: 'hist_exp_3',
-          groupId: matching.id || groupId,
-          eventType: 'budget_updated',
-          timestamp: new Date(Date.now() - 3600000 * 18).toISOString(),
-          actor: { uid: 'system', name: 'SplitIt AI', firstName: 'SplitIt', role: 'admin' },
-          description: 'SplitIt AI optimized group category budget thresholds',
-          data: {
-            aiInitiated: true,
-            monthlyBudgetUnchanged: true,
-            currentMonthlyLimit: 30000,
-            changes: [
-              { field: 'Food & Drink', from: '₹18,000', to: '₹20,000', type: 'changed' },
-              { field: 'Housing', from: '₹32,000', to: '₹30,000', type: 'changed' },
-            ],
-          },
-          restored: false,
-        },
-        {
-          id: 'hist_exp_del',
-          groupId: matching.id || groupId,
-          eventType: 'expense_deleted',
-          timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-          actor: { uid: 'u1', name: 'You', firstName: 'You', role: 'user' },
-          description: 'You deleted "Snacks & Evening Drinks"',
-          data: {
-            expenseId: 'del_mock_99',
-            date: new Date(Date.now() - 86400000 * 2).toISOString(),
-          },
-          restored: false,
-        },
-      ],
+      activities: [],
+      history: [],
     };
 
     _groupDetailsMap.set(groupId, fallbackResult);
@@ -1269,17 +986,15 @@ export const groupService = {
   }): Promise<{ success: boolean; id: string }> {
     try {
       const token = await authService.getToken();
+      const currentUser = await authService.getCachedUser();
       const res = await fetch(`${API_BASE_URL}/api/groups`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || ''}`,
-          Cookie: `better-auth.session_token=${token || ''}`,
-        },
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify(data),
       });
       if (res.ok) {
         const result = await res.json();
+        await demoService.dismissDemoMode(currentUser?.id);
         return result;
       }
     } catch {
@@ -1312,12 +1027,7 @@ export const groupService = {
       if (token) {
         const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            Authorization: `Bearer ${token}`,
-            Cookie: `better-auth.session_token=${token}`,
-          },
+          headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
           body: JSON.stringify(updates),
         });
         if (res.ok) {
@@ -1350,11 +1060,7 @@ export const groupService = {
       if (token) {
         const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}/archive`, {
           method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            Authorization: `Bearer ${token}`,
-            Cookie: `better-auth.session_token=${token}`,
-          },
+          headers: getAuthenticatedHeaders(token),
         });
         if (res.ok) {
           const match = _cachedGroups.find((g) => g.id === groupId);
@@ -1382,11 +1088,7 @@ export const groupService = {
       if (token) {
         const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
           method: 'DELETE',
-          headers: {
-            'Accept': 'application/json',
-            Authorization: `Bearer ${token}`,
-            Cookie: `better-auth.session_token=${token}`,
-          },
+          headers: getAuthenticatedHeaders(token),
         });
         if (res.ok) {
           _cachedGroups = _cachedGroups.filter((g) => g.id !== groupId);
@@ -1432,13 +1134,7 @@ export const groupService = {
   async getGroupHistory(groupId: string): Promise<HistoryEventItem[]> {
     const token = await authService.getToken();
     try {
-      const headers: Record<string, string> = {
-        Accept: 'application/json',
-      };
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-        headers.Cookie = `better-auth.session_token=${token}`;
-      }
+      const headers = getAuthenticatedHeaders(token);
       const res = await fetch(`${API_BASE_URL}/api/history?groupId=${groupId}`, { headers });
       if (res.ok) {
         const data = await res.json();
@@ -1476,14 +1172,7 @@ export const groupService = {
   async restoreExpense(historyEventId: string, actorId: string): Promise<string | null> {
     const token = await authService.getToken();
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      };
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-        headers.Cookie = `better-auth.session_token=${token}`;
-      }
+      const headers = getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' });
       const res = await fetch(`${API_BASE_URL}/api/history/restore`, {
         method: 'POST',
         headers,
@@ -1630,12 +1319,7 @@ export const groupService = {
 
     try {
       if (token) {
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-          Cookie: `better-auth.session_token=${token}`,
-        };
+        const headers = getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' });
 
         const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
           method: 'PATCH',
@@ -1672,5 +1356,9 @@ export const groupService = {
         await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), stored);
       }
     }
+  },
+  clearCache(): void {
+    _cachedGroups = [];
+    _groupDetailsMap.clear();
   },
 };

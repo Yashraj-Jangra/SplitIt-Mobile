@@ -263,7 +263,7 @@ export default function AiChatModal() {
         id: 'budget',
         title: 'Suggest budget cuts',
         description: groupName ? `Optimize caps for ${groupName}` : 'Auto-balance group categories to stay under limit',
-        prompt: groupName ? `Suggest budget cuts for ${groupName}` : 'Suggest budget cuts for Apartment Flatmates',
+        prompt: groupName ? `Suggest budget cuts for ${groupName}` : 'Suggest budget cuts for my groups',
         icon: TrendingDown,
         accentColor: THEME.colors.aiLight,
         badgeBg: 'rgba(139, 92, 246, 0.12)',
@@ -294,7 +294,7 @@ export default function AiChatModal() {
   const followUpChips = useMemo(
     () => [
       { label: 'Who owes what?', icon: Scale, prompt: 'How much do I owe, and who owes me right now?' },
-      { label: 'Budget cuts', icon: TrendingDown, prompt: groupName ? `Suggest budget cuts for ${groupName}` : 'Suggest budget cuts for Apartment Flatmates' },
+      { label: 'Budget cuts', icon: TrendingDown, prompt: groupName ? `Suggest budget cuts for ${groupName}` : 'Suggest budget cuts for my groups' },
       { label: 'Top expenses', icon: Receipt, prompt: 'What was our largest expense this month?' },
       { label: 'Spending velocity', icon: TrendingUp, prompt: "What's our spending trend this month vs last month?" },
     ],

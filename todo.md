@@ -1,7 +1,34 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
-- **Brand Logo Overhaul & Auth Origin/CSRF Hardening (`assets/`, `app.json`, `src/components/brand/QuantumLogo.tsx`, `src/services/auth.service.ts`, native drawables)**:
+- **Purged Mock Data Leaks, Hardened API Headers, and Implemented Client-Side Demo Startup Guide (`src/services/api-headers.ts`, `src/services/demo.service.ts`, `src/data/demoData.ts`, `src/services/group.service.ts`, `src/services/balance.service.ts`, `src/services/expense.service.ts`, `src/services/notification.service.ts`, `src/services/ai.service.ts`, `src/contexts/auth.context.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`, `app/ai/chat.tsx`)**:
+  - **Identified & Fixed Root Cause for Mixed Mock/Real Data**:
+    - Better-Auth and Next.js backend enforce origin security (`Origin: https://split.cvweb.qzz.io`, `Referer`, and HTTPS `__Secure-better-auth.session_token` / `better-auth.session_token` cookies). Mobile requests previously omitted these, triggering 403 `MISSING_OR_NULL_ORIGIN` or 401 rejections.
+    - When `groupRes.ok` was false, `group.service.ts` fell through to hardcoded mock groups (`Apartment Flatmates 🏠`, `Weekend Treks ⛰️`, `Foodies & Dinners ☕`, `Goa Roadtrip 🏖️`), caching them into AsyncStorage and cascading mock balances into `balance.service.ts` and fake Rohit/Priya notifications into `notification.service.ts`.
+  - **Complete Mock Data Purge for Real Users**:
+    - Created `src/services/api-headers.ts` providing centralized `getAuthenticatedHeaders(token)` with strict origin, referer, bearer token, and dual session cookies.
+    - Purged all 240+ lines of fallback mock groups, fake Rohit/Aman members, and fake expenses (`del_mock_99`) from `src/services/group.service.ts`.
+    - Removed synthetic transaction spikes (`base * 0.25`, `800`) from `src/services/balance.service.ts`. Empty accounts now render a clean flat 0 baseline chart.
+    - Purged fake offline notifications from `src/services/notification.service.ts` (returns `[]` if no real notifications).
+    - Removed hardcoded "Apartment Flatmates" references from `src/services/ai.service.ts` and `app/ai/chat.tsx`.
+    - Fixed `app/(tabs)/groups.tsx` bug where `setGroups` was skipped when groups array was empty, ensuring empty states now render reliably.
+  - **Client-Side Curated Demo Mode & Startup Guide**:
+    - Created `src/data/demoData.ts` with two cohesive, realistic sample circles:
+      - `Flat 302 Flatmates 🏡`: Fiber Wi-Fi (₹1,499), groceries (₹2,850), and deep home cleaning (₹1,200) with `@splitit/core` simplified debt graph.
+      - `Goa Weekend Getaway 🌊`: Beachside villa (₹16,000), seafood dinner (₹4,800), and scooter rentals (₹3,200).
+    - Created `src/services/demo.service.ts` managing client-side dismissal state (`splitit_demo_mode_dismissed_v1_<userId>`) strictly inside React Native `AsyncStorage` (never synced to the server).
+    - Added glowing **Startup Guide Banner** on dashboard:
+      - `SAMPLE DATA · STARTUP GUIDE` badge with sparkles icon.
+      - Clear guidance: "This is interactive sample data to show how SplitIt tracks balances, simplifies debts, and visualizes spending. Add your first real expense or tap dismiss to start fresh."
+      - Tactile action buttons: 1-tap "Dismiss Sample Data" and "+ Add Expense".
+    - Auto-dismissal: Creating any real expense or group, or logging into an account with existing data automatically and permanently dismisses demo mode.
+  - **Cross-Account Session Isolation**:
+    - Updated `src/contexts/auth.context.tsx` and all services with `clearCache()` methods.
+    - On sign out or new login, all in-memory caches and user-specific storage keys (`STORAGE_KEYS.GROUPS`, `USER_TRANSACTIONS`, `BALANCE_SUMMARY`) are invalidated to prevent any cross-account data leaks.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
   - **Identified & Fixed Root Cause for Missing Logo**:
     - Discovered `assets/android-icon-background.png` was Expo default light-blue (`#E6F4FE`) paired with a faint white line arc, rendering the home screen launcher icon completely blank/invisible on phones.
     - Generated full suite of studio-quality brand assets: `assets/icon.png` (1024x1024), `assets/android-icon-foreground.png` (512x512 with safe-zone margin), `assets/android-icon-background.png` (`#131417`), `assets/android-icon-monochrome.png` (432x432 white silhouette), `assets/splash-icon.png` (512x512), and `assets/brand/logo-badge.png` (256x256).

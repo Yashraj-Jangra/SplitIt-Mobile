@@ -1,5 +1,6 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import { authService, API_BASE_URL } from './auth.service';
+import { authService } from './auth.service';
+import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
 
 export interface BudgetProposalCategoryChange {
   name: string;
@@ -46,10 +47,7 @@ export const aiService = {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/ai/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || ''}`,
-        },
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           message: prompt,
           prompt,
@@ -101,7 +99,7 @@ export const aiService = {
 
     if (abortSignal?.aborted) return;
 
-    // High-quality local offline simulation for instant UI responsiveness
+    // Clean local offline fallback for instant UI responsiveness
     const lower = prompt.toLowerCase();
     let reply = '';
     let mockProposal: BudgetActionProposal | null = null;
@@ -109,27 +107,15 @@ export const aiService = {
     if (lower.includes('budget') || lower.includes('reduce') || lower.includes('cut')) {
       onStatus?.({ stage: 'calculating', message: 'Analyzing spending velocity & category caps...' });
       reply =
-        'I analyzed your **Apartment Flatmates** spending velocity. You are currently tracking at **72% of your ₹48,000 monthly limit** with 10 days remaining.\n\nTo keep your group burn rate healthy, I generated an auto-balancing proposal: reduce **Entertainment** by ₹2,000 and allocate it toward **Food and Drink** to prevent end-of-month budget breaches.';
-      mockProposal = {
-        id: `prop_${Date.now()}`,
-        groupId: groupId || 'default',
-        groupName: 'Apartment Flatmates 🏠',
-        totalMonthlyLimit: 48000,
-        aiReasoning: 'Shift ₹2,000 from Entertainment to Food & Drink based on recent grocery velocity.',
-        status: 'pending',
-        categoryChanges: [
-          { name: 'Entertainment', old: 7000, new: 5000, diff: -2000 },
-          { name: 'Food and Drink', old: 20000, new: 22000, diff: 2000 },
-        ],
-      };
+        'I am analyzing your group spending velocity. Category allocations and spending caps can be configured in group budget settings.\\n\\nKeep recording regular circle expenses to unlock tailored auto-balancing proposals and category recommendations.';
     } else if (lower.includes('owe') || lower.includes('balance') || lower.includes('who')) {
-      onStatus?.({ stage: 'ledger', message: 'Computing simplified debt graph...' });
+      onStatus?.({ stage: 'ledger', message: 'Checking active debt graph...' });
       reply =
-        'Here is your current standing in **Apartment Flatmates**:\n\n• **Net Balance**: You owe **-₹1,250.00**\n• You owe **Rohit Sharma** **₹1,250.00**\n• All other members are currently settled up\n\nAll debts have been greedily simplified via `@splitit/core` to minimize total transactions.';
+        'All your active groups are currently settled up, or no pending balances are recorded.\\n\\nWhen new expenses are added, SplitIt automatically simplifies debts using `@splitit/core` to minimize total transactions across your circles.';
     } else {
       onStatus?.({ stage: 'thinking', message: 'Synthesizing financial advice...' });
       reply =
-        `I am your **SplitIt AI Financial Assistant**.\n\nI can help you audit group expenses, calculate safe daily burn rates, detect category spending spikes, and formulate 1-tap budget proposals. Try asking: *"How much do I owe?"* or *"Suggest budget cuts for Apartment Flatmates"*!`;
+        `I am your **SplitIt AI Financial Assistant**.\\n\\nI can help you audit group expenses, calculate safe daily burn rates, detect category spending spikes, and formulate 1-tap budget proposals. Try asking: *"How much do I owe?"* or *"Analyze our group budget"*!`;
     }
 
     await new Promise((r) => setTimeout(r, 350));
@@ -190,9 +176,13 @@ export const aiService = {
       } as any);
 
       // Upload and OCR
+      const uploadHeaders = getAuthenticatedHeaders(token);
+      // Remove default Content-Type so fetch sets multipart boundary automatically
+      delete (uploadHeaders as any)['Content-Type'];
+
       const uploadRes = await fetch(`${API_BASE_URL}/api/upload/receipt`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token || ''}` },
+        headers: uploadHeaders,
         body: formData,
       });
 
@@ -200,10 +190,7 @@ export const aiService = {
         const { url } = await uploadRes.json();
         const ocrRes = await fetch(`${API_BASE_URL}/api/ai/scan-receipt`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token || ''}`,
-          },
+          headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({ imageUrl: url }),
         });
 

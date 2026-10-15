@@ -1,4 +1,6 @@
-import { authService, API_BASE_URL } from './auth.service';
+import { authService } from './auth.service';
+import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
+import { demoService } from './demo.service';
 import { parseComplexChange, ParsedChange } from '@splitit/core';
 import { groupService } from './group.service';
 import { settingsService } from './settings.service';
@@ -213,26 +215,31 @@ export const expenseService = {
 
       if (!token) {
         const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
-        return cached || [];
+        if (cached && cached.length > 0) return cached;
+        const isDemoActive = await demoService.isDemoModeActive(currentUserId);
+        if (isDemoActive) return demoService.getDemoExpenses(currentUser?.name);
+        return [];
       }
 
       const res = await fetch(`${API_BASE_URL}/api/expenses`, {
-        headers: {
-          'Accept': 'application/json',
-          Authorization: `Bearer ${token}`,
-          Cookie: `better-auth.session_token=${token}`,
-        },
+        headers: getAuthenticatedHeaders(token),
       });
 
       if (!res.ok) {
         const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
-        return cached || [];
+        if (cached && cached.length > 0) return cached;
+        const isDemoActive = await demoService.isDemoModeActive(currentUserId);
+        if (isDemoActive) return demoService.getDemoExpenses(currentUser?.name);
+        return [];
       }
 
       const raw = await res.json();
       if (!Array.isArray(raw)) {
         const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
-        return cached || [];
+        if (cached && cached.length > 0) return cached;
+        const isDemoActive = await demoService.isDemoModeActive(currentUserId);
+        if (isDemoActive) return demoService.getDemoExpenses(currentUser?.name);
+        return [];
       }
 
       let groupNameMap = new Map<string, string>();
@@ -320,9 +327,20 @@ export const expenseService = {
         };
       });
 
+      if (mapped.length > 0) {
+        await demoService.dismissDemoMode(currentUserId);
+      }
+
       // Persist user transactions for instant offline rendering
       _cachedUserExpenses = mapped;
       await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS, mapped);
+
+      if (mapped.length === 0) {
+        const isDemoActive = await demoService.isDemoModeActive(currentUserId);
+        if (isDemoActive) {
+          return demoService.getDemoExpenses(currentUser?.name);
+        }
+      }
 
       // Pre-warm individual expense detail caches if payers and participants exist
       for (const item of mapped) {
@@ -370,8 +388,13 @@ export const expenseService = {
 
       return mapped;
     } catch {
+      const currentUser = await authService.getCachedUser();
+      const currentUserId = currentUser?.id || '';
       const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
-      return cached || [];
+      if (cached && cached.length > 0) return cached;
+      const isDemoActive = await demoService.isDemoModeActive(currentUserId);
+      if (isDemoActive) return demoService.getDemoExpenses(currentUser?.name);
+      return [];
     }
   },
 
@@ -383,13 +406,17 @@ export const expenseService = {
     const currentUser = await authService.getCachedUser();
     const currentUserId = currentUser?.id || 'u1';
 
+    if (expenseId.startsWith('demo_')) {
+      const demoDetail = demoService.getDemoExpenseDetails(expenseId, currentUser?.name);
+      if (demoDetail) {
+        _cachedExpenseDetailsMap.set(expenseId, demoDetail);
+        return demoDetail;
+      }
+    }
+
     try {
       if (token) {
-        const headers: Record<string, string> = {
-          'Accept': 'application/json',
-          Authorization: `Bearer ${token}`,
-          Cookie: `better-auth.session_token=${token}`,
-        };
+        const headers = getAuthenticatedHeaders(token);
 
         const expenseUrl = groupId
           ? `${API_BASE_URL}/api/expenses/${expenseId}?groupId=${groupId}`
@@ -770,12 +797,7 @@ export const expenseService = {
 
       const res = await fetch(`${API_BASE_URL}/api/expenses/${expenseId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          Authorization: `Bearer ${token}`,
-          Cookie: `better-auth.session_token=${token}`,
-        },
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify(bodyPayload),
       });
 
@@ -838,14 +860,10 @@ export const expenseService = {
         masterCategory: resolvedMasterCategory,
       };
 
+      const currentUser = await authService.getCachedUser();
       const res = await fetch(`${API_BASE_URL}/api/expenses`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          Authorization: `Bearer ${token}`,
-          Cookie: `better-auth.session_token=${token}`,
-        },
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify(bodyPayload),
       });
 
@@ -854,6 +872,7 @@ export const expenseService = {
         return { success: false, error: data.error || `Error: ${res.status}` };
       }
 
+      await demoService.dismissDemoMode(currentUser?.id);
       return { success: true, id: data.id };
     } catch (err: any) {
       return { success: false, error: err.message || 'Network error creating expense' };
@@ -870,16 +889,17 @@ export const expenseService = {
 
       const res = await fetch(`${API_BASE_URL}/api/expenses/${expenseId}?groupId=${groupId}&amount=${amount}`, {
         method: 'DELETE',
-        headers: {
-          'Accept': 'application/json',
-          Authorization: `Bearer ${token}`,
-          Cookie: `better-auth.session_token=${token}`,
-        },
+        headers: getAuthenticatedHeaders(token),
       });
 
       return res.ok;
     } catch {
       return false;
     }
+  },
+  clearCache(): void {
+    _cachedUserExpenses = [];
+    _cachedExpenseDetailsMap.clear();
+    _commentsCache.clear();
   },
 };

@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService, AuthUser, AuthResponse } from '../services/auth.service';
+import { groupService } from '../services/group.service';
+import { expenseService } from '../services/expense.service';
+import { balanceService } from '../services/balance.service';
+import { notificationService } from '../services/notification.service';
+import { demoService } from '../services/demo.service';
+import { storageService, STORAGE_KEYS } from '../services/storage.service';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -50,7 +56,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     rehydrateAuth();
   }, []);
 
+  const clearUserDataCaches = async () => {
+    groupService.clearCache();
+    expenseService.clearCache();
+    balanceService.clearCache();
+    notificationService.clearCache();
+    demoService.clearCache();
+  };
+
   const signInWithEmail = async (email: string, password: string): Promise<AuthResponse> => {
+    await clearUserDataCaches();
     const res = await authService.signInWithEmail(email, password);
     if (res.success && res.user) {
       setUser(res.user);
@@ -59,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUpWithEmail = async (name: string, email: string, password: string): Promise<AuthResponse> => {
+    await clearUserDataCaches();
     const res = await authService.signUpWithEmail(name, email, password);
     if (res.success && res.user) {
       setUser(res.user);
@@ -67,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async (): Promise<AuthResponse> => {
+    await clearUserDataCaches();
     const res = await authService.signInWithGoogle();
     if (res.success && res.user) {
       setUser(res.user);
@@ -75,6 +92,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    await clearUserDataCaches();
+    await storageService.removeItem(STORAGE_KEYS.GROUPS);
+    await storageService.removeItem(STORAGE_KEYS.USER_TRANSACTIONS);
+    await storageService.removeItem(STORAGE_KEYS.BALANCE_SUMMARY);
     await authService.clearSession();
     setUser(null);
   };

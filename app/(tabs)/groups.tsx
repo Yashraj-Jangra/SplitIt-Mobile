@@ -113,9 +113,7 @@ export default function GroupsScreen() {
   const loadGroups = async () => {
     try {
       const data = await groupService.getUserGroups();
-      if (data && data.length > 0) {
-        setGroups(data);
-      }
+      setGroups(data || []);
     } catch {
       // Fallback
     } finally {
@@ -143,8 +141,8 @@ export default function GroupsScreen() {
     (async () => {
       try {
         const data = await groupService.getUserGroups();
-        if (isMounted && data && data.length > 0) {
-          setGroups(data);
+        if (isMounted) {
+          setGroups(data || []);
         }
       } catch {
         // Fallback

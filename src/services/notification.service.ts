@@ -2,7 +2,8 @@ import type * as NotificationsType from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
-import { authService, API_BASE_URL } from './auth.service';
+import { authService } from './auth.service';
+import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
 import { THEME } from '../constants/theme';
 
 const DEVICE_ID_KEY = 'splitit_device_id';
@@ -193,10 +194,7 @@ export const notificationService = {
       // Post to backend
       await fetch(`${API_BASE_URL}/api/push/subscribe`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || ''}`,
-        },
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           platform: 'expo',
           deviceId,
@@ -218,9 +216,7 @@ export const notificationService = {
     try {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/notifications`, {
-        headers: {
-          Authorization: `Bearer ${token || ''}`,
-        },
+        headers: getAuthenticatedHeaders(token),
       });
       if (res.ok) {
         const data = await res.json();
@@ -244,99 +240,7 @@ export const notificationService = {
     }
 
     if (_cachedNotifications.length > 0) return _cachedNotifications;
-
-    // High quality offline fallback items aligned with website notification catalog
-    const fallback: InAppNotification[] = [
-      {
-        id: 'notif_1',
-        type: 'expense_added',
-        title: 'New Expense Added',
-        body: 'Rohit added "High-speed Fiber Internet" (₹1,499.00) in Apartment Flatmates',
-        message: 'Rohit added "High-speed Fiber Internet" (₹1,499.00) in Apartment Flatmates',
-        read: false,
-        isRead: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-        actor: { firstName: 'Rohit', lastName: 'Sharma' },
-        groupId: '1',
-        expenseId: 'e1',
-        data: { groupId: '1', expenseId: 'e1' },
-      },
-      {
-        id: 'notif_2',
-        type: 'settlement_added',
-        title: 'Payment Received',
-        body: 'Priya settled ₹1,500.00 with you via UPI in Apartment Flatmates',
-        message: 'Priya settled ₹1,500.00 with you via UPI in Apartment Flatmates',
-        read: false,
-        isRead: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-        actor: { firstName: 'Priya', lastName: 'Patel' },
-        groupId: '1',
-        settlementId: 's1',
-        data: { groupId: '1', settlementId: 's1' },
-      },
-      {
-        id: 'notif_3',
-        type: 'budget_alert',
-        title: 'Budget Approaching Limit ⚠️',
-        body: 'Apartment Flatmates has reached 75% of monthly spending target with 10 days left',
-        message: 'Apartment Flatmates has reached 75% of monthly spending target with 10 days left',
-        read: false,
-        isRead: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-        groupId: '1',
-        data: { groupId: '1' },
-      },
-      {
-        id: 'notif_4',
-        type: 'payment_reminder',
-        title: 'Payment Reminder',
-        body: 'Aman requested settlement of ₹450.00 for Weekend Dinner in Apartment Flatmates',
-        message: 'Aman requested settlement of ₹450.00 for Weekend Dinner in Apartment Flatmates',
-        read: true,
-        isRead: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
-        actor: { firstName: 'Aman', lastName: 'Verma' },
-        groupId: '1',
-        data: { groupId: '1' },
-      },
-      {
-        id: 'notif_5',
-        type: 'budget_exceeded',
-        title: 'Budget Exceeded 🚨',
-        body: 'Monthly dining budget exceeded by ₹2,400.00 in Apartment Flatmates',
-        message: 'Monthly dining budget exceeded by ₹2,400.00 in Apartment Flatmates',
-        read: false,
-        isRead: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 28).toISOString(),
-        groupId: '1',
-        data: { groupId: '1' },
-      },
-      {
-        id: 'notif_6',
-        type: 'support_reply',
-        title: 'Support Ticket Update',
-        body: 'Agent replied to Ticket #SP-104: "UPI QR verification is resolved"',
-        message: 'Agent replied to Ticket #SP-104: "UPI QR verification is resolved"',
-        read: true,
-        isRead: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-        data: { ticketId: 'SP-104' },
-      },
-      {
-        id: 'notif_7',
-        type: 'broadcast_announcement',
-        title: 'SplitIt 2.0 Released 🎉',
-        body: 'Enjoy real-time settlements, category analytics, and AI receipt scanning in SplitIt.',
-        message: 'Enjoy real-time settlements, category analytics, and AI receipt scanning in SplitIt.',
-        read: true,
-        isRead: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-      },
-    ];
-
-    _cachedNotifications = fallback;
-    return fallback;
+    return [];
   },
 
   /**
@@ -347,10 +251,7 @@ export const notificationService = {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || ''}`,
-        },
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ read: true }),
       });
       return res.ok;
@@ -367,9 +268,7 @@ export const notificationService = {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/notifications/mark-all-read`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token || ''}`,
-        },
+        headers: getAuthenticatedHeaders(token),
       });
       return res.ok;
     } catch {
@@ -384,9 +283,7 @@ export const notificationService = {
     try {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/notifications/prefs`, {
-        headers: {
-          Authorization: `Bearer ${token || ''}`,
-        },
+        headers: getAuthenticatedHeaders(token),
       });
       if (res.ok) {
         const data = await res.json();
@@ -413,10 +310,7 @@ export const notificationService = {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/notifications/prefs`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || ''}`,
-        },
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify(prefs),
       });
       return res.ok;
@@ -450,5 +344,8 @@ export const notificationService = {
     } catch {
       return { remove: () => {} };
     }
+  },
+  clearCache(): void {
+    _cachedNotifications = [];
   },
 };

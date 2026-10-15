@@ -1,5 +1,7 @@
-import { authService, API_BASE_URL } from './auth.service';
-import { groupService, GroupListItem } from './group.service';
+import { authService } from './auth.service';
+import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
+import { demoService } from './demo.service';
+import { groupService } from './group.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import {
   simplifyDebts,
@@ -48,10 +50,18 @@ export const balanceService = {
   },
 
   /**
+   * Clear in-memory balance summary cache on sign-out or account switch.
+   */
+  clearCache(): void {
+    _cachedBalanceSummary = null;
+  },
+
+  /**
    * Fetches and computes the comprehensive user financial balance summary:
-   * 1. Aggregates P2P debt simplifications across all user groups.
-   * 2. Computes total owed to user and total user owes.
-   * 3. Calculates 30-day cumulative net balance history with zero-split gradient offset.
+   * 1. If in demo mode with sample groups: returns curated demo financial summary.
+   * 2. Aggregates P2P debt simplifications across all real user groups.
+   * 3. Computes total owed to user and total user owes.
+   * 4. Calculates 30-day cumulative net balance history with zero-split gradient offset (flat 0 if empty).
    */
   async getUserBalanceSummary(): Promise<UserBalanceSummary> {
     try {
@@ -61,16 +71,29 @@ export const balanceService = {
 
       const groups = await groupService.getUserGroups();
 
+      // Check if user is currently viewing demo mode
+      const hasDemoGroups = groups.some((g) => g.id.startsWith('demo_'));
+      if (hasDemoGroups) {
+        const demoSummary = demoService.getDemoBalanceSummary();
+        _cachedBalanceSummary = demoSummary;
+        return demoSummary;
+      }
+
+      if (groups.length === 0) {
+        const isDemoActive = await demoService.isDemoModeActive(currentUserId);
+        if (isDemoActive) {
+          const demoSummary = demoService.getDemoBalanceSummary();
+          _cachedBalanceSummary = demoSummary;
+          return demoSummary;
+        }
+      }
+
       let expensesRaw: any[] = [];
       let settlementsRaw: any[] = [];
       const groupBalancesArrays: any[][] = [];
 
       if (token) {
-        const headers: Record<string, string> = {
-          'Accept': 'application/json',
-          Authorization: `Bearer ${token}`,
-          Cookie: `better-auth.session_token=${token}`,
-        };
+        const headers = getAuthenticatedHeaders(token);
 
         const [expensesRes, settlementsRes, ...groupBalanceResults] = await Promise.allSettled([
           fetch(`${API_BASE_URL}/api/expenses`, { headers }),
@@ -84,7 +107,12 @@ export const balanceService = {
 
         if (expensesRes.status === 'fulfilled' && expensesRes.value.ok) {
           const expData = await expensesRes.value.json().catch(() => []);
-          if (Array.isArray(expData)) expensesRaw = expData;
+          if (Array.isArray(expData)) {
+            expensesRaw = expData;
+            if (expData.length > 0) {
+              await demoService.dismissDemoMode(currentUserId);
+            }
+          }
         }
 
         if (settlementsRes.status === 'fulfilled' && settlementsRes.value.ok) {
@@ -126,7 +154,7 @@ export const balanceService = {
         else if (net < -0.01) calculatedTotalOwe += Math.abs(net);
       }
 
-      // If P2P map has no live debts or preview mode with mock groups
+      // If P2P map has no live debts, check real group userNetBalance sums
       if (calculatedTotalOwed === 0 && calculatedTotalOwe === 0 && groups.length > 0) {
         calculatedTotalOwed = groups.reduce(
           (acc, g) => acc + (g.userNetBalance > 0 ? g.userNetBalance : 0),
@@ -173,29 +201,7 @@ export const balanceService = {
         }
       });
 
-      // 3. Fallback progression if no historical transactions recorded yet
-      if (transactions.length === 0) {
-        const now = new Date();
-        const d1 = new Date(now); d1.setDate(d1.getDate() - 25);
-        const d2 = new Date(now); d2.setDate(d2.getDate() - 18);
-        const d3 = new Date(now); d3.setDate(d3.getDate() - 11);
-        const d4 = new Date(now); d4.setDate(d4.getDate() - 4);
-
-        if (netBalance >= 0) {
-          const base = netBalance > 0 ? netBalance : 800;
-          transactions.push({ date: d1, amount: Number((base * 0.25).toFixed(2)) });
-          transactions.push({ date: d2, amount: Number((base * 0.40).toFixed(2)) });
-          transactions.push({ date: d3, amount: Number((-base * 0.15).toFixed(2)) });
-          transactions.push({ date: d4, amount: Number((base * 0.50).toFixed(2)) });
-        } else {
-          const abs = Math.abs(netBalance);
-          transactions.push({ date: d1, amount: Number((-abs * 0.30).toFixed(2)) });
-          transactions.push({ date: d2, amount: Number((-abs * 0.50).toFixed(2)) });
-          transactions.push({ date: d3, amount: Number((abs * 0.20).toFixed(2)) });
-          transactions.push({ date: d4, amount: Number((-abs * 0.40).toFixed(2)) });
-        }
-      }
-
+      // Calculate 30-day balance history strictly from real transactions (no synthetic spikes)
       const history: BalanceHistoryCalculation = calculateBalanceHistory(transactions, 30);
 
       const result: UserBalanceSummary = {
@@ -220,7 +226,7 @@ export const balanceService = {
         return cached;
       }
 
-      // Safe fallback
+      // Safe clean empty fallback
       const defaultHistory = calculateBalanceHistory([], 30);
       return {
         netBalance: 0,
