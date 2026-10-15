@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Receipt } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
@@ -22,6 +22,7 @@ import { useAuth } from '../../src/contexts/auth.context';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { haptics } from '../../src/services/haptics.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 
 export default function ActivityScreen() {
   const router = useRouter();
@@ -48,12 +49,12 @@ export default function ActivityScreen() {
     await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS(uid), []);
     await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY(uid), null);
     setTransactions([]);
-    await loadData();
+    await loadData(true);
   };
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     try {
-      const data = await expenseService.getUserExpenses(30);
+      const data = await expenseService.getUserExpenses(30, { forceRefresh });
       setTransactions(data || []);
     } catch {
       // Graceful fallback
@@ -74,13 +75,28 @@ export default function ActivityScreen() {
         setLoading(false);
       }
     });
-    loadData();
+    loadData(false);
   }, [authUser]);
+
+  // Screen focus: background refresh when navigating to Activity screen
+  useFocusEffect(
+    useCallback(() => {
+      loadData(false);
+    }, [])
+  );
+
+  // Global event listener: auto re-fetch activity when any expense/settlement/group changes
+  useEffect(() => {
+    const unsubscribe = appEventEmitter.on('data-changed', () => {
+      loadData(true);
+    });
+    return unsubscribe;
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
     haptics.tap();
-    loadData();
+    loadData(true);
   };
 
   return (

@@ -7,6 +7,7 @@ import { settingsService } from './settings.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { THEME } from '../constants/theme';
 import { GroupSettlementItem } from './settlement.service';
+import { appEventEmitter } from './event-emitter';
 
 const DEFAULT_GROUP_STORAGE_KEY = 'splitit_default_group_id';
 
@@ -1071,9 +1072,9 @@ export const groupService = {
       if (res.ok) {
         const result = await res.json();
         // Clear cached groups so next fetch reloads authoritatively from server
-        _cachedGroups = [];
-        _groupDetailsMap.delete(result.id);
+        this.invalidateCache();
         await storageService.removeItem(STORAGE_KEYS.GROUPS(currentUserId));
+        appEventEmitter.emit('data-changed', { type: 'group_created', groupId: result.id });
         return { success: true, id: result.id };
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -1115,12 +1116,13 @@ export const groupService = {
           body: JSON.stringify(updates),
         });
         if (res.ok) {
-          _groupDetailsMap.delete(groupId);
+          this.invalidateCache(groupId);
           const match = _cachedGroups.find((g) => g.id === groupId);
           if (match) {
             if (updates.name) match.name = updates.name;
             if (updates.description) match.description = updates.description;
           }
+          appEventEmitter.emit('data-changed', { type: 'group_updated', groupId });
           return true;
         }
       }
@@ -1149,7 +1151,8 @@ export const groupService = {
           body: JSON.stringify({ memberIds }),
         });
         if (res.ok) {
-          _groupDetailsMap.delete(groupId);
+          this.invalidateCache(groupId);
+          appEventEmitter.emit('data-changed', { type: 'members_updated', groupId });
           return true;
         }
         const err = await res.json().catch(() => ({}));
@@ -1176,7 +1179,8 @@ export const groupService = {
           }
         );
         if (res.ok) {
-          _groupDetailsMap.delete(groupId);
+          this.invalidateCache(groupId);
+          appEventEmitter.emit('data-changed', { type: 'members_updated', groupId });
           return true;
         }
         const err = await res.json().catch(() => ({}));
@@ -1202,7 +1206,8 @@ export const groupService = {
         if (res.ok) {
           const match = _cachedGroups.find((g) => g.id === groupId);
           if (match) match.archived = true;
-          _groupDetailsMap.delete(groupId);
+          this.invalidateCache(groupId);
+          appEventEmitter.emit('data-changed', { type: 'group_archived', groupId });
           return true;
         }
         const err = await res.json().catch(() => ({}));
@@ -1233,7 +1238,8 @@ export const groupService = {
         if (res.ok) {
           const match = _cachedGroups.find((g) => g.id === groupId);
           if (match) match.archived = false;
-          _groupDetailsMap.delete(groupId);
+          this.invalidateCache(groupId);
+          appEventEmitter.emit('data-changed', { type: 'group_updated', groupId });
           return true;
         }
         const err = await res.json().catch(() => ({}));
@@ -1263,7 +1269,8 @@ export const groupService = {
         });
         if (res.ok) {
           _cachedGroups = _cachedGroups.filter((g) => g.id !== groupId);
-          _groupDetailsMap.delete(groupId);
+          this.invalidateCache(groupId);
+          appEventEmitter.emit('data-changed', { type: 'group_deleted', groupId });
           return true;
         }
         const err = await res.json().catch(() => ({}));
@@ -1536,6 +1543,16 @@ export const groupService = {
         _groupDetailsMap.set(groupId, { ...stored });
         await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId), stored);
       }
+    }
+    this.invalidateCache(groupId);
+    appEventEmitter.emit('data-changed', { type: 'budget_updated', groupId });
+  },
+  invalidateCache(groupId?: string): void {
+    _cachedGroups = [];
+    if (groupId) {
+      _groupDetailsMap.delete(groupId);
+    } else {
+      _groupDetailsMap.clear();
     }
   },
   clearCache(): void {

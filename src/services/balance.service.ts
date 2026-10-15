@@ -64,14 +64,17 @@ export const balanceService = {
    * 3. Computes total owed to user and total user owes.
    * 4. Calculates 30-day cumulative net balance history with zero-split gradient offset (flat 0 if empty).
    */
-  async getUserBalanceSummary(): Promise<UserBalanceSummary> {
+  async getUserBalanceSummary(options?: { forceRefresh?: boolean }): Promise<UserBalanceSummary> {
+    if (options?.forceRefresh) {
+      _cachedBalanceSummary = null;
+    }
     const currentUser = await authService.getCachedUser();
     const currentUserId = currentUser?.id || 'u1';
 
     try {
       const token = await authService.getToken();
 
-      const groups = await groupService.getUserGroups();
+      const groups = await groupService.getUserGroups({ forceRefresh: options?.forceRefresh });
 
       // Check if user is currently viewing demo mode
       const hasDemoGroups = groups.some((g) => g.id.startsWith('demo_'));

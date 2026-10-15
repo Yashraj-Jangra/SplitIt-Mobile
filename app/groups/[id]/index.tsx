@@ -48,6 +48,7 @@ import {
 } from '../../../src/components/skeletons/GroupTabSkeleton';
 import { GroupHistoryTab } from '../../../src/components/groups/GroupHistoryTab';
 import { haptics } from '../../../src/services/haptics.service';
+import { appEventEmitter } from '../../../src/services/event-emitter';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
 type TabType = typeof TABS[number];
@@ -203,6 +204,23 @@ export default function GroupDetailScreen() {
       }
     });
     loadGroup();
+  }, [targetId]);
+
+  // Auto-refresh when navigating back to screen (e.g. from Add Expense, Settle Up, Group Settings)
+  useFocusEffect(
+    useCallback(() => {
+      loadGroup(true);
+    }, [targetId])
+  );
+
+  // Real-time event listener when any mutation occurs in this group or globally
+  useEffect(() => {
+    const unsubscribe = appEventEmitter.on('data-changed', (event) => {
+      if (!event?.groupId || event.groupId === targetId) {
+        loadGroup(true);
+      }
+    });
+    return unsubscribe;
   }, [targetId]);
 
   const onRefresh = () => {

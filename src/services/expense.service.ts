@@ -3,9 +3,11 @@ import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
 import { demoService } from './demo.service';
 import { parseComplexChange, ParsedChange } from '@splitit/core';
 import { groupService } from './group.service';
+import { balanceService } from './balance.service';
 import { settingsService } from './settings.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { getActiveCurrencySymbol } from '../contexts/currency.context';
+import { appEventEmitter } from './event-emitter';
 
 export interface CreateExpensePayload {
   groupId: string;
@@ -210,11 +212,15 @@ export const expenseService = {
   /**
    * Fetch recent expenses for the authenticated user across all groups.
    */
-  async getUserExpenses(limit: number = 20): Promise<UserTransactionItem[]> {
+  async getUserExpenses(limit: number = 20, options?: { forceRefresh?: boolean }): Promise<UserTransactionItem[]> {
     try {
       const token = await authService.getToken();
       const currentUser = await authService.getCachedUser();
       const currentUserId = currentUser?.id || '';
+
+      if (!options?.forceRefresh && _cachedUserExpenses.length > 0) {
+        return _cachedUserExpenses.slice(0, limit);
+      }
 
       if (!token) {
         const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS(currentUserId));
@@ -810,6 +816,11 @@ export const expenseService = {
         return { success: false, error: data.error || `HTTP ${res.status}` };
       }
 
+      this.clearCache();
+      groupService.invalidateCache(payload.groupId);
+      balanceService.clearCache();
+      appEventEmitter.emit('data-changed', { groupId: payload.groupId, type: 'expense_updated' });
+
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e.message || 'Failed to update expense' };
@@ -876,7 +887,11 @@ export const expenseService = {
         return { success: false, error: data.error || `Error: ${res.status}` };
       }
 
+      this.clearCache();
+      groupService.invalidateCache(payload.groupId);
+      balanceService.clearCache();
       await demoService.dismissDemoMode(currentUser?.id);
+      appEventEmitter.emit('data-changed', { groupId: payload.groupId, type: 'expense_created' });
       return { success: true, id: data.id };
     } catch (err: any) {
       return { success: false, error: err.message || 'Network error creating expense' };
@@ -896,7 +911,15 @@ export const expenseService = {
         headers: getAuthenticatedHeaders(token),
       });
 
-      return res.ok;
+      if (res.ok) {
+        this.clearCache();
+        groupService.invalidateCache(groupId);
+        balanceService.clearCache();
+        appEventEmitter.emit('data-changed', { groupId, type: 'expense_deleted' });
+        return true;
+      }
+
+      return false;
     } catch {
       return false;
     }

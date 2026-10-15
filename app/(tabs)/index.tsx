@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   Plus,
   Sparkles,
@@ -37,6 +37,7 @@ import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { haptics } from '../../src/services/haptics.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -77,17 +78,17 @@ export default function HomeScreen() {
     setGroups([]);
     setRecentTransactions([]);
     setBalanceSummary(null);
-    await loadData();
+    await loadData(true);
   };
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     try {
       const user = await authService.getCachedUser();
       setCurrentUser(user);
       const [groupList, txList, summary] = await Promise.all([
-        groupService.getUserGroups(),
-        expenseService.getUserExpenses(10),
-        balanceService.getUserBalanceSummary(),
+        groupService.getUserGroups({ forceRefresh }),
+        expenseService.getUserExpenses(10, { forceRefresh }),
+        balanceService.getUserBalanceSummary({ forceRefresh }),
       ]);
       setGroups(groupList);
       setRecentTransactions(txList);
@@ -121,12 +122,28 @@ export default function HomeScreen() {
         setLoading(false);
       }
     });
-    loadData();
+    loadData(false);
   }, [authUser]);
 
+  // Screen focus: background refresh when returning to HomeScreen from any modal/flow
+  useFocusEffect(
+    useCallback(() => {
+      loadData(false);
+    }, [])
+  );
+
+  // Global event listener: automatic re-sync when expense, group, or settlement is added/changed
+  useEffect(() => {
+    const unsubscribe = appEventEmitter.on('data-changed', () => {
+      loadData(true);
+    });
+    return unsubscribe;
+  }, []);
+
   const onRefresh = () => {
+    haptics.tap();
     setRefreshing(true);
-    loadData();
+    loadData(true);
   };
 
   const handleAddExpense = () => {

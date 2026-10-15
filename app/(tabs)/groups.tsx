@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -35,9 +35,10 @@ import { demoService } from '../../src/services/demo.service';
 import { MockDataBanner } from '../../src/components/common/MockDataBanner';
 import { BottomSheetModal } from '../../src/components/common/BottomSheetModal';
 import { useAuth } from '../../src/contexts/auth.context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { haptics } from '../../src/services/haptics.service';
 import { useCurrency } from '../../src/contexts/currency.context';
+import { appEventEmitter } from '../../src/services/event-emitter';
 
 type FilterType = 'all' | 'owed' | 'owe' | 'archived';
 
@@ -137,12 +138,12 @@ export default function GroupsScreen() {
     await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS(uid), []);
     await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY(uid), null);
     setGroups([]);
-    await loadGroups();
+    await loadGroups(true);
   };
 
-  const loadGroups = async () => {
+  const loadGroups = async (forceRefresh = false) => {
     try {
-      const data = await groupService.getUserGroups();
+      const data = await groupService.getUserGroups({ forceRefresh });
       setGroups(data || []);
     } catch {
       // Fallback
@@ -174,7 +175,7 @@ export default function GroupsScreen() {
 
     (async () => {
       try {
-        const data = await groupService.getUserGroups();
+        const data = await groupService.getUserGroups({ forceRefresh: false });
         if (isMounted) {
           setGroups(data || []);
         }
@@ -193,10 +194,25 @@ export default function GroupsScreen() {
     };
   }, [authUser]);
 
+  // Screen focus: background refresh when navigating back to Groups tab
+  useFocusEffect(
+    useCallback(() => {
+      loadGroups(false);
+    }, [])
+  );
+
+  // Global event listener: re-fetch groups whenever groups/expenses/settlements change
+  useEffect(() => {
+    const unsubscribe = appEventEmitter.on('data-changed', () => {
+      loadGroups(true);
+    });
+    return unsubscribe;
+  }, []);
+
   const onRefresh = () => {
     setRefreshing(true);
-    haptics.confirm();
-    loadGroups();
+    haptics.tap();
+    loadGroups(true);
   };
 
   const handleSortChange = async (newSort: SortOptionType) => {

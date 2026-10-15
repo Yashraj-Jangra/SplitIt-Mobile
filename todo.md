@@ -1,6 +1,29 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Real-Time Cross-Screen Reactivity & Deep Pull-to-Refresh Architecture (`src/services/event-emitter.ts`, `src/services/group.service.ts`, `src/services/expense.service.ts`, `src/services/balance.service.ts`, `src/services/settlement.service.ts`, `app/(tabs)/index.tsx`, `app/groups/[id]/index.tsx`, `app/(tabs)/groups.tsx`, `app/(tabs)/activity.tsx`)**:
+  - **Identified Root Causes for Stale Data & Missing Auto-Refresh**:
+    1. **Memory Cache Interception**: `groupService.getUserGroups` and `getGroupDetails` returned `_cachedGroups` or `_groupDetailsMap.get(id)` without contacting the backend when called without a force-refresh flag. Pull-to-refresh (`onRefresh`) did not pass `forceRefresh: true`, returning identical stale data on drag.
+    2. **Uncoordinated Service Mutations**: Adding/editing/deleting expenses or settlements did not invalidate the target group's cached detail, member balances, or overall user balance summary.
+    3. **Missing Focus & Cross-Screen Triggers**: Screens relied solely on initial mount `useEffect`. When returning from Add Expense, Settle Up, or Settings, screens did not re-fetch.
+  - **Shared Reactive Event Emitter Architecture (`src/services/event-emitter.ts`)**:
+    - Built `AppEventEmitter` singleton emitting `'data-changed'` with `{ groupId?: string, type?: string }` payloads.
+    - Provides clean `on(event, listener)` returning an unsubscribe callback for robust React lifecycle teardowns.
+    - Wired automatic dispatch into every mutation: `createExpense`, `updateExpense`, `deleteExpense`, `createGroup`, `updateGroup`, `addMembersToGroup`, `removeMemberFromGroup`, `archiveGroup`, `restoreGroup`, `deleteGroup`, `updateGroupBudget`, `recordSettlement`, and `deleteSettlement`.
+  - **Comprehensive In-Depth Invalidation**:
+    - Any expense or settlement mutation immediately invalidates:
+      - Memory & storage expense caches (`expenseService.clearCache()`).
+      - Target group detail & member balances (`groupService.invalidateCache(groupId)`).
+      - User financial balance summary (`balanceService.clearCache()`).
+  - **Deep Pull-to-Refresh & Screen Focus Sync**:
+    - **Homepage (`app/(tabs)/index.tsx`)**: Pull-to-refresh and `data-changed` events trigger `loadData(true)` passing `{ forceRefresh: true }` to `getUserGroups`, `getUserExpenses`, and `getUserBalanceSummary`, re-querying all groups, transactions, and net balances from the server in parallel. Added `useFocusEffect` to sync on return.
+    - **Group Detail Screen (`app/groups/[id]/index.tsx`)**: Pull-to-refresh and `data-changed` (for target group) invoke `loadGroup(true)` which fetches fresh group metadata, expenses, balances, budget stats, activity stream, and history audit logs in a single parallel batch. Added `useFocusEffect` so returning from Add Expense or Settle Up updates instantly.
+    - **Groups Tab (`app/(tabs)/groups.tsx`)**: Pull-to-refresh and `data-changed` invoke `loadGroups(true)`. Added `useFocusEffect`.
+    - **Activity Tab (`app/(tabs)/activity.tsx`)**: Pull-to-refresh and `data-changed` invoke `loadData(true)`. Added `useFocusEffect`.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Group Creation & Management 1:1 Parity with Web Platform (`src/services/group.service.ts`, `app/groups/new.tsx`, `app/groups/[id]/settings.tsx`, `app/groups/[id]/index.tsx`)**:
   - **Identified & Resolved Backend Group Creation Failure**:
     - Mobile app previously sent `memberEmails: members` and `category: category`, which failed backend validation and triggered an offline catch block that saved only local client groups (`grp_${Date.now()}`).

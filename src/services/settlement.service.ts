@@ -1,8 +1,10 @@
 import { authService, API_BASE_URL } from './auth.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { groupService } from './group.service';
-import { ExpenseHistoryLog } from './expense.service';
+import { expenseService, ExpenseHistoryLog } from './expense.service';
+import { balanceService } from './balance.service';
 import { getActiveCurrencySymbol } from '../contexts/currency.context';
+import { appEventEmitter } from './event-emitter';
 
 export interface RecordSettlementParams {
   groupId: string;
@@ -152,16 +154,18 @@ export const settlementService = {
     return [];
   },
 
-  async getSettlementDetails(settlementId: string, groupId?: string): Promise<SettlementDetailModel | null> {
-    if (_cachedSettlementDetailsMap.has(settlementId)) {
+  async getSettlementDetails(settlementId: string, groupId?: string, options?: { forceRefresh?: boolean }): Promise<SettlementDetailModel | null> {
+    if (!options?.forceRefresh && _cachedSettlementDetailsMap.has(settlementId)) {
       return _cachedSettlementDetailsMap.get(settlementId)!;
     }
 
     const currentUser = await authService.getCachedUser();
     const currentUserId = currentUser?.id || 'u1';
-    const fromStorage = await storageService.getItem<SettlementDetailModel>(
-      STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId)
-    );
+    const fromStorage = !options?.forceRefresh
+      ? await storageService.getItem<SettlementDetailModel>(
+          STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId)
+        )
+      : null;
     if (fromStorage) {
       _cachedSettlementDetailsMap.set(settlementId, fromStorage);
     }
@@ -339,6 +343,10 @@ export const settlementService = {
               cachedDetail.payee.id
             );
           }
+          expenseService.clearCache();
+          groupService.invalidateCache(groupId);
+          balanceService.clearCache();
+          appEventEmitter.emit('data-changed', { groupId, type: 'settlement_deleted' });
           return { success: true };
         }
         const data = await res.json().catch(() => ({}));
@@ -358,6 +366,10 @@ export const settlementService = {
         cachedDetail.payee.id
       );
     }
+    expenseService.clearCache();
+    groupService.invalidateCache(groupId);
+    balanceService.clearCache();
+    appEventEmitter.emit('data-changed', { groupId, type: 'settlement_deleted' });
     return { success: true };
   },
 
@@ -467,6 +479,11 @@ export const settlementService = {
             createdAt: rawDate.toISOString(),
           });
 
+          expenseService.clearCache();
+          groupService.invalidateCache(params.groupId);
+          balanceService.clearCache();
+          appEventEmitter.emit('data-changed', { groupId: params.groupId, type: 'settlement_recorded' });
+
           return { success: true, settlementId };
         }
         const data = await res.json().catch(() => ({}));
@@ -476,6 +493,10 @@ export const settlementService = {
       return { success: false, error: err?.message || 'Network error while recording settlement' };
     }
 
+    expenseService.clearCache();
+    groupService.invalidateCache(params.groupId);
+    balanceService.clearCache();
+    appEventEmitter.emit('data-changed', { groupId: params.groupId, type: 'settlement_recorded' });
     return { success: true };
   },
 
