@@ -1,6 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Fixed RNGoogleSignin TurboModule Crash in Expo Go (`src/services/auth.service.ts`)**:
+  - **Identified Root Cause**:
+    - `@react-native-google-signin/google-signin` calls `TurboModuleRegistry.getEnforcing('RNGoogleSignin')` at top-level require time. When imported statically at the root of `src/services/auth.service.ts`, running in Expo Go or any build without the native module compiled into the binary immediately caused an unhandled runtime invariant crash on app boot (`TurboModuleRegistry.getEnforcing(...): 'RNGoogleSignin' could not be found`).
+  - **Lazy, Resilient Module Loading**:
+    - Replaced the static top-level import with a lazy loader (`getNativeGoogleSignin()`) wrapped in `try/catch`.
+    - `auth.service.ts` can now be loaded cleanly in any runtime environment (Expo Go, development build, or production APK) without crashing.
+    - Updated `ensureGoogleConfigured()`, `clearSession()`, and `signInWithGoogle()` to dynamically invoke native Google Sign-In if the TurboModule is available on device, and seamlessly fall back to `WebBrowser.openAuthSessionAsync` OAuth when running in Expo Go or environments without native Play Services linking.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Robust Cross-Account Data Isolation, Total Local Purge on Logout/Switch, and Mock Data Removal Banner (`src/services/storage.service.ts`, `src/services/demo.service.ts`, `src/components/common/MockDataBanner.tsx`, `src/contexts/auth.context.tsx`, `src/services/group.service.ts`, `src/services/expense.service.ts`, `src/services/balance.service.ts`, `src/services/settlement.service.ts`, `src/services/support.service.ts`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`, `app/(tabs)/activity.tsx`)**:
   - **Identified & Resolved Cross-Account Cache Leak Root Cause**:
     - Previously, storage keys were static singletons (e.g. `splitit_cache_groups`, `splitit_cache_user_transactions`, `splitit_default_group_id`). When User A logged out and User B logged in, 0ms fast-tick hydration read User A's cached groups, balances, and expenses before server verification completed, causing temporary or persistent leakage of Account A's financial data to Account B.

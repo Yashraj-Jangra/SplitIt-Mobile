@@ -2,7 +2,28 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+
+type GoogleSigninModuleType = typeof import('@react-native-google-signin/google-signin');
+
+let _googleSigninModule: GoogleSigninModuleType | null = null;
+let _hasAttemptedLoad = false;
+
+function getNativeGoogleSignin(): GoogleSigninModuleType | null {
+  if (_hasAttemptedLoad) return _googleSigninModule;
+  _hasAttemptedLoad = true;
+  try {
+    // Lazy, resilient load of native TurboModule to prevent top-level runtime crash in Expo Go
+    const mod = require('@react-native-google-signin/google-signin');
+    if (mod && mod.GoogleSignin) {
+      _googleSigninModule = mod;
+      return _googleSigninModule;
+    }
+    return null;
+  } catch {
+    _googleSigninModule = null;
+    return null;
+  }
+}
 
 export const PRODUCTION_API_URL = 'https://split.cvweb.qzz.io';
 export const GOOGLE_WEB_CLIENT_ID =
@@ -10,17 +31,21 @@ export const GOOGLE_WEB_CLIENT_ID =
   '178311275102-ph0shfc0dhs7cfnefre0q4bue6h0knvp.apps.googleusercontent.com';
 
 let isGoogleConfigured = false;
-function ensureGoogleConfigured(): void {
-  if (isGoogleConfigured) return;
+function ensureGoogleConfigured(): boolean {
+  if (isGoogleConfigured) return true;
+  const mod = getNativeGoogleSignin();
+  if (!mod) return false;
   try {
-    GoogleSignin.configure({
+    mod.GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
       scopes: ['email', 'profile'],
       offlineAccess: false,
     });
     isGoogleConfigured = true;
+    return true;
   } catch {
     // Graceful fallback if native module not available
+    return false;
   }
 }
 
@@ -202,7 +227,10 @@ export const authService = {
       _cachedUser = null;
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       await SecureStore.deleteItemAsync(USER_KEY);
-      await GoogleSignin.signOut().catch(() => {});
+      const mod = getNativeGoogleSignin();
+      if (mod) {
+        await mod.GoogleSignin.signOut().catch(() => {});
+      }
     } catch {
       // SecureStore clear fallback
     }
@@ -289,88 +317,101 @@ export const authService = {
    * Exchanges the verified native ID token directly with Better-Auth backend.
    */
   async signInWithGoogle(): Promise<AuthResponse> {
-    try {
-      ensureGoogleConfigured();
+    const nativeModule = getNativeGoogleSignin();
 
-      // Check for Google Play Services availability
-      const hasPlay = await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      }).catch(() => false);
+    if (nativeModule) {
+      try {
+        ensureGoogleConfigured();
 
-      if (hasPlay) {
-        // Trigger native Android / iOS Google Sign-In prompt
-        const signInResult = await GoogleSignin.signIn();
+        // Check for Google Play Services availability
+        const hasPlay = await nativeModule.GoogleSignin.hasPlayServices({
+          showPlayServicesUpdateDialog: true,
+        }).catch(() => false);
 
-        if (signInResult.type === 'cancelled') {
-          return { success: false, error: 'Google sign-in was canceled' };
-        }
+        if (hasPlay) {
+          // Trigger native Android / iOS Google Sign-In prompt
+          const signInResult = await nativeModule.GoogleSignin.signIn();
 
-        if (signInResult.type === 'success' && signInResult.data.idToken) {
-          const idToken = signInResult.data.idToken;
-
-          // Exchange native verified ID token directly with Better-Auth backend
-          const res = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-              provider: 'google',
-              idToken: {
-                token: idToken,
-              },
-            }),
-          });
-
-          const data = await res.json().catch(() => ({}));
-
-          if (!res.ok || data.error) {
-            return {
-              success: false,
-              error: data.message || data.error || 'Failed to authenticate Google credentials with server',
-            };
+          if (signInResult.type === 'cancelled') {
+            return { success: false, error: 'Google sign-in was canceled' };
           }
 
-          const token = data.token || data.session?.token || (res.headers.get('set-cookie')?.match(/better-auth\.session_token=([^;]+)/)?.[1]) || 'session_active';
-          const emailVal = data.user?.email || signInResult.data.user.email || '';
-          const defaultUpi = emailVal ? `${emailVal.split('@')[0]}@okaxis` : undefined;
-          const user: AuthUser = {
-            id: data.user?.id || '',
-            name: data.user?.name || signInResult.data.user.name || 'SplitIt User',
-            email: emailVal,
-            avatarUrl: data.user?.image || signInResult.data.user.photo || undefined,
-            role: data.user?.role || 'user',
-            upiId: data.user?.upiId || defaultUpi,
-          };
+          if (signInResult.type === 'success' && signInResult.data.idToken) {
+            const idToken = signInResult.data.idToken;
 
-          await this.saveSession(token, user);
+            // Exchange native verified ID token directly with Better-Auth backend
+            const res = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                provider: 'google',
+                idToken: {
+                  token: idToken,
+                },
+              }),
+            });
 
-          // Hydrate authoritative profile with database upiId in background
-          this.fetchUserProfile(token).then((profile) => {
-            if (profile) _cachedUser = profile;
-          });
+            const data = await res.json().catch(() => ({}));
 
-          return { success: true, token, user };
-        } else if (signInResult.type === 'success' && !signInResult.data.idToken) {
+            if (!res.ok || data.error) {
+              return {
+                success: false,
+                error: data.message || data.error || 'Failed to authenticate Google credentials with server',
+              };
+            }
+
+            const token =
+              data.token ||
+              data.session?.token ||
+              res.headers.get('set-cookie')?.match(/better-auth\.session_token=([^;]+)/)?.[1] ||
+              'session_active';
+            const emailVal = data.user?.email || signInResult.data.user.email || '';
+            const defaultUpi = emailVal ? `${emailVal.split('@')[0]}@okaxis` : undefined;
+            const user: AuthUser = {
+              id: data.user?.id || '',
+              name: data.user?.name || signInResult.data.user.name || 'SplitIt User',
+              email: emailVal,
+              avatarUrl: data.user?.image || signInResult.data.user.photo || undefined,
+              role: data.user?.role || 'user',
+              upiId: data.user?.upiId || defaultUpi,
+            };
+
+            await this.saveSession(token, user);
+
+            // Hydrate authoritative profile with database upiId in background
+            this.fetchUserProfile(token).then((profile) => {
+              if (profile) _cachedUser = profile;
+            });
+
+            return { success: true, token, user };
+          } else if (signInResult.type === 'success' && !signInResult.data.idToken) {
+            return {
+              success: false,
+              error: 'Google sign-in succeeded on device but no ID token was returned. Check OAuth Web Client configuration.',
+            };
+          }
+        }
+      } catch (nativeErr: any) {
+        if (nativeErr?.code === nativeModule.statusCodes?.SIGN_IN_CANCELLED) {
+          return { success: false, error: 'Google sign-in was canceled' };
+        }
+        if (nativeErr?.code === nativeModule.statusCodes?.IN_PROGRESS) {
+          return { success: false, error: 'Google sign-in is already in progress' };
+        }
+        if (nativeErr?.code === nativeModule.statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
+          return { success: false, error: 'Google Play Services is not available on this device' };
+        }
+        // If native module is missing or failed unexpectedly and not user cancellation, fall back to WebBrowser
+        if (
+          !nativeErr?.message?.includes('RNGoogleSignin could not be found') &&
+          !nativeErr?.message?.includes('TurboModule')
+        ) {
           return {
             success: false,
-            error: 'Google sign-in succeeded on device but no ID token was returned. Check OAuth Web Client configuration.',
+            error: `Native Google Sign-In failed (${nativeErr?.code || 'error'}): ${nativeErr?.message || 'Check SHA-1 fingerprint in Google Cloud Console'}`,
           };
         }
       }
-    } catch (nativeErr: any) {
-      if (nativeErr?.code === statusCodes.SIGN_IN_CANCELLED) {
-        return { success: false, error: 'Google sign-in was canceled' };
-      }
-      if (nativeErr?.code === statusCodes.IN_PROGRESS) {
-        return { success: false, error: 'Google sign-in is already in progress' };
-      }
-      if (nativeErr?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        return { success: false, error: 'Google Play Services is not available on this device' };
-      }
-      // Return exact native error instead of silently opening browser / PWA
-      return {
-        success: false,
-        error: `Native Google Sign-In failed (${nativeErr?.code || 'error'}): ${nativeErr?.message || 'Check SHA-1 fingerprint in Google Cloud Console'}`,
-      };
     }
 
     // WebBrowser fallback for environments without native binary link (e.g. Expo Go)
