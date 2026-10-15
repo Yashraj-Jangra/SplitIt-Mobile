@@ -13,22 +13,48 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Receipt } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
+import { groupService } from '../../src/services/group.service';
+import { balanceService } from '../../src/services/balance.service';
+import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
+import { demoService } from '../../src/services/demo.service';
+import { MockDataBanner } from '../../src/components/common/MockDataBanner';
+import { useAuth } from '../../src/contexts/auth.context';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function ActivityScreen() {
   const router = useRouter();
+  const { user: authUser } = useAuth();
   const [transactions, setTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
   const [loading, setLoading] = useState(() => expenseService.getInMemoryUserExpenses().length === 0);
   const [refreshing, setRefreshing] = useState(false);
+  const [isDemoDismissed, setIsDemoDismissed] = useState(() => demoService.isDemoDismissedSync(authUser?.id));
+
+  const isDemoActive =
+    !isDemoDismissed &&
+    !demoService.isDemoDismissedSync(authUser?.id) &&
+    transactions.some((t) => t.id.startsWith('demo_'));
+
+  const handleDismissDemo = async () => {
+    haptics.saveSuccess();
+    const uid = authUser?.id || '';
+    setIsDemoDismissed(true);
+    await demoService.dismissDemoMode(uid);
+    groupService.clearCache();
+    expenseService.clearCache();
+    balanceService.clearCache();
+    await storageService.setItem(STORAGE_KEYS.GROUPS(uid), []);
+    await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS(uid), []);
+    await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY(uid), null);
+    setTransactions([]);
+    await loadData();
+  };
 
   const loadData = async () => {
     try {
       const data = await expenseService.getUserExpenses(30);
-      if (data && data.length > 0) {
-        setTransactions(data);
-      }
+      setTransactions(data || []);
     } catch {
       // Graceful fallback
     } finally {
@@ -38,16 +64,18 @@ export default function ActivityScreen() {
   };
 
   useEffect(() => {
-    if (transactions.length === 0) {
-      expenseService.getCachedUserExpenses().then((cached) => {
-        if (cached && cached.length > 0) {
-          setTransactions(cached);
-          setLoading(false);
-        }
-      });
+    const uid = authUser?.id || '';
+    if (uid) {
+      setIsDemoDismissed(demoService.isDemoDismissedSync(uid));
     }
+    expenseService.getCachedUserExpenses(uid).then((cached) => {
+      if (cached && cached.length > 0) {
+        setTransactions(cached);
+        setLoading(false);
+      }
+    });
     loadData();
-  }, []);
+  }, [authUser]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -74,6 +102,16 @@ export default function ActivityScreen() {
           />
         }
       >
+        {isDemoActive && (
+          <MockDataBanner
+            onRemove={handleDismissDemo}
+            onCreateGroup={() => {
+              haptics.tap();
+              router.push('/groups/new');
+            }}
+          />
+        )}
+
         {loading && transactions.length === 0 ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="small" color={THEME.colors.primary} />

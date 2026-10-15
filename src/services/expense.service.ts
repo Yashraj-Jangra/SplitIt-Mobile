@@ -165,10 +165,11 @@ export const expenseService = {
   /**
    * Fast tick lookup of recent transactions from persistent offline storage (0ms cold boot).
    */
-  async getCachedUserExpenses(): Promise<UserTransactionItem[]> {
+  async getCachedUserExpenses(userId?: string): Promise<UserTransactionItem[]> {
     if (_cachedUserExpenses.length > 0) return _cachedUserExpenses;
     try {
-      const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+      const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
+      const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS(resolvedUserId));
       if (cached && cached.length > 0) {
         _cachedUserExpenses = cached;
         return cached;
@@ -182,7 +183,7 @@ export const expenseService = {
   /**
    * Fast tick lookup of an expense's cached details and split record from persistent offline storage.
    */
-  async getCachedExpenseDetails(expenseId: string): Promise<ExpenseDetailModel | null> {
+  async getCachedExpenseDetails(expenseId: string, userId?: string): Promise<ExpenseDetailModel | null> {
     if (_cachedExpenseDetailsMap.has(expenseId)) {
       const cached = _cachedExpenseDetailsMap.get(expenseId)!;
       if (cached.logs) {
@@ -191,7 +192,8 @@ export const expenseService = {
       return cached;
     }
     try {
-      const fromStorage = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
+      const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
+      const fromStorage = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId, resolvedUserId));
       if (fromStorage) {
         if (fromStorage.logs) {
           fromStorage.logs = deduplicateExpenseLogs(fromStorage.logs);
@@ -215,7 +217,7 @@ export const expenseService = {
       const currentUserId = currentUser?.id || '';
 
       if (!token) {
-        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS(currentUserId));
         if (cached && cached.length > 0) return cached;
         const isDemoActive = await demoService.isDemoModeActive(currentUserId);
         if (isDemoActive) return demoService.getDemoExpenses(currentUser?.name);
@@ -227,7 +229,7 @@ export const expenseService = {
       });
 
       if (!res.ok) {
-        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS(currentUserId));
         if (cached && cached.length > 0) return cached;
         const isDemoActive = await demoService.isDemoModeActive(currentUserId);
         if (isDemoActive) return demoService.getDemoExpenses(currentUser?.name);
@@ -236,7 +238,7 @@ export const expenseService = {
 
       const raw = await res.json();
       if (!Array.isArray(raw)) {
-        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+        const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS(currentUserId));
         if (cached && cached.length > 0) return cached;
         const isDemoActive = await demoService.isDemoModeActive(currentUserId);
         if (isDemoActive) return demoService.getDemoExpenses(currentUser?.name);
@@ -334,21 +336,22 @@ export const expenseService = {
 
       // Persist user transactions for instant offline rendering
       _cachedUserExpenses = mapped;
-      await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS, mapped);
+      await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS(currentUserId), mapped);
 
       if (mapped.length === 0) {
         const isDemoActive = await demoService.isDemoModeActive(currentUserId);
         if (isDemoActive) {
           return demoService.getDemoExpenses(currentUser?.name);
         }
+        return [];
       }
 
       // Pre-warm individual expense detail caches if payers and participants exist
       for (const item of mapped) {
         if (item.payers && item.participants && item.payers.length > 0) {
-          const existing = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(item.id));
+          const existing = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(item.id, currentUserId));
           if (!existing) {
-            await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(item.id), {
+            await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(item.id, currentUserId), {
               id: item.id,
               groupId: item.groupId,
               groupName: item.groupName,
@@ -391,7 +394,7 @@ export const expenseService = {
     } catch {
       const currentUser = await authService.getCachedUser();
       const currentUserId = currentUser?.id || '';
-      const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS);
+      const cached = await storageService.getItem<UserTransactionItem[]>(STORAGE_KEYS.USER_TRANSACTIONS(currentUserId));
       if (cached && cached.length > 0) return cached;
       const isDemoActive = await demoService.isDemoModeActive(currentUserId);
       if (isDemoActive) return demoService.getDemoExpenses(currentUser?.name);
@@ -607,7 +610,7 @@ export const expenseService = {
 
           // Cache expense detail offline and in-memory
           _cachedExpenseDetailsMap.set(expenseId, detailResult);
-          await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(expenseId), detailResult);
+          await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(expenseId, currentUserId), detailResult);
 
           return detailResult;
         }
@@ -617,7 +620,7 @@ export const expenseService = {
     }
 
     // Check offline storage before falling back to defaults
-    const cachedExpense = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId));
+    const cachedExpense = await storageService.getItem<ExpenseDetailModel>(STORAGE_KEYS.EXPENSE_DETAIL(expenseId, currentUserId));
     if (cachedExpense) {
       if (cachedExpense.logs) {
         cachedExpense.logs = deduplicateExpenseLogs(cachedExpense.logs);

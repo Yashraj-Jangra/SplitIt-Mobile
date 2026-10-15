@@ -71,12 +71,13 @@ export const settlementService = {
     return _cachedSettlementDetailsMap.get(settlementId) || null;
   },
 
-  async getCachedSettlementDetails(settlementId: string): Promise<SettlementDetailModel | null> {
+  async getCachedSettlementDetails(settlementId: string, userId?: string): Promise<SettlementDetailModel | null> {
     if (_cachedSettlementDetailsMap.has(settlementId)) {
       return _cachedSettlementDetailsMap.get(settlementId)!;
     }
+    const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
     const fromStorage = await storageService.getItem<SettlementDetailModel>(
-      STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId)
+      STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, resolvedUserId)
     );
     if (fromStorage) {
       _cachedSettlementDetailsMap.set(settlementId, fromStorage);
@@ -156,16 +157,16 @@ export const settlementService = {
       return _cachedSettlementDetailsMap.get(settlementId)!;
     }
 
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || 'u1';
     const fromStorage = await storageService.getItem<SettlementDetailModel>(
-      STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId)
+      STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId)
     );
     if (fromStorage) {
       _cachedSettlementDetailsMap.set(settlementId, fromStorage);
     }
 
     const token = await authService.getToken();
-    const currentUser = await authService.getCachedUser();
-    const currentUserId = currentUser?.id || 'u1';
 
     try {
       if (token) {
@@ -299,7 +300,7 @@ export const settlementService = {
             };
 
             _cachedSettlementDetailsMap.set(settlementId, detail);
-            await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId), detail);
+            await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId), detail);
             return detail;
           }
         }
@@ -313,6 +314,8 @@ export const settlementService = {
 
   async deleteSettlement(settlementId: string, groupId: string): Promise<{ success: boolean; error?: string }> {
     const cachedDetail = _cachedSettlementDetailsMap.get(settlementId);
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
     try {
       const token = await authService.getToken();
       if (token) {
@@ -326,7 +329,7 @@ export const settlementService = {
         });
         if (res.ok) {
           _cachedSettlementDetailsMap.delete(settlementId);
-          await storageService.removeItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId));
+          await storageService.removeItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId));
           if (cachedDetail) {
             await groupService.removeRecordedSettlement(
               settlementId,
@@ -345,7 +348,7 @@ export const settlementService = {
       return { success: false, error: err?.message || 'Network error' };
     }
     _cachedSettlementDetailsMap.delete(settlementId);
-    await storageService.removeItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId));
+    await storageService.removeItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId));
     if (cachedDetail) {
       await groupService.removeRecordedSettlement(
         settlementId,
@@ -444,7 +447,8 @@ export const settlementService = {
             ],
           };
           _cachedSettlementDetailsMap.set(settlementId, detailModel);
-          await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId), detailModel);
+          const currentUserId = (await authService.getCachedUser())?.id || '';
+          await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId), detailModel);
 
           // 2. Pre-warm and update local group activity and balances with exact amount
           await groupService.applyRecordedSettlement({
@@ -473,5 +477,10 @@ export const settlementService = {
     }
 
     return { success: true };
+  },
+
+  clearCache(): void {
+    _cachedSettlementDetailsMap.clear();
+    _settlementCommentsCache.clear();
   },
 };

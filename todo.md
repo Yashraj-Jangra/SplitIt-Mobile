@@ -1,6 +1,43 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Robust Cross-Account Data Isolation, Total Local Purge on Logout/Switch, and Mock Data Removal Banner (`src/services/storage.service.ts`, `src/services/demo.service.ts`, `src/components/common/MockDataBanner.tsx`, `src/contexts/auth.context.tsx`, `src/services/group.service.ts`, `src/services/expense.service.ts`, `src/services/balance.service.ts`, `src/services/settlement.service.ts`, `src/services/support.service.ts`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`, `app/(tabs)/activity.tsx`)**:
+  - **Identified & Resolved Cross-Account Cache Leak Root Cause**:
+    - Previously, storage keys were static singletons (e.g. `splitit_cache_groups`, `splitit_cache_user_transactions`, `splitit_default_group_id`). When User A logged out and User B logged in, 0ms fast-tick hydration read User A's cached groups, balances, and expenses before server verification completed, causing temporary or persistent leakage of Account A's financial data to Account B.
+    - `app/(tabs)/activity.tsx` only updated state if `data.length > 0`, meaning when a clean account with 0 expenses logged in, it retained the previous session's transactions in state.
+  - **User-Scoped Persistent Storage (`src/services/storage.service.ts`)**:
+    - Converted all persistent data storage keys into user-scoped factory functions:
+      - `GROUPS(userId)` -> `splitit_cache_groups_${userId}`
+      - `GROUP_DETAIL(id, userId)` -> `splitit_cache_group_detail_${userId}_${id}`
+      - `USER_TRANSACTIONS(userId)` -> `splitit_cache_user_transactions_${userId}`
+      - `EXPENSE_DETAIL(id, userId)` -> `splitit_cache_expense_detail_${userId}_${id}`
+      - `SETTLEMENT_DETAIL(id, userId)` -> `splitit_cache_settlement_detail_${userId}_${id}`
+      - `BALANCE_SUMMARY(userId)` -> `splitit_cache_balance_summary_${userId}`
+      - `DEFAULT_GROUP(userId)` -> `splitit_default_group_id_${userId}`
+    - Implemented `storageService.clearAllUserData()`:
+      - Scans all AsyncStorage keys and sweeps all `splitit_cache_*`, `splitit_default_group_*`, `splitit_ai_*`, `splitit_search_*`, and `splitit_user_*` keys.
+      - Preserves device preferences (`splitit_pref_*`) and per-user demo dismissal flags (`splitit_demo_mode_dismissed_v1_*`).
+  - **Synchronous In-Memory Cache Flush & Context Lifecycle (`src/contexts/auth.context.tsx`, `src/services/*`)**:
+    - Added `clearCache()` methods to `settlementService` and `supportService`.
+    - Implemented unified `clearAllAppData()` in `AuthProvider` which calls `storageService.clearAllUserData()` and flushes memory caches across `groupService`, `expenseService`, `balanceService`, `notificationService`, `settlementService`, `supportService`, and `demoService`.
+    - Wired `clearAllAppData()` into `signOut()`, `signInWithEmail()`, `signUpWithEmail()`, and `signInWithGoogle()`.
+    - Added `demoService.preloadDismissedState(userId)` to immediately warm dismissal memory cache during startup hydration and sign-in.
+  - **Server Verification & Authoritative State Reconciliation**:
+    - `groupService.getUserGroups()` queries `/api/groups`. If the server returns `[]`, it authoritatively caches `[]` for that user and only serves demo data if `demoService.isDemoModeActive(userId)` returns `true` (freshly new account that has never dismissed demo mode).
+    - `expenseService.getUserExpenses()` queries `/api/expenses`. If `[]`, caches `[]` and returns `[]` (or demo expenses if demo mode is active).
+    - `balanceService.getUserBalanceSummary()` defaults to flat 0 baseline when groups are empty and demo mode is dismissed.
+  - **Prominent Top Mock Data Banner (`src/components/common/MockDataBanner.tsx`, `app/(tabs)/*`)**:
+    - Built a dedicated `MockDataBanner` component using curated amber fintech styling (`rgba(245, 158, 11, 0.08)`, `THEME.colors.warningLight`, `THEME.radius.xl`).
+    - Banner displays at the very top of Dashboard, Groups, and Activity screens when sample preview data is active:
+      - Badge: `SAMPLE PREVIEW DATA` with Sparkles icon.
+      - Description: "This is interactive sample data showing how SplitIt calculates debts, tracks splits, and simplifies balances. Remove it anytime to start fresh, or begin by making your first group."
+      - Actions: **"Remove Mock Data"** (instantly dismisses demo mode, purges demo caches, stores `[]`, and reveals clean empty state) and **"+ Create a Group"** (navigates to `/groups/new`).
+    - **Automatic Dismissal on Group Creation**: `groupService.createGroup` calls `demoService.dismissDemoMode(userId)` and purges demo groups. When returning to the dashboard or groups screen, mock data automatically disappears forever for that account.
+    - **One-Way Permanence**: Once dismissed, `splitit_demo_mode_dismissed_v1_<userId>` is preserved across logouts; logging back into that same account will NEVER show mock data again.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Native Android & Metro Production Compilation Verification (`dist/`, `android/app/build/outputs/apk/debug/app-debug.apk`)**:
   - **Metro Asset & Bytecode Export (`npx expo export`)**:
     - Successfully compiled and packaged 4,033 JavaScript/TypeScript modules across all Expo routes and internal services.

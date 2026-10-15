@@ -4,8 +4,10 @@ import { groupService } from '../services/group.service';
 import { expenseService } from '../services/expense.service';
 import { balanceService } from '../services/balance.service';
 import { notificationService } from '../services/notification.service';
+import { settlementService } from '../services/settlement.service';
+import { supportService } from '../services/support.service';
 import { demoService } from '../services/demo.service';
-import { storageService, STORAGE_KEYS } from '../services/storage.service';
+import { storageService } from '../services/storage.service';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -23,6 +25,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const clearAllAppData = async () => {
+    // 1. Wipe all user-scoped caches from persistent storage
+    await storageService.clearAllUserData();
+
+    // 2. Clear all in-memory service singletons and memory maps
+    groupService.clearCache();
+    expenseService.clearCache();
+    balanceService.clearCache();
+    notificationService.clearCache();
+    settlementService.clearCache();
+    supportService.clearCache();
+    demoService.clearCache();
+  };
 
   const refreshUser = async () => {
     try {
@@ -48,10 +64,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const cachedUser = await authService.getCachedUser();
           if (cachedUser) {
             setUser(cachedUser);
+            demoService.preloadDismissedState(cachedUser.id).catch(() => {});
           }
           // Fetch authoritative profile with upiId in background
           authService.fetchUserProfile(token).then((remote) => {
-            if (remote) setUser(remote);
+            if (remote) {
+              setUser(remote);
+              demoService.preloadDismissedState(remote.id).catch(() => {});
+            }
           });
         }
       } catch {
@@ -64,55 +84,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     rehydrateAuth();
   }, []);
 
-  const clearUserDataCaches = async () => {
-    groupService.clearCache();
-    expenseService.clearCache();
-    balanceService.clearCache();
-    notificationService.clearCache();
-    demoService.clearCache();
-  };
-
   const signInWithEmail = async (email: string, password: string): Promise<AuthResponse> => {
-    await clearUserDataCaches();
+    await clearAllAppData();
     const res = await authService.signInWithEmail(email, password);
     if (res.success && res.user) {
       setUser(res.user);
+      demoService.preloadDismissedState(res.user.id).catch(() => {});
       authService.fetchUserProfile(res.token).then((remote) => {
-        if (remote) setUser(remote);
+        if (remote) {
+          setUser(remote);
+          demoService.preloadDismissedState(remote.id).catch(() => {});
+        }
       });
     }
     return res;
   };
 
   const signUpWithEmail = async (name: string, email: string, password: string): Promise<AuthResponse> => {
-    await clearUserDataCaches();
+    await clearAllAppData();
     const res = await authService.signUpWithEmail(name, email, password);
     if (res.success && res.user) {
       setUser(res.user);
+      demoService.preloadDismissedState(res.user.id).catch(() => {});
       authService.fetchUserProfile(res.token).then((remote) => {
-        if (remote) setUser(remote);
+        if (remote) {
+          setUser(remote);
+          demoService.preloadDismissedState(remote.id).catch(() => {});
+        }
       });
     }
     return res;
   };
 
   const signInWithGoogle = async (): Promise<AuthResponse> => {
-    await clearUserDataCaches();
+    await clearAllAppData();
     const res = await authService.signInWithGoogle();
     if (res.success && res.user) {
       setUser(res.user);
+      demoService.preloadDismissedState(res.user.id).catch(() => {});
       authService.fetchUserProfile(res.token).then((remote) => {
-        if (remote) setUser(remote);
+        if (remote) {
+          setUser(remote);
+          demoService.preloadDismissedState(remote.id).catch(() => {});
+        }
       });
     }
     return res;
   };
 
   const signOut = async () => {
-    await clearUserDataCaches();
-    await storageService.removeItem(STORAGE_KEYS.GROUPS);
-    await storageService.removeItem(STORAGE_KEYS.USER_TRANSACTIONS);
-    await storageService.removeItem(STORAGE_KEYS.BALANCE_SUMMARY);
+    await clearAllAppData();
     await authService.clearSession();
     setUser(null);
   };

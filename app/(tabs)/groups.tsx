@@ -28,7 +28,12 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
+import { expenseService } from '../../src/services/expense.service';
+import { balanceService } from '../../src/services/balance.service';
 import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
+import { demoService } from '../../src/services/demo.service';
+import { MockDataBanner } from '../../src/components/common/MockDataBanner';
+import { useAuth } from '../../src/contexts/auth.context';
 import { useRouter } from 'expo-router';
 import { haptics } from '../../src/services/haptics.service';
 import { useCurrency } from '../../src/contexts/currency.context';
@@ -103,6 +108,7 @@ const SORT_OPTIONS: SortOptionItem[] = [
 
 export default function GroupsScreen() {
   const router = useRouter();
+  const { user: authUser } = useAuth();
   const { currencySymbol } = useCurrency();
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
   const [loading, setLoading] = useState(() => groupService.getInMemoryGroups().length === 0);
@@ -111,6 +117,27 @@ export default function GroupsScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortOptionType>('last_usage');
   const [showSortModal, setShowSortModal] = useState(false);
+  const [isDemoDismissed, setIsDemoDismissed] = useState(() => demoService.isDemoDismissedSync(authUser?.id));
+
+  const isDemoActive =
+    !isDemoDismissed &&
+    !demoService.isDemoDismissedSync(authUser?.id) &&
+    groups.some((g) => g.id.startsWith('demo_'));
+
+  const handleDismissDemo = async () => {
+    haptics.saveSuccess();
+    const uid = authUser?.id || '';
+    setIsDemoDismissed(true);
+    await demoService.dismissDemoMode(uid);
+    groupService.clearCache();
+    expenseService.clearCache();
+    balanceService.clearCache();
+    await storageService.setItem(STORAGE_KEYS.GROUPS(uid), []);
+    await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS(uid), []);
+    await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY(uid), null);
+    setGroups([]);
+    await loadGroups();
+  };
 
   const loadGroups = async () => {
     try {
@@ -126,6 +153,10 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     let isMounted = true;
+    const uid = authUser?.id || '';
+    if (uid) {
+      setIsDemoDismissed(demoService.isDemoDismissedSync(uid));
+    }
 
     storageService.getItem<SortOptionType>(STORAGE_KEYS.GROUPS_SORT_PREFERENCE).then((saved) => {
       if (isMounted && saved && SORT_OPTIONS.some((opt) => opt.id === saved)) {
@@ -133,7 +164,7 @@ export default function GroupsScreen() {
       }
     });
 
-    groupService.getCachedUserGroups().then((cached) => {
+    groupService.getCachedUserGroups(uid).then((cached) => {
       if (isMounted && cached && cached.length > 0) {
         setGroups(cached);
         setLoading(false);
@@ -159,7 +190,7 @@ export default function GroupsScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [authUser]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -365,6 +396,16 @@ export default function GroupsScreen() {
             />
           }
         >
+          {isDemoActive && (
+            <MockDataBanner
+              onRemove={handleDismissDemo}
+              onCreateGroup={() => {
+                haptics.tap();
+                router.push('/groups/new');
+              }}
+            />
+          )}
+
           {filteredGroups.length === 0 ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>

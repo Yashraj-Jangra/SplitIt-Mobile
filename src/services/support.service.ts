@@ -290,4 +290,8 @@ export const supportService = {
     );
     return true;
   },
+
+  clearCache(): void {
+    _cachedTickets = [];
+  },
 };

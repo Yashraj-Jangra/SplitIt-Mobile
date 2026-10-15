@@ -78,6 +78,23 @@ export const demoService = {
     }
   },
 
+  /**
+   * Preload dismissed status into memory for instant synchronous checks.
+   */
+  async preloadDismissedState(userId?: string): Promise<boolean> {
+    const key = getStorageKey(userId);
+    try {
+      const val = await AsyncStorage.getItem(key);
+      if (val === 'true') {
+        _inMemoryDismissedUserIds.add(key);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
   getDemoGroups(userName?: string): GroupListItem[] {
     return getDemoGroups(userName);
   },
@@ -99,6 +116,6 @@ export const demoService = {
   },
 
   clearCache(): void {
-    _inMemoryDismissedUserIds.clear();
+    // Intentionally keep in-memory dismissed markers intact to prevent 1-frame mock data flashes on re-login
   },
 };

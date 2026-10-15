@@ -35,10 +35,11 @@ export const balanceService = {
   /**
    * Fast tick lookup of balance summary from persistent offline storage (0ms cold boot).
    */
-  async getCachedUserBalanceSummary(): Promise<UserBalanceSummary | null> {
+  async getCachedUserBalanceSummary(userId?: string): Promise<UserBalanceSummary | null> {
     if (_cachedBalanceSummary) return _cachedBalanceSummary;
     try {
-      const fromStorage = await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY);
+      const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
+      const fromStorage = await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY(resolvedUserId));
       if (fromStorage) {
         _cachedBalanceSummary = fromStorage;
         return fromStorage;
@@ -64,10 +65,11 @@ export const balanceService = {
    * 4. Calculates 30-day cumulative net balance history with zero-split gradient offset (flat 0 if empty).
    */
   async getUserBalanceSummary(): Promise<UserBalanceSummary> {
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || 'u1';
+
     try {
       const token = await authService.getToken();
-      const currentUser = await authService.getCachedUser();
-      const currentUserId = currentUser?.id || 'u1';
 
       const groups = await groupService.getUserGroups();
 
@@ -217,10 +219,10 @@ export const balanceService = {
       };
 
       _cachedBalanceSummary = result;
-      await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY, result);
+      await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY(currentUserId), result);
       return result;
     } catch {
-      const cached = await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY);
+      const cached = await storageService.getItem<UserBalanceSummary>(STORAGE_KEYS.BALANCE_SUMMARY(currentUserId));
       if (cached) {
         _cachedBalanceSummary = cached;
         return cached;

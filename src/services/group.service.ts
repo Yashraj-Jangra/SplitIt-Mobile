@@ -163,8 +163,10 @@ export const groupService = {
    */
   async applyRecordedSettlement(settlement: GroupSettlementItem): Promise<void> {
     let group = _groupDetailsMap.get(settlement.groupId);
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
     if (!group) {
-      group = (await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(settlement.groupId))) || undefined;
+      group = (await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(settlement.groupId, currentUserId))) || undefined;
     }
     if (!group) return;
 
@@ -176,8 +178,6 @@ export const groupService = {
 
     // 2. Adjust netBalances with exact values
     const exactAmount = Math.round(Number(settlement.amount) * 100) / 100;
-    const currentUser = await authService.getCachedUser();
-    const currentUserId = currentUser?.id || '';
 
     if (group.members && group.members.length > 0) {
       group.members = group.members.map((m) => {
@@ -219,7 +219,7 @@ export const groupService = {
 
     // Update in-memory and persistent storage
     _groupDetailsMap.set(settlement.groupId, { ...group });
-    await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(settlement.groupId), group);
+    await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(settlement.groupId, currentUserId), group);
 
     // Also update _cachedGroups if present
     if (_cachedGroups.length > 0) {
@@ -238,7 +238,7 @@ export const groupService = {
         }
         return g;
       });
-      await storageService.setItem(STORAGE_KEYS.GROUPS, _cachedGroups);
+      await storageService.setItem(STORAGE_KEYS.GROUPS(currentUserId), _cachedGroups);
     }
   },
 
@@ -294,15 +294,16 @@ export const groupService = {
     }
 
     _groupDetailsMap.set(groupId, { ...group });
-    await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), group);
+    await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId), group);
   },
 
   /**
    * Fast tick lookup of user groups from persistent offline storage (0ms cold boot).
    */
-  async getCachedUserGroups(): Promise<GroupListItem[]> {
+  async getCachedUserGroups(userId?: string): Promise<GroupListItem[]> {
     if (_cachedGroups.length > 0) return _cachedGroups;
-    const fromStorage = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
+    const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
+    const fromStorage = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS(resolvedUserId));
     if (fromStorage && fromStorage.length > 0) {
       _cachedGroups = fromStorage;
       return fromStorage;
@@ -313,12 +314,13 @@ export const groupService = {
   /**
    * Fast tick lookup of a group's cached detail from persistent offline storage (0ms instant display).
    */
-  async getCachedGroupDetails(groupId: string): Promise<GroupDetailData | null> {
+  async getCachedGroupDetails(groupId: string, userId?: string): Promise<GroupDetailData | null> {
     if (_groupDetailsMap.has(groupId)) {
       return _groupDetailsMap.get(groupId)!;
     }
     try {
-      const fromStorage = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+      const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
+      const fromStorage = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId, resolvedUserId));
       if (fromStorage) {
         if (!fromStorage.history) fromStorage.history = [];
         if (!fromStorage.budget) {
@@ -363,13 +365,15 @@ export const groupService = {
     }
 
     // 3. Persistent storage group detail
-    const storedDetail = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
+    const storedDetail = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId));
     if (storedDetail?.members?.length) {
       return storedDetail.members.map((m) => ({ id: m.id, name: m.name, avatarUrl: m.avatarUrl }));
     }
 
     // 4. Persistent storage groups list
-    const storedGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
+    const storedGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS(currentUserId));
     const storedGroup = (storedGroups || []).find((g) => g.id === groupId);
     if (storedGroup?.members?.length) {
       return storedGroup.members;
@@ -410,30 +414,22 @@ export const groupService = {
    * Fetch all user groups with balance & cover images (SWR pattern).
    */
   async getUserGroups(options?: GetUserGroupsOptions): Promise<GroupListItem[]> {
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
+
     if (!options?.forceRefresh) {
       if (_cachedGroups.length > 0) {
-        const valid = _cachedGroups.filter((g) => g.id !== '1' && g.id !== '2' && g.id !== '3' && g.id !== '4');
-        if (valid.length !== _cachedGroups.length) {
-          _cachedGroups = valid;
-        }
-        if (_cachedGroups.length > 0) return _cachedGroups;
+        return _cachedGroups;
       }
-      const offlineGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
+      const offlineGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS(currentUserId));
       if (offlineGroups && offlineGroups.length > 0) {
-        const sanitized = offlineGroups.filter((g) => g.id !== '1' && g.id !== '2' && g.id !== '3' && g.id !== '4');
-        if (sanitized.length > 0) {
-          _cachedGroups = sanitized;
-          return sanitized;
-        } else {
-          await storageService.removeItem(STORAGE_KEYS.GROUPS);
-        }
+        _cachedGroups = offlineGroups;
+        return offlineGroups;
       }
     }
 
     try {
       const token = await authService.getToken();
-      const currentUser = await authService.getCachedUser();
-      const currentUserId = currentUser?.id || '';
 
       if (token) {
         const res = await fetch(`${API_BASE_URL}/api/groups`, {
@@ -505,12 +501,13 @@ export const groupService = {
             });
 
             _cachedGroups = mapped;
-            await storageService.setItem(STORAGE_KEYS.GROUPS, mapped);
+            await storageService.setItem(STORAGE_KEYS.GROUPS(currentUserId), mapped);
 
             if (mapped.length > 0) {
               return mapped;
             }
 
+            // Server verified that user has 0 groups
             const isDemoActive = await demoService.isDemoModeActive(currentUserId);
             if (isDemoActive) {
               return demoService.getDemoGroups(currentUser?.name);
@@ -524,21 +521,10 @@ export const groupService = {
       // Offline fallback
     }
 
-    const currentUser = await authService.getCachedUser();
-    const currentUserId = currentUser?.id || '';
-
-    const offlineGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS);
+    const offlineGroups = await storageService.getItem<GroupListItem[]>(STORAGE_KEYS.GROUPS(currentUserId));
     if (offlineGroups && offlineGroups.length > 0) {
-      const sanitized = offlineGroups.filter((g) => g.id !== '1' && g.id !== '2' && g.id !== '3' && g.id !== '4');
-      if (sanitized.length > 0) {
-        _cachedGroups = sanitized;
-        return sanitized;
-      }
-    }
-
-    if (_cachedGroups.length > 0) {
-      const sanitized = _cachedGroups.filter((g) => g.id !== '1' && g.id !== '2' && g.id !== '3' && g.id !== '4');
-      if (sanitized.length > 0) return sanitized;
+      _cachedGroups = offlineGroups;
+      return offlineGroups;
     }
 
     const isDemoActive = await demoService.isDemoModeActive(currentUserId);
@@ -563,11 +549,14 @@ export const groupService = {
       }
     }
 
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || 'u1';
+
     if (!options?.forceRefresh) {
       const inMemory = _groupDetailsMap.get(groupId);
       if (inMemory) return inMemory;
 
-      const stored = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+      const stored = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId));
       if (stored) {
         _groupDetailsMap.set(groupId, stored);
         return stored;
@@ -575,8 +564,6 @@ export const groupService = {
     }
 
     const token = await authService.getToken();
-    const currentUser = await authService.getCachedUser();
-    const currentUserId = currentUser?.id || 'u1';
 
     try {
       if (token) {
@@ -870,11 +857,11 @@ export const groupService = {
 
           // Cache group details offline and in-memory
           _groupDetailsMap.set(groupId, detailResult);
-          await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), detailResult);
+          await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId), detailResult);
 
           // Proactively warm each expense's detail cache in persistent storage
           for (const exp of expenses) {
-            await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(exp.id), {
+            await storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(exp.id, currentUserId), {
               id: exp.id,
               title: exp.title,
               amount: exp.amount,
@@ -899,7 +886,7 @@ export const groupService = {
 
           // Proactively warm each settlement's detail cache in persistent storage
           for (const stl of settlements) {
-            await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(stl.id), {
+            await storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(stl.id, currentUserId), {
               id: stl.id,
               groupId: stl.groupId,
               groupName: groupData.name || 'Group',
@@ -936,7 +923,7 @@ export const groupService = {
     }
 
     // Check offline storage before falling back to defaults
-    const offlineGroup = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+    const offlineGroup = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId));
     if (offlineGroup) {
       _groupDetailsMap.set(groupId, offlineGroup);
       return offlineGroup;
@@ -988,9 +975,14 @@ export const groupService = {
     currency: string;
     memberEmails?: string[];
   }): Promise<{ success: boolean; id: string }> {
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
+
+    // Permanently dismiss demo mode whenever a user creates a group
+    await demoService.dismissDemoMode(currentUserId);
+
     try {
       const token = await authService.getToken();
-      const currentUser = await authService.getCachedUser();
       const res = await fetch(`${API_BASE_URL}/api/groups`, {
         method: 'POST',
         headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
@@ -998,27 +990,31 @@ export const groupService = {
       });
       if (res.ok) {
         const result = await res.json();
-        await demoService.dismissDemoMode(currentUser?.id);
+        // Clear cached groups so next fetch reloads authoritatively from server
+        _cachedGroups = [];
+        await storageService.removeItem(STORAGE_KEYS.GROUPS(currentUserId));
         return result;
       }
     } catch {
       // Offline fallback
     }
     const newId = `grp_${Date.now()}`;
-    _cachedGroups.unshift({
+    const newGroup: GroupListItem = {
       id: newId,
       name: data.name,
       description: `Created group in ${data.category}`,
       categoryIcon: data.category === 'Travel' ? 'Plane' : (data.category === 'Home' ? 'Home' : 'Users'),
       membersCount: (data.memberEmails?.length || 0) + 1,
       members: [
-        { id: 'u1', name: 'You' },
+        { id: currentUserId || 'u1', name: currentUser?.name || 'You' },
         ...(data.memberEmails || []).map((email, idx) => ({ id: `new_m_${idx}`, name: email.split('@')[0] })),
       ],
       totalExpenses: 0,
       userNetBalance: 0,
       archived: false,
-    });
+    };
+    _cachedGroups = [newGroup, ..._cachedGroups.filter((g) => !g.id.startsWith('demo_'))];
+    await storageService.setItem(STORAGE_KEYS.GROUPS(currentUserId), _cachedGroups);
     return { success: true, id: newId };
   },
 
@@ -1109,9 +1105,10 @@ export const groupService = {
   /**
    * Retrieve the user's default group ID for new expenses
    */
-  async getDefaultGroupId(): Promise<string | null> {
+  async getDefaultGroupId(userId?: string): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync(DEFAULT_GROUP_STORAGE_KEY);
+      const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
+      return await storageService.getItem<string>(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId));
     } catch {
       return null;
     }
@@ -1120,15 +1117,16 @@ export const groupService = {
   /**
    * Set or clear the user's default group ID for new expenses
    */
-  async setDefaultGroupId(groupId: string | null): Promise<void> {
+  async setDefaultGroupId(groupId: string | null, userId?: string): Promise<void> {
     try {
+      const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
       if (groupId) {
-        await SecureStore.setItemAsync(DEFAULT_GROUP_STORAGE_KEY, groupId);
+        await storageService.setItem(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId), groupId);
       } else {
-        await SecureStore.deleteItemAsync(DEFAULT_GROUP_STORAGE_KEY);
+        await storageService.removeItem(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId));
       }
     } catch {
-      // SecureStore error fallback
+      // Storage error fallback
     }
   },
 
@@ -1205,7 +1203,9 @@ export const groupService = {
               data: { newExpenseId: event.data?.expenseId || `restored_exp_${Date.now()}` },
               restored: false,
             });
-            await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId), detail);
+            const currentUser = await authService.getCachedUser();
+            const currentUserId = currentUser?.id || '';
+            await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId, currentUserId), detail);
             return event.data?.expenseId || 'restored_ok';
           }
         }
@@ -1241,6 +1241,8 @@ export const groupService = {
       throw new Error(errData.error || 'Failed to restore settlement');
     } catch (err: any) {
       // Optimistic offline update
+      const currentUser = await authService.getCachedUser();
+      const currentUserId = currentUser?.id || '';
       for (const [gId, detail] of _groupDetailsMap.entries()) {
         if (detail.history) {
           const event = detail.history.find((e) => e.id === historyEventId);
@@ -1256,7 +1258,7 @@ export const groupService = {
               data: { newSettlementId: `restored_set_${Date.now()}` },
               restored: false,
             });
-            await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId), detail);
+            await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId, currentUserId), detail);
             return 'restored_settlement_ok';
           }
         }
@@ -1297,7 +1299,7 @@ export const groupService = {
       for (const [gId, detail] of _groupDetailsMap.entries()) {
         if (detail.history) {
           detail.history = detail.history.filter((e) => e.id !== historyEventId);
-          await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId), detail);
+          await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId, currentUser?.id || ''), detail);
         }
       }
     }
@@ -1348,16 +1350,16 @@ export const groupService = {
         ...normalizedBudget,
       };
       _groupDetailsMap.set(groupId, { ...inMem });
-      await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), inMem);
+      await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId), inMem);
     } else {
-      const stored = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId));
+      const stored = await storageService.getItem<GroupDetailData>(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId));
       if (stored) {
         stored.budget = {
           ...stored.budget,
           ...normalizedBudget,
         };
         _groupDetailsMap.set(groupId, { ...stored });
-        await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId), stored);
+        await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(groupId, currentUserId), stored);
       }
     }
   },

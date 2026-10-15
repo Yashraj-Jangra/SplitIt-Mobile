@@ -7,14 +7,14 @@ interface CacheEnvelope<T> {
 }
 
 export const STORAGE_KEYS = {
-  GROUPS: 'splitit_cache_groups',
-  GROUP_DETAIL: (id: string) => `splitit_cache_group_detail_${id}`,
-  USER_TRANSACTIONS: 'splitit_cache_user_transactions',
-  EXPENSE_DETAIL: (id: string) => `splitit_cache_expense_detail_${id}`,
-  SETTLEMENT_DETAIL: (id: string) => `splitit_cache_settlement_detail_${id}`,
-  BALANCE_SUMMARY: 'splitit_cache_balance_summary',
+  GROUPS: (userId?: string) => (userId ? `splitit_cache_groups_${userId}` : 'splitit_cache_groups'),
+  GROUP_DETAIL: (id: string, userId?: string) => (userId ? `splitit_cache_group_detail_${userId}_${id}` : `splitit_cache_group_detail_${id}`),
+  USER_TRANSACTIONS: (userId?: string) => (userId ? `splitit_cache_user_transactions_${userId}` : 'splitit_cache_user_transactions'),
+  EXPENSE_DETAIL: (id: string, userId?: string) => (userId ? `splitit_cache_expense_detail_${userId}_${id}` : `splitit_cache_expense_detail_${id}`),
+  SETTLEMENT_DETAIL: (id: string, userId?: string) => (userId ? `splitit_cache_settlement_detail_${userId}_${id}` : `splitit_cache_settlement_detail_${id}`),
+  BALANCE_SUMMARY: (userId?: string) => (userId ? `splitit_cache_balance_summary_${userId}` : 'splitit_cache_balance_summary'),
   CATEGORIES: 'splitit_cache_expense_categories',
-  DEFAULT_GROUP: 'splitit_default_group_id',
+  DEFAULT_GROUP: (userId?: string) => (userId ? `splitit_default_group_id_${userId}` : 'splitit_default_group_id'),
   CURRENCY_PREFERENCE: 'splitit_pref_currency',
   HAPTICS_PREFERENCE: 'splitit_pref_haptics',
   GROUPS_SORT_PREFERENCE: 'splitit_pref_groups_sort',
@@ -85,6 +85,39 @@ export const storageService = {
       const targetKeys = allKeys.filter((k) => k.startsWith(prefix));
       if (targetKeys.length > 0) {
         await AsyncStorage.multiRemove(targetKeys);
+      }
+    } catch {
+      // Safe ignore
+    }
+  },
+
+  /**
+   * Complete clean sweep of all user-specific data from persistent offline storage.
+   * Invoked on logout, account switch, or auth token invalidation.
+   * Safely preserves:
+   * 1. Global device preferences (currency, haptics, group sort).
+   * 2. Per-user demo mode dismissed markers (so returning users don't see mock data again).
+   */
+  async clearAllUserData(): Promise<void> {
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const keysToRemove = allKeys.filter((k) => {
+        // Preserve device preferences
+        if (k.startsWith('splitit_pref_')) return false;
+        // Preserve demo dismissal flags so returning users never see mock data again
+        if (k.startsWith('splitit_demo_mode_dismissed_v1_')) return false;
+        // Target all user-specific caches, search histories, default groups, and session artifacts
+        return (
+          k.startsWith('splitit_cache_') ||
+          k.startsWith('splitit_default_group_') ||
+          k.startsWith('splitit_ai_') ||
+          k.startsWith('splitit_search_') ||
+          k.startsWith('splitit_user_')
+        );
+      });
+
+      if (keysToRemove.length > 0) {
+        await AsyncStorage.multiRemove(keysToRemove);
       }
     } catch {
       // Safe ignore

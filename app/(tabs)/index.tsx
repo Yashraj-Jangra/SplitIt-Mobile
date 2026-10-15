@@ -25,6 +25,8 @@ import { authService, AuthUser } from '../../src/services/auth.service';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { balanceService, UserBalanceSummary } from '../../src/services/balance.service';
 import { demoService } from '../../src/services/demo.service';
+import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
+import { MockDataBanner } from '../../src/components/common/MockDataBanner';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
@@ -53,20 +55,28 @@ export default function HomeScreen() {
     );
   });
   const [refreshing, setRefreshing] = useState(false);
-  const [isDemoDismissed, setIsDemoDismissed] = useState(() => demoService.isDemoDismissedSync(currentUser?.id));
+  const [isDemoDismissed, setIsDemoDismissed] = useState(() => demoService.isDemoDismissedSync(currentUser?.id || authUser?.id));
 
   // Surface interactive sample data indicator
   const isDemoActive =
     !isDemoDismissed &&
+    !demoService.isDemoDismissedSync(currentUser?.id || authUser?.id) &&
     (groups.some((g) => g.id.startsWith('demo_')) || recentTransactions.some((t) => t.id.startsWith('demo_')));
 
   const handleDismissDemo = async () => {
     haptics.saveSuccess();
+    const uid = currentUser?.id || authUser?.id || '';
     setIsDemoDismissed(true);
-    await demoService.dismissDemoMode(currentUser?.id);
+    await demoService.dismissDemoMode(uid);
     groupService.clearCache();
     expenseService.clearCache();
     balanceService.clearCache();
+    await storageService.setItem(STORAGE_KEYS.GROUPS(uid), []);
+    await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS(uid), []);
+    await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY(uid), null);
+    setGroups([]);
+    setRecentTransactions([]);
+    setBalanceSummary(null);
     await loadData();
   };
 
@@ -92,15 +102,16 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (authUser && !currentUser) setCurrentUser(authUser);
-    if (authUser?.id) {
-      setIsDemoDismissed(demoService.isDemoDismissedSync(authUser.id));
+    const activeUid = authUser?.id || currentUser?.id || '';
+    if (activeUid) {
+      setIsDemoDismissed(demoService.isDemoDismissedSync(activeUid));
     }
-    // 0ms Fast Tick: Hydrate immediately from persistent offline storage
+    // 0ms Fast Tick: Hydrate immediately from persistent offline storage scoped to current user
     Promise.all([
       authService.getCachedUser(),
-      groupService.getCachedUserGroups(),
-      expenseService.getCachedUserExpenses(),
-      balanceService.getCachedUserBalanceSummary(),
+      groupService.getCachedUserGroups(activeUid),
+      expenseService.getCachedUserExpenses(activeUid),
+      balanceService.getCachedUserBalanceSummary(activeUid),
     ]).then(([cachedUser, cachedGroups, cachedTx, cachedSummary]) => {
       if (cachedUser) setCurrentUser(cachedUser);
       if (cachedGroups && cachedGroups.length > 0) setGroups(cachedGroups);
@@ -191,45 +202,10 @@ export default function HomeScreen() {
 
         {/* Interactive Startup Guide / Demo Mode Notice Banner */}
         {isDemoActive && (
-          <View style={styles.demoBanner}>
-            <View style={styles.demoBannerHeader}>
-              <View style={styles.demoBadge}>
-                <Sparkles size={12} color={THEME.colors.primary} />
-                <Text style={styles.demoBadgeText}>SAMPLE DATA · STARTUP GUIDE</Text>
-              </View>
-              <TouchableOpacity
-                onPress={handleDismissDemo}
-                style={styles.demoDismissIconBtn}
-                accessibilityLabel="Dismiss sample data banner"
-                activeOpacity={0.7}
-              >
-                <X size={16} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.demoBannerDescription}>
-              This is interactive sample data to show how SplitIt tracks balances, simplifies debts, and visualizes spending. Add your first real expense or tap dismiss to start fresh.
-            </Text>
-
-            <View style={styles.demoActionsRow}>
-              <TouchableOpacity
-                style={styles.demoDismissBtn}
-                onPress={handleDismissDemo}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.demoDismissBtnText}>Dismiss Sample Data</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.demoAddExpenseBtn}
-                onPress={handleAddExpense}
-                activeOpacity={0.85}
-              >
-                <Plus size={14} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-                <Text style={styles.demoAddExpenseBtnText}>Add Expense</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <MockDataBanner
+            onRemove={handleDismissDemo}
+            onCreateGroup={() => router.push('/groups/new')}
+          />
         )}
 
         {/* Modern Fintech Balance Widget with Dedicated Non-Overlapping Sparkline Track */}
