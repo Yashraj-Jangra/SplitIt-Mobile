@@ -1,6 +1,16 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Added Sleek Empty State for Zero Balance Dashboard Graph (`src/components/dashboard/BalanceHistoryGraph.tsx`, `app/(tabs)/index.tsx`)**:
+  - Implemented automatic zero-balance / no-balance detection in `BalanceHistoryGraph` (`isZeroBalance`).
+  - When balance is 0 or no balance history exists, replaced the flat horizontal line with an open editorial financial chart track featuring a subtle dashed zero line, `TrendingUp` icon, and guidance:
+    - Headline: **"No balance yet"**
+    - Subtitle: **"Start adding expenses to track your balance"**
+  - Wired `onPress` tap feedback to seamlessly route users to `/expenses/new` to begin tracking.
+  - **Quality Gates Verified**:
+    - `npx tsc --noEmit` passed with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Removed Default Currency Option from Group Creation & Settings (`app/groups/new.tsx`, `app/groups/[id]/settings.tsx`)**:
   - Removed the visual "DEFAULT CURRENCY" badge / input section (`{currencySymbol} {currencyCode}`) from `app/groups/new.tsx`.
   - Preserved background payload default (`currency: currencyCode`) for API contract consistency with backend endpoints.

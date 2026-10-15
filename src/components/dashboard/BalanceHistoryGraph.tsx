@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, LayoutChangeEvent, ViewStyle, StyleProp } from 'react-native';
+import { View, Text, StyleSheet, LayoutChangeEvent, ViewStyle, StyleProp, TouchableOpacity } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle, Text as SvgText } from 'react-native-svg';
+import { TrendingUp } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { useCurrency } from '../../contexts/currency.context';
 
@@ -12,6 +13,8 @@ export interface BalanceHistoryGraphProps {
   maxBalance: number;
   height?: number;
   style?: StyleProp<ViewStyle>;
+  hasNoBalance?: boolean;
+  onPress?: () => void;
 }
 
 /**
@@ -46,6 +49,8 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   maxBalance,
   height = 75,
   style,
+  hasNoBalance,
+  onPress,
 }) => {
   const { currencySymbol } = useCurrency();
   const [layoutWidth, setLayoutWidth] = useState<number>(340);
@@ -58,10 +63,51 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   };
 
   const ptsCount = data.length;
-  if (ptsCount === 0) return null;
+  const isZeroBalance =
+    Boolean(hasNoBalance) ||
+    ptsCount === 0 ||
+    (Math.abs(minBalance) < 0.01 && Math.abs(maxBalance) < 0.01) ||
+    data.every((item) => Math.abs(item.balance) < 0.01);
 
   const w = layoutWidth;
   const h = height;
+
+  if (isZeroBalance) {
+    const emptyView = (
+      <View style={[styles.emptyContainer, { height }, style]} onLayout={handleLayout}>
+        <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Line
+            x1="0"
+            y1={Math.round(h / 2)}
+            x2={w}
+            y2={Math.round(h / 2)}
+            stroke={THEME.colors.hairlineLight}
+            strokeDasharray="4 6"
+            strokeWidth={1}
+          />
+        </Svg>
+        <View style={styles.emptyContent}>
+          <View style={styles.emptyBadgeRow}>
+            <TrendingUp size={13} color={THEME.colors.primary} strokeWidth={2.2} />
+            <Text style={styles.emptyTitle}>No balance yet</Text>
+          </View>
+          <Text style={styles.emptySubtitle}>
+            Start adding expenses to track your balance
+          </Text>
+        </View>
+      </View>
+    );
+
+    if (onPress) {
+      return (
+        <TouchableOpacity activeOpacity={0.75} onPress={onPress}>
+          {emptyView}
+        </TouchableOpacity>
+      );
+    }
+
+    return emptyView;
+  }
 
   const [minDomain, maxDomain] = domain;
   const domainSpan = maxDomain - minDomain || 1;
@@ -204,5 +250,37 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     overflow: 'hidden',
+  },
+  emptyContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  emptyContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.sm,
+    gap: 2,
+  },
+  emptyBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  emptyTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+    letterSpacing: -0.2,
+  },
+  emptySubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: THEME.colors.textMuted,
   },
 });

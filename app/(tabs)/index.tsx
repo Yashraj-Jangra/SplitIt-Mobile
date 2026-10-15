@@ -286,6 +286,15 @@ export default function HomeScreen() {
                   minBalance={balanceSummary.minBalance}
                   maxBalance={balanceSummary.maxBalance}
                   height={75}
+                  hasNoBalance={
+                    Math.abs(netBalance) < 0.01 &&
+                    totalOwed < 0.01 &&
+                    totalOwe < 0.01
+                  }
+                  onPress={() => {
+                    haptics.tap();
+                    router.push('/expenses/new');
+                  }}
                 />
               </View>
             )}
