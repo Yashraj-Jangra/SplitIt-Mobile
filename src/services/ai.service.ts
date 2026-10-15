@@ -28,6 +28,7 @@ export interface ScannedReceiptResult {
     sub: string;
   };
   merchant?: string;
+  imageUrl?: string;
 }
 
 export const aiService = {
@@ -205,6 +206,7 @@ export const aiService = {
               sub: result.subCategory || 'Dining Out',
             },
             merchant: result.merchantName,
+            imageUrl: url,
           };
         }
       }

@@ -245,32 +245,100 @@ export default function ExpenseDetailScreen() {
     }, 200);
   };
 
+  const persistReceipt = async (url?: string) => {
+    if (!expense) return;
+    try {
+      const targetGId = expense.groupId || groupId;
+      const res = await expenseService.updateExpense(expenseId, {
+        groupId: targetGId,
+        amount: expense.amount,
+        oldAmount: expense.amount,
+        description: expense.title,
+        category: expense.category.sub,
+        masterCategory: expense.category.master,
+        notes: expense.notes,
+        receiptImageUrl: url,
+        splitType: expense.splitType,
+        date: expense.rawDate || expense.date,
+        payers: (expense.payers || []).map((p) => ({ userId: p.userId, amount: p.amount })),
+        participants: (expense.participants || []).map((p) => ({ userId: p.userId, amountOwed: p.amountOwed })),
+      });
+      if (res.success) {
+        setExpense((prev) => (prev ? { ...prev, receiptImageUrl: url } : prev));
+        haptics.saveSuccess();
+        Alert.alert(
+          'Receipt Updated',
+          url ? 'Receipt image has been saved to this expense.' : 'Receipt has been removed.'
+        );
+      } else {
+        haptics.error();
+        Alert.alert('Update Failed', res.error || 'Failed to update receipt on server.');
+      }
+    } catch {
+      haptics.error();
+      Alert.alert('Error', 'Could not save receipt image.');
+    }
+  };
+
+  const promptPickReceipt = () => {
+    Alert.alert('Attach Receipt', 'Choose receipt photo source', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Take Photo',
+        onPress: async () => {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) {
+            Alert.alert('Permission Required', 'Camera permission is required to capture receipt photos.');
+            return;
+          }
+          const res = await ImagePicker.launchCameraAsync({
+            quality: 0.82,
+          });
+          if (!res.canceled && res.assets?.[0]?.uri) {
+            const localUri = res.assets[0].uri;
+            setExpense((prev) => (prev ? { ...prev, receiptImageUrl: localUri } : prev));
+            const uploadedUrl = await expenseService.uploadReceiptImage(localUri);
+            await persistReceipt(uploadedUrl || localUri);
+          }
+        },
+      },
+      {
+        text: 'Choose from Gallery',
+        onPress: async () => {
+          const res = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.82,
+          });
+          if (!res.canceled && res.assets?.[0]?.uri) {
+            const localUri = res.assets[0].uri;
+            setExpense((prev) => (prev ? { ...prev, receiptImageUrl: localUri } : prev));
+            const uploadedUrl = await expenseService.uploadReceiptImage(localUri);
+            await persistReceipt(uploadedUrl || localUri);
+          }
+        },
+      },
+    ]);
+  };
+
   const handleReceiptAction = async () => {
     haptics.tap();
     if (expense?.receiptImageUrl) {
-      setIsReceiptModalOpen(true);
-    } else {
       Alert.alert(
-        'Attach Receipt',
-        'Upload a receipt photo for this expense',
+        'Attached Receipt',
+        'Would you like to view, replace, or remove the receipt?',
         [
           { text: 'Cancel', style: 'cancel' },
+          { text: 'View Fullscreen', onPress: () => setIsReceiptModalOpen(true) },
+          { text: 'Replace Photo', onPress: promptPickReceipt },
           {
-            text: 'Choose from Gallery',
-            onPress: async () => {
-              const res = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
-                quality: 0.8,
-              });
-              if (!res.canceled && res.assets?.[0]?.uri) {
-                haptics.saveSuccess();
-                setExpense((prev) => (prev ? { ...prev, receiptImageUrl: res.assets[0].uri } : prev));
-                Alert.alert('Receipt Attached', 'Receipt image has been saved to this expense.');
-              }
-            },
+            text: 'Remove Receipt',
+            style: 'destructive',
+            onPress: () => persistReceipt(undefined),
           },
         ]
       );
+    } else {
+      promptPickReceipt();
     }
   };
 

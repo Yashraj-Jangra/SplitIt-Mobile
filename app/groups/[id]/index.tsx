@@ -52,6 +52,7 @@ import { appEventEmitter } from '../../../src/services/event-emitter';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
 type TabType = typeof TABS[number];
+type ActivityFilter = 'all' | 'expenses' | 'settlements';
 
 const TAB_LABELS: Record<TabType, string> = {
   expenses: 'Activity',
@@ -131,6 +132,7 @@ export default function GroupDetailScreen() {
   const [statStripHeight, setStatStripHeight] = useState(58);
 
   // Progressive infinite scroll for expense and activity records
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [visibleExpenseCount, setVisibleExpenseCount] = useState(PAGE_SIZE);
   const [isLoadingMoreExpenses, setIsLoadingMoreExpenses] = useState(false);
   const [visibleActivityCount, setVisibleActivityCount] = useState(PAGE_SIZE);
@@ -191,6 +193,7 @@ export default function GroupDetailScreen() {
       activity: false,
     });
     setActiveTab('expenses');
+    setActivityFilter('all');
     tabIndicatorAnim.setValue(0);
     tabContentAnim.setValue(1);
     setVisibleExpenseCount(PAGE_SIZE);
@@ -456,20 +459,30 @@ export default function GroupDetailScreen() {
     });
   }, [group?.expenses, group?.settlements]);
 
+  const filteredActivityStream = useMemo(() => {
+    if (activityFilter === 'expenses') {
+      return activityStream.filter((item) => item.type === 'expense');
+    }
+    if (activityFilter === 'settlements') {
+      return activityStream.filter((item) => item.type === 'settlement');
+    }
+    return activityStream;
+  }, [activityStream, activityFilter]);
+
   // Progressive infinite scroll data & loader (Called unconditionally before any early returns)
   const visibleActivities = useMemo(
-    () => activityStream.slice(0, visibleExpenseCount),
-    [activityStream, visibleExpenseCount]
+    () => filteredActivityStream.slice(0, visibleExpenseCount),
+    [filteredActivityStream, visibleExpenseCount]
   );
 
   const loadMoreExpenses = useCallback(() => {
-    if (isLoadingMoreExpenses || visibleExpenseCount >= activityStream.length) return;
+    if (isLoadingMoreExpenses || visibleExpenseCount >= filteredActivityStream.length) return;
     setIsLoadingMoreExpenses(true);
     setTimeout(() => {
-      setVisibleExpenseCount((prev) => Math.min(activityStream.length, prev + PAGE_SIZE));
+      setVisibleExpenseCount((prev) => Math.min(filteredActivityStream.length, prev + PAGE_SIZE));
       setIsLoadingMoreExpenses(false);
     }, 180);
-  }, [isLoadingMoreExpenses, visibleExpenseCount, activityStream.length]);
+  }, [isLoadingMoreExpenses, visibleExpenseCount, filteredActivityStream.length]);
 
   const loadMoreActivities = useCallback(() => {
     const totalActivities = group?.history?.length || 0;
@@ -676,16 +689,95 @@ export default function GroupDetailScreen() {
         {/* TAB 1: EXPENSES & SETTLEMENTS (ACTIVITY STREAM) */}
         {visitedTabs.expenses && (
           <View style={[styles.tabSection, activeTab !== 'expenses' && styles.tabHidden]}>
+            {/* Segmented Filter Pills */}
+            <View style={styles.activityFilterBar}>
+              <TouchableOpacity
+                style={[
+                  styles.activityFilterPill,
+                  activityFilter === 'all' && styles.activityFilterPillActive,
+                ]}
+                onPress={() => {
+                  haptics.tap();
+                  setActivityFilter('all');
+                  setVisibleExpenseCount(PAGE_SIZE);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.activityFilterText,
+                    activityFilter === 'all' && styles.activityFilterTextActive,
+                  ]}
+                >
+                  All ({activityStream.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.activityFilterPill,
+                  activityFilter === 'expenses' && styles.activityFilterPillActive,
+                ]}
+                onPress={() => {
+                  haptics.tap();
+                  setActivityFilter('expenses');
+                  setVisibleExpenseCount(PAGE_SIZE);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.activityFilterText,
+                    activityFilter === 'expenses' && styles.activityFilterTextActive,
+                  ]}
+                >
+                  Expenses ({(group?.expenses || []).length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.activityFilterPill,
+                  activityFilter === 'settlements' && styles.activityFilterPillActive,
+                ]}
+                onPress={() => {
+                  haptics.tap();
+                  setActivityFilter('settlements');
+                  setVisibleExpenseCount(PAGE_SIZE);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.activityFilterText,
+                    activityFilter === 'settlements' && styles.activityFilterTextActive,
+                  ]}
+                >
+                  Settlements ({(group?.settlements || []).length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {loading && activityStream.length === 0 ? (
               <ExpensesTabSkeleton count={4} />
             ) : (
               <View style={styles.ledgerStream}>
-                {activityStream.length === 0 ? (
+                {filteredActivityStream.length === 0 ? (
                   <View style={styles.emptyContainer}>
                     <Receipt size={32} color={THEME.colors.textMuted} />
-                    <Text style={styles.emptyTitle}>No activity recorded</Text>
+                    <Text style={styles.emptyTitle}>
+                      {activityFilter === 'settlements'
+                        ? 'No settlements recorded'
+                        : activityFilter === 'expenses'
+                        ? 'No expenses recorded'
+                        : 'No activity recorded'}
+                    </Text>
                     <Text style={styles.emptySubtitle}>
-                      Tap "+ Add" to record your first expense or settlement in this group!
+                      {activityFilter === 'settlements'
+                        ? 'No settlements have been recorded in this group yet.'
+                        : activityFilter === 'expenses'
+                        ? 'Tap "+ Add" to record your first expense in this group!'
+                        : 'Tap "+ Add" to record your first expense or settlement in this group!'}
                     </Text>
                   </View>
                 ) : (
@@ -693,7 +785,7 @@ export default function GroupDetailScreen() {
                     {visibleActivities.map((entry, index) => {
                       const isLast =
                         index === visibleActivities.length - 1 &&
-                        visibleExpenseCount >= activityStream.length &&
+                        visibleExpenseCount >= filteredActivityStream.length &&
                         !isLoadingMoreExpenses;
 
                       if (entry.type === 'expense') {
@@ -817,12 +909,12 @@ export default function GroupDetailScreen() {
                     )}
 
                     {/* End of list completion footer */}
-                    {activityStream.length > PAGE_SIZE &&
-                      visibleExpenseCount >= activityStream.length &&
+                    {filteredActivityStream.length > PAGE_SIZE &&
+                      visibleExpenseCount >= filteredActivityStream.length &&
                       !isLoadingMoreExpenses && (
                         <View style={styles.endOfListFooter}>
                           <Text style={styles.endOfListText}>
-                            • All {activityStream.length} activities loaded •
+                            • All {filteredActivityStream.length} activities loaded •
                           </Text>
                         </View>
                       )}
@@ -1601,6 +1693,34 @@ const styles = StyleSheet.create({
   },
   tabHidden: {
     display: 'none',
+  },
+  activityFilterBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 2,
+    marginBottom: -4,
+  },
+  activityFilterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  activityFilterPillActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: THEME.colors.textSecondary,
+  },
+  activityFilterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+  },
+  activityFilterTextActive: {
+    color: THEME.colors.text,
+    fontWeight: '700',
   },
 
   // Ledger Stream

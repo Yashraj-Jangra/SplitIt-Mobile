@@ -19,10 +19,12 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import {
   X,
   Check,
   Camera,
+  Image as ImageIcon,
   Sparkles,
   Calendar,
   FileText,
@@ -76,6 +78,7 @@ export default function NewExpenseModal() {
     category?: string;
     groupId?: string;
     expenseId?: string;
+    receiptImageUrl?: string;
     origin?: string;
     fabX?: string;
     fabY?: string;
@@ -209,6 +212,73 @@ export default function NewExpenseModal() {
   const [notes, setNotes] = useState('');
   const [showNotesInput, setShowNotesInput] = useState(false);
 
+  const [receiptImageUrl, setReceiptImageUrl] = useState<string | null>(params.receiptImageUrl || null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [showReceiptViewer, setShowReceiptViewer] = useState(false);
+
+  const handlePickReceipt = async (mode: 'camera' | 'library') => {
+    try {
+      let res;
+      if (mode === 'camera') {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('Permission Required', 'Camera permission is required to capture receipt photos.');
+          return;
+        }
+        res = await ImagePicker.launchCameraAsync({ quality: 0.82 });
+      } else {
+        res = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          quality: 0.82,
+        });
+      }
+
+      if (!res.canceled && res.assets?.[0]?.uri) {
+        const localUri = res.assets[0].uri;
+        setIsUploadingReceipt(true);
+        haptics.tap();
+        const uploaded = await expenseService.uploadReceiptImage(localUri);
+        setReceiptImageUrl(uploaded || localUri);
+        haptics.saveSuccess();
+      }
+    } catch {
+      Alert.alert('Upload Error', 'Could not process receipt image.');
+    } finally {
+      setIsUploadingReceipt(false);
+    }
+  };
+
+  const handleReceiptButtonPress = () => {
+    haptics.tap();
+    if (receiptImageUrl) {
+      Alert.alert('Receipt Attached', 'Manage attached receipt photo', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'View Image', onPress: () => setShowReceiptViewer(true) },
+        { text: 'Replace Photo', onPress: () => handlePickReceipt('library') },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setReceiptImageUrl(null);
+            haptics.tap();
+          },
+        },
+      ]);
+    } else {
+      Alert.alert('Attach Receipt', 'Choose how to attach receipt photo', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take Photo', onPress: () => handlePickReceipt('camera') },
+        { text: 'Choose from Gallery', onPress: () => handlePickReceipt('library') },
+        {
+          text: 'Scan with AI',
+          onPress: () => {
+            router.push('/ai/scanner');
+          },
+        },
+      ]);
+    }
+  };
+
   const [userOverriddenCategory, setUserOverriddenCategory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -338,6 +408,7 @@ export default function NewExpenseModal() {
             setDescription(exp.title);
             setNotes(exp.notes || '');
             if (exp.notes) setShowNotesInput(true);
+            if (exp.receiptImageUrl) setReceiptImageUrl(exp.receiptImageUrl);
 
             if (exp.rawDate || exp.date) {
               const parsedDate = new Date(exp.rawDate || exp.date);
@@ -765,6 +836,7 @@ export default function NewExpenseModal() {
           masterCategory,
           splitType: splitMode,
           notes: notes.trim() || undefined,
+          receiptImageUrl: receiptImageUrl || undefined,
           date: expenseDate.toISOString(),
           payers: payersPayload,
           participants: participantsPayload,
@@ -786,6 +858,7 @@ export default function NewExpenseModal() {
           masterCategory,
           splitType: splitMode,
           notes: notes.trim() || undefined,
+          receiptImageUrl: receiptImageUrl || undefined,
           date: expenseDate.toISOString(),
           payers: payersPayload,
           participants: participantsPayload,
@@ -1116,7 +1189,60 @@ export default function NewExpenseModal() {
                 {notes ? (notes.length > 16 ? `${notes.slice(0, 16)}...` : notes) : 'Add note'}
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.accessoryPill,
+                (receiptImageUrl || isUploadingReceipt) && styles.accessoryPillActive,
+              ]}
+              onPress={handleReceiptButtonPress}
+              activeOpacity={0.7}
+              disabled={isUploadingReceipt}
+            >
+              {isUploadingReceipt ? (
+                <ActivityIndicator size="small" color={THEME.colors.primary} />
+              ) : (
+                <Camera
+                  size={13}
+                  color={receiptImageUrl ? THEME.colors.primary : THEME.colors.textSecondary}
+                />
+              )}
+              <Text style={styles.accessoryPillText}>
+                {isUploadingReceipt
+                  ? 'Uploading...'
+                  : receiptImageUrl
+                  ? 'Receipt attached'
+                  : 'Add receipt'}
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          {/* Attached Receipt Preview Strip */}
+          {receiptImageUrl && (
+            <View style={styles.attachedReceiptBar}>
+              <TouchableOpacity
+                style={styles.attachedReceiptInfo}
+                onPress={() => setShowReceiptViewer(true)}
+                activeOpacity={0.8}
+              >
+                <Image source={{ uri: receiptImageUrl }} style={styles.attachedReceiptThumb} />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.attachedReceiptTitle}>Receipt attached</Text>
+                  <Text style={styles.attachedReceiptSub}>Tap to view fullscreen</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  haptics.tap();
+                  setReceiptImageUrl(null);
+                }}
+                style={styles.removeReceiptBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={15} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Expandable Inline Note Input (Docked Above Keyboard) */}
           {showNotesInput && (
@@ -1423,6 +1549,38 @@ export default function NewExpenseModal() {
             })}
           </View>
         </BottomSheetModal>
+
+        {/* Fullscreen Receipt Modal */}
+        <Modal
+          visible={showReceiptViewer}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowReceiptViewer(false)}
+        >
+          <View style={styles.receiptViewerBackdrop}>
+            <SafeAreaView style={styles.receiptViewerSafeArea}>
+              <View style={styles.receiptViewerHeader}>
+                <Text style={styles.receiptViewerTitle}>Attached Receipt</Text>
+                <TouchableOpacity
+                  onPress={() => setShowReceiptViewer(false)}
+                  style={styles.modalCloseBtn}
+                >
+                  <X size={22} color={THEME.colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.receiptImageContainer}>
+                {receiptImageUrl && (
+                  <Image
+                    source={{ uri: receiptImageUrl }}
+                    style={styles.fullReceiptImage}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+            </SafeAreaView>
+          </View>
+        </Modal>
             </KeyboardAvoidingView>
           </Animated.View>
         </SafeAreaView>
@@ -2084,5 +2242,76 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: THEME.colors.textMuted,
     marginRight: 10,
+  },
+
+  /* Attached Receipt Bar */
+  attachedReceiptBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: 10,
+    padding: 8,
+    marginTop: 8,
+  },
+  attachedReceiptInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  attachedReceiptThumb: {
+    width: 38,
+    height: 38,
+    borderRadius: 6,
+    backgroundColor: THEME.colors.surface,
+  },
+  attachedReceiptTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  attachedReceiptSub: {
+    fontSize: 10,
+    color: THEME.colors.textMuted,
+    marginTop: 1,
+  },
+  removeReceiptBtn: {
+    padding: 6,
+  },
+
+  /* Receipt Viewer Modal */
+  receiptViewerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.94)',
+  },
+  receiptViewerSafeArea: {
+    flex: 1,
+  },
+  receiptViewerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  receiptViewerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  modalCloseBtn: {
+    padding: 6,
+  },
+  receiptImageContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  fullReceiptImage: {
+    width: '100%',
+    height: '100%',
   },
 });

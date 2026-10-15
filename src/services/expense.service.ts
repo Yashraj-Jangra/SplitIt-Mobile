@@ -7,6 +7,7 @@ import { balanceService } from './balance.service';
 import { settingsService } from './settings.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { getActiveCurrencySymbol } from '../contexts/currency.context';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { appEventEmitter } from './event-emitter';
 
 export interface CreateExpensePayload {
@@ -18,6 +19,7 @@ export interface CreateExpensePayload {
   splitType: 'equally' | 'unequally' | 'by_shares' | 'by_percentage' | 'shares' | 'percentage';
   date?: string;
   notes?: string;
+  receiptImageUrl?: string;
   payers: Array<{ userId: string; amount: number }>;
   participants: Array<{ userId: string; amountOwed: number; share?: number }>;
 }
@@ -780,6 +782,7 @@ export const expenseService = {
       category?: string;
       masterCategory?: string;
       notes?: string;
+      receiptImageUrl?: string;
       date?: string;
       splitType?: string;
       payers?: Array<{ userId: string; amount: number }>;
@@ -926,6 +929,45 @@ export const expenseService = {
       return false;
     }
   },
+
+  /**
+   * Upload receipt image to server and get persistent remote URL
+   */
+  async uploadReceiptImage(localUri: string): Promise<string | null> {
+    try {
+      const manipulated = await ImageManipulator.manipulateAsync(
+        localUri,
+        [{ resize: { width: 1400 } }],
+        { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      const token = await authService.getToken();
+      const formData = new FormData();
+      formData.append('file', {
+        uri: manipulated.uri,
+        name: 'receipt.jpg',
+        type: 'image/jpeg',
+      } as any);
+
+      const uploadHeaders = getAuthenticatedHeaders(token);
+      delete (uploadHeaders as any)['Content-Type'];
+
+      const res = await fetch(`${API_BASE_URL}/api/upload/receipt`, {
+        method: 'POST',
+        headers: uploadHeaders,
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.url || null;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
   clearCache(): void {
     _cachedUserExpenses = [];
     _cachedExpenseDetailsMap.clear();

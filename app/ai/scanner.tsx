@@ -111,6 +111,7 @@ export default function ReceiptScannerScreen() {
         amount: String(scanResult.amount),
         description: scanResult.description,
         category: scanResult.category.sub,
+        ...(scanResult.imageUrl ? { receiptImageUrl: scanResult.imageUrl } : {}),
       },
     });
   };
