@@ -18,6 +18,9 @@ import {
   Palmtree,
   Home,
   X,
+  BarChart3,
+  ScanLine,
+  Search,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
@@ -194,15 +197,16 @@ export default function HomeScreen() {
 
           <View style={styles.headerRight}>
             <TouchableOpacity
-              style={styles.aiPill}
-              activeOpacity={0.8}
+              style={styles.iconCircle}
+              activeOpacity={0.7}
               onPress={() => {
                 haptics.tap();
-                router.push('/ai/chat');
+                router.push('/analysis');
               }}
+              accessibilityRole="button"
+              accessibilityLabel="Personal Analytics"
             >
-              <Sparkles size={14} color={THEME.colors.aiLight} />
-              <Text style={styles.aiPillText}>AI</Text>
+              <BarChart3 size={17} color={THEME.colors.text} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -212,6 +216,8 @@ export default function HomeScreen() {
                 haptics.tap();
                 router.push('/notifications');
               }}
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
             >
               <Bell size={18} color={THEME.colors.text} />
               <View style={styles.bellDot} />
@@ -380,6 +386,18 @@ export default function HomeScreen() {
             <Handshake size={18} color={THEME.colors.text} strokeWidth={2} />
             <Text style={styles.secondaryActionText}>Settle Up</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tertiaryActionBtn}
+            onPress={() => {
+              haptics.tap();
+              router.push('/ai/scanner');
+            }}
+            activeOpacity={0.85}
+          >
+            <ScanLine size={18} color={THEME.colors.text} strokeWidth={2} />
+            <Text style={styles.secondaryActionText}>Scan</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Active Groups Pebble Strip */}
@@ -464,80 +482,84 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Ambient AI Intelligence Capsule */}
-        <TouchableOpacity
-          style={styles.aiInsightCard}
-          activeOpacity={0.8}
-          onPress={() => {
-            haptics.tap();
-            router.push('/ai/chat');
-          }}
-        >
-          <View style={styles.aiInsightIconWrap}>
-            <Sparkles size={16} color={THEME.colors.aiLight} />
-          </View>
-          <View style={styles.aiInsightContent}>
-            <Text style={styles.aiInsightEyebrow}>SMART INSIGHT</Text>
-            <Text style={styles.aiInsightBody}>
-              Your spending is <Text style={{ color: THEME.colors.primaryLight, fontWeight: '700' }}>8% lower</Text> than last month. Group budgets are balanced.
-            </Text>
-          </View>
-          <ChevronRight size={16} color={THEME.colors.textMuted} />
-        </TouchableOpacity>
-
-        {/* Recent Splits Ledger (Apple Wallet Style Continuous Stream) */}
+        {/* Recent Splits Ledger (Compact Glance: Capped at 4 items) */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            {recentTransactions.length > 4 && (
+              <TouchableOpacity
+                onPress={() => {
+                  haptics.tap();
+                  router.push('/(tabs)/activity');
+                }}
+                style={styles.seeAllBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.seeAllText}>View all</Text>
+                <ChevronRight size={14} color={THEME.colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.ledgerStream}>
             {recentTransactions.length > 0 ? (
-              recentTransactions.map((tx, index) => {
-                const isLast = index === recentTransactions.length - 1;
-                const isGet = tx.yourImpact === 'get';
-                const isOwe = tx.yourImpact === 'owe';
+              <>
+                {recentTransactions.slice(0, 4).map((tx, index) => {
+                  const isLast = index === Math.min(recentTransactions.length, 4) - 1;
 
-                return (
-                  <TouchableOpacity
-                    key={tx.id}
-                    style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      haptics.tap();
-                      router.push({
-                        pathname: '/expenses/[id]',
-                        params: {
-                          id: tx.id,
-                          groupId: tx.groupId,
-                          title: tx.title,
-                          amount: String(tx.amount),
-                          paidByName: tx.paidByName,
-                          date: tx.date,
-                          category: tx.category,
-                        },
-                      });
-                    }}
-                  >
-                    <View style={styles.ledgerIconCircle}>
-                      <CategoryIcon subCategory={tx.category} masterCategory={tx.masterCategory} size={20} color={THEME.colors.textSecondary} />
-                    </View>
+                  return (
+                    <TouchableOpacity
+                      key={tx.id}
+                      style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        haptics.tap();
+                        router.push({
+                          pathname: '/expenses/[id]',
+                          params: {
+                            id: tx.id,
+                            groupId: tx.groupId,
+                            title: tx.title,
+                            amount: String(tx.amount),
+                            paidByName: tx.paidByName,
+                            date: tx.date,
+                            category: tx.category,
+                          },
+                        });
+                      }}
+                    >
+                      <View style={styles.ledgerIconCircle}>
+                        <CategoryIcon subCategory={tx.category} masterCategory={tx.masterCategory} size={20} color={THEME.colors.textSecondary} />
+                      </View>
 
-                    <View style={styles.ledgerInfo}>
-                      <Text style={styles.ledgerTitle} numberOfLines={1}>
-                        {tx.title}
-                      </Text>
-                      <Text style={styles.ledgerSubline}>
-                        {tx.groupName} • {tx.date}
-                      </Text>
-                    </View>
+                      <View style={styles.ledgerInfo}>
+                        <Text style={styles.ledgerTitle} numberOfLines={1}>
+                          {tx.title}
+                        </Text>
+                        <Text style={styles.ledgerSubline}>
+                          {tx.groupName} • {tx.date}
+                        </Text>
+                      </View>
 
-                    <ExpenseImpactCol expense={tx} currentUserId={currentUser?.id} />
-                  </TouchableOpacity>
-                );
-              })
+                      <ExpenseImpactCol expense={tx} currentUserId={currentUser?.id} />
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <TouchableOpacity
+                  style={styles.viewAllActivityBtn}
+                  onPress={() => {
+                    haptics.tap();
+                    router.push('/(tabs)/activity');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.viewAllActivityText}>View all activity</Text>
+                  <ChevronRight size={14} color={THEME.colors.primary} />
+                </TouchableOpacity>
+              </>
             ) : loading ? (
-              <TransactionRowSkeleton count={5} />
+              <TransactionRowSkeleton count={4} />
             ) : (
               <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                 <Text style={{ color: THEME.colors.textMuted, fontSize: 13 }}>No recent transactions recorded yet</Text>
@@ -573,7 +595,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 32,
-    gap: 24,
+    gap: 16,
   },
   header: {
     flexDirection: 'row',
@@ -713,7 +735,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.hairline,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: THEME.colors.surfaceSubtle,
   },
   statColumn: {
     flex: 1,
@@ -747,7 +769,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryActionBtn: {
-    flex: 1,
+    flex: 1.1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -782,6 +804,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: THEME.colors.text,
+  },
+  tertiaryActionBtn: {
+    flex: 0.8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: THEME.colors.surfaceElevated,
+    paddingVertical: 14,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairlineLight,
   },
 
   // Sections
@@ -919,7 +953,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: THEME.colors.hairline,
   },
   ledgerInfo: {
     flex: 1,
@@ -946,12 +980,26 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginTop: 1,
   },
+  viewAllActivityBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.hairline,
+  },
+  viewAllActivityText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
   // Startup Guide Banner
   demoBanner: {
-    backgroundColor: 'rgba(16, 185, 129, 0.07)',
+    backgroundColor: THEME.colors.successSubtle,
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.28)',
+    borderColor: THEME.colors.successBorder,
     padding: 16,
     marginVertical: 8,
     gap: 12,
@@ -965,12 +1013,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: THEME.colors.successMuted,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: THEME.radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: THEME.colors.successBorder,
   },
   demoBadgeText: {
     fontSize: 10,
@@ -1043,11 +1091,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: THEME.colors.successMuted,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
+    borderColor: THEME.colors.successBorder,
   },
   emptyGroupTitle: {
     fontSize: 13,
