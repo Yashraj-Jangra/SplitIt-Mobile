@@ -1,6 +1,22 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Exact App Logo & Color Synchronization with Web Platform (`SplitWise-Clone`)**:
+  - **Identified & Replaced Broken AI Icons**: Removed hallucinated AI graphics in `assets/icon.png`, `assets/splash-icon.png`, `assets/android-icon-foreground.png`, and `assets/brand/logo-badge.png`.
+  - **Exact Vector SVG Replica (`src/components/brand/QuantumLogo.tsx`)**: Replaced broken custom dash approximations (`dashOn=60, dashOff=239`) with exact 1:1 mathematical user-unit arcs matching web's `Icons.Logo` and `public/icons/favicon.svg` (`strokeDasharray="44.77 179.07"` with `strokeDashoffset={33.58}` for Path 1, and `strokeDasharray="29.85 119.38"` with `strokeDashoffset={-22.38}` for Path 2). Restored the missing 3rd arc and concentric nucleus core (`r=10` with 50% opacity, `r=5` solid).
+  - **Exact Web Theme Color Parity (`src/constants/theme.ts`, `app.json`, `android/app/src/main/res/values/colors.xml`, `android/app/src/main/res/values-night/colors.xml`)**: Updated `primary` from `#1CC29F` to `#00C4CC` (the web application's canonical `--primary: 180 100% 40%`), along with `primaryLight` (`#33D6DC`), `primaryMuted` (`rgba(0, 196, 204, 0.14)`), `borderFocus` (`rgba(0, 196, 204, 0.45)`), and notification accent color.
+  - **Full Suite of Studio-Quality Brand Assets Generated & Synchronized (`assets/`)**:
+    - `assets/icon.png` (1024x1024): Exact `#00C4CC` logo on refined `#131417` obsidian background.
+    - `assets/splash-icon.png` (512x512): Clean `#00C4CC` logo on transparent background for launch splash.
+    - `assets/android-icon-foreground.png` (512x512): `#00C4CC` logo within Android adaptive icon safe zone (center 66%).
+    - `assets/android-icon-background.png` (512x512): Solid `#131417` canvas.
+    - `assets/android-icon-monochrome.png` (512x512): Clean white silhouette for Android tinted icons.
+    - `assets/favicon.png` (48x48): Web favicon.
+    - `assets/brand/logo.svg`: Exact web SVG with `#00C4CC` stroke and fills.
+    - `assets/brand/logo-1024.png`, `logo-512.png`, `logo-192.png`: High-resolution transparent vector-render exports.
+    - `assets/brand/logo-badge.png` (256x256): Crisp circular emblem with surface background and hairline ring for UPI QR codes (`app/settle/qr.tsx`, `app/settings/my-qr.tsx`).
+  - **Verified Quality Gates**: Passed `npx tsc --noEmit` (0 type errors) and `npx jest --passWithNoTests` (0 failures).
+
 - **Full Web vs. Mobile Feature & Architecture Parity Implementation**:
   - **Phase 1: In-App Password Recovery & Deep-Link Auth Lifecycle**:
     - Created `app/(auth)/forgot-password.tsx` native email submission screen with debounced validation and confirmation state.

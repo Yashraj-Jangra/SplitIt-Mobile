@@ -6,14 +6,14 @@ export const THEME = {
     surfaceSubtle: '#16171B', // Inset / recessed element backdrop
     surfacePill: '#26282E', // Pill selector backdrop
     border: 'rgba(255, 255, 255, 0.08)', // Ultra-subtle hairline
-    borderFocus: 'rgba(28, 194, 159, 0.45)',
+    borderFocus: 'rgba(0, 196, 204, 0.45)',
     borderSubtle: '#374151',
     hairline: 'rgba(255, 255, 255, 0.06)',
     hairlineLight: 'rgba(255, 255, 255, 0.12)',
-    primary: '#1CC29F', // Iconic Splitwise Teal / Mint
+    primary: '#00C4CC', // Canonical SplitIt Teal/Cyan (matching web hsl(180, 100%, 40%))
     primaryForeground: '#09090B', // Dark contrast text/icon on top of primary
-    primaryLight: '#3FE3BF',
-    primaryMuted: 'rgba(28, 194, 159, 0.14)',
+    primaryLight: '#33D6DC',
+    primaryMuted: 'rgba(0, 196, 204, 0.14)',
     negative: '#F43F5E', // Clean Rose
     negativeLight: '#FB7185',
     negativeMuted: 'rgba(244, 63, 94, 0.14)',

@@ -17,68 +17,40 @@ interface QuantumLogoProps {
  * Rendered with hardware acceleration via react-native-svg.
  */
 export function QuantumLogo({
-  size = 36,
+  size = 32,
   color = THEME.colors.primary,
-  glowColor = THEME.colors.primaryLight,
+  glowColor,
   useGradient = false,
   style,
 }: QuantumLogoProps) {
-  // Radius of the main arc circle is ~47.5, circumference is ~298.45
-  // Dash array of 0.2 / 0.8 translates to ~59.69 on / 238.76 off
-  const dashOn = 60;
-  const dashOff = 239;
-  const dashOffset1 = 45;
-  const dashOffset2 = -45;
-  const gradientId = `splitit_teal_${Math.round(size)}`;
-
   return (
     <View style={[{ width: size, height: size }, style]}>
       <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-        {useGradient && (
-          <Defs>
-            <LinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={glowColor} stopOpacity="1" />
-              <Stop offset="60%" stopColor={color} stopOpacity="1" />
-              <Stop offset="100%" stopColor={THEME.colors.success} stopOpacity="0.9" />
-            </LinearGradient>
-          </Defs>
-        )}
-
-        {/* Orbit Arc 1 */}
+        {/* Orbit Arc 1: Top-left & Bottom-right arc segments (exact 1:1 replica of web Icons.Logo) */}
         <Path
           d="M50 2.5C23.79 2.5 2.5 23.79 2.5 50C2.5 76.21 23.79 97.5 50 97.5C76.21 97.5 97.5 76.21 97.5 50"
-          stroke={useGradient ? `url(#${gradientId})` : color}
+          stroke={color}
           strokeWidth={5}
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeDasharray={`${dashOn} ${dashOff}`}
-          strokeDashoffset={dashOffset1}
+          strokeDasharray="44.77 179.07"
+          strokeDashoffset={33.58}
         />
 
-        {/* Orbit Arc 2 */}
+        {/* Orbit Arc 2: Top-right arc segment (exact 1:1 replica of web Icons.Logo) */}
         <Path
           d="M50 2.5C76.21 2.5 97.5 23.79 97.5 50C97.5 76.21 76.21 97.5 50 97.5"
-          stroke={useGradient ? `url(#${gradientId})` : color}
+          stroke={color}
           strokeWidth={5}
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeDasharray={`${dashOn} ${dashOff}`}
-          strokeDashoffset={dashOffset2}
+          strokeDasharray="29.85 119.38"
+          strokeDashoffset={-22.38}
         />
 
-        {/* Nucleus Core (clean solid center matching website) */}
-        {useGradient ? (
-          <>
-            <Circle cx={50} cy={50} r={13} fill={color} opacity={0.2} />
-            <Circle cx={50} cy={50} r={8.5} fill={color} opacity={0.5} />
-            <Circle cx={50} cy={50} r={4.5} fill={glowColor} />
-          </>
-        ) : (
-          <>
-            <Circle cx={50} cy={50} r={10} fill={color} opacity={0.5} />
-            <Circle cx={50} cy={50} r={5} fill={color} />
-          </>
-        )}
+        {/* Nucleus Core: 10px radius with 50% opacity, 5px radius solid (exact web Icons.Logo) */}
+        <Circle cx={50} cy={50} r={10} fill={color} opacity={0.5} />
+        <Circle cx={50} cy={50} r={5} fill={color} />
       </Svg>
     </View>
   );

@@ -15,7 +15,7 @@
     },
     "notification": {
       "icon": "./assets/android-icon-monochrome.png",
-      "color": "#1CC29F"
+      "color": "#00C4CC"
     },
     "ios": {
       "supportsTablet": false,
