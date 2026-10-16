@@ -194,13 +194,15 @@ export default function GroupSearchScreen() {
             <Search size={16} color={THEME.colors.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search expenses, payments, members..."
+              placeholder="Search circle..."
               placeholderTextColor={THEME.colors.textMuted}
               value={query}
               onChangeText={setQuery}
               autoFocus={true}
               autoCapitalize="none"
               returnKeyType="search"
+              numberOfLines={1}
+              multiline={false}
             />
             {query.length > 0 && (
               <TouchableOpacity
@@ -470,6 +472,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: THEME.colors.text,
     paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   metaRow: {
     flexDirection: 'row',

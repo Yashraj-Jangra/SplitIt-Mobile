@@ -287,12 +287,14 @@ export default function ActivityScreen() {
           <Search size={15} color={THEME.colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search transactions, members, categories..."
+            placeholder="Search activity..."
             placeholderTextColor={THEME.colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
             returnKeyType="search"
+            numberOfLines={1}
+            multiline={false}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity
@@ -637,6 +639,9 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
     fontSize: 13,
     padding: 0,
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   filterPillsRow: {
     flexDirection: 'row',

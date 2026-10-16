@@ -220,10 +220,14 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
               style={styles.searchInput}
               value={query}
               onChangeText={setQuery}
-              placeholder="Search circles, expenses, settlements..."
+              placeholder="Search..."
               placeholderTextColor={THEME.colors.textMuted}
               returnKeyType="search"
               clearButtonMode="while-editing"
+              numberOfLines={1}
+              multiline={false}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
             {query.length > 0 && (
               <TouchableOpacity
@@ -381,6 +385,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: THEME.colors.text,
     padding: 0,
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   cancelBtn: {
     paddingVertical: 8,

@@ -1,6 +1,14 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Streamlined Global Search Placeholder & Eliminated Multi-Line Text Wrapping (`src/components/search/UniversalSearchModal.tsx`, `app/(tabs)/activity.tsx`, `app/(tabs)/groups.tsx`, `app/groups/[id]/search.tsx`)**:
+  - **Identified Wrapping Defect**: Global search modal previously used a 41-character placeholder (`"Search circles, expenses, settlements..."`). On mobile form factors, this exceeded available input width and lacked `multiline={false}` / `numberOfLines={1}` guards, causing ugly multi-line text wrapping and vertical layout misalignment against the search icon and cancel button.
+  - **Shortened & Focused Placeholder**: Shortened global search placeholder to `"Search..."` (and tab searches to `"Search activity..."`, `"Search groups..."`, `"Search circle..."`).
+  - **No-Wrap Layout Guarantees**:
+    - Added explicit `numberOfLines={1}` and `multiline={false}` on all search `TextInput` components.
+    - Added `includeFontPadding: false`, `textAlignVertical: 'center'`, and `paddingVertical: 0` to search input styles across all search surfaces to prevent Android font padding quirks and ensure razor-sharp vertical centering.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Fixed Emerald Green Balance Graph & Interactive Hover-Style Date/Balance Tooltip (`src/components/dashboard/BalanceHistoryGraph.tsx`, `app/(tabs)/index.tsx`)**:
   - **Decoupled from Theme Accent Color**:
     - Replaced dynamic `THEME.colors.primary` in `BalanceHistoryGraph.tsx` with fixed canonical financial Emerald Green (`#10B981` / `GRAPH_GREEN`) for positive trajectories/glows and Rose Red (`#F43F5E` / `GRAPH_ROSE`) for negative trajectories.
