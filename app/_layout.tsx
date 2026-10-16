@@ -230,6 +230,38 @@ function NavigationGate() {
               headerShown: false,
             }}
           />
+          <Stack.Screen
+            name="settings/security"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/payment"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/my-qr"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="info/about"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
         </Stack>
 
         {isLoading && (

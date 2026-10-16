@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronRight,
   CreditCard,
+  Info,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
@@ -139,6 +140,12 @@ export default function ProfileScreen() {
       title: 'Terms of Service',
       subtitle: 'App Store terms & acceptable use',
       onPress: () => router.push('/legal/terms'),
+    },
+    {
+      icon: Info,
+      title: 'About SplitIt',
+      subtitle: 'Version 1.0.0 · Architecture & credits',
+      onPress: () => router.push('/info/about'),
     },
   ];
 

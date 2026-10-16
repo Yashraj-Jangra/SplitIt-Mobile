@@ -1,6 +1,52 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Full Web vs. Mobile Feature & Architecture Parity Implementation**:
+  - **Phase 1: In-App Password Recovery & Deep-Link Auth Lifecycle**:
+    - Created `app/(auth)/forgot-password.tsx` native email submission screen with debounced validation and confirmation state.
+    - Created `app/(auth)/reset-password.tsx` handling token extraction from `splitit://reset-password?token=...`, password strength calculation, and submission to `POST /api/auth/reset-password`.
+    - Added "Forgot password?" trigger button in `app/(auth)/login.tsx`.
+    - Registered routes in `app/(auth)/_layout.tsx`.
+  - **Phase 2: Native UPI Intent Banking Launcher (`app/settle/qr.tsx`)**:
+    - Built primary "Pay with UPI App" CTA dispatching `Linking.openURL(upiUrl)` for 1-tap checkout into Google Pay, PhonePe, and Paytm.
+    - Added fallback clipboard copy if no UPI application is installed on device.
+  - **Phase 3: Native Camera & Gallery Avatar Photo Picker (`app/settings/account.tsx`, `src/services/auth.service.ts`)**:
+    - Replaced manual text URL input with interactive camera badge overlay on avatar.
+    - Integrated `expo-image-picker` with ActionSheet ("Take Photo", "Choose from Library").
+    - Compressed & cropped image to 400x400 square JPEG using `expo-image-manipulator` and uploaded via multipart to `POST /api/upload/avatar`.
+  - **Phase 4: Compact Minimalist Dashboard (`app/(tabs)/index.tsx`)**:
+    - Redesigned home dashboard into an essentials-only layout eliminating widget soup.
+    - Hero Net Balance card with *You are owed* & *You owe* split columns linked to obligations sheet.
+    - Quick action bar: Add Expense, Settle Up, Scan Receipt.
+    - Compact active groups glance.
+    - Recent transactions capped at 4 items with "View all activity →" link.
+    - Zero AI insight cards on the home dashboard.
+  - **Phase 5: Lightweight Group Analysis Tab 5 (`src/components/groups/GroupAnalysisTab.tsx`, `src/components/skeletons/GroupTabSkeleton.tsx`, `app/groups/[id]/index.tsx`)**:
+    - Added 5th tab "Analysis" to group details screen.
+    - Top KPI strip (Total Spend, Average per Member, Top Category).
+    - Member spending share horizontal progress bars and percentage allocation.
+    - Ranked category distribution breakdown with category icons.
+    - 3-4 month velocity comparison bars.
+    - Fast 0ms instant hydration from in-memory cache without heavy charting libraries.
+  - **Phase 6: Lightweight Personal Financial Health Screen (`app/analysis/index.tsx`, `app/_layout.tsx`)**:
+    - Built dedicated `app/analysis/index.tsx` screen accessed from Dashboard header Analytics icon.
+    - Top KPI strip: This Month's spend, % diff vs Last Month, daily burn rate.
+    - 3-month velocity SVG bars.
+    - Category share breakdown and Circle allocation breakdown.
+  - **Phase 7: Edit Settlement Action & Ledger Parity (`src/services/settlement.service.ts`, `src/components/settlements/EditSettlementModal.tsx`, `app/settlements/[id].tsx`)**:
+    - Implemented `updateSettlement` calling `PUT /api/settlements/[id]`.
+    - Built `EditSettlementModal` for editing amount, payment method (cash/UPI/bank), date, and notes.
+    - Added `Pencil` icon in pinned header of `app/settlements/[id].tsx` with optimistic cache refresh.
+  - **Phase 8: Universal Cross-App Search & Multi-Facet Filters (`src/components/search/UniversalSearchModal.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/activity.tsx`)**:
+    - Built full-screen debounced `UniversalSearchModal` querying Circles, Expenses, Settlements, and Friends simultaneously.
+    - Added Search trigger in Dashboard header.
+    - Upgraded `app/(tabs)/activity.tsx` with Role filters ("All", "Paid by me", "Split with me") and Circle filter pills.
+  - **Phase 9: Native About Page, Route Registrations & DoD (`app/info/about.tsx`, `app/_layout.tsx`, `app/(tabs)/profile.tsx`)**:
+    - Built `app/info/about.tsx` with version metadata, stack highlights, and legal compliance links.
+    - Registered all stack routes in `app/_layout.tsx` (`info/about`, `settings/security`, `settings/payment`, `settings/my-qr`, etc.).
+    - Added "About SplitIt" entry to Profile/Settings menu.
+    - Verified all quality gates: `npx tsc --noEmit` (0 errors) and `npx jest --passWithNoTests` (0 failures).
+
 - **Deep Mobile vs. Web Parity Audit & Core Refinements (`src/services/balance.service.ts`, `src/services/notification.service.ts`, `src/services/settlement.service.ts`, `src/services/expense.service.ts`, `src/services/ai.service.ts`, `src/components/dashboard/ObligationsModal.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/activity.tsx`, `app/ai/scanner.tsx`, `app/expenses/[id].tsx`, `app/expenses/new.tsx`, `app/groups/[id]/index.tsx`, `app/groups/[id]/search.tsx`)**:
   - **Comprehensive 360° Parity Audit**:
     - Performed a line-by-line inspection comparing `SplitIt-Mobile` with `SplitWise-Clone` (Next.js web application) across dashboard metrics, activity streams, search functionality, receipt attachments, and debt settlement flows.
