@@ -48,6 +48,7 @@ import { CategoryIcon } from '../../src/utils/category-icons';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 import { BottomSheetModal } from '../../src/components/common/BottomSheetModal';
+import { DatePickerModal } from '../../src/components/common/DatePickerModal';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useCurrency } from '../../src/contexts/currency.context';
@@ -1513,53 +1514,16 @@ export default function NewExpenseModal() {
           </ScrollView>
         </BottomSheetModal>
 
-        {/* MODAL 5: DATE PICKER SHEET */}
-        <BottomSheetModal
+        {/* MODAL 5: CALENDAR DATE PICKER SHEET */}
+        <DatePickerModal
           visible={showDateModal}
           onClose={() => setShowDateModal(false)}
+          selectedDate={expenseDate}
+          onSelectDate={(newDate) => {
+            setExpenseDate(newDate);
+          }}
           title="Expense Date"
-          maxHeight="60%"
-        >
-          <View style={{ marginTop: 4 }}>
-            {[
-              { label: 'Today', date: new Date() },
-              { label: 'Yesterday', date: new Date(Date.now() - 86400000) },
-              { label: '2 days ago', date: new Date(Date.now() - 2 * 86400000) },
-              { label: '3 days ago', date: new Date(Date.now() - 3 * 86400000) },
-              { label: '1 week ago', date: new Date(Date.now() - 7 * 86400000) },
-            ].map((item) => {
-              const isSelected =
-                expenseDate.getDate() === item.date.getDate() &&
-                expenseDate.getMonth() === item.date.getMonth() &&
-                expenseDate.getFullYear() === item.date.getFullYear();
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  style={[styles.dateChoiceRow, isSelected && styles.dateChoiceRowActive]}
-                  onPress={() => {
-                    haptics.tap();
-                    setExpenseDate(item.date);
-                    setShowDateModal(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.dateChoiceLabel, isSelected && [styles.dateChoiceLabelActive, { color: currentAccent.primary }]]}>
-                    {item.label}
-                  </Text>
-                  <Text style={styles.dateChoiceSub}>
-                    {item.date.toLocaleDateString('en-IN', {
-                      month: 'short',
-                      day: 'numeric',
-                      weekday: 'short',
-                    })}
-                  </Text>
-                  {isSelected && <Check size={16} color={currentAccent.primary} strokeWidth={2.5} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </BottomSheetModal>
+        />
 
         {/* Fullscreen Receipt Modal */}
         <Modal
@@ -2228,32 +2192,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  /* Date Sheet Rows */
-  dateChoiceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  dateChoiceRowActive: {
-    backgroundColor: THEME.colors.surfaceElevated,
-  },
-  dateChoiceLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    flex: 1,
-  },
-  dateChoiceLabelActive: {
-    color: THEME.colors.primary,
-  },
-  dateChoiceSub: {
-    fontSize: 13,
-    color: THEME.colors.textMuted,
-    marginRight: 10,
-  },
 
   /* Attached Receipt Bar */
   attachedReceiptBar: {

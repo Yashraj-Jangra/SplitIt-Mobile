@@ -1,5 +1,18 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Calendar Date Picker Modal & Theme-Matching Popup (`src/components/common/DatePickerModal.tsx`, `app/expenses/new.tsx`)**:
+  - **Bespoke Theme-Matching Calendar Modal (`src/components/common/DatePickerModal.tsx`)**:
+    - Replaced the rudimentary 5-item static list in `app/expenses/new.tsx` with a flagship, theme-matching calendar date picker modal built inside `BottomSheetModal`.
+    - **Header & Navigation**: Month and year display with chevron navigation controls, plus an instant "Today" shortcut jump button (`RotateCcw`) when viewing past or future months.
+    - **Quick Presets Row**: Horizontal preset pills (`Today`, `Yesterday`, `2 days ago`, `1 week ago`) with dynamic accent active highlights for rapid 1-tap logging.
+    - **Full Month Matrix**: 7-column day-of-week header (`Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`) and complete month grid with dimmed adjacent month days, current day badge (`isToday`), and selected date glow highlight with dynamic `currentAccent.primary` fill and crisp white bold typography.
+    - **Action Footer**: Formatted date preview badge (`en-IN` weekday, month, day, year) with "Cancel" and "Set Date" confirmation buttons with haptic feedback.
+  - **Integration in Expense Creation (`app/expenses/new.tsx`)**:
+    - Integrated `<DatePickerModal visible={showDateModal} onClose={() => setShowDateModal(false)} selectedDate={expenseDate} onSelectDate={(newDate) => setExpenseDate(newDate)} title="Expense Date" />`.
+    - Fully wired to existing `expenseDate` state and `dateDisplayLabel` for seamless end-to-end expense date recording.
+    - Cleaned up obsolete static date choice styles.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Chat Input Docking & Layout Stabilization (`app/ai/chat.tsx`, `app/support/[id].tsx`)**:
   - **Root Keyboard Avoidance Architecture**:
     - Wrapped both AI Chat (`app/ai/chat.tsx`) and Support Thread (`app/support/[id].tsx`) screens in a root `<KeyboardAvoidingView style={styles.keyboardContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>` encompassing `SafeAreaView edges={['top']}`.
