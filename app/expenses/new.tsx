@@ -43,6 +43,7 @@ import { groupService, GroupListItem } from '../../src/services/group.service';
 import { expenseService } from '../../src/services/expense.service';
 import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
@@ -528,8 +529,16 @@ export default function NewExpenseModal() {
       }
     };
     init();
+
+    const unsub = appEventEmitter.on('DEFAULT_GROUP_CHANGED', (newDef: string | null) => {
+      if (isMounted) {
+        setDefaultGroupIdState(newDef);
+      }
+    });
+
     return () => {
       isMounted = false;
+      unsub();
     };
   }, [expenseId, params.groupId]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,44 +8,74 @@ import {
   TextInput,
   Image,
 } from 'react-native';
-import { Search, Check, RotateCcw } from 'lucide-react-native';
+import { Search, Check, RotateCcw, Star } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
-import { GroupListItem } from '../../services/group.service';
+import { GroupListItem, groupService } from '../../services/group.service';
 import { BottomSheetModal } from './BottomSheetModal';
 import { haptics } from '../../services/haptics.service';
 
 export interface GroupPickerModalProps {
   visible: boolean;
   onClose: () => void;
-  groups: GroupListItem[];
+  groups?: GroupListItem[];
   selectedGroupId: string | null;
+  defaultGroupId?: string | null;
   onSelectGroup: (groupId: string | null) => void | Promise<void>;
   title?: string;
   subtitle?: string;
   allowNoneOption?: boolean;
   noneOptionLabel?: string;
   noneOptionSubtitle?: string;
+  showDefaultToggle?: boolean;
+  isDefaultChecked?: boolean;
+  onToggleDefault?: () => void;
 }
 
 export const GroupPickerModal: React.FC<GroupPickerModalProps> = ({
   visible,
   onClose,
-  groups,
+  groups: propGroups,
   selectedGroupId,
+  defaultGroupId,
   onSelectGroup,
   title = 'Choose Group',
   subtitle = 'Select which group to use',
   allowNoneOption = false,
   noneOptionLabel = 'None (Auto-pick most recent)',
   noneOptionSubtitle = 'Automatically uses whichever circle you visited last',
+  showDefaultToggle = false,
+  isDefaultChecked = false,
+  onToggleDefault,
 }) => {
   const [search, setSearch] = useState('');
+  const [internalGroups, setInternalGroups] = useState<GroupListItem[]>(propGroups || []);
+
+  useEffect(() => {
+    if (propGroups && propGroups.length > 0) {
+      setInternalGroups(propGroups);
+    } else if (visible) {
+      // Dynamic fallback to in-memory or cached user groups
+      const mem = groupService.getInMemoryGroups();
+      if (mem.length > 0) {
+        setInternalGroups(mem);
+      } else {
+        groupService
+          .getUserGroups({ skipBalances: true })
+          .then((fetched) => {
+            if (fetched && fetched.length > 0) {
+              setInternalGroups(fetched);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [propGroups, visible]);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return groups;
-    return groups.filter((g) => g.name.toLowerCase().includes(q));
-  }, [groups, search]);
+    if (!q) return internalGroups;
+    return internalGroups.filter((g) => g.name.toLowerCase().includes(q));
+  }, [internalGroups, search]);
 
   const handleSelect = async (id: string | null) => {
     haptics.tap();
@@ -65,7 +95,30 @@ export const GroupPickerModal: React.FC<GroupPickerModalProps> = ({
       subtitle={subtitle}
       maxHeight="82%"
     >
-      {groups.length > 5 && (
+      {/* Optional "Set as Default" toggle row (for new expense/settle flows) */}
+      {showDefaultToggle && (
+        <TouchableOpacity
+          style={styles.defaultToggleRow}
+          onPress={() => {
+            haptics.tap();
+            onToggleDefault?.();
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.defaultToggleTitle}>Set as default group</Text>
+            <Text style={styles.defaultToggleSub}>Auto-select when recording from homescreen</Text>
+          </View>
+          <Star
+            size={18}
+            color={isDefaultChecked ? THEME.colors.primary : THEME.colors.textMuted}
+            fill={isDefaultChecked ? THEME.colors.primary : 'transparent'}
+          />
+        </TouchableOpacity>
+      )}
+
+      {/* Search Input when 3 or more groups */}
+      {internalGroups.length >= 3 && (
         <View style={styles.searchBox}>
           <Search size={15} color={THEME.colors.textMuted} />
           <TextInput
@@ -82,6 +135,7 @@ export const GroupPickerModal: React.FC<GroupPickerModalProps> = ({
       )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
+        {/* Optional "None / Auto-pick" option (for settings screen) */}
         {allowNoneOption && (
           <TouchableOpacity
             style={[styles.row, !selectedGroupId && styles.rowActive]}
@@ -103,13 +157,25 @@ export const GroupPickerModal: React.FC<GroupPickerModalProps> = ({
           </TouchableOpacity>
         )}
 
-        {filteredGroups.map((grp) => {
+        {filteredGroups.length === 0 && (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>No groups found</Text>
+          </View>
+        )}
+
+        {filteredGroups.map((grp, index) => {
           const isSelected = selectedGroupId === grp.id;
+          const isDefault = defaultGroupId === grp.id;
+          const isLast = index === filteredGroups.length - 1;
 
           return (
             <TouchableOpacity
               key={grp.id}
-              style={[styles.row, isSelected && styles.rowActive]}
+              style={[
+                styles.row,
+                !isLast && styles.rowBorder,
+                isSelected && styles.rowActive,
+              ]}
               onPress={() => handleSelect(grp.id)}
               activeOpacity={0.7}
             >
@@ -121,9 +187,17 @@ export const GroupPickerModal: React.FC<GroupPickerModalProps> = ({
                 )}
               </View>
               <View style={styles.infoCol}>
-                <Text style={[styles.name, isSelected && styles.nameActive]} numberOfLines={1}>
-                  {grp.name}
-                </Text>
+                <View style={styles.nameRow}>
+                  <Text style={[styles.name, isSelected && styles.nameActive]} numberOfLines={1}>
+                    {grp.name}
+                  </Text>
+                  {isDefault && (
+                    <View style={styles.defaultBadge}>
+                      <Star size={9} color={THEME.colors.primary} fill={THEME.colors.primary} />
+                      <Text style={styles.defaultBadgeText}>Default</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.metaText}>
                   {grp.membersCount || 0} {grp.membersCount === 1 ? 'member' : 'members'}
                 </Text>
@@ -140,6 +214,28 @@ export const GroupPickerModal: React.FC<GroupPickerModalProps> = ({
 };
 
 const styles = StyleSheet.create({
+  defaultToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    marginBottom: 12,
+  },
+  defaultToggleTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  defaultToggleSub: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -165,9 +261,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     borderRadius: 12,
     gap: 12,
+  },
+  rowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: THEME.colors.hairline,
   },
   rowActive: {
     backgroundColor: THEME.colors.surfaceElevated,
@@ -201,6 +301,11 @@ const styles = StyleSheet.create({
   infoCol: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   name: {
     fontSize: 15,
     fontWeight: '600',
@@ -209,9 +314,32 @@ const styles = StyleSheet.create({
   nameActive: {
     color: THEME.colors.primary,
   },
+  defaultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: THEME.colors.primaryMuted,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
   metaText: {
     fontSize: 12,
     color: THEME.colors.textMuted,
     marginTop: 2,
+  },
+  emptyWrap: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: THEME.colors.textMuted,
   },
 });

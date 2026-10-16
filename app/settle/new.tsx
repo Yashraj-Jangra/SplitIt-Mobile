@@ -39,6 +39,7 @@ import {
   GroupListItem,
 } from '../../src/services/group.service';
 import { settlementService } from '../../src/services/settlement.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 import { useNetwork } from '../../src/contexts/network.context';
 import { launchUpiPayment } from '../../src/utils/upi';
 import { haptics } from '../../src/services/haptics.service';
@@ -214,8 +215,16 @@ export default function SettleUpModal() {
     };
 
     init();
+
+    const unsub = appEventEmitter.on('DEFAULT_GROUP_CHANGED', (newDef: string | null) => {
+      if (active) {
+        setDefaultGroupId(newDef);
+      }
+    });
+
     return () => {
       active = false;
+      unsub();
     };
   }, [params.groupId, loadGroupMembersAndParties]);
 

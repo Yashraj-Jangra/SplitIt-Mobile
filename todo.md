@@ -1,6 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
-## Recent Work Done
+- **Atmospheric Top Formatting Preview Hero & Fully Synchronized Default Group Selection (`app/settings/preferences.tsx`, `src/components/common/GroupPickerModal.tsx`, `src/services/group.service.ts`, `src/services/storage.service.ts`, `app/expenses/new.tsx`, `app/settle/new.tsx`)**:
+  - **Atmospheric Top Formatting Preview Hero (`app/settings/preferences.tsx`)**:
+    - Replaced the bottom list-item card preview with a real preview hero card at the **TOP** of the screen, creating visual parity with `AppearanceScreen` (`app/settings/appearance.tsx`).
+    - Engineered ambient accent glow (`opacity: 0.12`), glass-tinted 38px currency symbol node, and bold 32px formatted hero amount (`formatCurrency(1499, { decimals: 2 })`).
+    - Added sleek live status pill (`{currencySymbol} · {isCustom ? 'Custom' : currencyCode}`) and sample transaction ledger strip (`Groceries split · -$42.50`).
+    - Abolished wordy AI descriptions and explanatory paragraphs for a clean, minimal, flagship financial UI.
+  - **Modular, Robust & Synchronized Default Group Selection**:
+    - **Resilient Storage Parser (`src/services/storage.service.ts`)**: Enhanced `storageService.getItem()` to catch JSON parse errors on plain strings and gracefully return the raw string without throwing or returning `null`.
+    - **Multi-Tier Key Fallback & Cross-Screen Event Emitter (`src/services/group.service.ts`)**:
+      - `groupService.getDefaultGroupId()` now checks user-scoped storage key first, then seamlessly falls back to global/unscoped storage key.
+      - `groupService.setDefaultGroupId()` updates both user and global storage keys and emits `DEFAULT_GROUP_CHANGED` via `appEventEmitter`.
+    - **Real-Time Cross-Screen Reactivity (`app/expenses/new.tsx`, `app/settle/new.tsx`, `app/settings/preferences.tsx`)**: Subscribed all three surfaces to `DEFAULT_GROUP_CHANGED` so setting or clearing default group in preferences or expense forms instantly updates across the entire app without requiring screen remounting.
+    - **Enhanced Modular `GroupPickerModal` (`src/components/common/GroupPickerModal.tsx`)**:
+      - Added dynamic cache fallback to load in-memory groups or fetch via SWR if groups are not yet loaded.
+      - Added `defaultGroupId` star badge indicator and optional `showDefaultToggle` for seamless reuse across all group-picking screens.
+      - Added empty state and full width parity with continuous hairlines.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Modular App Preferences & Full-Width No-Div Pickers (`src/components/common/CurrencyPickerModal.tsx`, `src/components/common/GroupPickerModal.tsx`, `src/components/settings/SettingsSection.tsx`, `src/components/settings/SettingsRow.tsx`, `app/settings/preferences.tsx`)**:
   - **Extracted Atomic Modular Settings Building Blocks**:
     - Created `SettingsSection.tsx`: Standardized uppercase section overlines with single-layer hairline cards (`THEME.colors.surface`, `THEME.colors.hairline`).

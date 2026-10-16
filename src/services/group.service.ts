@@ -1311,8 +1311,20 @@ export const groupService = {
    */
   async getDefaultGroupId(userId?: string): Promise<string | null> {
     try {
-      const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
-      return await storageService.getItem<string>(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId));
+      const currentUser = await authService.getCachedUser();
+      const resolvedUserId = userId || currentUser?.id || '';
+
+      // 1. Try user-scoped storage key first
+      if (resolvedUserId) {
+        const userScoped = await storageService.getItem<string>(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId));
+        if (userScoped) return userScoped;
+      }
+
+      // 2. Fallback to global/unscoped storage key
+      const globalScoped = await storageService.getItem<string>(STORAGE_KEYS.DEFAULT_GROUP(''));
+      if (globalScoped) return globalScoped;
+
+      return null;
     } catch {
       return null;
     }
@@ -1323,12 +1335,22 @@ export const groupService = {
    */
   async setDefaultGroupId(groupId: string | null, userId?: string): Promise<void> {
     try {
-      const resolvedUserId = userId || (await authService.getCachedUser())?.id || '';
+      const currentUser = await authService.getCachedUser();
+      const resolvedUserId = userId || currentUser?.id || '';
+
       if (groupId) {
-        await storageService.setItem(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId), groupId);
+        if (resolvedUserId) {
+          await storageService.setItem(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId), groupId);
+        }
+        await storageService.setItem(STORAGE_KEYS.DEFAULT_GROUP(''), groupId);
       } else {
-        await storageService.removeItem(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId));
+        if (resolvedUserId) {
+          await storageService.removeItem(STORAGE_KEYS.DEFAULT_GROUP(resolvedUserId));
+        }
+        await storageService.removeItem(STORAGE_KEYS.DEFAULT_GROUP(''));
       }
+
+      appEventEmitter.emit('DEFAULT_GROUP_CHANGED', groupId);
     } catch {
       // Storage error fallback
     }

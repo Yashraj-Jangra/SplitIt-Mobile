@@ -13,12 +13,14 @@ import {
   ArrowLeft,
   Coins,
   Vibrate,
-  Layers,
+  Users,
   Palette,
+  Receipt,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { haptics } from '../../src/services/haptics.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 import { useHaptics } from '../../src/contexts/haptics.context';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
@@ -44,10 +46,12 @@ export default function PreferencesScreen() {
   const [defaultGroupName, setDefaultGroupName] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadPrefs() {
       try {
         const memGroups = groupService.getInMemoryGroups();
-        if (memGroups.length > 0) {
+        if (memGroups.length > 0 && isMounted) {
           setUserGroups(memGroups);
         }
 
@@ -56,11 +60,16 @@ export default function PreferencesScreen() {
           groupService.getUserGroups({ skipBalances: true }),
         ]);
 
+        if (!isMounted) return;
+
         setDefaultGroupId(defId);
-        setUserGroups(groups);
+        if (groups && groups.length > 0) {
+          setUserGroups(groups);
+        }
 
         if (defId) {
-          const defGroup = groups.find((g) => g.id === defId);
+          const listToSearch = groups.length > 0 ? groups : memGroups;
+          const defGroup = listToSearch.find((g) => g.id === defId);
           if (defGroup) {
             setDefaultGroupName(defGroup.name);
           }
@@ -69,7 +78,28 @@ export default function PreferencesScreen() {
         // Fallback gracefully
       }
     }
+
     loadPrefs();
+
+    // Subscribe to cross-screen default group changes (e.g. from Add Expense or Settle Up)
+    const unsub = appEventEmitter.on('DEFAULT_GROUP_CHANGED', (newGroupId: string | null) => {
+      if (!isMounted) return;
+      setDefaultGroupId(newGroupId);
+      if (newGroupId) {
+        setUserGroups((prev) => {
+          const matched = prev.find((g) => g.id === newGroupId);
+          setDefaultGroupName(matched ? matched.name : null);
+          return prev;
+        });
+      } else {
+        setDefaultGroupName(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsub();
+    };
   }, []);
 
   const handleSelectCurrency = async (code: string) => {
@@ -119,6 +149,60 @@ export default function PreferencesScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── TOP ATMOSPHERIC LIVE FORMATTING HERO PREVIEW ── */}
+        <View style={styles.heroSection}>
+          {/* Subtle Ambient Glow */}
+          <View
+            style={[
+              styles.heroAmbientGlow,
+              { backgroundColor: currentAccent.primary, opacity: 0.12 },
+            ]}
+          />
+
+          <View style={styles.heroTopRow}>
+            {/* Symbol Node */}
+            <View
+              style={[
+                styles.heroSymbolBadge,
+                {
+                  backgroundColor: currentAccent.primaryMuted,
+                  borderColor: currentAccent.borderFocus,
+                },
+              ]}
+            >
+              <Text style={[styles.heroSymbolText, { color: currentAccent.primary }]}>
+                {currencySymbol}
+              </Text>
+            </View>
+
+            {/* Live Status Pill */}
+            <View style={[styles.heroLivePill, { backgroundColor: currentAccent.primaryMuted }]}>
+              <View style={[styles.heroLiveDot, { backgroundColor: currentAccent.primary }]} />
+              <Text style={[styles.heroLivePillText, { color: currentAccent.primary }]}>
+                {isCustom ? `CUSTOM · "${currencySymbol}"` : `${currencyCode} · ACTIVE`}
+              </Text>
+            </View>
+          </View>
+
+          {/* Hero Formatted Amount */}
+          <View style={styles.heroAmountRow}>
+            <Text style={styles.heroAmountNumber}>
+              {formatCurrency(1499, { decimals: 2 })}
+            </Text>
+          </View>
+
+          {/* Sleek Context Sample Strip */}
+          <View style={styles.heroSampleStrip}>
+            <View style={styles.heroSampleLeft}>
+              <Receipt size={13} color={THEME.colors.textMuted} />
+              <Text style={styles.heroSampleLabel}>Groceries split</Text>
+            </View>
+            <Text style={styles.heroSampleValue}>
+              -{formatCurrency(42.5, { decimals: 2 })}
+            </Text>
+          </View>
+        </View>
+
         {/* ── SECTION 1: DISPLAY & THEMING ── */}
         <SettingsSection title="DISPLAY & THEMING">
           <SettingsRow
@@ -140,7 +224,7 @@ export default function PreferencesScreen() {
           <SettingsRow
             icon={Coins}
             title="Default Currency"
-            subtitle={isCustom ? `Custom logo ("${currencySymbol}")` : `${currencyCode} · Display logo`}
+            subtitle={isCustom ? `Custom symbol ("${currencySymbol}")` : `${currencyCode} · Display format`}
             value={`${currencySymbol} ${isCustom ? 'Custom' : currencyCode}`}
             onPress={() => setShowCurrencyModal(true)}
             isLast
@@ -168,39 +252,13 @@ export default function PreferencesScreen() {
         {/* ── SECTION 3: WORKFLOW DEFAULTS ── */}
         <SettingsSection title="WORKFLOW DEFAULTS">
           <SettingsRow
-            icon={Layers}
-            title="Default Circle"
-            subtitle={defaultGroupName ? `Pre-selects "${defaultGroupName}"` : 'Auto-pick most recent circle'}
+            icon={Users}
+            title="Default Group"
+            subtitle={defaultGroupName ? `Pre-selects "${defaultGroupName}"` : 'Auto-pick most recent group'}
             value={defaultGroupName || 'Auto (Recent)'}
             onPress={() => setShowGroupModal(true)}
             isLast
           />
-        </SettingsSection>
-
-        {/* ── SECTION 4: LIVE PREVIEW (OPEN EDITORIAL) ── */}
-        <SettingsSection title="FORMATTING PREVIEW">
-          <View style={styles.previewBanner}>
-            <View style={styles.previewAccentBar} />
-            <View style={styles.previewBody}>
-              <View style={styles.previewSymbolBadge}>
-                <Text style={styles.previewSymbolBadgeText}>{currencySymbol}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.previewNumberText}>
-                  {formatCurrency(1499, { decimals: 2 })}
-                </Text>
-                <Text style={styles.previewCaptionText}>
-                  {isCustom
-                    ? `Custom symbol "${currencySymbol}" active everywhere`
-                    : `${currencyCode} active · Single-currency display model`}
-                </Text>
-              </View>
-              <View style={styles.livePill}>
-                <View style={styles.liveDot} />
-                <Text style={styles.livePillText}>LIVE</Text>
-              </View>
-            </View>
-          </View>
         </SettingsSection>
       </ScrollView>
 
@@ -220,10 +278,11 @@ export default function PreferencesScreen() {
         onClose={() => setShowGroupModal(false)}
         groups={userGroups}
         selectedGroupId={defaultGroupId}
+        defaultGroupId={defaultGroupId}
         onSelectGroup={handleSelectDefaultGroup}
         allowNoneOption
-        title="Default Circle"
-        subtitle="Choose which circle is automatically pre-selected when creating expenses"
+        title="Default Group"
+        subtitle="Choose which group is pre-selected when creating expenses"
       />
     </SafeAreaView>
   );
@@ -265,6 +324,95 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     gap: 20,
   },
+
+  /* ── ATMOSPHERIC HERO PREVIEW ── */
+  heroSection: {
+    position: 'relative',
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    overflow: 'hidden',
+    gap: 14,
+  },
+  heroAmbientGlow: {
+    position: 'absolute',
+    top: -40,
+    left: '20%',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroSymbolBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  heroSymbolText: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  heroLivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+  },
+  heroLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  heroLivePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  heroAmountRow: {
+    paddingVertical: 4,
+  },
+  heroAmountNumber: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: THEME.colors.text,
+    letterSpacing: -0.8,
+  },
+  heroSampleStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: THEME.colors.hairline,
+  },
+  heroSampleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  heroSampleLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+  },
+  heroSampleValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+
+  /* ── ACCENT PILL ── */
   accentPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -281,70 +429,5 @@ const styles = StyleSheet.create({
   accentPillText: {
     fontSize: 11,
     fontWeight: '700',
-  },
-  previewBanner: {
-    flexDirection: 'row',
-    backgroundColor: THEME.colors.surface,
-    overflow: 'hidden',
-  },
-  previewAccentBar: {
-    width: 3.5,
-    backgroundColor: THEME.colors.primary,
-  },
-  previewBody: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    gap: 12,
-  },
-  previewSymbolBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  previewSymbolBadgeText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: THEME.colors.primary,
-  },
-  previewNumberText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: THEME.colors.text,
-    letterSpacing: -0.4,
-  },
-  previewCaptionText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: THEME.colors.textMuted,
-    marginTop: 1,
-  },
-  livePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: THEME.radius.full,
-  },
-  liveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: THEME.colors.success,
-  },
-  livePillText: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: THEME.colors.success,
-    letterSpacing: 0.5,
   },
 });

@@ -32,19 +32,24 @@ export const storageService = {
       const raw = await AsyncStorage.getItem(key);
       if (!raw) return null;
 
-      const envelope: CacheEnvelope<T> = JSON.parse(raw);
-      if (!envelope || envelope.data === undefined) {
-        // Fallback for non-enveloped raw JSON
-        return envelope as unknown as T;
-      }
+      try {
+        const envelope: CacheEnvelope<T> = JSON.parse(raw);
+        if (!envelope || envelope.data === undefined) {
+          // Fallback for non-enveloped raw JSON
+          return envelope as unknown as T;
+        }
 
-      if (envelope.ttlMs && Date.now() - envelope.timestamp > envelope.ttlMs) {
-        // Expired in cache, remove silently
-        AsyncStorage.removeItem(key).catch(() => {});
-        return null;
-      }
+        if (envelope.ttlMs && Date.now() - envelope.timestamp > envelope.ttlMs) {
+          // Expired in cache, remove silently
+          AsyncStorage.removeItem(key).catch(() => {});
+          return null;
+        }
 
-      return envelope.data;
+        return envelope.data;
+      } catch {
+        // Fallback for non-JSON unquoted plain strings (e.g. raw ID or legacy string)
+        return raw as unknown as T;
+      }
     } catch {
       return null;
     }
