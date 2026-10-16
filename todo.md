@@ -1,5 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Universal Search Flagship Redesign, Full-Screen Immersion & Bespoke Entity Architecture (`src/components/search/UniversalSearchModal.tsx`)**:
+  - **Full-Screen Flagship Presentation**:
+    - Replaced the constrained iOS page sheet (`presentationStyle="pageSheet"`) with an edge-to-edge, immersive canvas (`statusBarTranslucent`, `transparent={false}`, and `SafeAreaView edges={['top', 'bottom']}`).
+    - Pinned search bar with live auto-focus, dynamic accent glow ring, clear input button (`X`), and instant keyboard dismissal / close actions.
+  - **Open Editorial "No-Div" Architecture**:
+    - Completely eliminated boxed card containers (`listCard`) and nested wrappers.
+    - Result rows span 100% full screen width with 16px internal padding and edge-to-edge hairline dividers (`borderBottomWidth: StyleSheet.hairlineWidth`).
+    - Section headers feature crisp uppercase overlines (`CIRCLES`, `EXPENSES`, `SETTLEMENTS`, `PEOPLE`) with count pills.
+  - **Bespoke Entity-Specific Result Rows**:
+    - **Circles / Groups**: 44px cover thumbnail/initial badge with dynamic accent border ring, `CIRCLE` tag pill, member count metadata, and real-time net balance status pill (`owed to you` / `you owe`).
+    - **Expenses**: 42px category-specific visual nodes (dining, shopping, travel, utilities, general receipt) with contextual color tints, expense title, group + date + paidByName ribbon, total amount, and colored your-share impact pill.
+    - **Settlements**: 42px emerald handshake node, cash flow direction `payer ➔ payee` with accent arrow indicator, `SETTLED` badge, and emerald bold amount.
+    - **People / Friends**: 42px user avatar photo/initial node with accent border ring, mutual circle count, and sleek "View" action pill.
+  - **Interactive Filter Strip & Exploration State**:
+    - Horizontal pill bar with live count badges for each category: `All (N)`, `Circles (N)`, `Expenses (N)`, `Settlements (N)`, `People (N)`.
+    - Rich empty exploration view before typing: Quick Jump to Recent Circles, clickable suggested search chips (`"Dinner"`, `"Groceries"`, `"Trip"`, `"Rent"`, `"Coffee"`), and a search capabilities overview.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Notifications Center No-Div Redesign, Swipe Actions & Header Modernization (`app/notifications/index.tsx`)**:
   - **Header Modernization (`app/notifications/index.tsx`)**:
     - Moved the "Notifications" headline directly into the pinned top header bar with an unread count badge.
