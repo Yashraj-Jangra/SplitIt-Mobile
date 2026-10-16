@@ -599,4 +599,46 @@ export const authService = {
       return { success: false, error: err.message || 'Network error updating password' };
     }
   },
+
+  /**
+   * Request password reset recovery email.
+   */
+  async sendPasswordReset(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/send-password-reset`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        return { success: false, error: data.error || data.message || 'Failed to send recovery email' };
+      }
+      return { success: true, message: data.message || 'Password reset link sent to your email.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error sending reset email' };
+    }
+  },
+
+  /**
+   * Finalize password reset using cryptographic token.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ token, newPassword }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        return { success: false, error: data.message || data.error || 'Failed to reset password' };
+      }
+      return { success: true, message: data.message || 'Password updated successfully.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error resetting password' };
+    }
+  },
 };

@@ -263,6 +263,20 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* Forgot Password Link */}
+              <TouchableOpacity
+                onPress={() => {
+                  haptics.tap();
+                  router.push('/(auth)/forgot-password');
+                }}
+                style={styles.forgotPasswordButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Forgot password?"
+              >
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+
               {/* Sign In Primary Action */}
               <TouchableOpacity
                 style={styles.signInButton}
@@ -448,6 +462,18 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: 6,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    marginTop: -4,
+    marginBottom: 4,
+  },
+  forgotPasswordText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
   },
   signInButton: {
     flexDirection: 'row',
