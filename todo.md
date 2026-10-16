@@ -1,20 +1,19 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
-- **Modular App Preferences Redesign with BottomSheet Popup Pickers (`app/settings/preferences.tsx`)**:
-  - **Modular Settings Architecture**:
-    - Replaced disjointed forms and expanded presets with standardized modular sections (`DISPLAY & THEMING`, `HARDWARE & INTERACTION`, `WORKFLOW DEFAULTS`, `FORMATTING PREVIEW`).
-    - Standardized all settings rows with uniform 34px glyph containers, titles, subtitles, and right-aligned accessories (accent badge, currency pill, group pill, or switch).
-  - **Currency Selection BottomSheetModal**:
-    - Tapping the Currency row launches a dedicated hardware-accelerated bottom sheet popup picker (`BottomSheetModal`).
-    - Features a compact search filter input to quickly search presets by code, name, or symbol.
-    - Displays clean ledger of all 14 preset currencies with flags, names, symbols, and checkmark indicators.
-    - At the bottom of the picker, integrated a dedicated "Custom Currency Logo" section with inline symbol input, "Apply" button, and active status badge.
-  - **Default Circle Selection BottomSheetModal**:
-    - Tapping the Default Circle row launches a dedicated popup picker bottom sheet.
-    - Includes option for "None (Auto-pick most recent)" and lists all user circles with cover avatars and member counts.
-  - **Open Editorial Formatting Preview**:
-    - Replaced old card with a sleek open banner featuring a 3px vertical accent bar, 36px currency symbol glyph, live formatted amount, and active indicator dot.
+- **Modular App Preferences & Full-Width No-Div Pickers (`src/components/common/CurrencyPickerModal.tsx`, `src/components/common/GroupPickerModal.tsx`, `src/components/settings/SettingsSection.tsx`, `src/components/settings/SettingsRow.tsx`, `app/settings/preferences.tsx`)**:
+  - **Extracted Atomic Modular Settings Building Blocks**:
+    - Created `SettingsSection.tsx`: Standardized uppercase section overlines with single-layer hairline cards (`THEME.colors.surface`, `THEME.colors.hairline`).
+    - Created `SettingsRow.tsx`: Reusable setting row with 34px glyph icon, title, subtitle, and dynamic right accessories (badges, pills, switches, chevrons) with tactile haptics.
+  - **Full-Width No-Div `CurrencyPickerModal` (`src/components/common/CurrencyPickerModal.tsx`)**:
+    - Abolished nested `modalLedger` card soup and eliminated the double padding (16px sheet + 16px list) that previously compressed items.
+    - Items now span the full width of the bottom sheet with `paddingHorizontal: 8`, matching the group selector's open layout.
+    - Open list of all 14 preset currencies with search filter, active elevated row tint (`THEME.colors.surfaceElevated`), and checkmark.
+    - Custom currency logo section at the bottom of the scroll list with subtle hairline separator, inline symbol input, and "Apply" button.
+  - **Full-Width No-Div `GroupPickerModal` (`src/components/common/GroupPickerModal.tsx`)**:
+    - Extracted reusable group picker popup with full-width items, avatar nodes, member count meta, search filter, and "None (Auto-pick most recent)" option.
+  - **Streamlined `PreferencesScreen` (`app/settings/preferences.tsx`)**:
+    - Refactored entire preferences screen to use modular `SettingsSection`, `SettingsRow`, `CurrencyPickerModal`, and `GroupPickerModal`, reducing code complexity and establishing a single source of truth for settings across the app.
   - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
 
 - **Abolished Box Soup: Open Editorial & No-Div Architecture Standard (`design.md`, `.agents/rules/theming.md`, `AGENTS.md`, `app/settings/preferences.tsx`, `app/analysis/index.tsx`, `src/components/groups/GroupAnalysisTab.tsx`)**:
