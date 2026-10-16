@@ -1,6 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Admin-Configurable Group Cover Image Synchronization (`src/services/settings.service.ts`, `src/services/group.service.ts`, `app/groups/new.tsx`, `app/groups/[id]/index.tsx`, `app/groups/[id]/settings.tsx`, `app/(tabs)/groups.tsx`)**:
+  - **Identified Source of Truth**: Connected group cover handling to `GET /api/public/settings` where web admin configures `coverImages` in `SYSTEM/SETTINGS`.
+  - **Shared Fallback Alignment**: Synchronized fallback covers across web and mobile via `FALLBACK_GROUP_COVER_IMAGES` matching `SplitWise-Clone/src/lib/services/settings.service.ts`.
+  - **Settings Service Layer**: Added `getGroupCoverImages()` and `getCachedGroupCoverImages()` in `settings.service.ts` with in-memory caching and offline fallback.
+  - **Group Creation Flow (`app/groups/new.tsx`)**: Replaced hardcoded preset URLs with dynamic fetching from `settingsService.getGroupCoverImages()`. Renders dynamic horizontal scroll picker with active checkmark pill.
+  - **Group Details Header (`app/groups/[id]/index.tsx`)**:
+    - Added floating frosted "Cover" badge button (`Camera` icon) on the hero cover banner with hardware-accelerated scroll fade.
+    - Implemented `BottomSheetModal` for group cover changing displaying a sleek 16:9 2-column grid of all admin-configured covers with real-time selection overlay and index badge.
+    - Added optimistic cover update and backend synchronization via `groupService.updateGroup(targetId, { coverImageUrl })` with haptic feedback.
+  - **Group Settings Screen (`app/groups/[id]/settings.tsx`)**:
+    - Added Cover Image selection row under General Settings for group creators.
+    - Connected `coverImageUrl` field to `groupService.updateGroup`.
+  - **Group Service Enhancements (`src/services/group.service.ts`)**:
+    - Extended `updateGroup` to support `coverImageUrl?: string` with optimistic cache update for both `_cachedGroups` and `_groupDetailsMap`.
+    - Updated `createGroup` and `getUserGroups` fallbacks to resolve to admin preset images or `FALLBACK_GROUP_COVER_IMAGES[0]`.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Dynamic Accent Color & Appearance Settings System (`app/settings/appearance.tsx`, `src/contexts/theme.context.tsx`, `src/constants/theme.ts`, `app/(tabs)/profile.tsx`, `app/settings/preferences.tsx`, `app/_layout.tsx`)**:
   - **Sleek Open-Editorial No-Div Architecture**: Built `app/settings/appearance.tsx` conforming to the anti-card soup editorial philosophy. Features continuous hairline dividers, dynamic ambient atmospheric QuantumLogo glow, live interactive component preview strip (status pill, hero amount, split bill action button), and an open editorial ledger of accent palettes.
   - **Curated Premium Dark-Mode Palettes**: Integrated 8 hand-crafted accent presets: SplitIt Teal (`#00C4CC`), Mint Emerald (`#10B981`), Electric Violet (`#8B5CF6`), Solar Amber (`#F59E0B`), Cobalt Blue (`#3B82F6`), Coral Rose (`#F43F5E`), Neon Magenta (`#EC4899`), and Acid Lime (`#84CC16`).

@@ -30,6 +30,7 @@ import {
   Calendar,
   ArrowRight,
   ArrowLeftRight,
+  Camera,
 } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
@@ -49,6 +50,8 @@ import {
 } from '../../../src/components/skeletons/GroupTabSkeleton';
 import { GroupHistoryTab } from '../../../src/components/groups/GroupHistoryTab';
 import { GroupAnalysisTab } from '../../../src/components/groups/GroupAnalysisTab';
+import { BottomSheetModal } from '../../../src/components/common/BottomSheetModal';
+import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../../src/services/settings.service';
 import { haptics } from '../../../src/services/haptics.service';
 import { appEventEmitter } from '../../../src/services/event-emitter';
 
@@ -134,6 +137,54 @@ export default function GroupDetailScreen() {
   const [loading, setLoading] = useState(!group);
   const [refreshing, setRefreshing] = useState(false);
   const [statStripHeight, setStatStripHeight] = useState(58);
+
+  // Group cover selection modal
+  const [isCoverModalOpen, setIsCoverModalOpen] = useState(false);
+  const [coverOptions, setCoverOptions] = useState<string[]>(() =>
+    settingsService.getCachedGroupCoverImages()
+  );
+  const [isUpdatingCover, setIsUpdatingCover] = useState(false);
+
+  const handleOpenCoverPicker = useCallback(async () => {
+    haptics.tap();
+    setIsCoverModalOpen(true);
+    try {
+      const dynamicCovers = await settingsService.getGroupCoverImages();
+      if (dynamicCovers.length > 0) {
+        setCoverOptions(dynamicCovers);
+      }
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  const handleSelectCover = useCallback(
+    async (imageUrl: string) => {
+      if (!group || isUpdatingCover || imageUrl === group.coverImageUrl) {
+        setIsCoverModalOpen(false);
+        return;
+      }
+      haptics.tap();
+      setIsUpdatingCover(true);
+
+      // Optimistic update
+      setGroup((prev) => (prev ? { ...prev, coverImageUrl: imageUrl } : null));
+
+      try {
+        const targetGroupId = Array.isArray(id) ? id[0] : (id || group.id);
+        const success = await groupService.updateGroup(targetGroupId, { coverImageUrl: imageUrl });
+        if (success) {
+          haptics.saveSuccess();
+        }
+      } catch {
+        // Handled gracefully
+      } finally {
+        setIsUpdatingCover(false);
+        setIsCoverModalOpen(false);
+      }
+    },
+    [group, id, isUpdatingCover]
+  );
 
   // Progressive infinite scroll for expense and activity records
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
@@ -1238,7 +1289,8 @@ export default function GroupDetailScreen() {
           source={{
             uri:
               group.coverImageUrl ||
-              'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200&auto=format&fit=crop',
+              settingsService.getCachedGroupCoverImages()[0] ||
+              FALLBACK_GROUP_COVER_IMAGES[0],
           }}
           style={[
             StyleSheet.absoluteFill,
@@ -1249,6 +1301,30 @@ export default function GroupDetailScreen() {
           resizeMode="cover"
         />
         <Animated.View style={[styles.heroVignette, { opacity: vignetteOpacity }]} />
+
+        {/* Floating Change Cover Badge (Visible when hero is expanded) */}
+        {!group.archived && (
+          <Animated.View
+            style={[
+              styles.heroCoverBadgeWrap,
+              {
+                top: topInset + 46,
+                opacity: expandedContentOpacity,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.heroCoverBadge}
+              onPress={handleOpenCoverPicker}
+              activeOpacity={0.8}
+              accessibilityLabel="Change Cover Image"
+              accessibilityRole="button"
+            >
+              <Camera size={13} color="#FFFFFF" strokeWidth={2.2} />
+              <Text style={styles.heroCoverBadgeText}>Cover</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* Hero Expanded Title & Floating Actions */}
         <Animated.View
@@ -1445,6 +1521,46 @@ export default function GroupDetailScreen() {
           </Animated.View>
         </TouchableOpacity>
       </Animated.View>
+
+      {/* Change Cover Modal (Admin-configurable presets) */}
+      <BottomSheetModal
+        visible={isCoverModalOpen}
+        onClose={() => setIsCoverModalOpen(false)}
+        title="Change Group Cover"
+        subtitle="Choose from admin-configured covers"
+        maxHeight="65%"
+      >
+        <View style={styles.coverModalContent}>
+          <View style={styles.coverGrid}>
+            {coverOptions.map((url, idx) => {
+              const isSelected = group?.coverImageUrl === url;
+              return (
+                <TouchableOpacity
+                  key={`${url}-${idx}`}
+                  style={[styles.coverGridItem, isSelected && styles.coverGridItemSelected]}
+                  onPress={() => handleSelectCover(url)}
+                  activeOpacity={0.8}
+                  disabled={isUpdatingCover}
+                  accessibilityLabel={`Cover preset ${idx + 1}`}
+                  accessibilityRole="button"
+                >
+                  <Image source={{ uri: url }} style={styles.coverGridImage} />
+                  {isSelected && (
+                    <View style={styles.coverGridSelectedOverlay}>
+                      <View style={styles.coverGridCheckCircle}>
+                        <CheckCircle2 size={18} color="#FFFFFF" />
+                      </View>
+                    </View>
+                  )}
+                  <View style={styles.coverGridIndexBadge}>
+                    <Text style={styles.coverGridIndexText}>{idx + 1}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }
@@ -2219,5 +2335,93 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     backgroundColor: THEME.colors.primary,
     zIndex: -1,
+  },
+  heroCoverBadgeWrap: {
+    position: 'absolute',
+    right: 14,
+    zIndex: 15,
+  },
+  heroCoverBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(0, 0, 0, 0.62)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    shadowColor: THEME.colors.palette.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  heroCoverBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  coverModalContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  coverGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  coverGridItem: {
+    width: '48%',
+    aspectRatio: 16 / 9,
+    borderRadius: THEME.radius.md,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    position: 'relative',
+    backgroundColor: THEME.colors.surface,
+  },
+  coverGridItemSelected: {
+    borderColor: THEME.colors.primary,
+  },
+  coverGridImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  coverGridSelectedOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(16, 185, 129, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverGridCheckCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: THEME.colors.palette.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  coverGridIndexBadge: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  coverGridIndexText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

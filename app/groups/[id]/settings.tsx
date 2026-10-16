@@ -31,6 +31,7 @@ import {
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupMember, RegisteredUser } from '../../../src/services/group.service';
 import { authService, AuthUser } from '../../../src/services/auth.service';
+import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../../src/services/settings.service';
 import { haptics } from '../../../src/services/haptics.service';
 import { BottomSheetModal } from '../../../src/components/common/BottomSheetModal';
 import { SetBudgetModal } from '../../../src/components/groups/SetBudgetModal';
@@ -47,6 +48,15 @@ export default function GroupSettingsScreen() {
   );
   const [groupName, setGroupName] = useState(() => group?.name || '');
   const [groupDescription, setGroupDescription] = useState(() => group?.description || '');
+  const [coverOptions, setCoverOptions] = useState<string[]>(() =>
+    settingsService.getCachedGroupCoverImages()
+  );
+  const [selectedCover, setSelectedCover] = useState<string>(
+    () =>
+      group?.coverImageUrl ||
+      settingsService.getCachedGroupCoverImages()[0] ||
+      FALLBACK_GROUP_COVER_IMAGES[0]
+  );
   const [isLoading, setIsLoading] = useState(!group);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -69,6 +79,11 @@ export default function GroupSettingsScreen() {
       setGroup(data);
       setGroupName(data.name);
       setGroupDescription(data.description || '');
+      setSelectedCover(
+        data.coverImageUrl ||
+          settingsService.getCachedGroupCoverImages()[0] ||
+          FALLBACK_GROUP_COVER_IMAGES[0]
+      );
     }
   }, [targetId]);
 
@@ -78,11 +93,26 @@ export default function GroupSettingsScreen() {
       const user = await authService.getCachedUser();
       if (isMounted) setCurrentUser(user);
 
+      // Load admin-configured group covers from site settings
+      try {
+        const dynamicCovers = await settingsService.getGroupCoverImages();
+        if (isMounted && dynamicCovers.length > 0) {
+          setCoverOptions(dynamicCovers);
+        }
+      } catch {
+        // Fallback provided
+      }
+
       const data = await groupService.getGroupDetails(targetId);
       if (isMounted && data) {
         setGroup(data);
         setGroupName(data.name);
         setGroupDescription(data.description || '');
+        setSelectedCover(
+          data.coverImageUrl ||
+            settingsService.getCachedGroupCoverImages()[0] ||
+            FALLBACK_GROUP_COVER_IMAGES[0]
+        );
         setIsLoading(false);
       }
     })();
@@ -188,6 +218,7 @@ export default function GroupSettingsScreen() {
       await groupService.updateGroup(targetId, {
         name: groupName.trim(),
         description: groupDescription.trim(),
+        coverImageUrl: selectedCover,
       });
       haptics.saveSuccess();
       await refreshGroup();
@@ -439,6 +470,46 @@ export default function GroupSettingsScreen() {
                 numberOfLines={3}
                 maxLength={200}
               />
+            </View>
+
+            {/* Cover Image Selector */}
+            <View style={styles.inputField}>
+              <View style={styles.coverHeaderRow}>
+                <Text style={styles.fieldLabel}>COVER IMAGE</Text>
+                <Text style={styles.coverSubtitle}>Admin Presets</Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.coverRow}
+              >
+                {coverOptions.map((url, idx) => {
+                  const isSelected = selectedCover === url;
+                  return (
+                    <TouchableOpacity
+                      key={`${url}-${idx}`}
+                      style={[styles.coverCard, isSelected && styles.coverCardSelected]}
+                      onPress={() => {
+                        if (!isArchived && isCreator) {
+                          haptics.tap();
+                          setSelectedCover(url);
+                        }
+                      }}
+                      disabled={isArchived || !isCreator}
+                      activeOpacity={0.8}
+                      accessibilityLabel={`Cover option ${idx + 1}`}
+                      accessibilityRole="button"
+                    >
+                      <Image source={{ uri: url }} style={styles.coverImage} />
+                      {isSelected && (
+                        <View style={styles.coverCheckBadge}>
+                          <Check size={12} color="#FFFFFF" strokeWidth={3} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
 
             {isCreator && !isArchived && (
@@ -1235,5 +1306,49 @@ const styles = StyleSheet.create({
   noResultsText: {
     fontSize: 12,
     color: THEME.colors.textMuted,
+  },
+  coverHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  coverSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
+  },
+  coverRow: {
+    gap: 10,
+    paddingVertical: 4,
+  },
+  coverCard: {
+    width: 100,
+    height: 60,
+    borderRadius: THEME.radius.md,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    position: 'relative',
+    backgroundColor: THEME.colors.surfaceElevated,
+  },
+  coverCardSelected: {
+    borderColor: THEME.colors.primary,
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  coverCheckBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

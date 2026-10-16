@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { authService } from './auth.service';
 import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
 import { demoService } from './demo.service';
-import { settingsService } from './settings.service';
+import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from './settings.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { THEME } from '../constants/theme';
 import { GroupSettlementItem } from './settlement.service';
@@ -498,12 +498,10 @@ export const groupService = {
                 description: g.description,
                 coverImageUrl:
                   g.coverImageUrl ||
-                  [
-                    'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1200&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1200&auto=format&fit=crop',
-                  ][index % 4],
+                  settingsService.getCachedGroupCoverImages()[
+                    index % (settingsService.getCachedGroupCoverImages().length || 1)
+                  ] ||
+                  FALLBACK_GROUP_COVER_IMAGES[0],
                 categoryIcon: g.categoryIcon || 'Users',
                 membersCount: g.members?.length || 1,
                 members: (g.members || []).map((m: any) => ({
@@ -866,7 +864,10 @@ export const groupService = {
             id: groupData.id,
             name: groupData.name || 'Group',
             description: groupData.description || undefined,
-            coverImageUrl: groupData.coverImageUrl || 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200&auto=format&fit=crop',
+            coverImageUrl:
+              groupData.coverImageUrl ||
+              settingsService.getCachedGroupCoverImages()[0] ||
+              FALLBACK_GROUP_COVER_IMAGES[0],
             currency: 'INR',
             categoryIcon: groupData.categoryIcon || 'Users',
             totalGroupSpend: totalSpent,
@@ -979,7 +980,10 @@ export const groupService = {
       id: matching?.id || groupId,
       name: matching?.name || 'Group',
       description: matching?.description,
-      coverImageUrl: matching?.coverImageUrl,
+      coverImageUrl:
+        matching?.coverImageUrl ||
+        settingsService.getCachedGroupCoverImages()[0] ||
+        FALLBACK_GROUP_COVER_IMAGES[0],
       currency: 'INR',
       categoryIcon: matching?.categoryIcon || 'Users',
       totalGroupSpend: matching?.totalExpenses || 0,
@@ -1057,7 +1061,8 @@ export const groupService = {
       memberIds: resolvedMemberIds,
       coverImageUrl:
         data.coverImageUrl ||
-        'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2029&auto=format&fit=crop',
+        settingsService.getCachedGroupCoverImages()[0] ||
+        FALLBACK_GROUP_COVER_IMAGES[0],
       currency: '₹',
     };
 
@@ -1104,9 +1109,12 @@ export const groupService = {
   },
 
   /**
-   * Update group properties (name, description, etc.)
+   * Update group properties (name, description, coverImageUrl, etc.)
    */
-  async updateGroup(groupId: string, updates: { name?: string; description?: string }): Promise<boolean> {
+  async updateGroup(
+    groupId: string,
+    updates: { name?: string; description?: string; coverImageUrl?: string; currency?: string }
+  ): Promise<boolean> {
     try {
       const token = await authService.getToken();
       if (token) {
@@ -1119,8 +1127,15 @@ export const groupService = {
           this.invalidateCache(groupId);
           const match = _cachedGroups.find((g) => g.id === groupId);
           if (match) {
-            if (updates.name) match.name = updates.name;
-            if (updates.description) match.description = updates.description;
+            if (updates.name !== undefined) match.name = updates.name;
+            if (updates.description !== undefined) match.description = updates.description;
+            if (updates.coverImageUrl !== undefined) match.coverImageUrl = updates.coverImageUrl;
+          }
+          const detailMatch = _groupDetailsMap.get(groupId);
+          if (detailMatch) {
+            if (updates.name !== undefined) detailMatch.name = updates.name;
+            if (updates.description !== undefined) detailMatch.description = updates.description;
+            if (updates.coverImageUrl !== undefined) detailMatch.coverImageUrl = updates.coverImageUrl;
           }
           appEventEmitter.emit('data-changed', { type: 'group_updated', groupId });
           return true;
@@ -1131,11 +1146,18 @@ export const groupService = {
     }
     const match = _cachedGroups.find((g) => g.id === groupId);
     if (match) {
-      if (updates.name) match.name = updates.name;
-      if (updates.description) match.description = updates.description;
-      return true;
+      if (updates.name !== undefined) match.name = updates.name;
+      if (updates.description !== undefined) match.description = updates.description;
+      if (updates.coverImageUrl !== undefined) match.coverImageUrl = updates.coverImageUrl;
     }
-    return false;
+    const detailMatch = _groupDetailsMap.get(groupId);
+    if (detailMatch) {
+      if (updates.name !== undefined) detailMatch.name = updates.name;
+      if (updates.description !== undefined) detailMatch.description = updates.description;
+      if (updates.coverImageUrl !== undefined) detailMatch.coverImageUrl = updates.coverImageUrl;
+    }
+    appEventEmitter.emit('data-changed', { type: 'group_updated', groupId });
+    return true;
   },
 
   /**

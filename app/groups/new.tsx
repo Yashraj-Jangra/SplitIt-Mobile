@@ -17,14 +17,8 @@ import { X, Check, Users, Search, Sparkles, CheckCircle2 } from 'lucide-react-na
 import { THEME } from '../../src/constants/theme';
 import { groupService, RegisteredUser } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
+import { settingsService } from '../../src/services/settings.service';
 import { haptics } from '../../src/services/haptics.service';
-
-const COVER_PRESETS = [
-  'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=600&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=600&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1604079628040-94301bb21b91?q=80&w=600&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1579546929662-7112e7508432?q=80&w=600&auto=format&fit=crop',
-];
 
 export default function NewGroupModal() {
   const router = useRouter();
@@ -32,7 +26,12 @@ export default function NewGroupModal() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedCover, setSelectedCover] = useState(COVER_PRESETS[0]);
+  const [coverOptions, setCoverOptions] = useState<string[]>(() =>
+    settingsService.getCachedGroupCoverImages()
+  );
+  const [selectedCover, setSelectedCover] = useState<string>(
+    () => settingsService.getCachedGroupCoverImages()[0] || ''
+  );
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   const [allUsers, setAllUsers] = useState<RegisteredUser[]>([]);
@@ -48,6 +47,17 @@ export default function NewGroupModal() {
     (async () => {
       const user = await authService.getCachedUser();
       if (isMounted) setCurrentUser(user);
+
+      // Fetch admin-configured group covers from website settings
+      try {
+        const dynamicCovers = await settingsService.getGroupCoverImages();
+        if (isMounted && dynamicCovers.length > 0) {
+          setCoverOptions(dynamicCovers);
+          setSelectedCover((prev) => (dynamicCovers.includes(prev) ? prev : dynamicCovers[0]));
+        }
+      } catch {
+        // Fallback provided by cached / default
+      }
 
       setLoadingUsers(true);
       try {
@@ -217,11 +227,11 @@ export default function NewGroupModal() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.coverRow}
             >
-              {COVER_PRESETS.map((url, idx) => {
+              {coverOptions.map((url, idx) => {
                 const isSelected = selectedCover === url;
                 return (
                   <TouchableOpacity
-                    key={idx}
+                    key={`${url}-${idx}`}
                     style={[styles.coverCard, isSelected && styles.coverCardSelected]}
                     onPress={() => {
                       haptics.tap();

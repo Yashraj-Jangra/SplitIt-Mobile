@@ -36,6 +36,7 @@ import { MockDataBanner } from '../../src/components/common/MockDataBanner';
 import { BottomSheetModal } from '../../src/components/common/BottomSheetModal';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../src/services/settings.service';
 import { haptics } from '../../src/services/haptics.service';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { appEventEmitter } from '../../src/services/event-emitter';
@@ -466,7 +467,8 @@ export default function GroupsScreen() {
                     source={{
                       uri:
                         group.coverImageUrl ||
-                        'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200&auto=format&fit=crop',
+                        settingsService.getCachedGroupCoverImages()[0] ||
+                        FALLBACK_GROUP_COVER_IMAGES[0],
                     }}
                     style={StyleSheet.absoluteFill}
                     resizeMode="cover"

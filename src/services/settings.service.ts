@@ -23,6 +23,13 @@ export interface PublicSettings {
   latestMobileVersion?: string;
 }
 
+export const FALLBACK_GROUP_COVER_IMAGES = [
+  'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2029&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1604079628040-94301bb21b91?q=80&w=1974&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1579546929662-7112e7508432?q=80&w=2070&auto=format&fit=crop',
+];
+
 const SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 class SettingsService {
@@ -63,11 +70,16 @@ class SettingsService {
               ? data.expenseCategories
               : defaultExpenseCategories;
 
+          const coverImages =
+            Array.isArray(data?.coverImages) && data.coverImages.length > 0
+              ? data.coverImages
+              : FALLBACK_GROUP_COVER_IMAGES;
+
           this.cachedSettings = {
             appName: data.appName || 'SplitIt',
             logoUrl: data.logoUrl,
             faviconUrl: data.faviconUrl,
-            coverImages: data.coverImages || [],
+            coverImages,
             landingImages: data.landingImages || [],
             defaultThemeId: data.defaultThemeId,
             userSelectableThemeIds: data.userSelectableThemeIds,
@@ -89,12 +101,33 @@ class SettingsService {
         this.cachedSettings = {
           appName: 'SplitIt',
           expenseCategories: defaultExpenseCategories,
+          coverImages: FALLBACK_GROUP_COVER_IMAGES,
         };
       }
       return this.cachedSettings;
     })();
 
     return this.fetchPromise;
+  }
+
+  /**
+   * Returns available group cover images configured by admin in website settings,
+   * falling back to default cover images if empty or offline.
+   */
+  async getGroupCoverImages(forceRefresh = false): Promise<string[]> {
+    const settings = await this.getSettings(forceRefresh);
+    return settings.coverImages && settings.coverImages.length > 0
+      ? settings.coverImages
+      : FALLBACK_GROUP_COVER_IMAGES;
+  }
+
+  /**
+   * Synchronous accessor for immediate rendering of group cover images.
+   */
+  getCachedGroupCoverImages(): string[] {
+    return this.cachedSettings?.coverImages && this.cachedSettings.coverImages.length > 0
+      ? this.cachedSettings.coverImages
+      : FALLBACK_GROUP_COVER_IMAGES;
   }
 
   /**
