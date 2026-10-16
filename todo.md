@@ -1,5 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Dashboard Recent Transactions: Last 10 Activities & Modular Parity (`app/(tabs)/index.tsx`)**:
+  - **Unified Activity Stream for Home Dashboard**:
+    - Upgraded the "Recent Transactions" section on the home screen from a hard-capped 4-expense list to a unified feed displaying the **last 10 activities** across both expenses and settlements.
+    - Added settlements data synchronization (`settlementService.getUserSettlements()`) into dashboard cache hydration, network fetch, and demo state cleanup.
+    - Integrated chronological sorting (`timeB - timeA`) across all user expense and settlement activities, cleanly displaying the top 10 recent transactions.
+  - **Modular Activity Rows Parity**:
+    - Replaced hardcoded inline ledger rows with reusable domain components [`ActivityExpenseRow`](file:///d:/Projects/SplitIt-Mobile/src/components/activity/ActivityExpenseRow.tsx) and [`ActivitySettlementRow`](file:///d:/Projects/SplitIt-Mobile/src/components/activity/ActivitySettlementRow.tsx).
+    - Settlements render with dynamic theme accent badges and handshake glyph nodes, while expenses display neutral category glyphs and balance impacts.
+    - Cleaned up obsolete inline styles (`ledgerRow`, `ledgerIconCircle`, `ledgerAmount`, etc.) and refined `ledgerStream` container with overflow clipping.
+    - "View all" header button and "View all activity" footer dynamically adjust to activity thresholds and navigate to `/(tabs)/activity`.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Calendar Date Picker Modal & Theme-Matching Popup (`src/components/common/DatePickerModal.tsx`, `app/expenses/new.tsx`)**:
   - **Bespoke Theme-Matching Calendar Modal (`src/components/common/DatePickerModal.tsx`)**:
     - Replaced the rudimentary 5-item static list in `app/expenses/new.tsx` with a flagship, theme-matching calendar date picker modal built inside `BottomSheetModal`.

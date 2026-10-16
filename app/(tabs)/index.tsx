@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -26,13 +26,13 @@ import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
+import { settlementService, GroupSettlementItem } from '../../src/services/settlement.service';
 import { balanceService, UserBalanceSummary } from '../../src/services/balance.service';
 import { demoService } from '../../src/services/demo.service';
 import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
 import { MockDataBanner } from '../../src/components/common/MockDataBanner';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
-import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
-import { CategoryIcon } from '../../src/utils/category-icons';
+import { ActivityExpenseRow, ActivitySettlementRow } from '../../src/components/activity';
 import { BalanceHistoryGraph, BalanceHistoryGraphHandle } from '../../src/components/dashboard/BalanceHistoryGraph';
 import { BalanceSkeleton } from '../../src/components/skeletons/BalanceSkeleton';
 import { TransactionRowSkeleton } from '../../src/components/skeletons/TransactionRowSkeleton';
@@ -45,6 +45,15 @@ import { haptics } from '../../src/services/haptics.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { ObligationsModal } from '../../src/components/dashboard/ObligationsModal';
 
+interface HomeActivityEntry {
+  type: 'expense' | 'settlement';
+  id: string;
+  date: string;
+  rawDate: string;
+  expenseData?: UserTransactionItem;
+  settlementData?: GroupSettlementItem;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { isOnline, requireOnline } = useNetwork();
@@ -54,6 +63,7 @@ export default function HomeScreen() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authUser || authService.getInMemoryUser());
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
+  const [settlements, setSettlements] = useState<GroupSettlementItem[]>(() => []);
   const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(() => balanceService.getInMemoryUserBalanceSummary());
   const [obligationsType, setObligationsType] = useState<'owed' | 'owes' | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -85,9 +95,11 @@ export default function HomeScreen() {
     balanceService.clearCache();
     await storageService.setItem(STORAGE_KEYS.GROUPS(uid), []);
     await storageService.setItem(STORAGE_KEYS.USER_TRANSACTIONS(uid), []);
+    await storageService.setItem(STORAGE_KEYS.USER_SETTLEMENTS(uid), []);
     await storageService.setItem(STORAGE_KEYS.BALANCE_SUMMARY(uid), null);
     setGroups([]);
     setRecentTransactions([]);
+    setSettlements([]);
     setBalanceSummary(null);
     await loadData(true);
   };
@@ -96,13 +108,15 @@ export default function HomeScreen() {
     try {
       const user = await authService.getCachedUser();
       setCurrentUser(user);
-      const [groupList, txList, summary] = await Promise.all([
+      const [groupList, txList, setList, summary] = await Promise.all([
         groupService.getUserGroups({ forceRefresh }),
-        expenseService.getUserExpenses(10, { forceRefresh }),
+        expenseService.getUserExpenses(20, { forceRefresh }),
+        settlementService.getUserSettlements({ forceRefresh }),
         balanceService.getUserBalanceSummary({ forceRefresh }),
       ]);
       setGroups(groupList);
       setRecentTransactions(txList);
+      setSettlements(setList || []);
       setBalanceSummary(summary);
     } catch {
       // Fallback gracefully
@@ -123,13 +137,20 @@ export default function HomeScreen() {
       authService.getCachedUser(),
       groupService.getCachedUserGroups(activeUid),
       expenseService.getCachedUserExpenses(activeUid),
+      settlementService.getUserSettlements(),
       balanceService.getCachedUserBalanceSummary(activeUid),
-    ]).then(([cachedUser, cachedGroups, cachedTx, cachedSummary]) => {
+    ]).then(([cachedUser, cachedGroups, cachedTx, cachedSet, cachedSummary]) => {
       if (cachedUser) setCurrentUser(cachedUser);
       if (cachedGroups && cachedGroups.length > 0) setGroups(cachedGroups);
       if (cachedTx && cachedTx.length > 0) setRecentTransactions(cachedTx);
+      if (cachedSet && cachedSet.length > 0) setSettlements(cachedSet);
       if (cachedSummary) setBalanceSummary(cachedSummary);
-      if ((cachedGroups && cachedGroups.length > 0) || (cachedTx && cachedTx.length > 0) || cachedSummary) {
+      if (
+        (cachedGroups && cachedGroups.length > 0) ||
+        (cachedTx && cachedTx.length > 0) ||
+        (cachedSet && cachedSet.length > 0) ||
+        cachedSummary
+      ) {
         setLoading(false);
       }
     });
@@ -181,6 +202,36 @@ export default function HomeScreen() {
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
+
+  // Unified recent activities (Expenses & Settlements, last 10 entries)
+  const recentActivities: HomeActivityEntry[] = useMemo(() => {
+    const expEntries: HomeActivityEntry[] = recentTransactions.map((e) => ({
+      type: 'expense',
+      id: `exp_${e.id}`,
+      date: e.date,
+      rawDate: e.rawDate || e.date,
+      expenseData: e,
+    }));
+
+    const setEntries: HomeActivityEntry[] = settlements.map((s) => ({
+      type: 'settlement',
+      id: `stl_${s.id}`,
+      date: s.date,
+      rawDate: s.rawDate || s.date,
+      settlementData: s,
+    }));
+
+    const combined = [...expEntries, ...setEntries];
+    combined.sort((a, b) => {
+      const timeA = new Date(a.rawDate).getTime() || 0;
+      const timeB = new Date(b.rawDate).getTime() || 0;
+      return timeB - timeA;
+    });
+
+    return combined.slice(0, 10);
+  }, [recentTransactions, settlements]);
+
+  const totalActivityCount = recentTransactions.length + settlements.length;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -522,11 +573,11 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Recent Splits Ledger (Compact Glance: Capped at 4 items) */}
+        {/* Recent Splits & Activities Ledger (Last 10 Activities) */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            {recentTransactions.length > 4 && (
+            {totalActivityCount > 10 && (
               <TouchableOpacity
                 onPress={() => {
                   haptics.tap();
@@ -542,48 +593,67 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.ledgerStream}>
-            {recentTransactions.length > 0 ? (
+            {recentActivities.length > 0 ? (
               <>
-                {recentTransactions.slice(0, 4).map((tx, index) => {
-                  const isLast = index === Math.min(recentTransactions.length, 4) - 1;
+                {recentActivities.map((item, index) => {
+                  const isLast = index === recentActivities.length - 1;
 
-                  return (
-                    <TouchableOpacity
-                      key={tx.id}
-                      style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        haptics.tap();
-                        router.push({
-                          pathname: '/expenses/[id]',
-                          params: {
-                            id: tx.id,
-                            groupId: tx.groupId,
-                            title: tx.title,
-                            amount: String(tx.amount),
-                            paidByName: tx.paidByName,
-                            date: tx.date,
-                            category: tx.category,
-                          },
-                        });
-                      }}
-                    >
-                      <View style={styles.ledgerIconCircle}>
-                        <CategoryIcon subCategory={tx.category} masterCategory={tx.masterCategory} size={20} color={THEME.colors.textSecondary} />
-                      </View>
+                  if (item.type === 'expense' && item.expenseData) {
+                    const tx = item.expenseData;
+                    return (
+                      <ActivityExpenseRow
+                        key={item.id}
+                        expense={tx}
+                        currentUserId={currentUser?.id}
+                        isLast={isLast}
+                        onPress={() => {
+                          haptics.tap();
+                          router.push({
+                            pathname: '/expenses/[id]',
+                            params: {
+                              id: tx.id,
+                              groupId: tx.groupId,
+                              title: tx.title,
+                              amount: String(tx.amount),
+                              paidByName: tx.paidByName,
+                              date: tx.date,
+                              category: tx.category || '',
+                            },
+                          });
+                        }}
+                      />
+                    );
+                  }
 
-                      <View style={styles.ledgerInfo}>
-                        <Text style={styles.ledgerTitle} numberOfLines={1}>
-                          {tx.title}
-                        </Text>
-                        <Text style={styles.ledgerSubline}>
-                          {tx.groupName} • {tx.date}
-                        </Text>
-                      </View>
+                  if (item.type === 'settlement' && item.settlementData) {
+                    const stl = item.settlementData;
+                    return (
+                      <ActivitySettlementRow
+                        key={item.id}
+                        settlement={stl}
+                        currentUserId={currentUser?.id}
+                        isLast={isLast}
+                        onPress={() => {
+                          haptics.tap();
+                          router.push({
+                            pathname: '/settlements/[id]',
+                            params: {
+                              id: stl.id,
+                              groupId: stl.groupId,
+                              amount: String(stl.amount),
+                              payerName: stl.payerName,
+                              payeeName: stl.payeeName,
+                              date: stl.date,
+                              method: stl.method || 'cash',
+                              notes: stl.notes || '',
+                            },
+                          });
+                        }}
+                      />
+                    );
+                  }
 
-                      <ExpenseImpactCol expense={tx} currentUserId={currentUser?.id} />
-                    </TouchableOpacity>
-                  );
+                  return null;
                 })}
 
                 <TouchableOpacity
@@ -599,7 +669,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </>
             ) : loading ? (
-              <TransactionRowSkeleton count={4} />
+              <TransactionRowSkeleton count={5} />
             ) : (
               <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                 <Text style={{ color: THEME.colors.textMuted, fontSize: 13 }}>No recent transactions recorded yet</Text>
@@ -978,52 +1048,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    paddingHorizontal: 12,
-  },
-  ledgerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-  },
-  ledgerRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
-  },
-  ledgerIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME.colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  ledgerInfo: {
-    flex: 1,
-  },
-  ledgerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  ledgerSubline: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    marginTop: 2,
-  },
-  ledgerAmountCol: {
-    alignItems: 'flex-end',
-  },
-  ledgerAmount: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  ledgerImpactLabel: {
-    fontSize: 10,
-    color: THEME.colors.textMuted,
-    marginTop: 1,
+    overflow: 'hidden',
   },
   viewAllActivityBtn: {
     flexDirection: 'row',
