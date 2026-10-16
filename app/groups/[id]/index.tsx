@@ -45,12 +45,14 @@ import {
   ExpensesTabSkeleton,
   BalancesTabSkeleton,
   BudgetTabSkeleton,
+  AnalysisTabSkeleton,
 } from '../../../src/components/skeletons/GroupTabSkeleton';
 import { GroupHistoryTab } from '../../../src/components/groups/GroupHistoryTab';
+import { GroupAnalysisTab } from '../../../src/components/groups/GroupAnalysisTab';
 import { haptics } from '../../../src/services/haptics.service';
 import { appEventEmitter } from '../../../src/services/event-emitter';
 
-const TABS = ['expenses', 'balances', 'budget', 'activity'] as const;
+const TABS = ['expenses', 'balances', 'budget', 'activity', 'analysis'] as const;
 type TabType = typeof TABS[number];
 type ActivityFilter = 'all' | 'expenses' | 'settlements';
 
@@ -59,6 +61,7 @@ const TAB_LABELS: Record<TabType, string> = {
   balances: 'Balances',
   budget: 'Budget',
   activity: 'Logs',
+  analysis: 'Analysis',
 };
 
 const PAGE_SIZE = 15;
@@ -125,6 +128,7 @@ export default function GroupDetailScreen() {
     balances: false,
     budget: false,
     activity: false,
+    analysis: false,
   });
   const [isSimplified, setIsSimplified] = useState(false);
   const [loading, setLoading] = useState(!group);
@@ -191,6 +195,7 @@ export default function GroupDetailScreen() {
       balances: false,
       budget: false,
       activity: false,
+      analysis: false,
     });
     setActiveTab('expenses');
     setActivityFilter('all');
@@ -325,7 +330,7 @@ export default function GroupDetailScreen() {
 
   const renderTabBar = () => {
     const innerWidth = Math.max(0, tabBarWidth - 6);
-    const singleTabWidth = innerWidth > 0 ? innerWidth / 4 : 0;
+    const singleTabWidth = innerWidth > 0 ? innerWidth / TABS.length : 0;
 
     return (
       <View
@@ -343,8 +348,14 @@ export default function GroupDetailScreen() {
                 transform: [
                   {
                     translateX: tabIndicatorAnim.interpolate({
-                      inputRange: [0, 1, 2, 3],
-                      outputRange: [0, singleTabWidth, singleTabWidth * 2, singleTabWidth * 3],
+                      inputRange: [0, 1, 2, 3, 4],
+                      outputRange: [
+                        0,
+                        singleTabWidth,
+                        singleTabWidth * 2,
+                        singleTabWidth * 3,
+                        singleTabWidth * 4,
+                      ],
                     }),
                   },
                 ],
@@ -1193,6 +1204,21 @@ export default function GroupDetailScreen() {
             />
           </View>
         )}
+
+        {/* TAB 5: GROUP SPENDING & MEMBER ANALYSIS */}
+        {visitedTabs.analysis && (
+          <View style={[styles.tabSection, activeTab !== 'analysis' && styles.tabHidden]}>
+            {loading && (!group?.expenses || group.expenses.length === 0) ? (
+              <AnalysisTabSkeleton />
+            ) : (
+              <GroupAnalysisTab
+                group={group}
+                expenses={group?.expenses || []}
+                members={group?.members || []}
+              />
+            )}
+          </View>
+        )}
         </Animated.View>
       </Animated.ScrollView>
 
@@ -1669,7 +1695,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
     color: THEME.colors.textMuted,
   },

@@ -174,10 +174,47 @@ export function ActivityRowSkeleton({ count = 2 }: { count?: number }) {
   );
 }
 
+export function AnalysisTabSkeleton() {
+  const pulse = useSkeletonPulse();
+
+  return (
+    <View style={styles.tabSectionGap}>
+      <View style={styles.analysisKpiRow}>
+        {[1, 2, 3].map((idx) => (
+          <View key={idx} style={styles.analysisKpiCard}>
+            <Animated.View style={[styles.kpiLabelLine, { opacity: pulse }]} />
+            <Animated.View style={[styles.kpiValueLine, { opacity: pulse }]} />
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.categoryAllocationsCard}>
+        <Animated.View style={[styles.sectionTitleLine, { opacity: pulse }]} />
+        {[1, 2, 3].map((idx) => (
+          <View key={idx} style={styles.catRow}>
+            <View style={styles.catLabelRow}>
+              <Animated.View style={[styles.catNameLine, { opacity: pulse }]} />
+              <Animated.View style={[styles.catNumbersLine, { opacity: pulse }]} />
+            </View>
+            <View style={styles.catBarBackground}>
+              <Animated.View
+                style={[
+                  styles.catBarFill,
+                  { width: `${65 - idx * 15}%`, opacity: pulse },
+                ]}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export function GroupTabSkeleton({
   tab,
 }: {
-  tab: 'expenses' | 'balances' | 'budget' | 'activity';
+  tab: 'expenses' | 'balances' | 'budget' | 'activity' | 'analysis';
 }) {
   switch (tab) {
     case 'expenses':
@@ -188,6 +225,8 @@ export function GroupTabSkeleton({
       return <BudgetTabSkeleton />;
     case 'activity':
       return <ActivityTabSkeleton />;
+    case 'analysis':
+      return <AnalysisTabSkeleton />;
     default:
       return <ExpensesTabSkeleton count={4} />;
   }
@@ -469,5 +508,30 @@ const styles = StyleSheet.create({
     height: 9,
     borderRadius: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  analysisKpiRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  analysisKpiCard: {
+    flex: 1,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    gap: 6,
+  },
+  kpiLabelLine: {
+    width: 48,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  kpiValueLine: {
+    width: 64,
+    height: 16,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
 });
