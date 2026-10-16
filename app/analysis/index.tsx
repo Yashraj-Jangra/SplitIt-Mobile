@@ -9,27 +9,65 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  ArrowLeft,
+  RotateCw,
+  TrendingUp,
+  TrendingDown,
+  Calendar as CalendarIcon,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Users,
+  Zap,
+  Award,
+} from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { CategoryIcon, getCategoryColor } from '../../src/utils/category-icons';
 import { haptics } from '../../src/services/haptics.service';
 import {
-  ArrowLeft,
-  RotateCw,
-  TrendingUp,
-  TrendingDown,
-  PieChart,
-  Users,
-  Calendar,
-  Sparkles,
-  Lightbulb,
-} from 'lucide-react-native';
+  DateRangePickerModal,
+  DateRange,
+} from '../../src/components/common/DateRangePickerModal';
+import { SpendingTimelineChart, TimelineDataPoint } from '../../src/components/charts';
+
+type DatePreset = 'this_month' | 'last_30' | 'last_90' | 'all' | 'custom';
+
+const getPresetRange = (preset: DatePreset): DateRange => {
+  const now = new Date();
+  if (preset === 'this_month') {
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0),
+      to: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59),
+    };
+  }
+  if (preset === 'last_30') {
+    const from = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
+    from.setHours(0, 0, 0, 0);
+    return {
+      from,
+      to: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59),
+    };
+  }
+  if (preset === 'last_90') {
+    const from = new Date(now.getTime() - 89 * 24 * 60 * 60 * 1000);
+    from.setHours(0, 0, 0, 0);
+    return {
+      from,
+      to: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59),
+    };
+  }
+  return { from: null, to: null };
+};
 
 export default function AnalysisScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currentAccent } = useAppTheme();
   const { formatCurrency } = useCurrency();
 
   const [expenses, setExpenses] = useState<UserTransactionItem[]>(() =>
@@ -40,16 +78,25 @@ export default function AnalysisScreen() {
   );
   const [refreshing, setRefreshing] = useState(false);
 
+  // Time Frame Filtering
+  const [datePreset, setDatePreset] = useState<DatePreset>('this_month');
+  const [dateRange, setDateRange] = useState<DateRange>(() => getPresetRange('this_month'));
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+
+  // Chart Frequency & Category Expansion
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [expandedCategories, setExpandedCategories] = useState(false);
+
   const loadData = useCallback(async (force = false) => {
     try {
       const [fetchedExpenses, fetchedGroups] = await Promise.all([
-        expenseService.getUserExpenses(100, { forceRefresh: force }),
+        expenseService.getUserExpenses(150, { forceRefresh: force }),
         groupService.getUserGroups({ forceRefresh: force }),
       ]);
       setExpenses(fetchedExpenses);
       setGroups(fetchedGroups);
     } catch {
-      // Fallback cleanly to in-memory state
+      // Fallback cleanly to memory state
     } finally {
       setRefreshing(false);
     }
@@ -65,24 +112,109 @@ export default function AnalysisScreen() {
     loadData(true);
   }, [loadData]);
 
-  // Compute Personal Analytics synchronously
+  const handleSelectPreset = (preset: DatePreset) => {
+    haptics.tap();
+    setDatePreset(preset);
+    if (preset !== 'custom') {
+      setDateRange(getPresetRange(preset));
+    } else {
+      setShowDatePickerModal(true);
+    }
+  };
+
+  // Filter expenses strictly according to the date range
+  const currentExpenses = useMemo(() => {
+    if (!dateRange.from && !dateRange.to) return expenses;
+
+    return expenses.filter((item) => {
+      const d = item.rawDate ? new Date(item.rawDate) : new Date(item.date);
+      if (isNaN(d.getTime())) return true;
+
+      if (dateRange.from) {
+        const fromMidnight = new Date(
+          dateRange.from.getFullYear(),
+          dateRange.from.getMonth(),
+          dateRange.from.getDate(),
+          0,
+          0,
+          0
+        ).getTime();
+        if (d.getTime() < fromMidnight) return false;
+      }
+
+      if (dateRange.to) {
+        const toEndOfDay = new Date(
+          dateRange.to.getFullYear(),
+          dateRange.to.getMonth(),
+          dateRange.to.getDate(),
+          23,
+          59,
+          59,
+          999
+        ).getTime();
+        if (d.getTime() > toEndOfDay) return false;
+      }
+
+      return true;
+    });
+  }, [expenses, dateRange]);
+
+  // Previous Period Expenses for Trend Delta
+  const previousPeriodExpenses = useMemo(() => {
+    if (!dateRange.from) return [];
+    const from = dateRange.from;
+    const to = dateRange.to || from;
+    const duration = to.getTime() - from.getTime();
+    const prevFrom = new Date(from.getTime() - duration - 1000);
+    const prevTo = new Date(from.getTime() - 1);
+
+    return expenses.filter((item) => {
+      const d = item.rawDate ? new Date(item.rawDate) : new Date(item.date);
+      if (isNaN(d.getTime())) return false;
+      return d.getTime() >= prevFrom.getTime() && d.getTime() <= prevTo.getTime();
+    });
+  }, [expenses, dateRange]);
+
+  // Aggregate Personal Metrics
   const analytics = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const currentTotal = currentExpenses.reduce(
+      (acc, exp) => acc + Math.abs(Number(exp.yourShare ?? exp.amount) || 0),
+      0
+    );
+    const previousTotal = previousPeriodExpenses.reduce(
+      (acc, exp) => acc + Math.abs(Number(exp.yourShare ?? exp.amount) || 0),
+      0
+    );
 
-    const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
-    const lastMonth = lastMonthDate.getMonth();
-    const lastMonthYear = lastMonthDate.getFullYear();
+    let percentChange = 0;
+    if (previousTotal > 0) {
+      percentChange = ((currentTotal - previousTotal) / previousTotal) * 100;
+    } else if (currentTotal > 0 && dateRange.from) {
+      percentChange = 100;
+    }
 
-    const twoMonthsAgoDate = new Date(currentYear, currentMonth - 2, 1);
-    const twoMonthsAgo = twoMonthsAgoDate.getMonth();
-    const twoMonthsAgoYear = twoMonthsAgoDate.getFullYear();
+    // Days in current selection for daily burn
+    let daysInPeriod = 30;
+    if (dateRange.from && dateRange.to) {
+      daysInPeriod = Math.max(
+        1,
+        Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      );
+    } else if (dateRange.from && !dateRange.to) {
+      daysInPeriod = 1;
+    } else if (currentExpenses.length > 0) {
+      const timestamps = currentExpenses
+        .map((e) => (e.rawDate ? new Date(e.rawDate).getTime() : new Date(e.date).getTime()))
+        .filter((t) => !isNaN(t));
+      if (timestamps.length > 0) {
+        const minT = Math.min(...timestamps);
+        const maxT = Math.max(...timestamps);
+        daysInPeriod = Math.max(1, Math.round((maxT - minT) / (1000 * 60 * 60 * 24)) + 1);
+      }
+    }
+    const dailyBurnRate = currentTotal / daysInPeriod;
 
-    let thisMonthTotal = 0;
-    let lastMonthTotal = 0;
-    let twoMonthsAgoTotal = 0;
-
+    // Category breakdown
     const categoryMap: Record<
       string,
       { count: number; total: number; masterCategory: string }
@@ -92,26 +224,21 @@ export default function AnalysisScreen() {
       { groupName: string; count: number; total: number }
     > = {};
 
-    expenses.forEach((item) => {
-      const d = item.rawDate ? new Date(item.rawDate) : new Date(item.date);
+    let maxSingleExpense: UserTransactionItem | null = null;
+    let maxSingleExpenseAmount = 0;
+
+    for (const item of currentExpenses) {
       const userShare = Math.abs(Number(item.yourShare ?? item.amount) || 0);
 
-      if (!isNaN(d.getTime())) {
-        const itemMonth = d.getMonth();
-        const itemYear = d.getFullYear();
-
-        if (itemMonth === currentMonth && itemYear === currentYear) {
-          thisMonthTotal += userShare;
-        } else if (itemMonth === lastMonth && itemYear === lastMonthYear) {
-          lastMonthTotal += userShare;
-        } else if (itemMonth === twoMonthsAgo && itemYear === twoMonthsAgoYear) {
-          twoMonthsAgoTotal += userShare;
-        }
+      // Track largest single purchase
+      if (userShare > maxSingleExpenseAmount) {
+        maxSingleExpenseAmount = userShare;
+        maxSingleExpense = item;
       }
 
-      // Group allocation
+      // Group breakdown
       const gId = item.groupId || 'personal';
-      const gName = item.groupName || 'Direct Expenses';
+      const gName = item.groupName || 'Direct / Non-Group';
       if (!groupSpendMap[gId]) {
         groupSpendMap[gId] = { groupName: gName, count: 0, total: 0 };
       }
@@ -129,96 +256,129 @@ export default function AnalysisScreen() {
       }
       categoryMap[catKey].count += 1;
       categoryMap[catKey].total += userShare;
-    });
-
-    // % diff vs last month
-    let percentChange = 0;
-    if (lastMonthTotal > 0) {
-      percentChange = ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100;
     }
 
-    // Daily burn rate (current day of month)
-    const dayOfMonth = Math.max(now.getDate(), 1);
-    const dailyBurnRate = thisMonthTotal / dayOfMonth;
-
-    // Categories ranked
-    const totalAllExpenses = Object.values(categoryMap).reduce(
-      (sum, c) => sum + c.total,
-      0
-    );
     const rankedCategories = Object.entries(categoryMap)
       .map(([cat, val]) => ({
         category: cat,
         masterCategory: val.masterCategory,
         count: val.count,
         total: val.total,
-        percentage:
-          totalAllExpenses > 0 ? (val.total / totalAllExpenses) * 100 : 0,
+        percentage: currentTotal > 0 ? (val.total / currentTotal) * 100 : 0,
       }))
       .sort((a, b) => b.total - a.total);
 
-    // Groups ranked
     const rankedGroups = Object.entries(groupSpendMap)
       .map(([id, val]) => ({
         groupId: id,
         groupName: val.groupName,
         count: val.count,
         total: val.total,
-        percentage:
-          totalAllExpenses > 0 ? (val.total / totalAllExpenses) * 100 : 0,
+        percentage: currentTotal > 0 ? (val.total / currentTotal) * 100 : 0,
       }))
       .sort((a, b) => b.total - a.total);
 
-    // 3-month velocity
-    const monthFormatter = (date: Date) =>
-      date.toLocaleString('en-US', { month: 'short' });
-    const velocity = [
-      {
-        label: monthFormatter(twoMonthsAgoDate),
-        amount: twoMonthsAgoTotal,
-      },
-      {
-        label: monthFormatter(lastMonthDate),
-        amount: lastMonthTotal,
-      },
-      {
-        label: monthFormatter(now),
-        amount: thisMonthTotal,
-      },
-    ];
-    const maxVelocity = Math.max(...velocity.map((v) => v.amount), 1);
-
-    const averageExpense =
-      expenses.length > 0 ? totalAllExpenses / expenses.length : 0;
-
     return {
-      thisMonthTotal,
-      lastMonthTotal,
+      currentTotal,
+      previousTotal,
       percentChange,
       dailyBurnRate,
       rankedCategories,
       rankedGroups,
-      velocity,
-      maxVelocity,
-      totalAllExpenses,
-      averageExpense,
+      hasSingleExpense: maxSingleExpense !== null,
+      maxSingleExpenseTitle: maxSingleExpense?.title || 'Expense',
+      maxSingleExpenseAmount,
+      totalCount: currentExpenses.length,
     };
-  }, [expenses]);
+  }, [currentExpenses, previousPeriodExpenses, dateRange]);
 
-  const insight = useMemo(() => {
-    if (analytics.rankedCategories.length > 0 && analytics.percentChange <= 0 && analytics.lastMonthTotal > 0) {
-      return `Spending is down ${Math.abs(analytics.percentChange).toFixed(1)}% compared to last month. Top category is ${analytics.rankedCategories[0].category} at ${analytics.rankedCategories[0].percentage.toFixed(0)}% of total.`;
-    } else if (analytics.rankedCategories.length > 0 && analytics.percentChange > 0 && analytics.lastMonthTotal > 0) {
-      return `Spending is up ${analytics.percentChange.toFixed(1)}% vs last month. ${analytics.rankedCategories[0].category.charAt(0).toUpperCase() + analytics.rankedCategories[0].category.slice(1)} accounts for the largest share at ${analytics.rankedCategories[0].percentage.toFixed(0)}%.`;
-    } else if (analytics.rankedCategories.length > 0) {
-      return `Your top spending category is ${analytics.rankedCategories[0].category.charAt(0).toUpperCase() + analytics.rankedCategories[0].category.slice(1)}, representing ${analytics.rankedCategories[0].percentage.toFixed(0)}% of your expenses.`;
+  // Timeline Data for SpendingTimelineChart
+  const timelineData: TimelineDataPoint[] = useMemo(() => {
+    const timelineMap: Record<string, { amount: number; fullDate: string }> = {};
+
+    currentExpenses.forEach((item) => {
+      const d = item.rawDate ? new Date(item.rawDate) : new Date(item.date);
+      if (isNaN(d.getTime())) return;
+      const userShare = Math.abs(Number(item.yourShare ?? item.amount) || 0);
+
+      let key = '';
+      let fullDateStr = d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+
+      if (frequency === 'daily') {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+          d.getDate()
+        ).padStart(2, '0')}`;
+        fullDateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } else if (frequency === 'weekly') {
+        const firstDayOfWeek = new Date(d);
+        firstDayOfWeek.setDate(d.getDate() - d.getDay());
+        key = `${firstDayOfWeek.getFullYear()}-W${Math.ceil(firstDayOfWeek.getDate() / 7)}`;
+        const weekLabel = firstDayOfWeek.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        });
+        fullDateStr = `Week of ${weekLabel}`;
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        fullDateStr = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      }
+
+      if (!timelineMap[key]) {
+        timelineMap[key] = { amount: 0, fullDate: fullDateStr };
+      }
+      timelineMap[key].amount += userShare;
+    });
+
+    return Object.entries(timelineMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([_, val]) => ({
+        label: val.fullDate,
+        amount: val.amount,
+        fullDate: val.fullDate,
+      }));
+  }, [currentExpenses, frequency]);
+
+  // Find Peak Day
+  const peakDayInfo = useMemo(() => {
+    if (timelineData.length === 0) return null;
+    let peak = timelineData[0];
+    timelineData.forEach((pt) => {
+      if (pt.amount > peak.amount) peak = pt;
+    });
+    return peak.amount > 0 ? peak : null;
+  }, [timelineData]);
+
+  // Visible Categories (Top 4 default with click to expand)
+  const visibleCategories = useMemo(() => {
+    if (expandedCategories) return analytics.rankedCategories;
+    return analytics.rankedCategories.slice(0, 4);
+  }, [analytics.rankedCategories, expandedCategories]);
+
+  // Period label for hero
+  const periodLabel = useMemo(() => {
+    if (datePreset === 'this_month') return 'THIS MONTH';
+    if (datePreset === 'last_30') return 'LAST 30 DAYS';
+    if (datePreset === 'last_90') return 'LAST 90 DAYS';
+    if (datePreset === 'all') return 'ALL TIME';
+    if (dateRange.from) {
+      const fromStr = `${dateRange.from.getDate()} ${dateRange.from.toLocaleString('en-US', {
+        month: 'short',
+      })}`;
+      const toStr = dateRange.to
+        ? `${dateRange.to.getDate()} ${dateRange.to.toLocaleString('en-US', { month: 'short' })}`
+        : '';
+      return `${fromStr}${toStr ? ` – ${toStr}` : ''}`.toUpperCase();
     }
-    return 'Keep tracking your daily expenses to unlock automated spending velocity insights and budget allocations.';
-  }, [analytics]);
+    return 'ACTIVE WINDOW';
+  }, [datePreset, dateRange]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Pinned Top Navigation Bar */}
+      {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -226,7 +386,7 @@ export default function AnalysisScreen() {
             haptics.tap();
             router.back();
           }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
@@ -241,35 +401,189 @@ export default function AnalysisScreen() {
         <TouchableOpacity
           style={styles.refreshButton}
           onPress={onRefresh}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityRole="button"
           accessibilityLabel="Refresh"
         >
-          <RotateCw size={18} color={THEME.colors.textMuted} />
+          <RotateCw size={17} color={THEME.colors.textMuted} />
         </TouchableOpacity>
+      </View>
+
+      {/* Date Range Preset Selector Bar */}
+      <View style={styles.filterBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              datePreset === 'this_month' && {
+                backgroundColor: currentAccent.primaryMuted,
+                borderColor: currentAccent.primary,
+              },
+            ]}
+            onPress={() => handleSelectPreset('this_month')}
+            accessibilityRole="button"
+            accessibilityLabel="Filter by this month"
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                datePreset === 'this_month' && {
+                  color: currentAccent.primary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              This Month
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              datePreset === 'last_30' && {
+                backgroundColor: currentAccent.primaryMuted,
+                borderColor: currentAccent.primary,
+              },
+            ]}
+            onPress={() => handleSelectPreset('last_30')}
+            accessibilityRole="button"
+            accessibilityLabel="Filter by last 30 days"
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                datePreset === 'last_30' && {
+                  color: currentAccent.primary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              Last 30D
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              datePreset === 'last_90' && {
+                backgroundColor: currentAccent.primaryMuted,
+                borderColor: currentAccent.primary,
+              },
+            ]}
+            onPress={() => handleSelectPreset('last_90')}
+            accessibilityRole="button"
+            accessibilityLabel="Filter by last 90 days"
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                datePreset === 'last_90' && {
+                  color: currentAccent.primary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              Last 90D
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              datePreset === 'all' && {
+                backgroundColor: currentAccent.primaryMuted,
+                borderColor: currentAccent.primary,
+              },
+            ]}
+            onPress={() => handleSelectPreset('all')}
+            accessibilityRole="button"
+            accessibilityLabel="Filter all time"
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                datePreset === 'all' && {
+                  color: currentAccent.primary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              All Time
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              styles.calendarFilterChip,
+              datePreset === 'custom' && {
+                backgroundColor: currentAccent.primaryMuted,
+                borderColor: currentAccent.primary,
+              },
+            ]}
+            onPress={() => {
+              haptics.tap();
+              setShowDatePickerModal(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Custom date picker"
+          >
+            <CalendarIcon
+              size={12}
+              color={datePreset === 'custom' ? currentAccent.primary : THEME.colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.filterChipText,
+                datePreset === 'custom' && {
+                  color: currentAccent.primary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              {datePreset === 'custom' && dateRange.from
+                ? `${dateRange.from.getDate()} ${dateRange.from.toLocaleString('en-US', {
+                    month: 'short',
+                  })}`
+                : 'Custom'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 36 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={THEME.colors.primary}
-            colors={[THEME.colors.primary]}
+            tintColor={currentAccent.primary}
+            colors={[currentAccent.primary]}
           />
         }
       >
-        {/* Open Editorial Financial Health Hero */}
+        {/* Open Editorial Financial Hero Card */}
         <View style={styles.heroSection}>
           <View style={styles.heroMetaRow}>
-            <View style={styles.periodPill}>
-              <Sparkles size={11} color={THEME.colors.primary} />
-              <Text style={styles.periodPillText}>THIS MONTH</Text>
+            <View
+              style={[
+                styles.periodPill,
+                { backgroundColor: currentAccent.primaryMuted },
+              ]}
+            >
+              <Sparkles size={11} color={currentAccent.primary} />
+              <Text style={[styles.periodPillText, { color: currentAccent.primary }]}>
+                {periodLabel}
+              </Text>
             </View>
-            {analytics.lastMonthTotal > 0 && (
+
+            {analytics.previousTotal > 0 && (
               <View
                 style={[
                   styles.deltaPill,
@@ -297,17 +611,17 @@ export default function AnalysisScreen() {
                     },
                   ]}
                 >
-                  {Math.abs(analytics.percentChange).toFixed(1)}% vs last month
+                  {Math.abs(analytics.percentChange).toFixed(1)}% vs prev
                 </Text>
               </View>
             )}
           </View>
 
           <Text style={styles.heroAmount}>
-            {formatCurrency(analytics.thisMonthTotal)}
+            {formatCurrency(analytics.currentTotal)}
           </Text>
 
-          {/* 3-Node Metrics Ribbon */}
+          {/* 3-Node Connected Metrics Ribbon */}
           <View style={styles.metricsRibbon}>
             <View style={styles.metricNode}>
               <Text style={styles.metricNodeLabel}>DAILY BURN</Text>
@@ -320,81 +634,42 @@ export default function AnalysisScreen() {
             <View style={styles.nodeHairline} />
 
             <View style={styles.metricNode}>
-              <Text style={styles.metricNodeLabel}>LAST MONTH</Text>
+              <Text style={styles.metricNodeLabel}>TRANSACTIONS</Text>
               <Text style={styles.metricNodeValue} numberOfLines={1}>
-                {formatCurrency(analytics.lastMonthTotal)}
+                {analytics.totalCount}{' '}
+                <Text style={styles.metricNodeUnit}>items</Text>
               </Text>
             </View>
 
             <View style={styles.nodeHairline} />
 
             <View style={styles.metricNode}>
-              <Text style={styles.metricNodeLabel}>AVG / EXPENSE</Text>
-              <Text style={styles.metricNodeValue} numberOfLines={1}>
-                {formatCurrency(analytics.averageExpense)}
+              <Text style={styles.metricNodeLabel}>TOP CATEGORY</Text>
+              <Text
+                style={[styles.metricNodeValue, { color: currentAccent.primary }]}
+                numberOfLines={1}
+              >
+                {analytics.rankedCategories.length > 0
+                  ? analytics.rankedCategories[0].category.charAt(0).toUpperCase() +
+                    analytics.rankedCategories[0].category.slice(1)
+                  : 'None'}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Smart Financial Takeaway */}
-        <View style={styles.insightBanner}>
-          <View style={styles.insightAccentBar} />
-          <View style={styles.insightBody}>
-            <Lightbulb size={15} color={THEME.colors.primary} style={styles.insightIcon} />
-            <Text style={styles.insightText}>{insight}</Text>
-          </View>
-        </View>
-
-        {/* 3-Month Spending Velocity */}
+        {/* Spending Timeline Chart (Smooth SVG with Frequency Switch) */}
         <View style={styles.editorialSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>SPENDING VELOCITY (3 MO)</Text>
-          </View>
-
-          <View style={styles.velocityChartContainer}>
-            <View style={styles.velocityBarsRow}>
-              {analytics.velocity.map((item, index) => {
-                const heightPercent = Math.max(
-                  (item.amount / (analytics.maxVelocity || 1)) * 100,
-                  6
-                );
-                const isCurrent = index === analytics.velocity.length - 1;
-                return (
-                  <View key={item.label} style={styles.velocityCol}>
-                    <Text style={[styles.velocityAmount, isCurrent && styles.velocityAmountActive]}>
-                      {formatCurrency(item.amount)}
-                    </Text>
-                    <View style={styles.velocityTrack}>
-                      <View
-                        style={[
-                          styles.velocityBarFill,
-                          {
-                            height: `${heightPercent}%`,
-                            backgroundColor: isCurrent
-                              ? THEME.colors.primary
-                              : THEME.colors.surfacePill,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.velocityMonth,
-                        isCurrent && styles.velocityMonthActive,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            <View style={styles.chartBaseline} />
-          </View>
+          <SpendingTimelineChart
+            data={timelineData}
+            frequency={frequency}
+            onChangeFrequency={setFrequency}
+            height={180}
+            title="SPENDING OVER TIME"
+          />
         </View>
 
-        {/* Category Allocation Ledger */}
+        {/* Category Allocation Ledger (Top 4 with Always Click to Expand) */}
         <View style={styles.editorialSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>CATEGORY ALLOCATION</Text>
@@ -407,20 +682,28 @@ export default function AnalysisScreen() {
 
           {analytics.rankedCategories.length === 0 ? (
             <View style={styles.emptyStateBox}>
-              <Text style={styles.emptyText}>No expenses recorded yet</Text>
+              <Text style={styles.emptyText}>No category expenses recorded in this period</Text>
             </View>
           ) : (
             <View style={styles.openLedger}>
-              {analytics.rankedCategories.slice(0, 6).map((item, index) => {
+              {visibleCategories.map((item, index) => {
                 const catColor = getCategoryColor(item.masterCategory, item.category);
-                const isLast = index === Math.min(analytics.rankedCategories.length, 6) - 1;
+                const isLast =
+                  index === visibleCategories.length - 1 &&
+                  analytics.rankedCategories.length <= 4;
+
                 return (
                   <View
                     key={item.category}
                     style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
                   >
                     <View style={styles.ledgerRowContent}>
-                      <View style={[styles.categoryGlyph, { backgroundColor: THEME.colors.surfaceElevated }]}>
+                      <View
+                        style={[
+                          styles.categoryGlyph,
+                          { backgroundColor: THEME.colors.surfaceElevated },
+                        ]}
+                      >
                         <CategoryIcon
                           subCategory={item.category}
                           masterCategory={item.masterCategory}
@@ -456,9 +739,90 @@ export default function AnalysisScreen() {
                   </View>
                 );
               })}
+
+              {/* Click to expand always if more than 4 categories exist */}
+              {analytics.rankedCategories.length > 4 && (
+                <TouchableOpacity
+                  style={styles.expandCategoriesButton}
+                  onPress={() => {
+                    haptics.tap();
+                    setExpandedCategories(!expandedCategories);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    expandedCategories ? 'Show top 4 categories' : 'Show all categories'
+                  }
+                >
+                  <Text style={[styles.expandCategoriesText, { color: currentAccent.primary }]}>
+                    {expandedCategories
+                      ? 'Show top 4 categories'
+                      : `Show all ${analytics.rankedCategories.length} categories`}
+                  </Text>
+                  {expandedCategories ? (
+                    <ChevronUp size={14} color={currentAccent.primary} />
+                  ) : (
+                    <ChevronDown size={14} color={currentAccent.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
+
+        {/* High-Impact Relevant Financial Insights */}
+        {(analytics.hasSingleExpense || peakDayInfo) && (
+          <View style={styles.editorialSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>KEY INSIGHTS</Text>
+            </View>
+
+            <View style={styles.insightsRow}>
+              {analytics.hasSingleExpense && (
+                <View style={styles.insightCard}>
+                  <View
+                    style={[
+                      styles.insightIconBadge,
+                      { backgroundColor: currentAccent.primaryMuted },
+                    ]}
+                  >
+                    <Award size={14} color={currentAccent.primary} />
+                  </View>
+                  <View style={styles.insightContent}>
+                    <Text style={styles.insightTitle}>LARGEST EXPENSE</Text>
+                    <Text style={styles.insightValue} numberOfLines={1}>
+                      {analytics.maxSingleExpenseTitle}
+                    </Text>
+                    <Text style={[styles.insightSub, { color: currentAccent.primary }]}>
+                      {formatCurrency(analytics.maxSingleExpenseAmount)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {peakDayInfo && (
+                <View style={styles.insightCard}>
+                  <View
+                    style={[
+                      styles.insightIconBadge,
+                      { backgroundColor: THEME.colors.warningMuted },
+                    ]}
+                  >
+                    <Zap size={14} color={THEME.colors.warning} />
+                  </View>
+                  <View style={styles.insightContent}>
+                    <Text style={styles.insightTitle}>PEAK SPEND DAY</Text>
+                    <Text style={styles.insightValue} numberOfLines={1}>
+                      {peakDayInfo.label}
+                    </Text>
+                    <Text style={[styles.insightSub, { color: THEME.colors.warning }]}>
+                      {formatCurrency(peakDayInfo.amount)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Circle Allocation Ledger */}
         <View style={styles.editorialSection}>
@@ -477,16 +841,22 @@ export default function AnalysisScreen() {
             </View>
           ) : (
             <View style={styles.openLedger}>
-              {analytics.rankedGroups.slice(0, 6).map((group, index) => {
-                const isLast = index === Math.min(analytics.rankedGroups.length, 6) - 1;
+              {analytics.rankedGroups.slice(0, 4).map((group, index) => {
+                const isLast =
+                  index === Math.min(analytics.rankedGroups.length, 4) - 1;
                 return (
                   <View
                     key={group.groupId}
                     style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
                   >
                     <View style={styles.ledgerRowContent}>
-                      <View style={[styles.categoryGlyph, { backgroundColor: THEME.colors.surfaceElevated }]}>
-                        <Users size={14} color={THEME.colors.primary} />
+                      <View
+                        style={[
+                          styles.categoryGlyph,
+                          { backgroundColor: THEME.colors.surfaceElevated },
+                        ]}
+                      >
+                        <Users size={14} color={currentAccent.primary} />
                       </View>
                       <View style={styles.ledgerInfo}>
                         <Text style={styles.ledgerName} numberOfLines={1}>
@@ -498,7 +868,7 @@ export default function AnalysisScreen() {
                               styles.hairlineBarFill,
                               {
                                 width: `${Math.max(group.percentage, 3)}%`,
-                                backgroundColor: THEME.colors.primary,
+                                backgroundColor: currentAccent.primary,
                               },
                             ]}
                           />
@@ -520,6 +890,19 @@ export default function AnalysisScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Date Range Picker Modal */}
+      <DateRangePickerModal
+        visible={showDatePickerModal}
+        onClose={() => setShowDatePickerModal(false)}
+        range={dateRange}
+        onApplyRange={(appliedRange) => {
+          setDateRange(appliedRange);
+          setDatePreset('custom');
+          setShowDatePickerModal(false);
+        }}
+        title="Select Time Frame"
+      />
     </View>
   );
 }
@@ -539,9 +922,9 @@ const styles = StyleSheet.create({
     borderBottomColor: THEME.colors.hairline,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: THEME.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -564,11 +947,41 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   refreshButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  filterBar: {
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+    backgroundColor: THEME.colors.background,
+  },
+  filterScroll: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  calendarFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
   },
   scroll: {
     flex: 1,
@@ -594,22 +1007,20 @@ const styles = StyleSheet.create({
   periodPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: THEME.colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: THEME.radius.full,
   },
   periodPillText: {
     fontSize: 10,
     fontWeight: '800',
-    color: THEME.colors.primary,
     letterSpacing: 0.6,
   },
   deltaPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3.5,
     borderRadius: THEME.radius.full,
@@ -657,36 +1068,6 @@ const styles = StyleSheet.create({
     height: 24,
     backgroundColor: THEME.colors.hairline,
   },
-  insightBanner: {
-    flexDirection: 'row',
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    overflow: 'hidden',
-  },
-  insightAccentBar: {
-    width: 3.5,
-    backgroundColor: THEME.colors.primary,
-  },
-  insightBody: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    gap: 10,
-  },
-  insightIcon: {
-    marginTop: 1,
-  },
-  insightText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '500',
-    color: THEME.colors.textSecondary,
-    lineHeight: 17,
-  },
   editorialSection: {
     gap: 10,
   },
@@ -706,62 +1087,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: THEME.colors.textMuted,
-  },
-  velocityChartContainer: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  velocityBarsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: 120,
-    paddingBottom: 8,
-  },
-  velocityCol: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-  },
-  velocityAmount: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
-  },
-  velocityAmountActive: {
-    color: THEME.colors.text,
-    fontWeight: '800',
-  },
-  velocityTrack: {
-    width: 24,
-    height: 72,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: THEME.radius.xs,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  velocityBarFill: {
-    width: '100%',
-    borderRadius: THEME.radius.xs,
-  },
-  velocityMonth: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
-  },
-  velocityMonthActive: {
-    color: THEME.colors.text,
-    fontWeight: '800',
-  },
-  chartBaseline: {
-    height: 1,
-    backgroundColor: THEME.colors.hairline,
-    marginHorizontal: 10,
   },
   openLedger: {
     backgroundColor: THEME.colors.surface,
@@ -784,9 +1109,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   categoryGlyph: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -824,6 +1149,61 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: THEME.colors.textMuted,
   },
+  expandCategoriesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.hairline,
+    backgroundColor: THEME.colors.surfaceElevated,
+  },
+  expandCategoriesText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  insightsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  insightCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  insightIconBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insightContent: {
+    flex: 1,
+    gap: 1,
+  },
+  insightTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.6,
+  },
+  insightValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  insightSub: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
   emptyStateBox: {
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.lg,
@@ -838,4 +1218,3 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
   },
 });
-

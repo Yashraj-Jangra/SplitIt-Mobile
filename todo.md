@@ -1,5 +1,28 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Redesigned Group Analysis & User Financial Dashboard with Custom Charts (`GroupAnalysisTab.tsx`, `app/analysis/index.tsx`, `src/components/charts/*`, `src/components/common/DateRangePickerModal.tsx`)**:
+  - **Fixed Member Spending Share & Transformed into Donut Graph (`GroupAnalysisTab.tsx`, `DonutChart.tsx`)**:
+    - Resolved defect where member spending shares failed to calculate because participant consumption was not parsed. Robustly parsed `exp.participants` (`amountOwed`, `amount`, `share`) against multiple user identifier formats (`user.uid`, `user.id`, `userId`, `id`, `user.name`), with equal split fallback so member share calculation is 100% resilient.
+    - Replaced vertical bars with a custom SVG Donut Chart on the left (`135px` diameter) with multi-colored slices, centered total amount, and touch selection highlights.
+    - Positioned members list alongside the donut with color-matching indicator dots, avatars, names, shares, and percentages in a scrollable view strictly capped to the donut's height (`maxHeight: 135px`) with seamless touch handling.
+  - **Time Frame Filtering & Date Range Picker Modal (`DateRangePickerModal.tsx`)**:
+    - Built reusable `DateRangePickerModal` bottom sheet modal featuring a full interactive calendar date matrix with `from` and `to` range selection, range bar highlighting, month navigation, today shortcut, quick range presets (`All Time`, `This Month`, `Last 30D`, `Last 90D`, `This Year`), and formatted date preview banner.
+    - Integrated filter bar with quick presets and calendar popup trigger in both Group Analysis and User Financial Dashboard.
+  - **Spending Over Time Timeline Chart (`SpendingTimelineChart.tsx`)**:
+    - Brought spending over time chart from web platform, built with pure `react-native-svg` cubic Bezier curves, area gradient fills, horizontal guideline grid, and frequency selector (`Days` | `Weeks` | `Months`).
+    - Added interactive horizontal touch scrubber providing instant tooltip inspection with date, amount, and tactile haptic feedback.
+  - **Category Allocations with "Always Click to Expand"**:
+    - In both Group Analysis and Personal Dashboard, category allocations default to the top 4 categories.
+    - Added an always-accessible, clean expansion toggle button: `Show all N categories` (with `ChevronDown`) / `Show top 4 categories` (with `ChevronUp`).
+  - **Redesigned User Financial Dashboard (`app/analysis/index.tsx`)**:
+    - Open editorial no-div architecture eliminating cluttered card soup.
+    - Hero Financial Card with active period label, % diff delta pill vs previous period, large spend number, and 3-node connected ribbon (`DAILY BURN`, `TRANSACTIONS`, `TOP CATEGORY`).
+    - Integrated `SpendingTimelineChart` with daily/weekly/monthly frequency toggle.
+    - Top 4 categories breakdown with click-to-expand.
+    - High-impact, relevant Key Insights cards (Largest Expense and Peak Spend Day).
+    - Circle Allocation ledger displaying spending distribution across groups.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Group Activity Width Parity & Modular Row Alignment (`app/groups/[id]/index.tsx`, `src/components/activity/*`)**:
   - **Eliminated Width Discrepancy Between Expenses and Settlements**:
     - Resolved the layout imbalance in the Group Activity feed where settlement records appeared narrower than expenses due to nested double padding (`12px` from `ledgerStream` + `16px` inner padding in `ActivitySettlementRow`).
