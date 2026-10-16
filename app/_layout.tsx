@@ -10,10 +10,11 @@ import { AuthProvider, useAuth } from '../src/contexts/auth.context';
 import { NetworkProvider } from '../src/contexts/network.context';
 import { HapticsProvider } from '../src/contexts/haptics.context';
 import { CurrencyProvider } from '../src/contexts/currency.context';
+import { AppThemeProvider, useAppTheme } from '../src/contexts/theme.context';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { ErrorBoundary as AppErrorBoundary, ErrorFallbackView } from '../src/components/common/ErrorBoundary';
 import { notificationService } from '../src/services/notification.service';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 // Expo Router route error boundary export
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
@@ -23,22 +24,23 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 // Disarm react-freeze global suspense unmounts so background screens never suspend with null fallback
 enableFreeze(false);
 
-const splitItNavTheme: Theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: THEME.colors.primary,
-    background: THEME.colors.background,
-    card: THEME.colors.background,
-    border: THEME.colors.hairline,
-    text: THEME.colors.text,
-  },
-};
-
 function NavigationGate() {
   const { user, isLoading } = useAuth();
+  const { currentAccent } = useAppTheme();
   const segments = useSegments();
   const router = useRouter();
+
+  const splitItNavTheme = useMemo<Theme>(() => ({
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      primary: currentAccent.primary,
+      background: THEME.colors.background,
+      card: THEME.colors.background,
+      border: THEME.colors.hairline,
+      text: THEME.colors.text,
+    },
+  }), [currentAccent]);
 
   useEffect(() => {
     notificationService.initNotifications();
@@ -231,6 +233,14 @@ function NavigationGate() {
             }}
           />
           <Stack.Screen
+            name="settings/appearance"
+            options={{
+              presentation: Platform.OS === 'android' ? 'card' : 'modal',
+              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
             name="settings/security"
             options={{
               presentation: Platform.OS === 'android' ? 'card' : 'modal',
@@ -286,8 +296,10 @@ export default function RootLayout() {
             <NetworkProvider>
               <AuthProvider>
                 <CurrencyProvider>
-                  <OfflineBanner />
-                  <NavigationGate />
+                  <AppThemeProvider>
+                    <OfflineBanner />
+                    <NavigationGate />
+                  </AppThemeProvider>
                 </CurrencyProvider>
               </AuthProvider>
             </NetworkProvider>

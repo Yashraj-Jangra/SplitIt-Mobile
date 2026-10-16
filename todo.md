@@ -1,6 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Dynamic Accent Color & Appearance Settings System (`app/settings/appearance.tsx`, `src/contexts/theme.context.tsx`, `src/constants/theme.ts`, `app/(tabs)/profile.tsx`, `app/settings/preferences.tsx`, `app/_layout.tsx`)**:
+  - **Sleek Open-Editorial No-Div Architecture**: Built `app/settings/appearance.tsx` conforming to the anti-card soup editorial philosophy. Features continuous hairline dividers, dynamic ambient atmospheric QuantumLogo glow, live interactive component preview strip (status pill, hero amount, split bill action button), and an open editorial ledger of accent palettes.
+  - **Curated Premium Dark-Mode Palettes**: Integrated 8 hand-crafted accent presets: SplitIt Teal (`#00C4CC`), Mint Emerald (`#10B981`), Electric Violet (`#8B5CF6`), Solar Amber (`#F59E0B`), Cobalt Blue (`#3B82F6`), Coral Rose (`#F43F5E`), Neon Magenta (`#EC4899`), and Acid Lime (`#84CC16`).
+  - **Custom Hex Color Engine**: Pro-grade 6-digit hex input with uppercase normalization, live validation, and single-tap activation.
+  - **Runtime & Persistent Storage Synchronization**:
+    - Created `AppThemeProvider` with persistent caching in AsyncStorage (`STORAGE_KEYS.ACCENT_COLOR_PREFERENCE`).
+    - Added `setRuntimeAccent` to `src/constants/theme.ts` for instantaneous synchronous propagation to `THEME.colors.primary`, `primaryLight`, `primaryMuted`, and `borderFocus`.
+    - Dynamically bound `splitItNavTheme` in `app/_layout.tsx` so native screen transitions reflect the selected accent.
+  - **Seamless Navigation Discovery**:
+    - Added "Appearance" (`Palette` icon) to Profile settings menu (`app/(tabs)/profile.tsx`) displaying current palette name.
+    - Added quick-access Appearance hero link in `app/settings/preferences.tsx`.
+    - Registered `settings/appearance` modal route in `app/_layout.tsx`.
+  - **Quality Gates Verified**: `npx tsc --noEmit` passed with 0 errors; `npx jest --passWithNoTests` passed with 0 failures.
+
 - **Exact App Logo & Color Synchronization with Web Platform (`SplitWise-Clone`)**:
   - **Identified & Replaced Broken AI Icons**: Removed hallucinated AI graphics in `assets/icon.png`, `assets/splash-icon.png`, `assets/android-icon-foreground.png`, and `assets/brand/logo-badge.png`.
   - **Exact Vector SVG Replica (`src/components/brand/QuantumLogo.tsx`)**: Replaced broken custom dash approximations (`dashOn=60, dashOff=239`) with exact 1:1 mathematical user-unit arcs matching web's `Icons.Logo` and `public/icons/favicon.svg` (`strokeDasharray="44.77 179.07"` with `strokeDashoffset={33.58}` for Path 1, and `strokeDasharray="29.85 119.38"` with `strokeDashoffset={-22.38}` for Path 2). Restored the missing 3rd arc and concentric nucleus core (`r=10` with 50% opacity, `r=5` solid).

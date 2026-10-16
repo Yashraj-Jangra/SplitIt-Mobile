@@ -14,10 +14,12 @@ import {
   ChevronRight,
   CreditCard,
   Info,
+  Palette,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { storageService } from '../../src/services/storage.service';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { haptics } from '../../src/services/haptics.service';
@@ -33,6 +35,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut, refreshUser } = useAuth();
   const { currencyCode, currencySymbol, isCustom } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const [imageError, setImageError] = useState(false);
 
   useFocusEffect(
@@ -97,6 +100,12 @@ export default function ProfileScreen() {
 
   // ── Section: Preferences ──
   const preferenceItems: SettingsItem[] = [
+    {
+      icon: Palette,
+      title: 'Appearance',
+      subtitle: `${currentAccent.name} · Accent color & visual themes`,
+      onPress: () => router.push('/settings/appearance'),
+    },
     {
       icon: Sliders,
       title: 'App Preferences',

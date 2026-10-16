@@ -18,18 +18,22 @@ import {
   Layers,
   Check,
   Sparkles,
+  Palette,
+  ChevronRight,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { groupService } from '../../src/services/group.service';
 import { haptics } from '../../src/services/haptics.service';
 import { useHaptics } from '../../src/contexts/haptics.context';
 import { useCurrency, PRESET_CURRENCIES } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 
 export default function PreferencesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { enabled: hapticsEnabled, setEnabled: setHapticsEnabled } = useHaptics();
   const { currencyCode, currencySymbol, isCustom, setCurrency, formatCurrency } = useCurrency();
+  const { currentAccent } = useAppTheme();
 
   const [customSymbolInput, setCustomSymbolInput] = useState(isCustom ? currencySymbol : '');
   const [defaultGroupName, setDefaultGroupName] = useState<string | null>(null);
@@ -97,6 +101,35 @@ export default function PreferencesScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── CARD 0: APPEARANCE & ACCENT THEME ── */}
+        <TouchableOpacity
+          style={styles.appearanceCard}
+          onPress={() => {
+            haptics.tap();
+            router.push('/settings/appearance');
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.cardIconBox, { backgroundColor: currentAccent.primaryMuted }]}>
+            <Palette size={16} color={currentAccent.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+              <Text style={styles.cardTitle}>Appearance & Accent</Text>
+              <View style={[styles.activeAccentPill, { backgroundColor: currentAccent.primaryMuted }]}>
+                <View style={[styles.accentDot, { backgroundColor: currentAccent.primary }]} />
+                <Text style={[styles.activeAccentText, { color: currentAccent.primary }]}>
+                  {currentAccent.name}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.cardSubtitle}>
+              Sleek open-editorial theme palettes & custom hex colors
+            </Text>
+          </View>
+          <ChevronRight size={16} color={THEME.colors.textMuted} />
+        </TouchableOpacity>
+
         {/* ── CARD 1: PRIMARY CURRENCY ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -292,6 +325,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     gap: 16,
+  },
+  appearanceCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  activeAccentPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  accentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  activeAccentText: {
+    fontSize: 11,
+    fontWeight: THEME.typography.weight.bold,
   },
   card: {
     backgroundColor: THEME.colors.surface,

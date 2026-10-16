@@ -163,3 +163,20 @@ export const THEME = {
     },
   },
 } as const;
+
+/**
+ * Synchronous runtime mutator for the active accent palette.
+ * Updates THEME.colors.primary and related derived tokens on the fly.
+ */
+export function setRuntimeAccent(palette: {
+  primary: string;
+  primaryLight?: string;
+  primaryMuted?: string;
+  borderFocus?: string;
+}) {
+  (THEME.colors as any).primary = palette.primary;
+  if (palette.primaryLight) (THEME.colors as any).primaryLight = palette.primaryLight;
+  if (palette.primaryMuted) (THEME.colors as any).primaryMuted = palette.primaryMuted;
+  if (palette.borderFocus) (THEME.colors as any).borderFocus = palette.borderFocus;
+}
+

@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   CURRENCY_PREFERENCE: 'splitit_pref_currency',
   HAPTICS_PREFERENCE: 'splitit_pref_haptics',
   GROUPS_SORT_PREFERENCE: 'splitit_pref_groups_sort',
+  ACCENT_COLOR_PREFERENCE: 'splitit_pref_accent_color',
 } as const;
 
 export const storageService = {
