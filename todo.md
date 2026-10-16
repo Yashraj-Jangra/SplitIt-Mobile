@@ -1,5 +1,15 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Strict Vertical Scroll Locking During Balance Graph & Timeline Scrubbing (`src/components/dashboard/BalanceHistoryGraph.tsx`, `src/components/charts/SpendingTimelineChart.tsx`, `app/(tabs)/index.tsx`, `app/analysis/index.tsx`)**:
+  - **Eliminated Vertical Scroll Jitter & Accidental Drag Interceptions**:
+    - Resolved the issue where touching, scrubbing, or hovering across the Balance History Graph on the home dashboard caused the parent screen `ScrollView` to hijack touch responders and scroll vertically.
+    - Updated `BalanceHistoryGraph` with `onResponderTerminationRequest={() => false}`, rejecting parent scroll hijacking during active touch gestures.
+    - Added capture-phase responder handlers (`onStartShouldSetResponderCapture`, `onMoveShouldSetResponderCapture`) ensuring instant gesture ownership.
+    - Implemented `onScrubbingChange?: (isScrubbing: boolean) => void` callback reporting active touch/scrub state on `handleGrant`, `handleRelease`, and `handleTerminate`.
+    - Wired `isScrubbingGraph` state to the root `ScrollView` on the home dashboard (`scrollEnabled={!isScrubbingGraph}`), physically locking native vertical scrolling for the duration of graph interaction.
+    - Replicated the same responder lock and `onScrubbingChange` pattern in `SpendingTimelineChart.tsx` and `app/analysis/index.tsx` for consistent, buttery smooth horizontal timeline inspection across the app.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Redesigned Group Analysis & User Financial Dashboard with Custom Charts (`GroupAnalysisTab.tsx`, `app/analysis/index.tsx`, `src/components/charts/*`, `src/components/common/DateRangePickerModal.tsx`)**:
   - **Fixed Member Spending Share & Transformed into Donut Graph (`GroupAnalysisTab.tsx`, `DonutChart.tsx`)**:
     - Resolved defect where member spending shares failed to calculate because participant consumption was not parsed. Robustly parsed `exp.participants` (`amountOwed`, `amount`, `share`) against multiple user identifier formats (`user.uid`, `user.id`, `userId`, `id`, `user.name`), with equal split fallback so member share calculation is 100% resilient.

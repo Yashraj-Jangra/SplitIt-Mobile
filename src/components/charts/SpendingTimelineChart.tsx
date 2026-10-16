@@ -25,6 +25,7 @@ export interface SpendingTimelineChartProps {
   onChangeFrequency: (freq: 'daily' | 'weekly' | 'monthly') => void;
   height?: number;
   title?: string;
+  onScrubbingChange?: (isScrubbing: boolean) => void;
 }
 
 function buildSmoothPath(points: Array<{ x: number; y: number }>): string {
@@ -54,6 +55,7 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
   onChangeFrequency,
   height = 175,
   title = 'SPENDING OVER TIME',
+  onScrubbingChange,
 }) => {
   const { currentAccent } = useAppTheme();
   const { formatCurrency } = useCurrency();
@@ -198,11 +200,22 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
         onLayout={onLayout}
         onStartShouldSetResponder={() => true}
         onMoveShouldSetResponder={() => true}
-        onResponderGrant={handleTouch}
+        onStartShouldSetResponderCapture={() => true}
+        onMoveShouldSetResponderCapture={() => true}
+        onResponderGrant={(e) => {
+          onScrubbingChange?.(true);
+          handleTouch(e);
+        }}
         onResponderMove={handleTouch}
         onResponderRelease={() => {
+          onScrubbingChange?.(false);
           setTimeout(() => setSelectedIndex(null), 3500);
         }}
+        onResponderTerminate={() => {
+          onScrubbingChange?.(false);
+          setSelectedIndex(null);
+        }}
+        onResponderTerminationRequest={() => false}
       >
         {coordinates.length === 0 ? (
           <View style={styles.emptyState}>

@@ -26,6 +26,7 @@ export interface BalanceHistoryGraphProps {
   hasNoBalance?: boolean;
   onPress?: () => void;
   onSelectPoint?: (point: { date: string; balance: number } | null) => void;
+  onScrubbingChange?: (isScrubbing: boolean) => void;
 }
 
 export interface BalanceHistoryGraphHandle {
@@ -76,6 +77,7 @@ export const BalanceHistoryGraph = forwardRef<
     hasNoBalance,
     onPress,
     onSelectPoint,
+    onScrubbingChange,
   },
   ref
 ) {
@@ -91,8 +93,9 @@ export const BalanceHistoryGraph = forwardRef<
     autoDismissTimerRef.current = setTimeout(() => {
       setSelectedIndex(null);
       onSelectPoint?.(null);
+      onScrubbingChange?.(false);
     }, 7000);
-  }, [onSelectPoint]);
+  }, [onSelectPoint, onScrubbingChange]);
 
   useEffect(() => {
     return () => {
@@ -106,6 +109,7 @@ export const BalanceHistoryGraph = forwardRef<
     ref,
     () => ({
       deselect: () => {
+        onScrubbingChange?.(false);
         if (selectedIndex !== null) {
           setSelectedIndex(null);
           onSelectPoint?.(null);
@@ -116,7 +120,7 @@ export const BalanceHistoryGraph = forwardRef<
       },
       isSelected: selectedIndex !== null,
     }),
-    [selectedIndex, onSelectPoint]
+    [selectedIndex, onSelectPoint, onScrubbingChange]
   );
 
   const handleLayout = (e: LayoutChangeEvent) => {
@@ -241,11 +245,20 @@ export const BalanceHistoryGraph = forwardRef<
   };
 
   const handleGrant = (evt: GestureResponderEvent) => {
+    onScrubbingChange?.(true);
     updateSelectionFromX(evt.nativeEvent.locationX, true);
   };
 
   const handleMove = (evt: GestureResponderEvent) => {
     updateSelectionFromX(evt.nativeEvent.locationX, false);
+  };
+
+  const handleRelease = () => {
+    onScrubbingChange?.(false);
+  };
+
+  const handleTerminate = () => {
+    onScrubbingChange?.(false);
   };
 
   return (
@@ -254,9 +267,13 @@ export const BalanceHistoryGraph = forwardRef<
       onLayout={handleLayout}
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
+      onStartShouldSetResponderCapture={() => true}
+      onMoveShouldSetResponderCapture={() => true}
       onResponderGrant={handleGrant}
       onResponderMove={handleMove}
-      onResponderTerminationRequest={() => true}
+      onResponderRelease={handleRelease}
+      onResponderTerminate={handleTerminate}
+      onResponderTerminationRequest={() => false}
     >
       <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} pointerEvents="none">
         <Defs>

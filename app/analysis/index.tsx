@@ -86,6 +86,7 @@ export default function AnalysisScreen() {
   // Chart Frequency & Category Expansion
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [expandedCategories, setExpandedCategories] = useState(false);
+  const [isScrubbingChart, setIsScrubbingChart] = useState(false);
 
   const loadData = useCallback(async (force = false) => {
     try {
@@ -559,6 +560,7 @@ export default function AnalysisScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 36 }]}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!isScrubbingChart}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -666,6 +668,7 @@ export default function AnalysisScreen() {
             onChangeFrequency={setFrequency}
             height={180}
             title="SPENDING OVER TIME"
+            onScrubbingChange={setIsScrubbingChart}
           />
         </View>
 

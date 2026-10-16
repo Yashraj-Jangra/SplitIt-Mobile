@@ -69,6 +69,7 @@ export default function HomeScreen() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const balanceGraphRef = useRef<BalanceHistoryGraphHandle>(null);
   const [isGraphActive, setIsGraphActive] = useState(false);
+  const [isScrubbingGraph, setIsScrubbingGraph] = useState(false);
   const [loading, setLoading] = useState(() => {
     return (
       groupService.getInMemoryGroups().length === 0 &&
@@ -238,10 +239,11 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!isScrubbingGraph}
         onScrollBeginDrag={() => balanceGraphRef.current?.deselect()}
-        onStartShouldSetResponder={() => isGraphActive}
+        onStartShouldSetResponder={() => isGraphActive && !isScrubbingGraph}
         onResponderGrant={() => {
-          if (isGraphActive) balanceGraphRef.current?.deselect();
+          if (isGraphActive && !isScrubbingGraph) balanceGraphRef.current?.deselect();
         }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={currentAccent.primary} />}
       >
@@ -399,6 +401,7 @@ export default function HomeScreen() {
                     totalOwe < 0.01
                   }
                   onSelectPoint={(point) => setIsGraphActive(Boolean(point))}
+                  onScrubbingChange={setIsScrubbingGraph}
                   onPress={() => {
                     haptics.tap();
                     router.push('/expenses/new');
