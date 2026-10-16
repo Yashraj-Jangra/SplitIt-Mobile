@@ -1,5 +1,11 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Settings Profile Hero Refinement (`app/(tabs)/profile.tsx`)**:
+  - **Refined Avatar Scale**: Decreased avatar diameter from 96px to 72px (`width: 72, height: 72, borderRadius: 36`) with crisp 2px dynamic accent border ring and balanced 26px initials typography.
+  - **Enlarged User Identity**: Increased username title from 20px to 24px (`fontSize: 24, fontWeight: '900', letterSpacing: -0.6`), with enlarged handle and email subheadings for bold typographic prominence.
+  - **Clean Header**: Removed the QR icon button and lock badge completely from the hero section, restoring full horizontal breathing room to user identity details while preserving payment QR access under Account Settings.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Modular Activity Stream, Theme-Based Settlements & Neutral Icons Parity (`app/(tabs)/activity.tsx`, `app/groups/[id]/index.tsx`, `src/components/activity/*`)**:
   - **Modular Activity Components (`src/components/activity/`)**:
     - Built [`ActivityExpenseRow.tsx`](file:///d:/Projects/SplitIt-Mobile/src/components/activity/ActivityExpenseRow.tsx): Renders clean, open editorial expense items with neutral `CategoryIcon` (`THEME.colors.textSecondary`), title, payer/group ribbon, date, and `ExpenseImpactCol`.

@@ -15,8 +15,6 @@ import {
   CreditCard,
   Info,
   Palette,
-  QrCode,
-  Lock,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
@@ -229,42 +227,6 @@ export default function ProfileScreen() {
             ) : null}
             <Text style={styles.userEmail} numberOfLines={1}>{user?.email || ''}</Text>
           </View>
-
-          <TouchableOpacity
-            style={[
-              styles.qrIconButton,
-              effectiveUpi
-                ? {
-                    borderColor: `${currentAccent.primary}40`,
-                    backgroundColor: `${currentAccent.primary}14`,
-                  }
-                : {
-                    borderColor: THEME.colors.hairline,
-                    backgroundColor: THEME.colors.surfaceElevated,
-                  },
-            ]}
-            onPress={() => {
-              haptics.tap();
-              if (effectiveUpi) {
-                router.push('/settings/my-qr');
-              } else {
-                router.push('/settings/payment');
-              }
-            }}
-            activeOpacity={0.75}
-            accessibilityRole="button"
-            accessibilityLabel={effectiveUpi ? 'Open Payment QR Code' : 'Set up UPI ID (Locked)'}
-          >
-            <QrCode
-              size={22}
-              color={effectiveUpi ? currentAccent.primary : THEME.colors.textMuted}
-            />
-            {!effectiveUpi && (
-              <View style={styles.qrLockBadge}>
-                <Lock size={9} color={THEME.colors.palette.white} />
-              </View>
-            )}
-          </TouchableOpacity>
         </View>
 
         {renderSection('ACCOUNT', accountItems)}
@@ -323,11 +285,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   avatarCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -338,52 +300,30 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarText: {
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: '900',
     color: THEME.colors.text,
   },
   userInfo: {
     flex: 1,
     justifyContent: 'center',
-    gap: 3,
+    gap: 2,
   },
   userName: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '900',
     color: THEME.colors.text,
-    letterSpacing: -0.4,
+    letterSpacing: -0.6,
   },
   userHandle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: THEME.colors.textSecondary,
   },
   userEmail: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: THEME.colors.textMuted,
     fontWeight: '500',
-  },
-  qrIconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    position: 'relative',
-  },
-  qrLockBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: THEME.colors.surfacePill,
-    borderWidth: 1.5,
-    borderColor: THEME.colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   // Sections
   sectionContainer: {
