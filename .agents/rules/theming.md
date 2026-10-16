@@ -195,7 +195,18 @@ Use `expo-haptics` consistently. Never trigger haptics arbitrarily.
 
 ## Loading States
 
-- **Every async screen must show shimmer skeletons**, never blank screens, "No data" messages, or spinner wheels during initial load.
+- Every async screen must show shimmer skeletons**, never blank screens, "No data" messages, or spinner wheels during initial load.
 - Skeleton components live in `src/components/skeletons/` and must visually match the layout they replace.
 - After data loads, skeletons cross-fade to real content (never a hard cut).
 - Pull-to-refresh uses inline skeleton overlays, not full-screen replacements.
+
+---
+
+## Screen Width & Layout Metrics Consistency
+
+- **Standalone Screens (Dashboard, Analysis, Settings, Activity)**: Exactly `paddingHorizontal: 16` (`THEME.spacing.lg`).
+- **Group Tab Sub-Views (Expenses, Balances, Budget, Activity, Analysis)**:
+  - The parent screen (`app/groups/[id]/index.tsx`) provides `tabSectionWrapper` with `paddingHorizontal: 10`.
+  - Child tab components (e.g. `GroupAnalysisTab.tsx`) **must never add additional internal horizontal padding** (`paddingHorizontal: 0`).
+  - Child tabs must never wrap their content in a redundant nested `<ScrollView>` if the parent screen already scrolls.
+- **Parity Guarantee**: Tab switching must be 100% fluid with zero horizontal jumping or shrinking.

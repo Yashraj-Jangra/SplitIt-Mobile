@@ -115,3 +115,25 @@ A user-focused, phone-optimized, authentic mobile design system inspired directl
 1. **Uninterrupted Visibility**: The amount and description fields, conversational chips, and toolbar are tightly packed into the top 240px of screen height. When the soft keyboard (typically ~280px tall) deploys, nothing is obscured.
 2. **Input Accessory Dock**: Utilizes `KeyboardAvoidingView` with `behavior={Platform.OS === 'ios' ? 'padding' : undefined}` and native keyboard listeners on Android to seamlessly track keyboard height in real time.
 3. **One-Tap Validation**: Top-right `✓` icon is always reachable in the top app bar regardless of keyboard state.
+
+---
+
+## 4. Strict Open-Editorial & "No-Div" Architecture Standard
+
+### 4.1 Abolish "Card Soup" & Concentric Divs
+- **Zero Nested Box Cards**: Never place a `<View style={styles.card}>` inside another `<View style={styles.containerCard}>`. Multiple borders, backgrounds, and shadows nested within each other create cluttered, heavy, and claustrophobic mobile interfaces.
+- **Single-Layer Surfaces Only**: If an interactive container is necessary (e.g. an actionable form group or tap card), use exactly ONE clean surface layer (`THEME.colors.surface`) with a hairline border (`THEME.colors.hairline`).
+- **Open Editorial Flow**: For ledgers, metrics, activity feeds, and settings, use open continuous layouts separated by clean hairline dividers (`borderBottomWidth: 1`, `borderColor: THEME.colors.hairline`).
+- **Typographic Hierarchy & Status Pills**: Use bold headline typography (`THEME.typography.size.headline` / `hero`) and color-coded status pills (`THEME.colors.successMuted` / `negativeMuted`) rather than wrapping text inside bulky grey rectangles.
+
+---
+
+## 5. Screen Width & Layout Metrics Consistency
+
+### 5.1 Standard Horizontal Padding
+- **Standalone Screens (Dashboard, Analysis, Settings, Activity)**: Exactly `paddingHorizontal: 16` (`THEME.spacing.lg`).
+- **Group Tab Sub-Views (Expenses, Balances, Budget, Activity, Analysis)**:
+  - The parent screen (`app/groups/[id]/index.tsx`) provides `tabSectionWrapper` with `paddingHorizontal: 10`.
+  - Child tab components (such as `GroupAnalysisTab.tsx`) **must never add additional internal horizontal padding** (`paddingHorizontal: 0`).
+  - Child tabs must never wrap their content in a redundant nested `<ScrollView>` if the parent screen already scrolls.
+- **Guaranteed Parity**: Switching between tabs must have zero horizontal jumping or shrinking.

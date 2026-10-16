@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { THEME } from '../../constants/theme';
 import { GroupDetailData, GroupExpense, GroupMember } from '../../services/group.service';
 import { useCurrency } from '../../contexts/currency.context';
-import { CategoryIcon } from '../../utils/category-icons';
+import { CategoryIcon, getCategoryColor } from '../../utils/category-icons';
 import { TrendingUp, Users, PieChart, Calendar, Award } from 'lucide-react-native';
 
 interface GroupAnalysisTabProps {
@@ -108,255 +108,304 @@ export const GroupAnalysisTab: React.FC<GroupAnalysisTabProps> = ({
   }, [expenses, members]);
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      {/* ── KPI HIGHLIGHT STRIP ── */}
-      <View style={styles.kpiGrid}>
-        <View style={styles.kpiCard}>
-          <View style={styles.kpiIconWrap}>
-            <TrendingUp size={16} color={THEME.colors.primary} />
-          </View>
-          <Text style={styles.kpiLabel}>TOTAL SPENT</Text>
-          <Text style={styles.kpiValue} numberOfLines={1}>
+    <View style={styles.container}>
+      {/* ── 3-NODE METRICS RIBBON (NO-DIV OPEN EDITORIAL) ── */}
+      <View style={styles.metricsRibbonContainer}>
+        <View style={styles.metricNode}>
+          <Text style={styles.metricNodeLabel}>TOTAL SPENT</Text>
+          <Text style={styles.metricNodeValue} numberOfLines={1}>
             {formatCurrency(stats.totalSpend, { decimals: 0 })}
           </Text>
         </View>
 
-        <View style={styles.kpiCard}>
-          <View style={styles.kpiIconWrap}>
-            <Users size={16} color={THEME.colors.info} />
-          </View>
-          <Text style={styles.kpiLabel}>AVG PER MEMBER</Text>
-          <Text style={styles.kpiValue} numberOfLines={1}>
+        <View style={styles.nodeHairline} />
+
+        <View style={styles.metricNode}>
+          <Text style={styles.metricNodeLabel}>AVG / MEMBER</Text>
+          <Text style={styles.metricNodeValue} numberOfLines={1}>
             {formatCurrency(stats.avgPerMember, { decimals: 0 })}
           </Text>
         </View>
 
-        <View style={styles.kpiCard}>
-          <View style={styles.kpiIconWrap}>
-            <Award size={16} color={THEME.colors.warning} />
-          </View>
-          <Text style={styles.kpiLabel}>TOP SPEND</Text>
-          <Text style={styles.kpiValue} numberOfLines={1}>
+        <View style={styles.nodeHairline} />
+
+        <View style={styles.metricNode}>
+          <Text style={styles.metricNodeLabel}>TOP SPEND</Text>
+          <Text style={[styles.metricNodeValue, styles.topSpendValue]} numberOfLines={1}>
             {stats.topCategory.toUpperCase()}
           </Text>
         </View>
       </View>
 
-      {/* ── MEMBER SPENDING SHARE ── */}
-      <View style={styles.sectionCard}>
+      {/* ── MEMBER SPENDING SHARE (OPEN LEDGER) ── */}
+      <View style={styles.editorialSection}>
         <View style={styles.sectionHeader}>
-          <Users size={16} color={THEME.colors.primary} />
-          <Text style={styles.sectionTitle}>Member Spending Share</Text>
+          <Text style={styles.sectionTitle}>MEMBER SPENDING SHARE</Text>
+          {stats.memberContributions.length > 0 && (
+            <Text style={styles.sectionCount}>
+              {stats.memberContributions.length} {stats.memberContributions.length === 1 ? 'member' : 'members'}
+            </Text>
+          )}
         </View>
-        <Text style={styles.sectionSubtitle}>Who paid for group expenses and in what proportions</Text>
 
-        <View style={styles.memberList}>
+        <View style={styles.openLedger}>
           {stats.memberContributions.length === 0 ? (
-            <Text style={styles.emptyText}>No spending recorded by members</Text>
+            <View style={styles.emptyStateBox}>
+              <Text style={styles.emptyText}>No spending recorded by members yet</Text>
+            </View>
           ) : (
-            stats.memberContributions.map((item) => (
-              <View key={item.member.id} style={styles.memberRow}>
-                <View style={styles.memberAvatar}>
-                  {item.member.avatarUrl ? (
-                    <Image source={{ uri: item.member.avatarUrl }} style={styles.avatarImg} />
-                  ) : (
-                    <Text style={styles.avatarText}>
-                      {(item.member.name || 'M').charAt(0).toUpperCase()}
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.memberInfo}>
-                  <View style={styles.memberNameRow}>
-                    <Text style={styles.memberName} numberOfLines={1}>
-                      {item.member.name}
-                    </Text>
-                    <Text style={styles.memberAmount}>
-                      {formatCurrency(item.paid, { decimals: 0 })}
-                    </Text>
-                  </View>
-
-                  <View style={styles.progressBarTrack}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        { width: `${Math.min(Math.max(item.percentage, 4), 100)}%` },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.memberPercentage}>
-                    {item.percentage.toFixed(1)}% of total
-                  </Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-      </View>
-
-      {/* ── CATEGORY DISTRIBUTION ── */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <PieChart size={16} color={THEME.colors.info} />
-          <Text style={styles.sectionTitle}>Category Allocation</Text>
-        </View>
-        <Text style={styles.sectionSubtitle}>Where this circle's funds were allocated</Text>
-
-        <View style={styles.categoryList}>
-          {stats.categories.length === 0 ? (
-            <Text style={styles.emptyText}>No categorized expenses recorded</Text>
-          ) : (
-            stats.categories.map((cat) => (
-              <View key={cat.subCategory} style={styles.categoryRow}>
-                <View style={styles.catIconWrap}>
-                  <CategoryIcon
-                    subCategory={cat.subCategory}
-                    masterCategory={cat.masterCategory}
-                    size={18}
-                    color={THEME.colors.textSecondary}
-                  />
-                </View>
-
-                <View style={styles.catInfo}>
-                  <View style={styles.catNameRow}>
-                    <Text style={styles.catName} numberOfLines={1}>
-                      {cat.subCategory.charAt(0).toUpperCase() + cat.subCategory.slice(1)}
-                    </Text>
-                    <Text style={styles.catAmount}>
-                      {formatCurrency(cat.total, { decimals: 0 })}
-                    </Text>
-                  </View>
-
-                  <View style={styles.progressBarTrack}>
-                    <View
-                      style={[
-                        styles.catProgressBarFill,
-                        { width: `${Math.min(Math.max(cat.percentage, 4), 100)}%` },
-                      ]}
-                    />
-                  </View>
-                  <View style={styles.catMetaRow}>
-                    <Text style={styles.catMeta}>
-                      {cat.count} {cat.count === 1 ? 'expense' : 'expenses'}
-                    </Text>
-                    <Text style={styles.catMeta}>{cat.percentage.toFixed(1)}%</Text>
-                  </View>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-      </View>
-
-      {/* ── MONTHLY SPENDING VELOCITY ── */}
-      {stats.monthlyTrends.length > 0 && (
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Calendar size={16} color={THEME.colors.warning} />
-            <Text style={styles.sectionTitle}>Monthly Spend Velocity</Text>
-          </View>
-          <Text style={styles.sectionSubtitle}>Total spending pace by month</Text>
-
-          <View style={styles.monthlyVelocityRow}>
-            {stats.monthlyTrends.map((m) => {
-              const heightPct = Math.round((m.total / stats.maxMonthlySpend) * 100);
+            stats.memberContributions.map((item, index) => {
+              const isLast = index === stats.memberContributions.length - 1;
               return (
-                <View key={m.month} style={styles.monthColumn}>
-                  <Text style={styles.monthAmountText}>
-                    {formatCurrency(m.total, { decimals: 0 })}
-                  </Text>
-                  <View style={styles.monthBarTrack}>
-                    <View style={[styles.monthBarFill, { height: `${Math.max(heightPct, 8)}%` }]} />
+                <View
+                  key={item.member.id}
+                  style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                >
+                  <View style={styles.ledgerRowContent}>
+                    <View style={styles.memberAvatar}>
+                      {item.member.avatarUrl ? (
+                        <Image source={{ uri: item.member.avatarUrl }} style={styles.avatarImg} />
+                      ) : (
+                        <Text style={styles.avatarText}>
+                          {(item.member.name || 'M').charAt(0).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={styles.ledgerInfo}>
+                      <Text style={styles.ledgerName} numberOfLines={1}>
+                        {item.member.name}
+                      </Text>
+                      <View style={styles.hairlineBarTrack}>
+                        <View
+                          style={[
+                            styles.hairlineBarFill,
+                            {
+                              width: `${Math.min(Math.max(item.percentage, 3), 100)}%`,
+                              backgroundColor: THEME.colors.primary,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={styles.ledgerFigures}>
+                      <Text style={styles.ledgerAmount}>
+                        {formatCurrency(item.paid, { decimals: 0 })}
+                      </Text>
+                      <Text style={styles.ledgerPercent}>
+                        {item.percentage.toFixed(1)}%
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={styles.monthLabel}>{m.month}</Text>
                 </View>
               );
-            })}
+            })
+          )}
+        </View>
+      </View>
+
+      {/* ── CATEGORY DISTRIBUTION (OPEN LEDGER) ── */}
+      <View style={styles.editorialSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>CATEGORY ALLOCATION</Text>
+          {stats.categories.length > 0 && (
+            <Text style={styles.sectionCount}>
+              {stats.categories.length} {stats.categories.length === 1 ? 'category' : 'categories'}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.openLedger}>
+          {stats.categories.length === 0 ? (
+            <View style={styles.emptyStateBox}>
+              <Text style={styles.emptyText}>No categorized expenses recorded yet</Text>
+            </View>
+          ) : (
+            stats.categories.map((cat, index) => {
+              const catColor = getCategoryColor(cat.masterCategory, cat.subCategory);
+              const isLast = index === stats.categories.length - 1;
+              return (
+                <View
+                  key={cat.subCategory}
+                  style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                >
+                  <View style={styles.ledgerRowContent}>
+                    <View style={[styles.categoryGlyph, { backgroundColor: THEME.colors.surfaceElevated }]}>
+                      <CategoryIcon
+                        subCategory={cat.subCategory}
+                        masterCategory={cat.masterCategory}
+                        size={15}
+                        color={catColor}
+                      />
+                    </View>
+
+                    <View style={styles.ledgerInfo}>
+                      <Text style={styles.ledgerName} numberOfLines={1}>
+                        {cat.subCategory.charAt(0).toUpperCase() + cat.subCategory.slice(1)}
+                      </Text>
+                      <View style={styles.hairlineBarTrack}>
+                        <View
+                          style={[
+                            styles.hairlineBarFill,
+                            {
+                              width: `${Math.min(Math.max(cat.percentage, 3), 100)}%`,
+                              backgroundColor: catColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={styles.ledgerFigures}>
+                      <Text style={styles.ledgerAmount}>
+                        {formatCurrency(cat.total, { decimals: 0 })}
+                      </Text>
+                      <Text style={styles.ledgerPercent}>
+                        {cat.percentage.toFixed(1)}%
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+      </View>
+
+      {/* ── MONTHLY SPENDING VELOCITY (OPEN VISUALIZER) ── */}
+      {stats.monthlyTrends.length > 0 && (
+        <View style={styles.editorialSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>SPENDING VELOCITY</Text>
+            <Text style={styles.sectionCount}>
+              {stats.monthlyTrends.length} {stats.monthlyTrends.length === 1 ? 'month' : 'months'}
+            </Text>
+          </View>
+
+          <View style={styles.velocityChartContainer}>
+            <View style={styles.velocityBarsRow}>
+              {stats.monthlyTrends.map((m, index) => {
+                const heightPct = Math.round((m.total / (stats.maxMonthlySpend || 1)) * 100);
+                const isCurrent = index === stats.monthlyTrends.length - 1;
+                return (
+                  <View key={m.month} style={styles.velocityCol}>
+                    <Text style={[styles.velocityAmount, isCurrent && styles.velocityAmountActive]}>
+                      {formatCurrency(m.total, { decimals: 0 })}
+                    </Text>
+                    <View style={styles.velocityTrack}>
+                      <View
+                        style={[
+                          styles.velocityBarFill,
+                          {
+                            height: `${Math.max(heightPct, 6)}%`,
+                            backgroundColor: isCurrent
+                              ? THEME.colors.primary
+                              : THEME.colors.surfacePill,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[styles.velocityMonth, isCurrent && styles.velocityMonthActive]}>
+                      {m.month}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.chartBaseline} />
           </View>
         </View>
       )}
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingHorizontal: 0,
+    paddingTop: 6,
     paddingBottom: 40,
-    gap: 14,
+    gap: 16,
   },
-  kpiGrid: {
+  metricsRibbonContainer: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  kpiCard: {
-    flex: 1,
+    alignItems: 'center',
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.lg,
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    gap: 4,
   },
-  kpiIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: THEME.colors.surfaceElevated,
+  metricNode: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  metricNodeLabel: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
-  kpiLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    color: THEME.colors.textMuted,
-  },
-  kpiValue: {
-    fontSize: 15,
+  metricNodeValue: {
+    fontSize: 13.5,
     fontWeight: '800',
     color: THEME.colors.text,
-    letterSpacing: -0.3,
   },
-  sectionCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    gap: 12,
+  topSpendValue: {
+    color: THEME.colors.primary,
+  },
+  nodeHairline: {
+    width: 1,
+    height: 24,
+    backgroundColor: THEME.colors.hairline,
+  },
+  editorialSection: {
+    gap: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 11,
     fontWeight: '800',
-    color: THEME.colors.text,
-    letterSpacing: -0.2,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
     color: THEME.colors.textMuted,
-    marginTop: -6,
+    letterSpacing: 0.8,
   },
-  memberList: {
-    gap: 14,
-    marginTop: 4,
+  sectionCount: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
   },
-  memberRow: {
+  openLedger: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    overflow: 'hidden',
+  },
+  ledgerRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  ledgerRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+  },
+  ledgerRowContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   memberAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
@@ -369,137 +418,115 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
     color: THEME.colors.text,
   },
-  memberInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  memberNameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  memberName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.text,
-    flex: 1,
-  },
-  memberAmount: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: THEME.colors.text,
-  },
-  progressBarTrack: {
-    height: 6,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: THEME.colors.primary,
-    borderRadius: 3,
-  },
-  memberPercentage: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: THEME.colors.textMuted,
-  },
-  categoryList: {
-    gap: 14,
-    marginTop: 4,
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  catIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.colors.surfaceElevated,
+  categoryGlyph: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catInfo: {
+  ledgerInfo: {
     flex: 1,
-    gap: 4,
+    gap: 5,
   },
-  catNameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  catName: {
+  ledgerName: {
     fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.text,
-    flex: 1,
   },
-  catAmount: {
+  hairlineBarTrack: {
+    height: 3,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 1.5,
+    overflow: 'hidden',
+  },
+  hairlineBarFill: {
+    height: '100%',
+    borderRadius: 1.5,
+  },
+  ledgerFigures: {
+    alignItems: 'flex-end',
+    gap: 2,
+    minWidth: 64,
+  },
+  ledgerAmount: {
     fontSize: 13,
     fontWeight: '800',
     color: THEME.colors.text,
   },
-  catProgressBarFill: {
-    height: '100%',
-    backgroundColor: THEME.colors.info,
-    borderRadius: 3,
+  ledgerPercent: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
   },
-  catMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyStateBox: {
+    paddingVertical: 20,
     alignItems: 'center',
   },
-  catMeta: {
-    fontSize: 11,
+  emptyText: {
+    fontSize: 12,
     fontWeight: '500',
     color: THEME.colors.textMuted,
   },
-  monthlyVelocityRow: {
+  velocityChartContainer: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  velocityBarsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-end',
-    height: 120,
-    paddingTop: 10,
+    height: 110,
+    paddingBottom: 8,
   },
-  monthColumn: {
+  velocityCol: {
+    flex: 1,
     alignItems: 'center',
     gap: 6,
-    flex: 1,
   },
-  monthAmountText: {
+  velocityAmount: {
     fontSize: 10,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
   },
-  monthBarTrack: {
-    width: 28,
-    height: 70,
+  velocityAmountActive: {
+    color: THEME.colors.text,
+    fontWeight: '800',
+  },
+  velocityTrack: {
+    width: 24,
+    height: 68,
     backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: THEME.radius.xs,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
-  monthBarFill: {
+  velocityBarFill: {
     width: '100%',
-    backgroundColor: THEME.colors.warning,
     borderRadius: THEME.radius.xs,
   },
-  monthLabel: {
+  velocityMonth: {
     fontSize: 11,
     fontWeight: '600',
     color: THEME.colors.textMuted,
   },
-  emptyText: {
-    fontSize: 13,
-    color: THEME.colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: 12,
+  velocityMonthActive: {
+    color: THEME.colors.text,
+    fontWeight: '800',
+  },
+  chartBaseline: {
+    height: 1,
+    backgroundColor: THEME.colors.hairline,
+    marginHorizontal: 10,
   },
 });
+

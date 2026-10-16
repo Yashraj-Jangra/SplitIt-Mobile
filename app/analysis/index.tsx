@@ -24,6 +24,7 @@ import {
   Users,
   Calendar,
   Sparkles,
+  Lightbulb,
 } from 'lucide-react-native';
 
 export default function AnalysisScreen() {
@@ -187,6 +188,9 @@ export default function AnalysisScreen() {
     ];
     const maxVelocity = Math.max(...velocity.map((v) => v.amount), 1);
 
+    const averageExpense =
+      expenses.length > 0 ? totalAllExpenses / expenses.length : 0;
+
     return {
       thisMonthTotal,
       lastMonthTotal,
@@ -197,8 +201,20 @@ export default function AnalysisScreen() {
       velocity,
       maxVelocity,
       totalAllExpenses,
+      averageExpense,
     };
   }, [expenses]);
+
+  const insight = useMemo(() => {
+    if (analytics.rankedCategories.length > 0 && analytics.percentChange <= 0 && analytics.lastMonthTotal > 0) {
+      return `Spending is down ${Math.abs(analytics.percentChange).toFixed(1)}% compared to last month. Top category is ${analytics.rankedCategories[0].category} at ${analytics.rankedCategories[0].percentage.toFixed(0)}% of total.`;
+    } else if (analytics.rankedCategories.length > 0 && analytics.percentChange > 0 && analytics.lastMonthTotal > 0) {
+      return `Spending is up ${analytics.percentChange.toFixed(1)}% vs last month. ${analytics.rankedCategories[0].category.charAt(0).toUpperCase() + analytics.rankedCategories[0].category.slice(1)} accounts for the largest share at ${analytics.rankedCategories[0].percentage.toFixed(0)}%.`;
+    } else if (analytics.rankedCategories.length > 0) {
+      return `Your top spending category is ${analytics.rankedCategories[0].category.charAt(0).toUpperCase() + analytics.rankedCategories[0].category.slice(1)}, representing ${analytics.rankedCategories[0].percentage.toFixed(0)}% of your expenses.`;
+    }
+    return 'Keep tracking your daily expenses to unlock automated spending velocity insights and budget allocations.';
+  }, [analytics]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -211,6 +227,8 @@ export default function AnalysisScreen() {
             router.back();
           }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
         >
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
@@ -224,6 +242,8 @@ export default function AnalysisScreen() {
           style={styles.refreshButton}
           onPress={onRefresh}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Refresh"
         >
           <RotateCw size={18} color={THEME.colors.textMuted} />
         </TouchableOpacity>
@@ -242,169 +262,196 @@ export default function AnalysisScreen() {
           />
         }
       >
-        {/* KPI Hero Card */}
-        <View style={styles.kpiHeroCard}>
-          <View style={styles.kpiHeroHeader}>
-            <View style={styles.heroBadgeRow}>
-              <View style={styles.sparkleBadge}>
-                <Sparkles size={12} color={THEME.colors.primary} />
-                <Text style={styles.sparkleBadgeText}>This Month</Text>
-              </View>
-              {analytics.lastMonthTotal > 0 && (
-                <View
+        {/* Open Editorial Financial Health Hero */}
+        <View style={styles.heroSection}>
+          <View style={styles.heroMetaRow}>
+            <View style={styles.periodPill}>
+              <Sparkles size={11} color={THEME.colors.primary} />
+              <Text style={styles.periodPillText}>THIS MONTH</Text>
+            </View>
+            {analytics.lastMonthTotal > 0 && (
+              <View
+                style={[
+                  styles.deltaPill,
+                  {
+                    backgroundColor:
+                      analytics.percentChange <= 0
+                        ? THEME.colors.successMuted
+                        : THEME.colors.dangerMuted,
+                  },
+                ]}
+              >
+                {analytics.percentChange <= 0 ? (
+                  <TrendingDown size={11} color={THEME.colors.success} />
+                ) : (
+                  <TrendingUp size={11} color={THEME.colors.danger} />
+                )}
+                <Text
                   style={[
-                    styles.diffBadge,
+                    styles.deltaPillText,
                     {
-                      backgroundColor:
+                      color:
                         analytics.percentChange <= 0
-                          ? THEME.colors.successMuted
-                          : THEME.colors.dangerMuted,
+                          ? THEME.colors.success
+                          : THEME.colors.danger,
                     },
                   ]}
                 >
-                  {analytics.percentChange <= 0 ? (
-                    <TrendingDown size={11} color={THEME.colors.success} />
-                  ) : (
-                    <TrendingUp size={11} color={THEME.colors.danger} />
-                  )}
-                  <Text
-                    style={[
-                      styles.diffBadgeText,
-                      {
-                        color:
-                          analytics.percentChange <= 0
-                            ? THEME.colors.success
-                            : THEME.colors.danger,
-                      },
-                    ]}
-                  >
-                    {Math.abs(analytics.percentChange).toFixed(1)}% vs last month
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.heroAmount}>
-              {formatCurrency(analytics.thisMonthTotal)}
-            </Text>
+                  {Math.abs(analytics.percentChange).toFixed(1)}% vs last month
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* Sub-Metrics Row */}
-          <View style={styles.subMetricsRow}>
-            <View style={styles.subMetricCol}>
-              <Text style={styles.subMetricLabel}>Daily Burn Rate</Text>
-              <Text style={styles.subMetricValue}>
+          <Text style={styles.heroAmount}>
+            {formatCurrency(analytics.thisMonthTotal)}
+          </Text>
+
+          {/* 3-Node Metrics Ribbon */}
+          <View style={styles.metricsRibbon}>
+            <View style={styles.metricNode}>
+              <Text style={styles.metricNodeLabel}>DAILY BURN</Text>
+              <Text style={styles.metricNodeValue} numberOfLines={1}>
                 {formatCurrency(analytics.dailyBurnRate)}
-                <Text style={styles.subMetricUnit}> / day</Text>
+                <Text style={styles.metricNodeUnit}> /d</Text>
               </Text>
             </View>
 
-            <View style={styles.subMetricDivider} />
+            <View style={styles.nodeHairline} />
 
-            <View style={styles.subMetricCol}>
-              <Text style={styles.subMetricLabel}>Last Month Spend</Text>
-              <Text style={styles.subMetricValue}>
+            <View style={styles.metricNode}>
+              <Text style={styles.metricNodeLabel}>LAST MONTH</Text>
+              <Text style={styles.metricNodeValue} numberOfLines={1}>
                 {formatCurrency(analytics.lastMonthTotal)}
               </Text>
             </View>
+
+            <View style={styles.nodeHairline} />
+
+            <View style={styles.metricNode}>
+              <Text style={styles.metricNodeLabel}>AVG / EXPENSE</Text>
+              <Text style={styles.metricNodeValue} numberOfLines={1}>
+                {formatCurrency(analytics.averageExpense)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Smart Financial Takeaway */}
+        <View style={styles.insightBanner}>
+          <View style={styles.insightAccentBar} />
+          <View style={styles.insightBody}>
+            <Lightbulb size={15} color={THEME.colors.primary} style={styles.insightIcon} />
+            <Text style={styles.insightText}>{insight}</Text>
           </View>
         </View>
 
         {/* 3-Month Spending Velocity */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <TrendingUp size={16} color={THEME.colors.primary} />
-            <Text style={styles.cardTitle}>3-Month Spending Velocity</Text>
+        <View style={styles.editorialSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>SPENDING VELOCITY (3 MO)</Text>
           </View>
 
-          <View style={styles.velocityRow}>
-            {analytics.velocity.map((item, index) => {
-              const heightPercent = Math.max(
-                (item.amount / analytics.maxVelocity) * 100,
-                8
-              );
-              const isCurrent = index === analytics.velocity.length - 1;
-              return (
-                <View key={item.label} style={styles.velocityCol}>
-                  <Text style={styles.velocityAmount}>
-                    {formatCurrency(item.amount)}
-                  </Text>
-                  <View style={styles.velocityTrack}>
-                    <View
-                      style={[
-                        styles.velocityBarFill,
-                        {
-                          height: `${heightPercent}%`,
-                          backgroundColor: isCurrent
-                            ? THEME.colors.primary
-                            : THEME.colors.surfaceElevated,
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.velocityMonth,
-                      isCurrent && styles.velocityMonthActive,
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Category Allocation Breakdown */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <PieChart size={16} color={THEME.colors.info} />
-            <Text style={styles.cardTitle}>Category Allocation</Text>
-          </View>
-
-          {analytics.rankedCategories.length === 0 ? (
-            <Text style={styles.emptyText}>No expenses recorded yet</Text>
-          ) : (
-            <View style={styles.breakdownList}>
-              {analytics.rankedCategories.slice(0, 5).map((item) => {
-                const catColor = getCategoryColor(item.masterCategory, item.category);
+          <View style={styles.velocityChartContainer}>
+            <View style={styles.velocityBarsRow}>
+              {analytics.velocity.map((item, index) => {
+                const heightPercent = Math.max(
+                  (item.amount / (analytics.maxVelocity || 1)) * 100,
+                  6
+                );
+                const isCurrent = index === analytics.velocity.length - 1;
                 return (
-                  <View key={item.category} style={styles.breakdownItem}>
-                    <View style={styles.breakdownItemHeader}>
-                      <View style={styles.breakdownLeft}>
-                        <View style={[styles.catIconWrap, { backgroundColor: THEME.colors.surfaceElevated }]}>
-                          <CategoryIcon
-                            subCategory={item.category}
-                            masterCategory={item.masterCategory}
-                            size={16}
-                            color={catColor}
-                          />
-                        </View>
-                        <Text style={styles.breakdownName} numberOfLines={1}>
-                          {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
-                        </Text>
-                      </View>
-                      <View style={styles.breakdownRight}>
-                        <Text style={styles.breakdownAmount}>
-                          {formatCurrency(item.total)}
-                        </Text>
-                        <Text style={styles.breakdownPercent}>
-                          {item.percentage.toFixed(1)}%
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.barTrack}>
+                  <View key={item.label} style={styles.velocityCol}>
+                    <Text style={[styles.velocityAmount, isCurrent && styles.velocityAmountActive]}>
+                      {formatCurrency(item.amount)}
+                    </Text>
+                    <View style={styles.velocityTrack}>
                       <View
                         style={[
-                          styles.barFill,
+                          styles.velocityBarFill,
                           {
-                            width: `${Math.max(item.percentage, 3)}%`,
-                            backgroundColor: catColor,
+                            height: `${heightPercent}%`,
+                            backgroundColor: isCurrent
+                              ? THEME.colors.primary
+                              : THEME.colors.surfacePill,
                           },
                         ]}
                       />
+                    </View>
+                    <Text
+                      style={[
+                        styles.velocityMonth,
+                        isCurrent && styles.velocityMonthActive,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.chartBaseline} />
+          </View>
+        </View>
+
+        {/* Category Allocation Ledger */}
+        <View style={styles.editorialSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>CATEGORY ALLOCATION</Text>
+            {analytics.rankedCategories.length > 0 && (
+              <Text style={styles.sectionCount}>
+                {analytics.rankedCategories.length} categories
+              </Text>
+            )}
+          </View>
+
+          {analytics.rankedCategories.length === 0 ? (
+            <View style={styles.emptyStateBox}>
+              <Text style={styles.emptyText}>No expenses recorded yet</Text>
+            </View>
+          ) : (
+            <View style={styles.openLedger}>
+              {analytics.rankedCategories.slice(0, 6).map((item, index) => {
+                const catColor = getCategoryColor(item.masterCategory, item.category);
+                const isLast = index === Math.min(analytics.rankedCategories.length, 6) - 1;
+                return (
+                  <View
+                    key={item.category}
+                    style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                  >
+                    <View style={styles.ledgerRowContent}>
+                      <View style={[styles.categoryGlyph, { backgroundColor: THEME.colors.surfaceElevated }]}>
+                        <CategoryIcon
+                          subCategory={item.category}
+                          masterCategory={item.masterCategory}
+                          size={15}
+                          color={catColor}
+                        />
+                      </View>
+                      <View style={styles.ledgerInfo}>
+                        <Text style={styles.ledgerName} numberOfLines={1}>
+                          {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                        </Text>
+                        <View style={styles.hairlineBarTrack}>
+                          <View
+                            style={[
+                              styles.hairlineBarFill,
+                              {
+                                width: `${Math.max(item.percentage, 3)}%`,
+                                backgroundColor: catColor,
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                      <View style={styles.ledgerFigures}>
+                        <Text style={styles.ledgerAmount}>
+                          {formatCurrency(item.total)}
+                        </Text>
+                        <Text style={styles.ledgerPercent}>
+                          {item.percentage.toFixed(1)}%
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 );
@@ -413,46 +460,62 @@ export default function AnalysisScreen() {
           )}
         </View>
 
-        {/* Circle Allocation Breakdown */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Users size={16} color={THEME.colors.warning} />
-            <Text style={styles.cardTitle}>Circle Allocation</Text>
+        {/* Circle Allocation Ledger */}
+        <View style={styles.editorialSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>CIRCLE ALLOCATION</Text>
+            {analytics.rankedGroups.length > 0 && (
+              <Text style={styles.sectionCount}>
+                {analytics.rankedGroups.length} circles
+              </Text>
+            )}
           </View>
 
           {analytics.rankedGroups.length === 0 ? (
-            <Text style={styles.emptyText}>No group spending found</Text>
+            <View style={styles.emptyStateBox}>
+              <Text style={styles.emptyText}>No circle spending recorded yet</Text>
+            </View>
           ) : (
-            <View style={styles.breakdownList}>
-              {analytics.rankedGroups.slice(0, 5).map((group) => (
-                <View key={group.groupId} style={styles.breakdownItem}>
-                  <View style={styles.breakdownItemHeader}>
-                    <Text style={styles.breakdownName} numberOfLines={1}>
-                      {group.groupName}
-                    </Text>
-                    <View style={styles.breakdownRight}>
-                      <Text style={styles.breakdownAmount}>
-                        {formatCurrency(group.total)}
-                      </Text>
-                      <Text style={styles.breakdownPercent}>
-                        {group.percentage.toFixed(1)}%
-                      </Text>
+            <View style={styles.openLedger}>
+              {analytics.rankedGroups.slice(0, 6).map((group, index) => {
+                const isLast = index === Math.min(analytics.rankedGroups.length, 6) - 1;
+                return (
+                  <View
+                    key={group.groupId}
+                    style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                  >
+                    <View style={styles.ledgerRowContent}>
+                      <View style={[styles.categoryGlyph, { backgroundColor: THEME.colors.surfaceElevated }]}>
+                        <Users size={14} color={THEME.colors.primary} />
+                      </View>
+                      <View style={styles.ledgerInfo}>
+                        <Text style={styles.ledgerName} numberOfLines={1}>
+                          {group.groupName}
+                        </Text>
+                        <View style={styles.hairlineBarTrack}>
+                          <View
+                            style={[
+                              styles.hairlineBarFill,
+                              {
+                                width: `${Math.max(group.percentage, 3)}%`,
+                                backgroundColor: THEME.colors.primary,
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                      <View style={styles.ledgerFigures}>
+                        <Text style={styles.ledgerAmount}>
+                          {formatCurrency(group.total)}
+                        </Text>
+                        <Text style={styles.ledgerPercent}>
+                          {group.percentage.toFixed(1)}%
+                        </Text>
+                      </View>
                     </View>
                   </View>
-
-                  <View style={styles.barTrack}>
-                    <View
-                      style={[
-                        styles.barFill,
-                        {
-                          width: `${Math.max(group.percentage, 3)}%`,
-                          backgroundColor: THEME.colors.warning,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -511,113 +574,154 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 20,
   },
-  kpiHeroCard: {
+  heroSection: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
+    borderRadius: THEME.radius.lg,
     padding: 18,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    gap: 16,
+    gap: 12,
   },
-  kpiHeroHeader: {
-    gap: 8,
-  },
-  heroBadgeRow: {
+  heroMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  sparkleBadge: {
+  periodPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: THEME.colors.primaryLight,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.xs,
+    paddingVertical: 3.5,
+    borderRadius: THEME.radius.full,
   },
-  sparkleBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+  periodPillText: {
+    fontSize: 10,
+    fontWeight: '800',
     color: THEME.colors.primary,
+    letterSpacing: 0.6,
   },
-  diffBadge: {
+  deltaPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.xs,
+    paddingVertical: 3.5,
+    borderRadius: THEME.radius.full,
   },
-  diffBadgeText: {
+  deltaPillText: {
     fontSize: 11,
     fontWeight: '700',
   },
   heroAmount: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '900',
     color: THEME.colors.text,
-    letterSpacing: -0.6,
+    letterSpacing: -0.8,
   },
-  subMetricsRow: {
+  metricsRibbon: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: THEME.colors.hairline,
   },
-  subMetricCol: {
+  metricNode: {
     flex: 1,
+    alignItems: 'center',
   },
-  subMetricLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+  metricNodeLabel: {
+    fontSize: 9.5,
+    fontWeight: '700',
     color: THEME.colors.textMuted,
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
-  subMetricValue: {
-    fontSize: 15,
+  metricNodeValue: {
+    fontSize: 13,
     fontWeight: '800',
     color: THEME.colors.text,
   },
-  subMetricUnit: {
-    fontSize: 11,
+  metricNodeUnit: {
+    fontSize: 10,
     fontWeight: '500',
     color: THEME.colors.textMuted,
   },
-  subMetricDivider: {
+  nodeHairline: {
     width: 1,
-    height: 28,
+    height: 24,
     backgroundColor: THEME.colors.hairline,
-    marginHorizontal: 16,
   },
-  card: {
+  insightBanner: {
+    flexDirection: 'row',
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
-    padding: 16,
+    borderRadius: THEME.radius.md,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    gap: 14,
+    overflow: 'hidden',
   },
-  cardHeader: {
+  insightAccentBar: {
+    width: 3.5,
+    backgroundColor: THEME.colors.primary,
+  },
+  insightBody: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    gap: 10,
   },
-  cardTitle: {
-    fontSize: 14,
+  insightIcon: {
+    marginTop: 1,
+  },
+  insightText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
+    color: THEME.colors.textSecondary,
+    lineHeight: 17,
+  },
+  editorialSection: {
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  sectionTitle: {
+    fontSize: 11,
     fontWeight: '800',
-    color: THEME.colors.text,
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.8,
   },
-  velocityRow: {
+  sectionCount: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+  },
+  velocityChartContainer: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  velocityBarsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-end',
-    height: 130,
-    paddingTop: 10,
+    height: 120,
+    paddingBottom: 8,
   },
   velocityCol: {
     flex: 1,
@@ -626,12 +730,16 @@ const styles = StyleSheet.create({
   },
   velocityAmount: {
     fontSize: 10,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
+  },
+  velocityAmountActive: {
+    color: THEME.colors.text,
+    fontWeight: '800',
   },
   velocityTrack: {
-    width: 32,
-    height: 80,
+    width: 24,
+    height: 72,
     backgroundColor: THEME.colors.surfaceElevated,
     borderRadius: THEME.radius.xs,
     justifyContent: 'flex-end',
@@ -650,67 +758,84 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
     fontWeight: '800',
   },
-  breakdownList: {
-    gap: 14,
+  chartBaseline: {
+    height: 1,
+    backgroundColor: THEME.colors.hairline,
+    marginHorizontal: 10,
   },
-  breakdownItem: {
-    gap: 6,
+  openLedger: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    overflow: 'hidden',
   },
-  breakdownItemHeader: {
+  ledgerRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  ledgerRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.hairline,
+  },
+  ledgerRowContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
-  breakdownLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  catIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  categoryGlyph: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  breakdownName: {
+  ledgerInfo: {
+    flex: 1,
+    gap: 5,
+  },
+  ledgerName: {
     fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.text,
-    flex: 1,
   },
-  breakdownRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  hairlineBarTrack: {
+    height: 3,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 1.5,
+    overflow: 'hidden',
   },
-  breakdownAmount: {
+  hairlineBarFill: {
+    height: '100%',
+    borderRadius: 1.5,
+  },
+  ledgerFigures: {
+    alignItems: 'flex-end',
+    gap: 2,
+    minWidth: 64,
+  },
+  ledgerAmount: {
     fontSize: 13,
     fontWeight: '800',
     color: THEME.colors.text,
   },
-  breakdownPercent: {
-    fontSize: 11,
+  ledgerPercent: {
+    fontSize: 10.5,
     fontWeight: '600',
     color: THEME.colors.textMuted,
-    minWidth: 36,
-    textAlign: 'right',
   },
-  barTrack: {
-    height: 5,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 3,
+  emptyStateBox: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    paddingVertical: 24,
+    alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '500',
     color: THEME.colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: 12,
   },
 });
+

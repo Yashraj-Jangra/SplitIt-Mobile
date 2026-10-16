@@ -51,6 +51,7 @@ This project enforces a comprehensive set of rules organized by category. **Read
 - **Zero hardcoded colors** — every color comes from `THEME.colors.*` in `src/constants/theme.ts`.
 - Dark-mode only (`userInterfaceStyle: 'dark'`).
 - **Open editorial & "no-div" design** — abolish card soup and nested boxes; use continuous hairlines, visual connecting stem lines, nodes, and status pills instead of text clutter.
+- **Consistent width parity** — standard 16px screen padding; child tab views must never add nested horizontal padding or inner scroll views.
 - Consistent typography scale, spacing scale, and border radius tokens.
 - All animations use `react-native-reanimated` with defined spring physics.
 - Haptic feedback standards for every interaction type.

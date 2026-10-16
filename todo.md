@@ -1,6 +1,25 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Abolished Box Soup: Open Editorial & No-Div Architecture Standard (`design.md`, `.agents/rules/theming.md`, `AGENTS.md`, `app/settings/preferences.tsx`, `app/analysis/index.tsx`, `src/components/groups/GroupAnalysisTab.tsx`)**:
+  - **Codified Permanent Design Rules**:
+    - Updated `design.md` with Section 4: "Strict Open-Editorial & No-Div Architecture Standard" (prohibiting nested card soup, boxes inside boxes, and requiring single-layer containers, continuous hairlines, and nodes) and Section 5: "Screen Width & Layout Metrics Consistency" (16px standard horizontal padding on screens; 0px child tab padding inside `tabSectionWrapper`).
+    - Updated `.agents/rules/theming.md` and `AGENTS.md` with strict no-div checklists, screen width rules, and nested `ScrollView` prohibitions.
+  - **Redesigned App Preferences Currency Section (`app/settings/preferences.tsx`)**:
+    - Eliminated nested 3-layer card soup (`card` > `previewBox` > `customCurrencyCard` > `currencyList`).
+    - Replaced with Open Editorial sections: live preview strip with active dot status pill, inline custom currency input, open hairline ledger for preset currencies, and single-layer cards for hardware/default group.
+  - **Redesigned Personal Financial Health Dashboard (`app/analysis/index.tsx`)**:
+    - Hero Financial Health: 34px hero spend number with period pill, delta pill vs last month, and 3-node metrics ribbon (`DAILY BURN`, `LAST MONTH`, `AVG / EXPENSE`) separated by vertical hairlines.
+    - Smart Financial Insight Takeaway banner with 3px primary vertical accent bar.
+    - 3-Month Spending Velocity: Minimal open bar visualizer with continuous baseline hairline.
+    - Category Allocation & Circle Allocation: Open hairline ledgers with category glyphs, inline progress bars, amounts, and percentages.
+    - Enforced 16px screen padding standard.
+  - **Redesigned Group Analysis Tab & Fixed Width Discrepancy (`src/components/groups/GroupAnalysisTab.tsx`)**:
+    - Eliminated nested `<ScrollView>` to resolve touch fighting and scrolling jank with the parent group screen.
+    - Changed `paddingHorizontal` from 12px to 0px, matching exact width parity across all 5 group tabs (Expenses, Balances, Budget, Activity, Analysis).
+    - Replaced 3 chunky cards with Open Editorial 3-node metrics ribbon (`TOTAL SPENT`, `AVG / MEMBER`, `TOP SPEND`), Member Spending Share open ledger with avatar nodes, Category Distribution open ledger, and Monthly Velocity chart with continuous baseline.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Streamlined Global Search Placeholder & Eliminated Multi-Line Text Wrapping (`src/components/search/UniversalSearchModal.tsx`, `app/(tabs)/activity.tsx`, `app/(tabs)/groups.tsx`, `app/groups/[id]/search.tsx`)**:
   - **Identified Wrapping Defect**: Global search modal previously used a 41-character placeholder (`"Search circles, expenses, settlements..."`). On mobile form factors, this exceeded available input width and lacked `multiline={false}` / `numberOfLines={1}` guards, causing ugly multi-line text wrapping and vertical layout misalignment against the search icon and cancel button.
   - **Shortened & Focused Placeholder**: Shortened global search placeholder to `"Search..."` (and tab searches to `"Search activity..."`, `"Search groups..."`, `"Search circle..."`).
