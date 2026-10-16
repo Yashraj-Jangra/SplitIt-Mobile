@@ -14,11 +14,13 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Mail, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { authService } from '../../src/services/auth.service';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { currentAccent } = useAppTheme();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -106,7 +108,7 @@ export default function ForgotPasswordScreen() {
               </Text>
 
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, { backgroundColor: currentAccent.primary }]}
                 onPress={() => {
                   haptics.tap();
                   router.replace('/(auth)/login');
@@ -148,7 +150,7 @@ export default function ForgotPasswordScreen() {
               </View>
 
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, { backgroundColor: currentAccent.primary }]}
                 onPress={handleSubmit}
                 disabled={loading}
                 activeOpacity={0.85}

@@ -17,6 +17,7 @@ import { buildUpiUrl, copyToClipboard } from '../../src/utils/upi';
 import { settlementService } from '../../src/services/settlement.service';
 import { groupService } from '../../src/services/group.service';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 import { BRAND_QR_BADGE } from '../../src/components/brand/QuantumLogo';
@@ -26,6 +27,7 @@ export default function UpiQrModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { currentAccent } = useAppTheme();
   const { currencySymbol } = useCurrency();
   const params = useLocalSearchParams<{
     groupId?: string;
@@ -158,7 +160,7 @@ export default function UpiQrModal() {
         <View style={styles.payeeSection}>
           <Text style={styles.payeeLabel}>PAYING TO</Text>
           <Text style={styles.payeeName}>{payeeName}</Text>
-          <Text style={styles.amountDisplay}>{currencySymbol}{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+          <Text style={[styles.amountDisplay, { color: currentAccent.primary }]}>{currencySymbol}{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
 
         {/* High-Contrast QR Code Card */}
@@ -201,7 +203,7 @@ export default function UpiQrModal() {
         {/* 1-Tap Native UPI Intent Launcher */}
         {hasUpiId && (
           <TouchableOpacity
-            style={styles.payUpiButton}
+            style={[styles.payUpiButton, { backgroundColor: currentAccent.primary }]}
             onPress={handleOpenUpiApp}
             activeOpacity={0.85}
             accessibilityRole="button"
@@ -224,8 +226,8 @@ export default function UpiQrModal() {
             <TouchableOpacity style={styles.copyButton} onPress={handleCopy} activeOpacity={0.8}>
               {copied ? (
                 <>
-                  <Check size={14} color={THEME.colors.primary} />
-                  <Text style={[styles.copyButtonText, { color: THEME.colors.primary }]}>Copied</Text>
+                  <Check size={14} color={currentAccent.primary} />
+                  <Text style={[styles.copyButtonText, { color: currentAccent.primary }]}>Copied</Text>
                 </>
               ) : (
                 <>

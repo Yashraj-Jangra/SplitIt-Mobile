@@ -35,6 +35,7 @@ import {
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
 import { useCurrency } from '../../../src/contexts/currency.context';
+import { useAppTheme } from '../../../src/contexts/theme.context';
 import { GroupSettlementItem } from '../../../src/services/settlement.service';
 import { useAuth } from '../../../src/contexts/auth.context';
 import { GroupBudgetTab } from '../../../src/components/groups/GroupBudgetTab';
@@ -123,6 +124,7 @@ export default function GroupDetailScreen() {
 
   const { user } = useAuth();
   const { formatCurrency, currencySymbol } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const currentUserId = user?.id || 'u1';
   const [group, setGroup] = useState<GroupDetailData | null>(() => groupService.getInMemoryGroupDetail(targetId));
   const [activeTab, setActiveTab] = useState<TabType>('expenses');
@@ -639,7 +641,7 @@ export default function GroupDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.loadingContainer}>
-          <QuantumSpinner size={40} color={THEME.colors.primary} />
+          <QuantumSpinner size={40} color={currentAccent.primary} />
           <Text style={styles.loadingText}>Loading circle...</Text>
         </View>
       </SafeAreaView>
@@ -668,7 +670,7 @@ export default function GroupDetailScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={THEME.colors.primary}
+            tintColor={currentAccent.primary}
             progressViewOffset={HEADER_MAX_HEIGHT}
           />
         }
@@ -698,7 +700,7 @@ export default function GroupDetailScreen() {
             <Text
               style={[
                 styles.statValue,
-                { color: yourNetBalance >= 0 ? THEME.colors.primary : THEME.colors.negative },
+                { color: yourNetBalance >= 0 ? currentAccent.primary : THEME.colors.negative },
               ]}
             >
               {formatCurrency(yourNetBalance, { showSign: true, decimals: 0 })}
@@ -716,7 +718,7 @@ export default function GroupDetailScreen() {
             <Text
               style={[
                 styles.statValue,
-                { color: currentMonthBudgetStats.isEnabled ? THEME.colors.primaryLight : THEME.colors.textMuted },
+                { color: currentMonthBudgetStats.isEnabled ? currentAccent.primaryLight : THEME.colors.textMuted },
               ]}
             >
               {currentMonthBudgetStats.isEnabled && currentMonthBudgetStats.monthlyLimit > 0
@@ -769,7 +771,7 @@ export default function GroupDetailScreen() {
                   <Text
                     style={[
                       styles.segmentText,
-                      activityFilter === 'all' && styles.segmentTextActive,
+                      activityFilter === 'all' && [styles.segmentTextActive, { color: currentAccent.primary }],
                     ]}
                   >
                     All
@@ -791,7 +793,7 @@ export default function GroupDetailScreen() {
                   <Text
                     style={[
                       styles.segmentText,
-                      activityFilter === 'expenses' && styles.segmentTextActive,
+                      activityFilter === 'expenses' && [styles.segmentTextActive, { color: currentAccent.primary }],
                     ]}
                   >
                     Expenses
@@ -813,7 +815,7 @@ export default function GroupDetailScreen() {
                   <Text
                     style={[
                       styles.segmentText,
-                      activityFilter === 'settlements' && styles.segmentTextActive,
+                      activityFilter === 'settlements' && [styles.segmentTextActive, { color: currentAccent.primary }],
                     ]}
                   >
                     Settlements
@@ -999,7 +1001,7 @@ export default function GroupDetailScreen() {
                 {/* 1. Header with Switch (matches website) */}
                 <View style={styles.balancesHeaderRow}>
                   <View style={styles.balancesTitleRow}>
-                    <ArrowLeftRight size={17} color={THEME.colors.primary} />
+                    <ArrowLeftRight size={17} color={currentAccent.primary} />
                     <Text style={styles.balancesSectionTitle}>Group Balances</Text>
                   </View>
                   {!everythingIsSettled && members.length > 0 && (
@@ -1013,7 +1015,7 @@ export default function GroupDetailScreen() {
                         }}
                         trackColor={{
                           false: 'rgba(255, 255, 255, 0.12)',
-                          true: THEME.colors.primary,
+                          true: currentAccent.primary,
                         }}
                         thumbColor={THEME.colors.palette.white}
                         style={styles.switchControl}
@@ -1025,7 +1027,7 @@ export default function GroupDetailScreen() {
                 {/* 2. Empty or Settled States */}
                 {members.length === 0 ? (
                   <View style={styles.settledStateContainer}>
-                    <Handshake size={32} color={THEME.colors.primary} />
+                    <Handshake size={32} color={currentAccent.primary} />
                     <Text style={styles.settledTitle}>No balances to show</Text>
                     <Text style={styles.settledSubtitle}>Add expenses to track balances between members.</Text>
                   </View>
@@ -1101,8 +1103,8 @@ export default function GroupDetailScreen() {
                                     {fromDisplayName}
                                   </Text>
                                   {isFromViewer && (
-                                    <View style={styles.youBadge}>
-                                      <Text style={styles.youBadgeText}>YOU</Text>
+                                    <View style={[styles.youBadge, { backgroundColor: currentAccent.primaryMuted }]}>
+                                      <Text style={[styles.youBadgeText, { color: currentAccent.primary }]}>YOU</Text>
                                     </View>
                                   )}
                                 </View>
@@ -1114,7 +1116,7 @@ export default function GroupDetailScreen() {
                                   {formatCurrency(debt.amount, { decimals: 2 })}
                                 </Text>
                                 <View style={styles.transferArrowPill}>
-                                  <ArrowRight size={13} color={THEME.colors.primary} />
+                                  <ArrowRight size={13} color={currentAccent.primary} />
                                 </View>
                               </View>
 
@@ -1327,7 +1329,7 @@ export default function GroupDetailScreen() {
 
           <View style={styles.heroActionButtons}>
             <TouchableOpacity
-              style={styles.heroAddBtn}
+              style={[styles.heroAddBtn, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
               onPress={handleAddExpense}
               activeOpacity={0.85}
             >
@@ -1455,6 +1457,7 @@ export default function GroupDetailScreen() {
           style={[
             styles.fabPulseRing,
             {
+              backgroundColor: currentAccent.primary,
               transform: [
                 {
                   scale: fabPressAnim.interpolate({
@@ -1473,7 +1476,7 @@ export default function GroupDetailScreen() {
         <TouchableOpacity
           ref={fabButtonRef}
           onLayout={onFabLayout}
-          style={styles.fab}
+          style={[styles.fab, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
           onPress={handleAddExpense}
           activeOpacity={0.85}
         >
@@ -1515,7 +1518,7 @@ export default function GroupDetailScreen() {
               return (
                 <TouchableOpacity
                   key={`${url}-${idx}`}
-                  style={[styles.coverGridItem, isSelected && styles.coverGridItemSelected]}
+                  style={[styles.coverGridItem, isSelected && [styles.coverGridItemSelected, { borderColor: currentAccent.primary }]]}
                   onPress={() => handleSelectCover(url)}
                   activeOpacity={0.8}
                   disabled={isUpdatingCover}
@@ -1525,7 +1528,7 @@ export default function GroupDetailScreen() {
                   <Image source={{ uri: url }} style={styles.coverGridImage} />
                   {isSelected && (
                     <View style={styles.coverGridSelectedOverlay}>
-                      <View style={styles.coverGridCheckCircle}>
+                      <View style={[styles.coverGridCheckCircle, { backgroundColor: currentAccent.primary }]}>
                         <CheckCircle2 size={18} color="#FFFFFF" />
                       </View>
                     </View>

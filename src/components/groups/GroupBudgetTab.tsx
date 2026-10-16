@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { useAppTheme } from '../../contexts/theme.context';
 import { GroupDetailData, GroupExpense } from '../../services/group.service';
 import { haptics } from '../../services/haptics.service';
 import {
@@ -42,6 +43,7 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
   expenses,
   onBudgetUpdated,
 }) => {
+  const { currentAccent } = useAppTheme();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [modalVisible, setModalVisible] = useState<boolean>(false);
 
@@ -87,7 +89,7 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
       case 'success':
         return <TrendingUp size={16} color={THEME.colors.success} />;
       default:
-        return <ShieldCheck size={16} color={THEME.colors.primary} />;
+        return <ShieldCheck size={16} color={currentAccent.primary} />;
     }
   };
 
@@ -131,7 +133,7 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
           pillBorder: THEME.colors.border,
           pillText: THEME.colors.textMuted,
           label: 'No Budget',
-          barColor: THEME.colors.primary,
+          barColor: currentAccent.primary,
         };
     }
   };
@@ -184,8 +186,8 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
           }}
           activeOpacity={0.8}
         >
-          <Sliders size={13} color={THEME.colors.primaryLight} />
-          <Text style={styles.setBudgetBtnText}>
+          <Sliders size={13} color={currentAccent.primary} />
+          <Text style={[styles.setBudgetBtnText, { color: currentAccent.primary }]}>
             {stats.hasBudget ? 'Edit Budget' : 'Set Budget'}
           </Text>
         </TouchableOpacity>
@@ -194,8 +196,8 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
       {/* STATE 1: No Budget Configured */}
       {!stats.isEnabled || stats.monthlyLimit === 0 ? (
         <View style={styles.emptyBudgetCard}>
-          <View style={styles.emptyIconCircle}>
-            <Target size={28} color={THEME.colors.primary} />
+          <View style={[styles.emptyIconCircle, { backgroundColor: currentAccent.primaryMuted }]}>
+            <Target size={28} color={currentAccent.primary} />
           </View>
           <Text style={styles.emptyCardTitle}>No Monthly Budget Set</Text>
           <Text style={styles.emptyCardDescription}>
@@ -203,7 +205,7 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
           </Text>
 
           <TouchableOpacity
-            style={styles.emptyCtaBtn}
+            style={[styles.emptyCtaBtn, { backgroundColor: currentAccent.primary }]}
             onPress={() => {
               haptics.confirm();
               setModalVisible(true);
@@ -455,7 +457,7 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeaderRow}>
               <View style={styles.sectionHeaderLeft}>
-                <Users size={16} color={THEME.colors.primary} />
+                <Users size={16} color={currentAccent.primary} />
                 <Text style={styles.sectionTitle}>Top Payers</Text>
               </View>
               <Text style={styles.sectionBadge}>
@@ -488,11 +490,11 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
                           <Text style={styles.payerRankText}>{idx + 1}</Text>
                         </View>
 
-                        <View style={styles.payerAvatarWrap}>
+                        <View style={[styles.payerAvatarWrap, { backgroundColor: currentAccent.primaryMuted }]}>
                           {spender.avatarUrl ? (
                             <Image source={{ uri: spender.avatarUrl }} style={styles.payerAvatarImg} />
                           ) : (
-                            <Text style={styles.payerAvatarInitial}>{initials}</Text>
+                            <Text style={[styles.payerAvatarInitial, { color: currentAccent.primary }]}>{initials}</Text>
                           )}
                         </View>
 

@@ -32,6 +32,7 @@ import { HistoryEventItem, groupService } from '../../services/group.service';
 import { authService, AuthUser } from '../../services/auth.service';
 import { useAuth } from '../../contexts/auth.context';
 import { useCurrency } from '../../contexts/currency.context';
+import { useAppTheme } from '../../contexts/theme.context';
 import { THEME } from '../../constants/theme';
 
 import { ActivityTabSkeleton, ActivityRowSkeleton } from '../skeletons/GroupTabSkeleton';
@@ -439,6 +440,7 @@ export function GroupHistoryTab({
 }: GroupHistoryTabProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { currentAccent } = useAppTheme();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => user || authService.getInMemoryUser());
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -609,8 +611,8 @@ export function GroupHistoryTab({
                 onPress={onLoadMore}
                 activeOpacity={0.7}
               >
-                <Clock size={14} color={THEME.colors.primary} />
-                <Text style={styles.loadMoreButtonText}>
+                <Clock size={14} color={currentAccent.primary} />
+                <Text style={[styles.loadMoreButtonText, { color: currentAccent.primary }]}>
                   Load older activity ({remainingCount} remaining)
                 </Text>
               </TouchableOpacity>

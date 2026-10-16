@@ -10,6 +10,7 @@ import Animated, {
   cancelAnimation,
 } from 'react-native-reanimated';
 import { THEME } from '../../constants/theme';
+import { useAppTheme } from '../../contexts/theme.context';
 
 export interface QuantumLogoProps {
   size?: number;
@@ -31,18 +32,21 @@ export interface QuantumSpinnerProps {
 
 function QuantumLogoBase({
   size = 32,
-  color = THEME.colors.primary,
+  color,
   glowColor,
   useGradient = false,
   style,
 }: Omit<QuantumLogoProps, 'spinning' | 'spinDuration'>) {
+  const { currentAccent } = useAppTheme();
+  const effectiveColor = color || currentAccent.primary;
+
   return (
     <View style={[{ width: size, height: size }, style]}>
       <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
         {/* Orbit Arc 1: Top-left & Bottom-right arc segments (exact 1:1 replica of web Icons.Logo) */}
         <Path
           d="M50 2.5C23.79 2.5 2.5 23.79 2.5 50C2.5 76.21 23.79 97.5 50 97.5C76.21 97.5 97.5 76.21 97.5 50"
-          stroke={color}
+          stroke={effectiveColor}
           strokeWidth={5}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -53,7 +57,7 @@ function QuantumLogoBase({
         {/* Orbit Arc 2: Top-right arc segment (exact 1:1 replica of web Icons.Logo) */}
         <Path
           d="M50 2.5C76.21 2.5 97.5 23.79 97.5 50C97.5 76.21 76.21 97.5 50 97.5"
-          stroke={color}
+          stroke={effectiveColor}
           strokeWidth={5}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -62,8 +66,8 @@ function QuantumLogoBase({
         />
 
         {/* Nucleus Core: 10px radius with 50% opacity, 5px radius solid (exact web Icons.Logo) */}
-        <Circle cx={50} cy={50} r={10} fill={color} opacity={0.5} />
-        <Circle cx={50} cy={50} r={5} fill={color} />
+        <Circle cx={50} cy={50} r={10} fill={effectiveColor} opacity={0.5} />
+        <Circle cx={50} cy={50} r={5} fill={effectiveColor} />
       </Svg>
     </View>
   );
@@ -71,12 +75,14 @@ function QuantumLogoBase({
 
 function QuantumLogoRotating({
   size = 32,
-  color = THEME.colors.primary,
+  color,
   glowColor,
   useGradient = false,
   spinDuration = 1000,
   style,
 }: QuantumLogoProps) {
+  const { currentAccent } = useAppTheme();
+  const effectiveColor = color || currentAccent.primary;
   const rotation = useSharedValue(0);
 
   useEffect(() => {
@@ -101,7 +107,7 @@ function QuantumLogoRotating({
     <Animated.View style={[{ width: size, height: size }, animatedStyle, style]}>
       <QuantumLogoBase
         size={size}
-        color={color}
+        color={effectiveColor}
         glowColor={glowColor}
         useGradient={useGradient}
       />
@@ -116,18 +122,21 @@ function QuantumLogoRotating({
  */
 export function QuantumLogo({
   size = 32,
-  color = THEME.colors.primary,
+  color,
   glowColor,
   useGradient = false,
   spinning = false,
   spinDuration = 1000,
   style,
 }: QuantumLogoProps) {
+  const { currentAccent } = useAppTheme();
+  const effectiveColor = color || currentAccent.primary;
+
   if (spinning) {
     return (
       <QuantumLogoRotating
         size={size}
-        color={color}
+        color={effectiveColor}
         glowColor={glowColor}
         useGradient={useGradient}
         spinDuration={spinDuration}
@@ -139,7 +148,7 @@ export function QuantumLogo({
   return (
     <QuantumLogoBase
       size={size}
-      color={color}
+      color={effectiveColor}
       glowColor={glowColor}
       useGradient={useGradient}
       style={style}
@@ -153,11 +162,14 @@ export function QuantumLogo({
  */
 export function QuantumSpinner({
   size = 'small',
-  color = THEME.colors.primary,
+  color,
   glowColor,
   spinDuration = 1000,
   style,
 }: QuantumSpinnerProps) {
+  const { currentAccent } = useAppTheme();
+  const effectiveColor = color || currentAccent.primary;
+
   const numericSize =
     typeof size === 'number'
       ? size
@@ -168,7 +180,7 @@ export function QuantumSpinner({
   return (
     <QuantumLogo
       size={numericSize}
-      color={color}
+      color={effectiveColor}
       glowColor={glowColor}
       spinning
       spinDuration={spinDuration}

@@ -19,6 +19,7 @@ import {
   ArrowRight,
 } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { useAppTheme } from '../../contexts/theme.context';
 import { BottomSheetModal } from '../common/BottomSheetModal';
 import { ObligationItem, SharedGroupBalance } from '../../services/balance.service';
 import { notificationService } from '../../services/notification.service';
@@ -42,6 +43,7 @@ export function ObligationsModal({
 }: ObligationsModalProps) {
   const router = useRouter();
   const { formatCurrency } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const [remindingUserIds, setRemindingUserIds] = useState<Set<string>>(new Set());
   const [remindedUserIds, setRemindedUserIds] = useState<Set<string>>(new Set());
   const [isRemindingAll, setIsRemindingAll] = useState(false);
@@ -168,7 +170,7 @@ export function ObligationsModal({
             <Text
               style={[
                 styles.heroAmount,
-                { color: isOwed ? THEME.colors.primary : THEME.colors.negative },
+                { color: isOwed ? currentAccent.primary : THEME.colors.negative },
               ]}
             >
               {formatCurrency(totalAmount, { decimals: 2 })}
@@ -177,7 +179,7 @@ export function ObligationsModal({
 
           {isOwed && obligations.length > 1 && (
             <TouchableOpacity
-              style={styles.remindAllPill}
+              style={[styles.remindAllPill, { backgroundColor: currentAccent.primary }]}
               activeOpacity={0.8}
               onPress={handleRemindAll}
               disabled={isRemindingAll}
@@ -201,8 +203,8 @@ export function ObligationsModal({
         {/* Obligations Ledger Rows (Anti-Card Soup: No Outer Container Box) */}
         {obligations.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconCircle}>
-              <ShieldCheck size={32} color={THEME.colors.primary} />
+            <View style={[styles.emptyIconCircle, { backgroundColor: currentAccent.primaryMuted }]}>
+              <ShieldCheck size={32} color={currentAccent.primary} />
             </View>
             <Text style={styles.emptyTitle}>All Settled Up!</Text>
             <Text style={styles.emptySubtitle}>
@@ -238,7 +240,7 @@ export function ObligationsModal({
                       <View
                         style={[
                           styles.avatarStatusNode,
-                          { backgroundColor: isOwed ? THEME.colors.primary : THEME.colors.negative },
+                          { backgroundColor: isOwed ? currentAccent.primary : THEME.colors.negative },
                         ]}
                       />
                     </View>
@@ -262,7 +264,7 @@ export function ObligationsModal({
                       <Text
                         style={[
                           styles.amountValue,
-                          { color: isOwed ? THEME.colors.primary : THEME.colors.negative },
+                          { color: isOwed ? currentAccent.primary : THEME.colors.negative },
                         ]}
                       >
                         {formatCurrency(item.amount, { decimals: 2 })}
@@ -273,6 +275,10 @@ export function ObligationsModal({
                           style={[
                             styles.remindBtn,
                             isReminded && styles.remindBtnDone,
+                            isReminded && {
+                              backgroundColor: currentAccent.primaryMuted,
+                              borderColor: currentAccent.borderFocus,
+                            },
                           ]}
                           activeOpacity={0.7}
                           onPress={() => handleSendReminder(item)}
@@ -284,8 +290,8 @@ export function ObligationsModal({
                             <QuantumSpinner size={12} color={THEME.colors.text} />
                           ) : isReminded ? (
                             <>
-                              <CheckCircle2 size={11} color={THEME.colors.primary} />
-                              <Text style={styles.remindBtnTextDone}>Sent</Text>
+                              <CheckCircle2 size={11} color={currentAccent.primary} />
+                              <Text style={[styles.remindBtnTextDone, { color: currentAccent.primary }]}>Sent</Text>
                             </>
                           ) : (
                             <>
@@ -296,7 +302,7 @@ export function ObligationsModal({
                         </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
-                          style={styles.settleBtn}
+                          style={[styles.settleBtn, { backgroundColor: currentAccent.primary }]}
                           activeOpacity={0.8}
                           onPress={() => handleSettleUp(item)}
                           accessibilityRole="button"

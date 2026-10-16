@@ -14,11 +14,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Lock, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { authService } from '../../src/services/auth.service';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { currentAccent } = useAppTheme();
   const params = useLocalSearchParams<{ token?: string; error?: string }>();
   const token = typeof params.token === 'string' ? params.token : Array.isArray(params.token) ? params.token[0] : '';
 
@@ -120,7 +122,7 @@ export default function ResetPasswordScreen() {
               </Text>
 
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, { backgroundColor: currentAccent.primary }]}
                 onPress={() => {
                   haptics.tap();
                   router.replace('/(auth)/login');
@@ -138,7 +140,7 @@ export default function ResetPasswordScreen() {
                 <Text style={styles.errorText}>No recovery token found. Please request a new recovery link.</Text>
               </View>
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, { backgroundColor: currentAccent.primary }]}
                 onPress={() => {
                   haptics.tap();
                   router.replace('/(auth)/forgot-password');
@@ -220,7 +222,7 @@ export default function ResetPasswordScreen() {
               </View>
 
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, { backgroundColor: currentAccent.primary }]}
                 onPress={handleSubmit}
                 disabled={loading}
                 activeOpacity={0.85}

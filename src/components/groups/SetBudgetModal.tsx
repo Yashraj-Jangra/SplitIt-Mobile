@@ -36,6 +36,7 @@ import { groupService, GroupBudget } from '../../services/group.service';
 import { haptics } from '../../services/haptics.service';
 import { MASTER_CATEGORY_ICONS } from '../../utils/category-icons';
 import { useCurrency } from '../../contexts/currency.context';
+import { useAppTheme } from '../../contexts/theme.context';
 
 interface SetBudgetModalProps {
   visible: boolean;
@@ -86,6 +87,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { currencySymbol } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const CURRENCY_SYMBOL = currencySymbol;
 
   const initialLimit = Number(initialBudget?.monthlyLimit ?? initialBudget?.totalMonthlyLimit ?? 25000);
@@ -356,12 +358,12 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                 <Text style={styles.sectionOverline}>TOTAL MONTHLY LIMIT</Text>
                 {categoryAllocations.sum > 0 && categoryAllocations.sum !== monthlyLimitNum && (
                   <TouchableOpacity
-                    style={styles.quickSumBtn}
+                    style={[styles.quickSumBtn, { backgroundColor: currentAccent.primaryMuted }]}
                     onPress={handleAutoSumToTotal}
                     activeOpacity={0.7}
                   >
-                    <Sparkles size={11} color={THEME.colors.primary} />
-                    <Text style={styles.quickSumBtnText}>
+                    <Sparkles size={11} color={currentAccent.primary} />
+                    <Text style={[styles.quickSumBtnText, { color: currentAccent.primary }]}>
                       Sync Sum ({CURRENCY_SYMBOL}{categoryAllocations.sum.toLocaleString('en-IN')})
                     </Text>
                   </TouchableOpacity>
@@ -381,7 +383,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                   placeholder="25,000"
                   placeholderTextColor={THEME.colors.textMuted}
                   keyboardType="numeric"
-                  selectionColor={THEME.colors.primary}
+                  selectionColor={currentAccent.primary}
                   maxLength={9}
                 />
               </View>
@@ -395,7 +397,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                       key={preset}
                       style={[
                         styles.presetChip,
-                        isSelected && styles.presetChipActive,
+                        isSelected && [styles.presetChipActive, { backgroundColor: currentAccent.primary, borderColor: currentAccent.primary }],
                       ]}
                       onPress={() => handlePresetSelect(preset)}
                       activeOpacity={0.7}
@@ -520,7 +522,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
               >
                 <View style={styles.accordionLeft}>
                   <View style={styles.accordionIconWrap}>
-                    <PieChart size={16} color={THEME.colors.primary} />
+                    <PieChart size={16} color={currentAccent.primary} />
                   </View>
                   <View style={styles.accordionTitleCol}>
                     <View style={styles.accordionTitleRow}>
@@ -529,12 +531,14 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                         <View
                           style={[
                             styles.countBadge,
+                            !categoryAllocations.isOverTotal && { backgroundColor: currentAccent.primaryMuted },
                             categoryAllocations.isOverTotal && styles.countBadgeError,
                           ]}
                         >
                           <Text
                             style={[
                               styles.countBadgeText,
+                              !categoryAllocations.isOverTotal && { color: currentAccent.primary },
                               categoryAllocations.isOverTotal && styles.countBadgeTextError,
                             ]}
                           >
@@ -601,7 +605,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                                 {cat.name}
                               </Text>
                               {pct > 0 ? (
-                                <Text style={styles.categoryPctText}>
+                                <Text style={[styles.categoryPctText, { color: currentAccent.primary }]}>
                                   {pct.toFixed(0)}% of limit
                                 </Text>
                               ) : (
@@ -643,14 +647,14 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
               >
                 <View style={styles.accordionLeft}>
                   <View style={styles.accordionIconWrap}>
-                    <Bell size={16} color={THEME.colors.primary} />
+                    <Bell size={16} color={currentAccent.primary} />
                   </View>
                   <View style={styles.accordionTitleCol}>
                     <View style={styles.accordionTitleRow}>
                       <Text style={styles.accordionTitle}>AUTOMATED ALERTS</Text>
                       {activeAlertsCount > 0 && (
-                        <View style={styles.countBadge}>
-                          <Text style={styles.countBadgeText}>{activeAlertsCount} active</Text>
+                        <View style={[styles.countBadge, { backgroundColor: currentAccent.primaryMuted }]}>
+                          <Text style={[styles.countBadgeText, { color: currentAccent.primary }]}>{activeAlertsCount} active</Text>
                         </View>
                       )}
                     </View>
@@ -686,7 +690,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                         haptics.tick();
                         setThreshold75(val);
                       }}
-                      trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                      trackColor={{ false: THEME.colors.surfaceElevated, true: currentAccent.primary }}
                       thumbColor={THEME.colors.text}
                     />
                   </View>
@@ -706,7 +710,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                         haptics.tick();
                         setThreshold90(val);
                       }}
-                      trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                      trackColor={{ false: THEME.colors.surfaceElevated, true: currentAccent.primary }}
                       thumbColor={THEME.colors.text}
                     />
                   </View>
@@ -726,7 +730,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                         haptics.tick();
                         setThreshold100(val);
                       }}
-                      trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                      trackColor={{ false: THEME.colors.surfaceElevated, true: currentAccent.primary }}
                       thumbColor={THEME.colors.text}
                     />
                   </View>
@@ -740,6 +744,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
             <TouchableOpacity
               style={[
                 styles.saveBtn,
+                { backgroundColor: currentAccent.primary },
                 (isSaving || categoryAllocations.isOverTotal) && styles.saveBtnDisabled,
               ]}
               onPress={handleSave}

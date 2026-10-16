@@ -32,6 +32,7 @@ import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupMember, RegisteredUser } from '../../../src/services/group.service';
 import { authService, AuthUser } from '../../../src/services/auth.service';
 import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../../src/services/settings.service';
+import { useAppTheme } from '../../../src/contexts/theme.context';
 import { haptics } from '../../../src/services/haptics.service';
 import { BottomSheetModal } from '../../../src/components/common/BottomSheetModal';
 import { SetBudgetModal } from '../../../src/components/groups/SetBudgetModal';
@@ -39,6 +40,7 @@ import { SetBudgetModal } from '../../../src/components/groups/SetBudgetModal';
 export default function GroupSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currentAccent } = useAppTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
 
@@ -373,7 +375,7 @@ export default function GroupSettingsScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <QuantumSpinner size={36} color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={currentAccent.primary} />
         </View>
       </SafeAreaView>
     );
@@ -402,6 +404,7 @@ export default function GroupSettingsScreen() {
           disabled={isSaving || isArchived || !isCreator}
           style={[
             styles.saveButton,
+            { backgroundColor: currentAccent.primary },
             (isSaving || isArchived || !isCreator) && { opacity: 0.5 },
           ]}
           accessibilityLabel="Save Changes"
@@ -488,7 +491,7 @@ export default function GroupSettingsScreen() {
                   return (
                     <TouchableOpacity
                       key={`${url}-${idx}`}
-                      style={[styles.coverCard, isSelected && styles.coverCardSelected]}
+                      style={[styles.coverCard, isSelected && [styles.coverCardSelected, { borderColor: currentAccent.primary }]]}
                       onPress={() => {
                         if (!isArchived && isCreator) {
                           haptics.tap();
@@ -502,7 +505,7 @@ export default function GroupSettingsScreen() {
                     >
                       <Image source={{ uri: url }} style={styles.coverImage} />
                       {isSelected && (
-                        <View style={styles.coverCheckBadge}>
+                        <View style={[styles.coverCheckBadge, { backgroundColor: currentAccent.primary }]}>
                           <Check size={12} color="#FFFFFF" strokeWidth={3} />
                         </View>
                       )}
@@ -514,7 +517,7 @@ export default function GroupSettingsScreen() {
 
             {isCreator && !isArchived && (
               <TouchableOpacity
-                style={[styles.actionBtn, isSaving && { opacity: 0.6 }]}
+                style={[styles.actionBtn, { backgroundColor: currentAccent.primary }, isSaving && { opacity: 0.6 }]}
                 onPress={handleSave}
                 disabled={isSaving}
               >
@@ -538,8 +541,8 @@ export default function GroupSettingsScreen() {
                   </Text>
                 </View>
                 {group?.budget?.enabled && (
-                  <View style={styles.budgetPill}>
-                    <Text style={styles.budgetPillText}>
+                  <View style={[styles.budgetPill, { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus }]}>
+                    <Text style={[styles.budgetPillText, { color: currentAccent.primary }]}>
                       ₹{Number(group.budget.monthlyLimit).toLocaleString('en-IN')}/mo
                     </Text>
                   </View>
@@ -563,8 +566,8 @@ export default function GroupSettingsScreen() {
               }}
               disabled={!isCreator || isArchived}
             >
-              <Sliders size={15} color={THEME.colors.primary} />
-              <Text style={styles.outlineBtnText}>
+              <Sliders size={15} color={currentAccent.primary} />
+              <Text style={[styles.outlineBtnText, { color: currentAccent.primary }]}>
                 {group?.budget?.enabled ? 'Modify Budget' : 'Configure Budget'}
               </Text>
             </TouchableOpacity>
@@ -583,14 +586,14 @@ export default function GroupSettingsScreen() {
               </View>
               {isCreator && !isArchived && (
                 <TouchableOpacity
-                  style={styles.addMemberBtn}
+                  style={[styles.addMemberBtn, { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus }]}
                   onPress={() => {
                     haptics.tap();
                     setIsAddMemberOpen(true);
                   }}
                 >
-                  <UserPlus size={14} color={THEME.colors.primary} />
-                  <Text style={styles.addMemberBtnText}>Add Member</Text>
+                  <UserPlus size={14} color={currentAccent.primary} />
+                  <Text style={[styles.addMemberBtnText, { color: currentAccent.primary }]}>Add Member</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -622,8 +625,8 @@ export default function GroupSettingsScreen() {
                           {m.name}
                         </Text>
                         {m.isCreator && (
-                          <View style={styles.creatorTag}>
-                            <Text style={styles.creatorTagText}>Creator</Text>
+                          <View style={[styles.creatorTag, { backgroundColor: currentAccent.primaryMuted }]}>
+                            <Text style={[styles.creatorTagText, { color: currentAccent.primary }]}>Creator</Text>
                           </View>
                         )}
                         {isViewer && !m.isCreator && (
@@ -696,12 +699,12 @@ export default function GroupSettingsScreen() {
 
               {isArchived ? (
                 <TouchableOpacity
-                  style={[styles.outlineBtn, styles.restoreBtn]}
+                  style={[styles.outlineBtn, styles.restoreBtn, { borderColor: currentAccent.primary }]}
                   onPress={handleRestore}
                   disabled={!isCreator || isArchiving}
                 >
-                  <RotateCcw size={15} color={THEME.colors.primary} />
-                  <Text style={styles.restoreBtnText}>Restore Group</Text>
+                  <RotateCcw size={15} color={currentAccent.primary} />
+                  <Text style={[styles.restoreBtnText, { color: currentAccent.primary }]}>Restore Group</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -860,6 +863,7 @@ export default function GroupSettingsScreen() {
           <TouchableOpacity
             style={[
               styles.actionBtn,
+              { backgroundColor: currentAccent.primary },
               (selectedNewMembers.length === 0 || isSubmittingMembers) && {
                 opacity: 0.5,
               },

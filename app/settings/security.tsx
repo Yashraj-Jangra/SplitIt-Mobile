@@ -22,11 +22,13 @@ import {
 import { THEME } from '../../src/constants/theme';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { authService } from '../../src/services/auth.service';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function SecuritySettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currentAccent } = useAppTheme();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -97,7 +99,7 @@ export default function SecuritySettingsScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIconBox}>
-              <Lock size={16} color={THEME.colors.primary} />
+              <Lock size={16} color={currentAccent.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>Security & Credentials</Text>
@@ -182,7 +184,7 @@ export default function SecuritySettingsScreen() {
           </View>
 
           <TouchableOpacity
-            style={styles.updateBtn}
+            style={[styles.updateBtn, { backgroundColor: currentAccent.primary }]}
             onPress={handleUpdatePassword}
             disabled={isUpdating}
             activeOpacity={0.8}

@@ -29,6 +29,7 @@ import { demoService } from '../../src/services/demo.service';
 import { MockDataBanner } from '../../src/components/common/MockDataBanner';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { haptics } from '../../src/services/haptics.service';
@@ -42,6 +43,7 @@ export default function ActivityScreen() {
   const router = useRouter();
   const { user: authUser } = useAuth();
   const { formatCurrency } = useCurrency();
+  const { currentAccent } = useAppTheme();
 
   const [expenses, setExpenses] = useState<UserTransactionItem[]>(() =>
     expenseService.getInMemoryUserExpenses()
@@ -314,7 +316,13 @@ export default function ActivityScreen() {
       <View style={styles.filterPillsRow}>
         <View style={styles.segmentedTrack}>
           <TouchableOpacity
-            style={[styles.segmentBtn, activeFilter === 'all' && styles.segmentBtnActive]}
+            style={[
+              styles.segmentBtn,
+              activeFilter === 'all' && [
+                styles.segmentBtnActive,
+                { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus },
+              ],
+            ]}
             activeOpacity={0.7}
             onPress={() => {
               haptics.tap();
@@ -322,14 +330,23 @@ export default function ActivityScreen() {
             }}
           >
             <Text
-              style={[styles.segmentText, activeFilter === 'all' && styles.segmentTextActive]}
+              style={[
+                styles.segmentText,
+                activeFilter === 'all' && { color: currentAccent.primary, fontWeight: '700' },
+              ]}
             >
               All
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.segmentBtn, activeFilter === 'expenses' && styles.segmentBtnActive]}
+            style={[
+              styles.segmentBtn,
+              activeFilter === 'expenses' && [
+                styles.segmentBtnActive,
+                { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus },
+              ],
+            ]}
             activeOpacity={0.7}
             onPress={() => {
               haptics.tap();
@@ -339,7 +356,7 @@ export default function ActivityScreen() {
             <Text
               style={[
                 styles.segmentText,
-                activeFilter === 'expenses' && styles.segmentTextActive,
+                activeFilter === 'expenses' && { color: currentAccent.primary, fontWeight: '700' },
               ]}
             >
               Expenses
@@ -347,7 +364,13 @@ export default function ActivityScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.segmentBtn, activeFilter === 'settlements' && styles.segmentBtnActive]}
+            style={[
+              styles.segmentBtn,
+              activeFilter === 'settlements' && [
+                styles.segmentBtnActive,
+                { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus },
+              ],
+            ]}
             activeOpacity={0.7}
             onPress={() => {
               haptics.tap();
@@ -357,7 +380,7 @@ export default function ActivityScreen() {
             <Text
               style={[
                 styles.segmentText,
-                activeFilter === 'settlements' && styles.segmentTextActive,
+                activeFilter === 'settlements' && { color: currentAccent.primary, fontWeight: '700' },
               ]}
             >
               Settlements
@@ -374,35 +397,68 @@ export default function ActivityScreen() {
           contentContainerStyle={styles.subFilterScroll}
         >
           <TouchableOpacity
-            style={[styles.subPill, roleFilter === 'all' && styles.subPillActive]}
+            style={[
+              styles.subPill,
+              roleFilter === 'all' && [
+                styles.subPillActive,
+                { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus },
+              ],
+            ]}
             onPress={() => {
               haptics.tick();
               setRoleFilter('all');
             }}
           >
-            <Text style={[styles.subPillText, roleFilter === 'all' && styles.subPillTextActive]}>
+            <Text
+              style={[
+                styles.subPillText,
+                roleFilter === 'all' && { color: currentAccent.primary, fontWeight: '700' },
+              ]}
+            >
               All Roles
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.subPill, roleFilter === 'paid_by_me' && styles.subPillActive]}
+            style={[
+              styles.subPill,
+              roleFilter === 'paid_by_me' && [
+                styles.subPillActive,
+                { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus },
+              ],
+            ]}
             onPress={() => {
               haptics.tick();
               setRoleFilter('paid_by_me');
             }}
           >
-            <Text style={[styles.subPillText, roleFilter === 'paid_by_me' && styles.subPillTextActive]}>
+            <Text
+              style={[
+                styles.subPillText,
+                roleFilter === 'paid_by_me' && { color: currentAccent.primary, fontWeight: '700' },
+              ]}
+            >
               Paid by me
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.subPill, roleFilter === 'split_with_me' && styles.subPillActive]}
+            style={[
+              styles.subPill,
+              roleFilter === 'split_with_me' && [
+                styles.subPillActive,
+                { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus },
+              ],
+            ]}
             onPress={() => {
               haptics.tick();
               setRoleFilter('split_with_me');
             }}
           >
-            <Text style={[styles.subPillText, roleFilter === 'split_with_me' && styles.subPillTextActive]}>
+            <Text
+              style={[
+                styles.subPillText,
+                roleFilter === 'split_with_me' && { color: currentAccent.primary, fontWeight: '700' },
+              ]}
+            >
               Split with me
             </Text>
           </TouchableOpacity>
@@ -411,13 +467,24 @@ export default function ActivityScreen() {
 
           {groups.length > 0 && (
             <TouchableOpacity
-              style={[styles.subPill, selectedGroupId === 'all' && styles.subPillActive]}
+              style={[
+                styles.subPill,
+                selectedGroupId === 'all' && [
+                  styles.subPillActive,
+                  { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus },
+                ],
+              ]}
               onPress={() => {
                 haptics.tick();
                 setSelectedGroupId('all');
               }}
             >
-              <Text style={[styles.subPillText, selectedGroupId === 'all' && styles.subPillTextActive]}>
+              <Text
+                style={[
+                  styles.subPillText,
+                  selectedGroupId === 'all' && { color: currentAccent.primary, fontWeight: '700' },
+                ]}
+              >
                 All Circles
               </Text>
             </TouchableOpacity>
@@ -426,14 +493,23 @@ export default function ActivityScreen() {
           {groups.map((g) => (
             <TouchableOpacity
               key={g.id}
-              style={[styles.subPill, selectedGroupId === g.id && styles.subPillActive]}
+              style={[
+                styles.subPill,
+                selectedGroupId === g.id && [
+                  styles.subPillActive,
+                  { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus },
+                ],
+              ]}
               onPress={() => {
                 haptics.tick();
                 setSelectedGroupId(selectedGroupId === g.id ? 'all' : g.id);
               }}
             >
               <Text
-                style={[styles.subPillText, selectedGroupId === g.id && styles.subPillTextActive]}
+                style={[
+                  styles.subPillText,
+                  selectedGroupId === g.id && { color: currentAccent.primary, fontWeight: '700' },
+                ]}
                 numberOfLines={1}
               >
                 {g.name}
@@ -450,7 +526,7 @@ export default function ActivityScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={THEME.colors.primary}
+            tintColor={currentAccent.primary}
           />
         }
       >
@@ -509,7 +585,7 @@ export default function ActivityScreen() {
                             size={18}
                             color={
                               isGet
-                                ? THEME.colors.primary
+                                ? currentAccent.primary
                                 : isOwe
                                 ? THEME.colors.negative
                                 : THEME.colors.textSecondary
@@ -550,8 +626,8 @@ export default function ActivityScreen() {
                         });
                       }}
                     >
-                      <View style={[styles.iconCircle, styles.settleIconCircle]}>
-                        <Handshake size={18} color={THEME.colors.primary} />
+                      <View style={[styles.iconCircle, styles.settleIconCircle, { backgroundColor: currentAccent.primaryMuted, borderColor: currentAccent.borderFocus }]}>
+                        <Handshake size={18} color={currentAccent.primary} />
                       </View>
 
                       <View style={styles.details}>
@@ -559,8 +635,8 @@ export default function ActivityScreen() {
                           <Text style={styles.activityTitle} numberOfLines={1}>
                             Payment Recorded
                           </Text>
-                          <View style={styles.settledBadge}>
-                            <Text style={styles.settledBadgeText}>Settled</Text>
+                          <View style={[styles.settledBadge, { backgroundColor: currentAccent.primaryMuted }]}>
+                            <Text style={[styles.settledBadgeText, { color: currentAccent.primary }]}>Settled</Text>
                           </View>
                         </View>
                         <Text style={styles.activitySubtitle} numberOfLines={1}>

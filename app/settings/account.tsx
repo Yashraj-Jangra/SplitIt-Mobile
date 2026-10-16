@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { authService } from '../../src/services/auth.service';
 import { haptics } from '../../src/services/haptics.service';
 
@@ -25,6 +26,7 @@ export default function AccountSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, updateUserProfile } = useAuth();
+  const { currentAccent } = useAppTheme();
 
   const nameParts = (user?.name || '').trim().split(' ');
 
@@ -182,7 +184,7 @@ export default function AccountSettingsScreen() {
               accessibilityRole="button"
               accessibilityLabel="Change profile picture"
             >
-              <View style={styles.avatarCircle}>
+              <View style={[styles.avatarCircle, { borderColor: currentAccent.primary }]}>
                 {avatarUrl && !imageError ? (
                   <Image
                     source={{ uri: avatarUrl }}
@@ -198,7 +200,7 @@ export default function AccountSettingsScreen() {
                   </View>
                 )}
               </View>
-              <View style={styles.cameraBadge}>
+              <View style={[styles.cameraBadge, { backgroundColor: currentAccent.primary }]}>
                 <Camera size={13} color={THEME.colors.primaryForeground} />
               </View>
             </TouchableOpacity>
@@ -208,7 +210,7 @@ export default function AccountSettingsScreen() {
               disabled={isUploadingAvatar}
               hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
             >
-              <Text style={styles.changePhotoText}>
+              <Text style={[styles.changePhotoText, { color: currentAccent.primary }]}>
                 {isUploadingAvatar ? 'Uploading Photo...' : 'Change Profile Photo'}
               </Text>
             </TouchableOpacity>
@@ -218,7 +220,7 @@ export default function AccountSettingsScreen() {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIconBox}>
-                <User size={16} color={THEME.colors.primary} />
+                <User size={16} color={currentAccent.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>Personal Information</Text>
@@ -300,7 +302,7 @@ export default function AccountSettingsScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.saveBtn}
+              style={[styles.saveBtn, { backgroundColor: currentAccent.primary }]}
               onPress={handleSave}
               disabled={isSaving}
               activeOpacity={0.8}

@@ -40,6 +40,7 @@ import { UniversalSearchModal } from '../../src/components/search/UniversalSearc
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { ObligationsModal } from '../../src/components/dashboard/ObligationsModal';
@@ -49,6 +50,7 @@ export default function HomeScreen() {
   const { isOnline, requireOnline } = useNetwork();
   const { user: authUser } = useAuth();
   const { formatCurrency, currencySymbol } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authUser || authService.getInMemoryUser());
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
@@ -190,7 +192,7 @@ export default function HomeScreen() {
         onResponderGrant={() => {
           if (isGraphActive) balanceGraphRef.current?.deselect();
         }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={currentAccent.primary} />}
       >
         {/* Minimalist Header with Official Branding */}
         <View style={styles.header}>
@@ -242,7 +244,7 @@ export default function HomeScreen() {
               accessibilityLabel="Notifications"
             >
               <Bell size={18} color={THEME.colors.text} />
-              <View style={styles.bellDot} />
+              <View style={[styles.bellDot, { backgroundColor: currentAccent.primary }]} />
             </TouchableOpacity>
           </View>
         </View>
@@ -275,7 +277,7 @@ export default function HomeScreen() {
                     {
                       backgroundColor:
                         netBalance > 0.01
-                          ? THEME.colors.primary
+                          ? currentAccent.primary
                           : netBalance < -0.01
                           ? THEME.colors.negative
                           : THEME.colors.textMuted,
@@ -369,11 +371,11 @@ export default function HomeScreen() {
                 }}
               >
                 <View style={styles.statLabelRow}>
-                  <ArrowDownLeft size={12} color={THEME.colors.primary} strokeWidth={2.5} />
+                  <ArrowDownLeft size={12} color={currentAccent.primary} strokeWidth={2.5} />
                   <Text style={styles.statLabel}>Owed to you</Text>
                   <ChevronRight size={11} color={THEME.colors.textMuted} />
                 </View>
-                <Text style={[styles.statValue, { color: THEME.colors.primary }]}>
+                <Text style={[styles.statValue, { color: currentAccent.primary }]}>
                   {formatCurrency(totalOwed, { decimals: 2 })}
                 </Text>
               </TouchableOpacity>
@@ -408,7 +410,7 @@ export default function HomeScreen() {
         {/* Tactile Action Dock */}
         <View style={styles.actionDock}>
           <TouchableOpacity
-            style={styles.primaryActionBtn}
+            style={[styles.primaryActionBtn, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
             onPress={handleAddExpense}
             activeOpacity={0.85}
           >
@@ -488,7 +490,7 @@ export default function HomeScreen() {
                     <Text
                       style={[
                         styles.pebbleBalance,
-                        isOwed && { color: THEME.colors.primary },
+                        isOwed && { color: currentAccent.primary },
                         isOwe && { color: THEME.colors.negative },
                       ]}
                     >
@@ -509,7 +511,7 @@ export default function HomeScreen() {
                 }}
               >
                 <View style={styles.emptyGroupIconCircle}>
-                  <Plus size={18} color={THEME.colors.primary} />
+                  <Plus size={18} color={currentAccent.primary} />
                 </View>
                 <View style={{ marginLeft: 12 }}>
                   <Text style={styles.emptyGroupTitle}>No groups yet</Text>
@@ -592,8 +594,8 @@ export default function HomeScreen() {
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.viewAllActivityText}>View all activity</Text>
-                  <ChevronRight size={14} color={THEME.colors.primary} />
+                  <Text style={[styles.viewAllActivityText, { color: currentAccent.primary }]}>View all activity</Text>
+                  <ChevronRight size={14} color={currentAccent.primary} />
                 </TouchableOpacity>
               </>
             ) : loading ? (

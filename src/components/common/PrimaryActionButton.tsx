@@ -11,6 +11,7 @@ import { Check } from 'lucide-react-native';
 import { QuantumSpinner } from '@/components/brand/QuantumLogo';
 import { haptics } from '@/services/haptics.service';
 import { THEME } from '@/constants/theme';
+import { useAppTheme } from '@/contexts/theme.context';
 
 export interface PrimaryActionButtonProps {
   /** The text displayed on the button */
@@ -50,6 +51,7 @@ export function PrimaryActionButton({
   accessibilityLabel,
   testID,
 }: PrimaryActionButtonProps) {
+  const { currentAccent } = useAppTheme();
   const isLocked = disabled && variant !== 'unchanged';
   const isUnchanged = variant === 'unchanged';
   const isInteractive = !disabled && !loading && !isUnchanged;
@@ -77,6 +79,10 @@ export function PrimaryActionButton({
 
   const buttonContainerStyles: StyleProp<ViewStyle> = [
     styles.button,
+    !isLocked && !isUnchanged && {
+      backgroundColor: currentAccent.primary,
+      shadowColor: currentAccent.primary,
+    },
     isLocked && styles.buttonDisabled,
     isUnchanged && styles.buttonUnchanged,
     style,

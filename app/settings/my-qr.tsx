@@ -21,6 +21,7 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { buildUpiUrl, copyToClipboard } from '../../src/utils/upi';
 import { haptics } from '../../src/services/haptics.service';
 import { BRAND_QR_BADGE } from '../../src/components/brand/QuantumLogo';
@@ -29,6 +30,7 @@ export default function MyQrScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, refreshUser, isLoading } = useAuth();
+  const { currentAccent } = useAppTheme();
   const qrRef = useRef<any>(null);
 
   const [copied, setCopied] = useState(false);
@@ -92,7 +94,7 @@ export default function MyQrScreen() {
           <Text style={styles.headerTitle}>My Payment QR</Text>
         </View>
         <View style={[styles.content, { justifyContent: 'center', alignItems: 'center' }]}>
-          <QuantumSpinner size={36} color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={currentAccent.primary} />
         </View>
       </SafeAreaView>
     );
@@ -118,7 +120,7 @@ export default function MyQrScreen() {
       <View style={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         {/* User Identity */}
         <View style={styles.identitySection}>
-          <View style={styles.avatarCircle}>
+          <View style={[styles.avatarCircle, { borderColor: currentAccent.primary }]}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <Text style={styles.displayName}>{displayName}</Text>
@@ -164,8 +166,8 @@ export default function MyQrScreen() {
               >
                 {copied ? (
                   <>
-                    <Check size={14} color={THEME.colors.primary} />
-                    <Text style={[styles.copyBtnText, { color: THEME.colors.primary }]}>
+                    <Check size={14} color={currentAccent.primary} />
+                    <Text style={[styles.copyBtnText, { color: currentAccent.primary }]}>
                       Copied
                     </Text>
                   </>
@@ -180,7 +182,7 @@ export default function MyQrScreen() {
 
             {/* Share Button */}
             <TouchableOpacity
-              style={styles.shareBtn}
+              style={[styles.shareBtn, { backgroundColor: currentAccent.primary }]}
               onPress={handleShare}
               activeOpacity={0.8}
             >
@@ -199,7 +201,7 @@ export default function MyQrScreen() {
               You haven't configured a UPI ID yet. Add your UPI VPA address in Payment Settings to generate and display your payment QR code.
             </Text>
             <TouchableOpacity
-              style={styles.setupBtn}
+              style={[styles.setupBtn, { backgroundColor: currentAccent.primary }]}
               onPress={() => router.push('/settings/payment')}
               activeOpacity={0.8}
             >

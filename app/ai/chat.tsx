@@ -44,6 +44,7 @@ import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
 import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { useCurrency, getActiveCurrencySymbol } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 
 interface ChatMessage {
   id: string;
@@ -56,6 +57,7 @@ interface ChatMessage {
 
 // ── Rich Markdown & Financial Entity Renderer ───────────────────────────────
 function FormattedInlineText({ text }: { text: string }) {
+  const { currentAccent } = useAppTheme();
   const parts: Array<{ type: 'text' | 'bold' | 'currency'; content: string }> = [];
   const sym = getActiveCurrencySymbol();
   const escapedSym = sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -103,7 +105,7 @@ function FormattedInlineText({ text }: { text: string }) {
         }
         if (p.type === 'currency') {
           return (
-            <Text key={i} style={styles.currencyHighlight}>
+            <Text key={i} style={[styles.currencyHighlight, { color: currentAccent.primary }]}>
               {p.content}
             </Text>
           );
@@ -161,6 +163,7 @@ function RichMessageContent({ text, isStreaming }: { text: string; isStreaming?:
 export default function AiChatModal() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { currentAccent } = useAppTheme();
   const { currencySymbol } = useCurrency();
   const { groupId, groupName } = useLocalSearchParams<{ groupId?: string; groupName?: string }>();
 
@@ -259,8 +262,8 @@ export default function AiChatModal() {
         description: 'Audit simplified debt balances across all groups',
         prompt: 'How much do I owe, and who owes me money right now?',
         icon: Scale,
-        accentColor: THEME.colors.primary,
-        badgeBg: 'rgba(28, 194, 159, 0.12)',
+        accentColor: currentAccent.primary,
+        badgeBg: `${currentAccent.primary}20`,
       },
       {
         id: 'budget',
@@ -290,7 +293,7 @@ export default function AiChatModal() {
         badgeBg: 'rgba(56, 189, 248, 0.12)',
       },
     ],
-    [groupName]
+    [groupName, currentAccent.primary]
   );
 
   // Compact Follow-Up Chips for ongoing conversation
@@ -457,7 +460,7 @@ export default function AiChatModal() {
 
         <View style={styles.headerCenter}>
           <View style={styles.headerTitleRow}>
-            <QuantumLogo size={18} color={THEME.colors.aiLight} glowColor={THEME.colors.primaryLight} style={{ marginRight: 6 }} />
+            <QuantumLogo size={18} color={THEME.colors.aiLight} glowColor={currentAccent.primary} style={{ marginRight: 6 }} />
             <Text style={styles.headerTitle}>SplitIt Financial AI</Text>
           </View>
           <View style={styles.headerStatusRow}>
@@ -511,7 +514,7 @@ export default function AiChatModal() {
                 /* Compact 1-line Starter Bar when Keyboard is Active */
                 <View style={styles.compactWelcomeContainer}>
                   <View style={styles.compactWelcomeHeader}>
-                    <Sparkles size={14} color={THEME.colors.primary} />
+                    <Sparkles size={14} color={currentAccent.primary} />
                     <Text style={styles.compactWelcomeTitle}>Quick Financial Prompts</Text>
                   </View>
                   <ScrollView
@@ -541,7 +544,7 @@ export default function AiChatModal() {
                 /* Full Flagship Hero Starter Cards Grid when Keyboard is Closed */
                 <View style={styles.welcomeHeroContainer}>
                   <View style={styles.heroSparkleBadge}>
-                    <Sparkles size={24} color={THEME.colors.primary} />
+                    <Sparkles size={24} color={currentAccent.primary} />
                   </View>
                   <Text style={styles.heroTitle}>Financial Intelligence</Text>
                   <Text style={styles.heroSubtitle}>
@@ -611,7 +614,7 @@ export default function AiChatModal() {
                       <View style={styles.proposalCard}>
                         <View style={styles.proposalHeader}>
                           <View style={styles.proposalHeaderIcon}>
-                            <TrendingUp size={15} color={THEME.colors.primary} />
+                            <TrendingUp size={15} color={currentAccent.primary} />
                           </View>
                           <View style={styles.proposalHeaderTitles}>
                             <Text style={styles.proposalTitle}>AI Budget Proposal</Text>
@@ -631,7 +634,7 @@ export default function AiChatModal() {
                                 <Text
                                   style={[
                                     styles.newAmountText,
-                                    { color: ch.diff >= 0 ? THEME.colors.primaryLight : THEME.colors.negativeLight },
+                                    { color: ch.diff >= 0 ? currentAccent.primary : THEME.colors.negativeLight },
                                   ]}
                                 >
                                   {currencySymbol}{ch.new.toLocaleString()}{' '}
@@ -646,12 +649,12 @@ export default function AiChatModal() {
 
                         {msg.proposal.status === 'applied' ? (
                           <View style={styles.appliedBanner}>
-                            <CheckCircle2 size={15} color={THEME.colors.primary} />
+                            <CheckCircle2 size={15} color={currentAccent.primary} />
                             <Text style={styles.appliedText}>Proposal Approved & Applied</Text>
                           </View>
                         ) : (
                           <TouchableOpacity
-                            style={styles.applyButton}
+                            style={[styles.applyButton, { backgroundColor: currentAccent.primary }]}
                             onPress={() => handleApplyProposal(msg.proposal!.id)}
                             activeOpacity={0.85}
                           >
@@ -673,7 +676,7 @@ export default function AiChatModal() {
                         >
                           {copiedMsgId === msg.id ? (
                             <View style={styles.copiedBadge}>
-                              <Check size={11} color={THEME.colors.primary} />
+                              <Check size={11} color={currentAccent.primary} />
                               <Text style={styles.copiedText}>Copied</Text>
                             </View>
                           ) : (
@@ -787,7 +790,9 @@ export default function AiChatModal() {
                 <TouchableOpacity
                   style={[
                     styles.sendButton,
-                    !input.trim() && styles.sendButtonDisabled,
+                    input.trim()
+                      ? { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }
+                      : styles.sendButtonDisabled,
                   ]}
                   onPress={() => handleSend()}
                   disabled={!input.trim()}
@@ -819,7 +824,7 @@ export default function AiChatModal() {
           <View style={styles.infoModalCard}>
             <View style={styles.infoModalHeader}>
               <View style={styles.infoModalIconBadge}>
-                <Sparkles size={18} color={THEME.colors.primary} />
+                <Sparkles size={18} color={currentAccent.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoModalTitle}>Private Financial Intelligence</Text>

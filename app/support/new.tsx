@@ -28,6 +28,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { supportService, TicketCategory } from '../../src/services/support.service';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 
 interface CategoryOption {
@@ -79,6 +80,7 @@ const CATEGORIES: CategoryOption[] = [
 export default function NewSupportTicketModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currentAccent } = useAppTheme();
   const messageInputRef = useRef<TextInput>(null);
 
   const [subject, setSubject] = useState('');
@@ -182,7 +184,7 @@ export default function NewSupportTicketModal() {
 
           {/* SLA Expectation Banner */}
           <View style={styles.slaBanner}>
-            <Clock size={14} color={THEME.colors.primary} />
+            <Clock size={14} color={currentAccent.primary} />
             <Text style={styles.slaText}>
               Typical reply within <Text style={styles.slaTextBold}>2–4 hours</Text>. You will receive updates directly in this thread.
             </Text>
@@ -200,7 +202,7 @@ export default function NewSupportTicketModal() {
                     key={cat.key}
                     style={[
                       styles.categoryCard,
-                      isSelected && styles.categoryCardSelected,
+                      isSelected && [styles.categoryCardSelected, { borderColor: currentAccent.primary }],
                     ]}
                     onPress={() => {
                       haptics.tap();
@@ -215,18 +217,18 @@ export default function NewSupportTicketModal() {
                       <View
                         style={[
                           styles.categoryIconWrap,
-                          isSelected && { backgroundColor: 'rgba(16, 185, 129, 0.15)' },
+                          isSelected && { backgroundColor: `${currentAccent.primary}20` },
                         ]}
                       >
                         <IconComponent
                           size={16}
-                          color={isSelected ? THEME.colors.primary : cat.color}
+                          color={isSelected ? currentAccent.primary : (cat.key === 'billing' ? currentAccent.primary : cat.color)}
                           strokeWidth={2.2}
                         />
                       </View>
                       {isSelected ? (
                         <View style={styles.checkPill}>
-                          <Check size={11} color={THEME.colors.primary} strokeWidth={3} />
+                          <Check size={11} color={currentAccent.primary} strokeWidth={3} />
                         </View>
                       ) : null}
                     </View>
@@ -234,7 +236,7 @@ export default function NewSupportTicketModal() {
                     <Text
                       style={[
                         styles.categoryCardTitle,
-                        isSelected && styles.categoryCardTitleSelected,
+                        isSelected && [styles.categoryCardTitleSelected, { color: currentAccent.primary }],
                       ]}
                     >
                       {cat.label}
@@ -293,7 +295,7 @@ export default function NewSupportTicketModal() {
           {/* Diagnostics Card */}
           <View style={styles.diagnosticsCard}>
             <View style={styles.diagIconBadge}>
-              <Cpu size={18} color={THEME.colors.primary} />
+              <Cpu size={18} color={currentAccent.primary} />
             </View>
             <View style={styles.diagContent}>
               <Text style={styles.diagTitle}>Attach System Diagnostics</Text>
@@ -309,7 +311,7 @@ export default function NewSupportTicketModal() {
               }}
               trackColor={{
                 false: THEME.colors.surfaceElevated,
-                true: THEME.colors.primary,
+                true: currentAccent.primary,
               }}
               thumbColor={THEME.colors.surface}
             />
@@ -324,7 +326,7 @@ export default function NewSupportTicketModal() {
           ]}
         >
           <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+            style={[styles.submitButton, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }, isSubmitting && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             disabled={isSubmitting}
             activeOpacity={0.8}

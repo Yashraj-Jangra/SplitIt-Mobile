@@ -16,6 +16,7 @@ import { ArrowLeft, QrCode, Check, ExternalLink } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 
 const UPI_SUFFIXES = ['@okhdfc', '@paytm', '@ybl', '@ibl', '@okaxis'];
@@ -24,6 +25,7 @@ export default function PaymentSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, updateUserProfile, refreshUser } = useAuth();
+  const { currentAccent } = useAppTheme();
 
   const [upiId, setUpiId] = useState(() => user?.upiId?.trim() || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -108,7 +110,7 @@ export default function PaymentSettingsScreen() {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIconBox}>
-                <QrCode size={16} color={THEME.colors.primary} />
+                <QrCode size={16} color={currentAccent.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>UPI & Quick Settlement</Text>
@@ -157,7 +159,7 @@ export default function PaymentSettingsScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.saveBtn}
+                style={[styles.saveBtn, { backgroundColor: currentAccent.primary }]}
                 onPress={handleSave}
                 disabled={isSaving}
                 activeOpacity={0.8}

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { useAppTheme } from '../../contexts/theme.context';
 import { haptics } from '../../services/haptics.service';
 
 export interface SettingsRowProps {
@@ -19,7 +20,7 @@ export interface SettingsRowProps {
 
 export const SettingsRow: React.FC<SettingsRowProps> = ({
   icon: IconComponent,
-  iconColor = THEME.colors.primary,
+  iconColor,
   iconBg = THEME.colors.surfaceElevated,
   title,
   subtitle,
@@ -29,10 +30,13 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
   isLast = false,
   disabled = false,
 }) => {
+  const { currentAccent } = useAppTheme();
+  const effectiveIconColor = iconColor ?? currentAccent.primary;
+
   const content = (
     <View style={[styles.row, !isLast && styles.rowBorder]}>
       <View style={[styles.iconGlyph, { backgroundColor: iconBg }]}>
-        <IconComponent size={16} color={iconColor} />
+        <IconComponent size={16} color={effectiveIconColor} />
       </View>
       <View style={styles.infoCol}>
         <Text style={styles.title} numberOfLines={1}>
@@ -51,7 +55,7 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
           <>
             {typeof value === 'string' ? (
               <View style={styles.valuePill}>
-                <Text style={styles.valueText} numberOfLines={1}>
+                <Text style={[styles.valueText, { color: currentAccent.primary }]} numberOfLines={1}>
                   {value}
                 </Text>
               </View>

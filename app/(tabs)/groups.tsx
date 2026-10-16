@@ -39,6 +39,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../src/services/settings.service';
 import { haptics } from '../../src/services/haptics.service';
 import { useCurrency } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { appEventEmitter } from '../../src/services/event-emitter';
 
 type FilterType = 'all' | 'owed' | 'owe' | 'archived';
@@ -113,6 +114,7 @@ export default function GroupsScreen() {
   const router = useRouter();
   const { user: authUser } = useAuth();
   const { currencySymbol } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
   const [loading, setLoading] = useState(() => groupService.getInMemoryGroups().length === 0);
   const [refreshing, setRefreshing] = useState(false);
@@ -234,9 +236,9 @@ export default function GroupsScreen() {
       case 'name_desc':
         return <ArrowUpAZ size={size} color={THEME.colors.text} strokeWidth={2.2} />;
       case 'owed_desc':
-        return <ArrowDownWideNarrow size={size} color={THEME.colors.primary} strokeWidth={2.2} />;
+        return <ArrowDownWideNarrow size={size} color={currentAccent.primary} strokeWidth={2.2} />;
       case 'owed_asc':
-        return <ArrowUpNarrowWide size={size} color={THEME.colors.primary} strokeWidth={2.2} />;
+        return <ArrowUpNarrowWide size={size} color={currentAccent.primary} strokeWidth={2.2} />;
       case 'owes_desc':
         return <ArrowDownWideNarrow size={size} color={THEME.colors.negative} strokeWidth={2.2} />;
       case 'owes_asc':
@@ -309,7 +311,7 @@ export default function GroupsScreen() {
         </View>
 
         <TouchableOpacity
-          style={styles.createButton}
+          style={[styles.createButton, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
           onPress={() => {
             haptics.tap();
             router.push('/groups/new');
@@ -366,7 +368,7 @@ export default function GroupsScreen() {
           accessibilityRole="button"
         >
           {renderSortIcon(sortBy, 19)}
-          {sortBy !== 'last_usage' && <View style={styles.sortActiveIndicator} />}
+          {sortBy !== 'last_usage' && <View style={[styles.sortActiveIndicator, { backgroundColor: currentAccent.primary }]} />}
         </TouchableOpacity>
       </View>
 
@@ -382,14 +384,25 @@ export default function GroupsScreen() {
           return (
             <TouchableOpacity
               key={pill.id}
-              style={[styles.filterPill, isActive && styles.filterPillActive]}
+              style={[
+                styles.filterPill,
+                isActive && {
+                  backgroundColor: currentAccent.primaryMuted,
+                  borderColor: currentAccent.borderFocus,
+                },
+              ]}
               activeOpacity={0.7}
               onPress={() => {
                 haptics.tap();
                 setActiveFilter(pill.id as FilterType);
               }}
             >
-              <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
+              <Text
+                style={[
+                  styles.filterPillText,
+                  isActive && { color: currentAccent.primary, fontWeight: '700' },
+                ]}
+              >
                 {pill.label}
               </Text>
             </TouchableOpacity>
@@ -412,7 +425,7 @@ export default function GroupsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={THEME.colors.primary}
+              tintColor={currentAccent.primary}
             />
           }
         >
@@ -441,7 +454,7 @@ export default function GroupsScreen() {
               </Text>
               {!searchQuery && (
                 <TouchableOpacity
-                  style={styles.emptyCtaBtn}
+                  style={[styles.emptyCtaBtn, { backgroundColor: currentAccent.primary }]}
                   onPress={() => router.push('/groups/new')}
                   activeOpacity={0.8}
                 >
@@ -484,19 +497,22 @@ export default function GroupsScreen() {
                     <View
                       style={[
                         styles.balanceGlassPill,
-                        isOwed && styles.balancePillOwed,
+                        isOwed && {
+                          backgroundColor: currentAccent.primaryMuted,
+                          borderColor: currentAccent.borderFocus,
+                        },
                         isOwe && styles.balancePillOwe,
                       ]}
                     >
                       {isOwed ? (
-                        <ArrowDownLeft size={11} color={THEME.colors.primary} />
+                        <ArrowDownLeft size={11} color={currentAccent.primary} />
                       ) : isOwe ? (
                         <ArrowUpRight size={11} color={THEME.colors.negative} />
                       ) : null}
                       <Text
                         style={[
                           styles.balancePillText,
-                          isOwed && { color: THEME.colors.primary },
+                          isOwed && { color: currentAccent.primary },
                           isOwe && { color: THEME.colors.negative },
                         ]}
                       >
@@ -618,7 +634,7 @@ export default function GroupsScreen() {
 
                 {isSelected && (
                   <View style={styles.checkIconWrap}>
-                    <Check size={16} color={THEME.colors.primary} strokeWidth={2.5} />
+                    <Check size={16} color={currentAccent.primary} strokeWidth={2.5} />
                   </View>
                 )}
               </TouchableOpacity>

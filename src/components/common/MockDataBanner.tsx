@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Sparkles, Trash2, Plus, X } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { useAppTheme } from '../../contexts/theme.context';
 import { QuantumSpinner } from '../brand/QuantumLogo';
 import { haptics } from '../../services/haptics.service';
 
@@ -12,6 +13,7 @@ interface MockDataBannerProps {
 }
 
 export function MockDataBanner({ onRemove, onCreateGroup, style }: MockDataBannerProps) {
+  const { currentAccent } = useAppTheme();
   const [isRemoving, setIsRemoving] = useState(false);
 
   const handleRemove = async () => {
@@ -37,16 +39,16 @@ export function MockDataBanner({ onRemove, onCreateGroup, style }: MockDataBanne
       accessibilityLabel="Sample preview data notice"
     >
       {/* Subtle Glowing Brand Accent Bar */}
-      <View style={styles.topAccent} />
+      <View style={[styles.topAccent, { backgroundColor: currentAccent.primary }]} />
 
       <View style={styles.innerContent}>
         {/* Header Row */}
         <View style={styles.headerRow}>
           <View style={styles.badgeRow}>
-            <View style={styles.iconCircle}>
-              <Sparkles size={11} color={THEME.colors.primary} />
+            <View style={[styles.iconCircle, { backgroundColor: currentAccent.primaryMuted }]}>
+              <Sparkles size={11} color={currentAccent.primary} />
             </View>
-            <Text style={styles.badgeLabel}>SAMPLE PREVIEW MODE</Text>
+            <Text style={[styles.badgeLabel, { color: currentAccent.primary }]}>SAMPLE PREVIEW MODE</Text>
           </View>
 
           <TouchableOpacity
@@ -59,7 +61,7 @@ export function MockDataBanner({ onRemove, onCreateGroup, style }: MockDataBanne
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             {isRemoving ? (
-              <QuantumSpinner size={15} color={THEME.colors.primary} />
+              <QuantumSpinner size={15} color={currentAccent.primary} />
             ) : (
               <X size={15} color={THEME.colors.textMuted} />
             )}
@@ -76,7 +78,7 @@ export function MockDataBanner({ onRemove, onCreateGroup, style }: MockDataBanne
         <View style={styles.actionsRow}>
           {onCreateGroup && (
             <TouchableOpacity
-              style={styles.primaryBtn}
+              style={[styles.primaryBtn, { backgroundColor: currentAccent.primary }]}
               onPress={handleCreateGroup}
               activeOpacity={0.85}
               accessibilityLabel="Create a group to start fresh"

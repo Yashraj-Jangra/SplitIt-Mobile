@@ -47,6 +47,7 @@ import { haptics } from '../../src/services/haptics.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { SplitBreakdownSkeleton } from '../../src/components/skeletons/SplitBreakdownSkeleton';
 
 export default function ExpenseDetailScreen() {
@@ -54,6 +55,7 @@ export default function ExpenseDetailScreen() {
   const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
   const { user } = useAuth();
+  const { currentAccent } = useAppTheme();
   const params = useLocalSearchParams<{
     id: string;
     groupId?: string;
@@ -533,7 +535,7 @@ export default function ExpenseDetailScreen() {
   if (loading && !expense) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <QuantumSpinner size={40} color={THEME.colors.primary} />
+        <QuantumSpinner size={40} color={currentAccent.primary} />
       </SafeAreaView>
     );
   }
@@ -558,7 +560,7 @@ export default function ExpenseDetailScreen() {
           <Text style={styles.errorTitle}>Unable to Load Expense</Text>
           <Text style={styles.errorMessage}>{loadError}</Text>
           <TouchableOpacity
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: currentAccent.primary }]}
             onPress={() => {
               setLoading(true);
               fetchExpense();
@@ -746,7 +748,7 @@ export default function ExpenseDetailScreen() {
             {!hasSplitLoaded || !areParticipantsValid(participants) ? (
               <View style={styles.splitSkeletonBlock}>
                 <View style={styles.splitLoadingNotice}>
-                  <QuantumSpinner size={16} color={THEME.colors.primary} style={{ marginRight: 8 }} />
+                  <QuantumSpinner size={16} color={currentAccent.primary} style={{ marginRight: 8 }} />
                   <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
                 </View>
                 <SplitBreakdownSkeleton count={3} />
@@ -786,7 +788,7 @@ export default function ExpenseDetailScreen() {
                             </Text>
                             {isViewer && (
                               <View style={styles.youBadge}>
-                                <Text style={styles.youBadgeText}>YOU</Text>
+                                <Text style={[styles.youBadgeText, { color: currentAccent.primary }]}>YOU</Text>
                               </View>
                             )}
                           </View>

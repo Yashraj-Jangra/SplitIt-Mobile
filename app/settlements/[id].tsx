@@ -36,6 +36,7 @@ import { haptics } from '../../src/services/haptics.service';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency, getActiveCurrencySymbol } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 
 export default function SettlementDetailScreen() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function SettlementDetailScreen() {
   const { requireOnline } = useNetwork();
   const { user } = useAuth();
   const { currencySymbol } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const params = useLocalSearchParams<{
     id: string;
     groupId?: string;
@@ -418,8 +420,8 @@ export default function SettlementDetailScreen() {
               <View style={[styles.detailRow, styles.detailRowLast]}>
                 <Text style={styles.detailLabel}>Status</Text>
                 <View style={styles.detailValueRow}>
-                  <ShieldCheck size={13} color={THEME.colors.primary} style={{ marginRight: 5 }} />
-                  <Text style={[styles.detailValueText, { color: THEME.colors.primary }]}>Recorded & Verified</Text>
+                  <ShieldCheck size={13} color={currentAccent.primary} style={{ marginRight: 5 }} />
+                  <Text style={[styles.detailValueText, { color: currentAccent.primary }]}>Recorded & Verified</Text>
                 </View>
               </View>
             </View>

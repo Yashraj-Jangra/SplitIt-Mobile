@@ -51,6 +51,7 @@ import { BottomSheetModal } from '../../src/components/common/BottomSheetModal';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useCurrency } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 
 interface FormSnapshot {
@@ -73,6 +74,7 @@ export default function NewExpenseModal() {
   const insets = useSafeAreaInsets();
   const { requireOnline } = useNetwork();
   const { formatCurrency, currencySymbol } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const params = useLocalSearchParams<{
     amount?: string;
     description?: string;
@@ -894,7 +896,7 @@ export default function NewExpenseModal() {
       <View style={styles.rootWrapper}>
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.loadingContainer}>
-            <QuantumSpinner size={36} color={THEME.colors.primary} />
+            <QuantumSpinner size={36} color={currentAccent.primary} />
             <Text style={styles.loadingText}>Loading expense details...</Text>
           </View>
         </SafeAreaView>
@@ -974,7 +976,7 @@ export default function NewExpenseModal() {
                 <Text style={styles.headerGroupText} numberOfLines={1}>
                   in <Text style={styles.headerGroupNameHighlight}>{activeGroup.name}</Text>
                 </Text>
-                <ChevronDown size={11} color={THEME.colors.primary} />
+                <ChevronDown size={11} color={currentAccent.primary} />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -985,7 +987,7 @@ export default function NewExpenseModal() {
                 activeOpacity={0.7}
                 style={styles.headerGroupBadge}
               >
-                <Text style={styles.headerGroupPromptText}>Select group ▾</Text>
+                <Text style={[styles.headerGroupPromptText, { color: currentAccent.primary }]}>Select group ▾</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -999,7 +1001,7 @@ export default function NewExpenseModal() {
               style={styles.scanBtn}
               activeOpacity={0.8}
             >
-              <Camera size={14} color={THEME.colors.primary} />
+              <Camera size={14} color={currentAccent.primary} />
               <Text style={styles.scanBtnText}>Scan</Text>
             </TouchableOpacity>
           )}
@@ -1029,7 +1031,7 @@ export default function NewExpenseModal() {
                   subCategory={category}
                   masterCategory={masterCategory}
                   size={28}
-                  color={THEME.colors.primary}
+                  color={currentAccent.primary}
                 />
               </View>
               <Text style={styles.categoryNameLabel} numberOfLines={1}>
@@ -1075,7 +1077,7 @@ export default function NewExpenseModal() {
 
               {/* Amount Input with Currency Symbol and Underline */}
               <View style={styles.amountUnderlineRow}>
-                <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
+                <Text style={[styles.currencyPrefix, { color: currentAccent.primary }]}>{currencySymbol}</Text>
                 <TextInput
                   ref={amountInputRef}
                   style={styles.amountUnderlineInput}
@@ -1104,7 +1106,7 @@ export default function NewExpenseModal() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.sentenceTriggerText}>{paidByText}</Text>
-                <ChevronDown size={13} color={THEME.colors.primary} />
+                <ChevronDown size={13} color={currentAccent.primary} />
               </TouchableOpacity>
 
               <Text style={styles.sentenceText}> and split </Text>
@@ -1118,7 +1120,7 @@ export default function NewExpenseModal() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.sentenceTriggerText}>{splitText}</Text>
-                <ChevronDown size={13} color={THEME.colors.primary} />
+                <ChevronDown size={13} color={currentAccent.primary} />
               </TouchableOpacity>
             </View>
 
@@ -1145,17 +1147,17 @@ export default function NewExpenseModal() {
                   <View
                     style={[
                       styles.avatarRingCircle,
-                      member.selected ? styles.avatarRingActive : styles.avatarRingMuted,
+                      member.selected ? [styles.avatarRingActive, { borderColor: currentAccent.primary }] : styles.avatarRingMuted,
                     ]}
                   >
                     <Image source={{ uri: member.avatarUrl }} style={styles.avatarImg} />
                     {member.selected && (
-                      <View style={styles.checkBadge}>
+                      <View style={[styles.checkBadge, { backgroundColor: currentAccent.primary }]}>
                         <Check size={9} color={THEME.colors.primaryForeground} strokeWidth={3} />
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.memberNameText, member.selected && styles.memberNameActive]} numberOfLines={1}>
+                  <Text style={[styles.memberNameText, member.selected && [styles.memberNameActive, { color: currentAccent.primary }]]} numberOfLines={1}>
                     {member.name.split(' ')[0]}
                   </Text>
                   {numAmount > 0 && member.selected && (
@@ -1193,7 +1195,7 @@ export default function NewExpenseModal() {
               }}
               activeOpacity={0.7}
             >
-              <FileText size={13} color={notes ? THEME.colors.primary : THEME.colors.textSecondary} />
+              <FileText size={13} color={notes ? currentAccent.primary : THEME.colors.textSecondary} />
               <Text style={styles.accessoryPillText}>
                 {notes ? (notes.length > 16 ? `${notes.slice(0, 16)}...` : notes) : 'Add note'}
               </Text>
@@ -1209,11 +1211,11 @@ export default function NewExpenseModal() {
               disabled={isUploadingReceipt}
             >
               {isUploadingReceipt ? (
-                <QuantumSpinner size={14} color={THEME.colors.primary} />
+                <QuantumSpinner size={14} color={currentAccent.primary} />
               ) : (
                 <Camera
                   size={13}
-                  color={receiptImageUrl ? THEME.colors.primary : THEME.colors.textSecondary}
+                  color={receiptImageUrl ? currentAccent.primary : THEME.colors.textSecondary}
                 />
               )}
               <Text style={styles.accessoryPillText}>
@@ -1273,7 +1275,7 @@ export default function NewExpenseModal() {
                 style={styles.inlineNoteDoneBtn}
                 activeOpacity={0.7}
               >
-                <Check size={14} color={THEME.colors.primary} strokeWidth={2.5} />
+                <Check size={14} color={currentAccent.primary} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           )}
@@ -1361,7 +1363,7 @@ export default function NewExpenseModal() {
             }}
             activeOpacity={0.8}
           >
-            <View style={[styles.defaultCheckbox, isDefaultGroupChecked && styles.defaultCheckboxActive]}>
+            <View style={[styles.defaultCheckbox, isDefaultGroupChecked && [styles.defaultCheckboxActive, { backgroundColor: currentAccent.primary, borderColor: currentAccent.primary }]]}>
               {isDefaultGroupChecked && <Check size={12} color={THEME.colors.primaryForeground} strokeWidth={3} />}
             </View>
             <View style={{ flex: 1 }}>
@@ -1370,8 +1372,8 @@ export default function NewExpenseModal() {
             </View>
             <Star
               size={18}
-              color={isDefaultGroupChecked ? THEME.colors.primary : THEME.colors.textMuted}
-              fill={isDefaultGroupChecked ? THEME.colors.primary : 'transparent'}
+              color={isDefaultGroupChecked ? currentAccent.primary : THEME.colors.textMuted}
+              fill={isDefaultGroupChecked ? currentAccent.primary : 'transparent'}
             />
           </TouchableOpacity>
 
@@ -1403,24 +1405,24 @@ export default function NewExpenseModal() {
                       {grp.coverImageUrl ? (
                         <Image source={{ uri: grp.coverImageUrl }} style={styles.groupAvatarImg} />
                       ) : (
-                        <Text style={styles.groupAvatarInitial}>{grp.name.charAt(0)}</Text>
+                        <Text style={[styles.groupAvatarInitial, { color: currentAccent.primary }]}>{grp.name.charAt(0)}</Text>
                       )}
                     </View>
                     <View style={styles.groupInfoCol}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
+                        <Text style={[styles.groupNameText, isSelected && [styles.groupNameTextActive, { color: currentAccent.primary }]]}>
                           {grp.name}
                         </Text>
                         {isDefault && (
                           <View style={styles.defaultBadge}>
-                            <Star size={9} color={THEME.colors.primary} fill={THEME.colors.primary} />
-                            <Text style={styles.defaultBadgeText}>Default</Text>
+                            <Star size={9} color={currentAccent.primary} fill={currentAccent.primary} />
+                            <Text style={[styles.defaultBadgeText, { color: currentAccent.primary }]}>Default</Text>
                           </View>
                         )}
                       </View>
                       <Text style={styles.groupMetaText}>{grp.membersCount || 0} members</Text>
                     </View>
-                    {isSelected && <Check size={18} color={THEME.colors.primary} strokeWidth={2.5} />}
+                    {isSelected && <Check size={18} color={currentAccent.primary} strokeWidth={2.5} />}
                   </TouchableOpacity>
                 );
               })}
@@ -1474,7 +1476,7 @@ export default function NewExpenseModal() {
                 return (
                   <View key={master} style={{ marginBottom: 16 }}>
                     <View style={styles.categoryHeaderRow}>
-                      <CategoryIcon masterCategory={master} size={16} color={THEME.colors.primary} />
+                      <CategoryIcon masterCategory={master} size={16} color={currentAccent.primary} />
                       <Text style={styles.categoryGroupTitle}>{master}</Text>
                     </View>
                     <View style={styles.categoryPillsWrap}>
@@ -1483,7 +1485,7 @@ export default function NewExpenseModal() {
                         return (
                           <TouchableOpacity
                             key={sub}
-                            style={[styles.categoryChoicePill, isSelected && styles.categoryChoiceActive]}
+                            style={[styles.categoryChoicePill, isSelected && [styles.categoryChoiceActive, { borderColor: currentAccent.primary }]]}
                             onPress={() => {
                               haptics.tap();
                               setUserOverriddenCategory(true);
@@ -1496,9 +1498,9 @@ export default function NewExpenseModal() {
                               subCategory={sub}
                               masterCategory={master}
                               size={13}
-                              color={isSelected ? THEME.colors.primary : THEME.colors.textMuted}
+                              color={isSelected ? currentAccent.primary : THEME.colors.textMuted}
                             />
-                            <Text style={[styles.categoryChoiceText, isSelected && styles.categoryChoiceTextActive]}>
+                            <Text style={[styles.categoryChoiceText, isSelected && [styles.categoryChoiceTextActive, { color: currentAccent.primary }]]}>
                               {sub}
                             </Text>
                           </TouchableOpacity>
@@ -1542,7 +1544,7 @@ export default function NewExpenseModal() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.dateChoiceLabel, isSelected && styles.dateChoiceLabelActive]}>
+                  <Text style={[styles.dateChoiceLabel, isSelected && [styles.dateChoiceLabelActive, { color: currentAccent.primary }]]}>
                     {item.label}
                   </Text>
                   <Text style={styles.dateChoiceSub}>
@@ -1552,7 +1554,7 @@ export default function NewExpenseModal() {
                       weekday: 'short',
                     })}
                   </Text>
-                  {isSelected && <Check size={16} color={THEME.colors.primary} strokeWidth={2.5} />}
+                  {isSelected && <Check size={16} color={currentAccent.primary} strokeWidth={2.5} />}
                 </TouchableOpacity>
               );
             })}

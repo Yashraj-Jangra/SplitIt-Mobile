@@ -36,11 +36,13 @@ import {
   TicketMessage,
   TicketCategory,
 } from '../../src/services/support.service';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function TicketThreadScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currentAccent } = useAppTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [ticket, setTicket] = useState<SupportTicketItem | null>(null);
@@ -147,7 +149,7 @@ export default function TicketThreadScreen() {
   const getCategoryMeta = (category?: TicketCategory) => {
     switch (category) {
       case 'billing':
-        return { label: 'Billing & UPI', icon: CreditCard, color: THEME.colors.primary };
+        return { label: 'Billing & UPI', icon: CreditCard, color: currentAccent.primary };
       case 'bug':
         return { label: 'Bug Report', icon: Bug, color: THEME.colors.negative };
       case 'feature':
@@ -164,9 +166,9 @@ export default function TicketThreadScreen() {
       case 'resolved':
         return {
           label: 'RESOLVED',
-          color: THEME.colors.primary,
-          bg: 'rgba(16, 185, 129, 0.12)',
-          border: 'rgba(16, 185, 129, 0.3)',
+          color: currentAccent.primary,
+          bg: `${currentAccent.primary}20`,
+          border: `${currentAccent.primary}48`,
           icon: CheckCircle2,
         };
       case 'in_progress':
@@ -200,7 +202,7 @@ export default function TicketThreadScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
-          <QuantumSpinner size={36} color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={currentAccent.primary} />
         </View>
       </SafeAreaView>
     );
@@ -334,7 +336,7 @@ export default function TicketThreadScreen() {
               >
                 {!isUser && (
                   <View style={styles.agentAvatar}>
-                    <Headphones size={13} color={THEME.colors.primary} />
+                    <Headphones size={13} color={currentAccent.primary} />
                   </View>
                 )}
 
@@ -362,7 +364,7 @@ export default function TicketThreadScreen() {
                       {formatMessageTime(msg.sentAt)}
                     </Text>
                     {isUser && (
-                      <CheckCheck size={13} color={THEME.colors.primary} strokeWidth={2} />
+                      <CheckCheck size={13} color={currentAccent.primary} strokeWidth={2} />
                     )}
                   </View>
                 </View>
@@ -374,7 +376,7 @@ export default function TicketThreadScreen() {
           {isResolved && (
             <View style={styles.resolvedBannerCard}>
               <View style={styles.resolvedCheckCircle}>
-                <Check size={20} color={THEME.colors.primary} strokeWidth={3} />
+                <Check size={20} color={currentAccent.primary} strokeWidth={3} />
               </View>
               <Text style={styles.resolvedTitle}>This ticket has been resolved</Text>
               <Text style={styles.resolvedDesc}>
@@ -416,6 +418,7 @@ export default function TicketThreadScreen() {
             <TouchableOpacity
               style={[
                 styles.sendButton,
+                { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary },
                 (!replyText.trim() || isSending) && styles.sendButtonDisabled,
               ]}
               onPress={handleSendReply}

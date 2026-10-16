@@ -17,6 +17,7 @@ import { groupService, GroupListItem } from '../../services/group.service';
 import { expenseService, UserTransactionItem } from '../../services/expense.service';
 import { settlementService, GroupSettlementItem } from '../../services/settlement.service';
 import { useCurrency } from '../../contexts/currency.context';
+import { useAppTheme } from '../../contexts/theme.context';
 import { haptics } from '../../services/haptics.service';
 import {
   Search,
@@ -54,6 +55,7 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { formatCurrency } = useCurrency();
+  const { currentAccent } = useAppTheme();
   const inputRef = useRef<TextInput>(null);
 
   const [query, setQuery] = useState('');
@@ -246,7 +248,7 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
               onClose();
             }}
           >
-            <Text style={styles.cancelBtnText}>Done</Text>
+            <Text style={[styles.cancelBtnText, { color: currentAccent.primary }]}>Done</Text>
           </TouchableOpacity>
         </View>
 
@@ -259,7 +261,7 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
                 key={cat.id}
                 style={[
                   styles.filterPill,
-                  isSelected && styles.filterPillActive,
+                  isSelected && [styles.filterPillActive, { backgroundColor: currentAccent.primary, borderColor: currentAccent.primary }],
                 ]}
                 onPress={() => {
                   haptics.tick();
@@ -298,7 +300,7 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
               iconColor = THEME.colors.success;
             } else if (item.type === 'friend') {
               IconComp = UserCheck;
-              iconColor = THEME.colors.primary;
+              iconColor = currentAccent.primary;
             }
 
             return (

@@ -27,6 +27,7 @@ import {
 import { THEME } from '../../src/constants/theme';
 import { aiService, ScannedReceiptResult } from '../../src/services/ai.service';
 import { useCurrency } from '../../src/contexts/currency.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 
 const { width } = Dimensions.get('window');
 const VIEWFINDER_WIDTH = width * 0.82;
@@ -34,6 +35,7 @@ const VIEWFINDER_HEIGHT = VIEWFINDER_WIDTH * 1.35;
 
 export default function ReceiptScannerScreen() {
   const router = useRouter();
+  const { currentAccent } = useAppTheme();
   const { currencySymbol } = useCurrency();
   const [permission, requestPermission] = useCameraPermissions();
   const [isTorchOn, setIsTorchOn] = useState(false);
@@ -138,8 +140,8 @@ export default function ReceiptScannerScreen() {
         </View>
 
         <View style={styles.permissionContent}>
-          <View style={styles.permissionIconBadge}>
-            <Camera size={44} color={THEME.colors.primary} />
+          <View style={[styles.permissionIconBadge, { backgroundColor: `${currentAccent.primary}1f`, borderColor: `${currentAccent.primary}40` }]}>
+            <Camera size={44} color={currentAccent.primary} />
           </View>
           <Text style={styles.permissionTitle}>Camera Access</Text>
           <Text style={styles.permissionDesc}>
@@ -148,7 +150,7 @@ export default function ReceiptScannerScreen() {
           </Text>
 
           <TouchableOpacity
-            style={styles.primaryPermButton}
+            style={[styles.primaryPermButton, { backgroundColor: currentAccent.primary }]}
             onPress={() => requestPermission()}
           >
             <Text style={styles.primaryPermButtonText}>Enable Camera</Text>
@@ -203,7 +205,7 @@ export default function ReceiptScannerScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.circleButton, isTorchOn && styles.circleButtonActive]}
+            style={[styles.circleButton, isTorchOn && { backgroundColor: currentAccent.primary, borderColor: currentAccent.primary }]}
             onPress={() => {
               haptics.tick();
               setIsTorchOn((prev) => !prev);
@@ -217,14 +219,14 @@ export default function ReceiptScannerScreen() {
         <View style={styles.viewfinderContainer}>
           <View style={styles.viewfinder}>
             {/* 4 Framing Corner Brackets */}
-            <View style={[styles.cornerBracket, styles.topLeft]} />
-            <View style={[styles.cornerBracket, styles.topRight]} />
-            <View style={[styles.cornerBracket, styles.bottomLeft]} />
-            <View style={[styles.cornerBracket, styles.bottomRight]} />
+            <View style={[styles.cornerBracket, styles.topLeft, { borderColor: currentAccent.primary }]} />
+            <View style={[styles.cornerBracket, styles.topRight, { borderColor: currentAccent.primary }]} />
+            <View style={[styles.cornerBracket, styles.bottomLeft, { borderColor: currentAccent.primary }]} />
+            <View style={[styles.cornerBracket, styles.bottomRight, { borderColor: currentAccent.primary }]} />
 
             {isProcessing && (
-              <View style={styles.processingBadge}>
-                <QuantumSpinner size={14} color={THEME.colors.primary} />
+              <View style={[styles.processingBadge, { borderColor: currentAccent.primary }]}>
+                <QuantumSpinner size={14} color={currentAccent.primary} />
                 <Text style={styles.processingBadgeText}>Analyzing with MiniMax AI...</Text>
               </View>
             )}
@@ -237,11 +239,11 @@ export default function ReceiptScannerScreen() {
 
         {/* Scanned Result Bottom Sheet Card */}
         {scanResult ? (
-          <View style={styles.resultCard}>
+          <View style={[styles.resultCard, { borderColor: `${currentAccent.primary}50` }]}>
             <View style={styles.resultHeader}>
               <View style={styles.resultHeaderLeft}>
-                <View style={styles.resultReceiptIcon}>
-                  <Receipt size={20} color={THEME.colors.primary} />
+                <View style={[styles.resultReceiptIcon, { backgroundColor: `${currentAccent.primary}1f` }]}>
+                  <Receipt size={20} color={currentAccent.primary} />
                 </View>
                 <View>
                   <Text style={styles.resultMerchant} numberOfLines={1}>
@@ -250,7 +252,7 @@ export default function ReceiptScannerScreen() {
                   <Text style={styles.resultDate}>{scanResult.date}</Text>
                 </View>
               </View>
-              <Text style={styles.resultAmount}>{currencySymbol}{scanResult.amount.toFixed(2)}</Text>
+              <Text style={[styles.resultAmount, { color: currentAccent.primary }]}>{currencySymbol}{scanResult.amount.toFixed(2)}</Text>
             </View>
 
             <View style={styles.resultCategoryRow}>
@@ -270,7 +272,7 @@ export default function ReceiptScannerScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.applyButton}
+                style={[styles.applyButton, { backgroundColor: currentAccent.primary }]}
                 onPress={handleApplyResult}
               >
                 <Check size={18} color={THEME.colors.primaryForeground} />
@@ -296,7 +298,7 @@ export default function ReceiptScannerScreen() {
               disabled={isProcessing}
               activeOpacity={0.8}
             >
-              <View style={styles.shutterInner} />
+              <View style={[styles.shutterInner, { backgroundColor: currentAccent.primary }]} />
             </TouchableOpacity>
 
             <TouchableOpacity

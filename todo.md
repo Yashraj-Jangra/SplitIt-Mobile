@@ -1,5 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Global Dynamic Accent Theme Propagation Across All Screens & Components (`app/(tabs)/_layout.tsx`, `app/(tabs)/*`, `app/(auth)/*`, `app/groups/*`, `app/expenses/*`, `app/settings/*`, `app/settle/*`, `app/support/*`, `app/ai/*`, `src/components/*`)**:
+  - **Dynamic Theme Reactivity Engine**:
+    - Addressed React Native's static `StyleSheet.create` module-evaluation caching where compiled stylesheets do not automatically update on theme changes.
+    - Bound components, modals, and screen headers to `const { currentAccent } = useAppTheme()` with dynamic inline style overrides (`style={[styles.xxx, { backgroundColor/borderColor/color: currentAccent.primary }]}`).
+    - Dynamic accent updates immediately propagate across the entire app without requiring an app reboot or destructive root navigation stack resets.
+  - **Comprehensive Screen & Component Coverage**:
+    - **Navigation & Brand**: Bottom navbar tabs in `app/(tabs)/_layout.tsx`, `PrimaryActionButton`, `QuantumLogo`, `QuantumSpinner` (spinners throughout all screens), and `SettingsRow`.
+    - **Main Tabs**: Dashboard (`app/(tabs)/index.tsx`), Circles (`app/(tabs)/groups.tsx`), Activity (`app/(tabs)/activity.tsx`), and Profile (`app/(tabs)/profile.tsx`).
+    - **Detail & Modal Flows**: `ObligationsModal`, `MockDataBanner`, `UniversalSearchModal`, `EditSettlementModal`, `SetBudgetModal`, `GroupBudgetTab`, `GroupHistoryTab`.
+    - **Circles & Groups**: Group details screen (`app/groups/[id]/index.tsx`), Group settings (`app/groups/[id]/settings.tsx`), New group (`app/groups/new.tsx`).
+    - **Expenses & Settlements**: New expense (`app/expenses/new.tsx`), Expense details (`app/expenses/[id].tsx`), Settlement receipt (`app/settlements/[id].tsx`), Settle QR code (`app/settle/qr.tsx`).
+    - **Settings & Support**: Account (`app/settings/account.tsx`), My QR (`app/settings/my-qr.tsx`), Payment (`app/settings/payment.tsx`), Preferences (`app/settings/preferences.tsx`), Security (`app/settings/security.tsx`), Support tickets (`app/support/index.tsx`, `app/support/new.tsx`, `app/support/[id].tsx`).
+    - **Auth & AI**: Login (`app/(auth)/login.tsx`), Signup (`app/(auth)/signup.tsx`), Forgot Password (`app/(auth)/forgot-password.tsx`), Reset Password (`app/(auth)/reset-password.tsx`), AI Chat assistant (`app/ai/chat.tsx`), AI Receipt Scanner (`app/ai/scanner.tsx`).
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Home Balance Graph Refinements & Open Editorial "No-Div" Obligations Modal Redesign (`src/components/dashboard/BalanceHistoryGraph.tsx`, `src/components/dashboard/ObligationsModal.tsx`, `app/(tabs)/index.tsx`)**:
   - **Home Balance History Graph Refinements (`src/components/dashboard/BalanceHistoryGraph.tsx`, `app/(tabs)/index.tsx`)**:
     - **Edge Dot Clipping Fixed**: Applied symmetrical `horizontalPadding = 12` and mapped coordinates over `usableWidth = w - horizontalPadding * 2`. Dots (radius 8 with glow rings) are now fully visible and never clipped or cut off by the container edge on either side.

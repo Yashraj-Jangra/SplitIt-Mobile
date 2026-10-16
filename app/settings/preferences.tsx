@@ -241,7 +241,7 @@ export default function PreferencesScreen() {
               <Switch
                 value={hapticsEnabled}
                 onValueChange={handleToggleHaptics}
-                trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                trackColor={{ false: THEME.colors.surfaceElevated, true: currentAccent.primary }}
                 thumbColor={THEME.colors.text}
               />
             }

@@ -16,6 +16,7 @@ import { THEME } from '../../constants/theme';
 import { QuantumSpinner } from '../brand/QuantumLogo';
 import { SettlementDetailModel, settlementService } from '../../services/settlement.service';
 import { useCurrency } from '../../contexts/currency.context';
+import { useAppTheme } from '../../contexts/theme.context';
 import { haptics } from '../../services/haptics.service';
 
 interface EditSettlementModalProps {
@@ -38,6 +39,7 @@ export const EditSettlementModal: React.FC<EditSettlementModalProps> = ({
   onSuccess,
 }) => {
   const { currencySymbol } = useCurrency();
+  const { currentAccent } = useAppTheme();
 
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<'cash' | 'upi' | 'bank_transfer'>('cash');
@@ -168,7 +170,7 @@ export const EditSettlementModal: React.FC<EditSettlementModalProps> = ({
                         key={item.id}
                         style={[
                           styles.methodPill,
-                          isSelected && styles.methodPillActive,
+                          isSelected && [styles.methodPillActive, { backgroundColor: currentAccent.primary, borderColor: currentAccent.primary }],
                         ]}
                         onPress={() => {
                           haptics.tick();
@@ -220,7 +222,7 @@ export const EditSettlementModal: React.FC<EditSettlementModalProps> = ({
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.saveBtn, submitting && styles.saveBtnDisabled]}
+                  style={[styles.saveBtn, { backgroundColor: currentAccent.primary }, submitting && styles.saveBtnDisabled]}
                   onPress={handleSave}
                   disabled={submitting}
                 >

@@ -199,7 +199,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* User Profile Hero */}
         <View style={styles.userHero}>
-          <View style={styles.avatarCircle}>
+          <View style={[styles.avatarCircle, { borderColor: currentAccent.primary }]}>
             {user?.avatarUrl && !imageError ? (
               <Image
                 source={{ uri: user.avatarUrl }}
@@ -215,12 +215,12 @@ export default function ProfileScreen() {
 
           {effectiveUpi ? (
             <TouchableOpacity
-              style={styles.upiPill}
+              style={[styles.upiPill, { borderColor: currentAccent.borderFocus, backgroundColor: currentAccent.primaryMuted }]}
               onPress={() => router.push('/settings/payment')}
               activeOpacity={0.7}
             >
-              <CreditCard size={12} color={THEME.colors.primary} />
-              <Text style={styles.upiPillText}>{effectiveUpi}</Text>
+              <CreditCard size={12} color={currentAccent.primary} />
+              <Text style={[styles.upiPillText, { color: currentAccent.primary }]}>{effectiveUpi}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity

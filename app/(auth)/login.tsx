@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { GoogleLogo } from '../../src/components/brand/GoogleLogo';
 import { haptics } from '../../src/services/haptics.service';
@@ -27,6 +28,7 @@ const HERO_IMAGE_HEIGHT = 210;
 export default function LoginScreen() {
   const router = useRouter();
   const { signInWithEmail, signInWithGoogle } = useAuth();
+  const { currentAccent } = useAppTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -171,7 +173,7 @@ export default function LoginScreen() {
               <View style={styles.imageOverlay} />
               <View style={styles.heroBrandOverlay}>
                 <View style={styles.brandRow}>
-                  <QuantumLogo size={40} useGradient={false} color={THEME.colors.primary} />
+                  <QuantumLogo size={40} useGradient={false} color={currentAccent.primary} />
                   <Text style={styles.brandName}>SplitIt</Text>
                 </View>
               </View>
@@ -278,7 +280,7 @@ export default function LoginScreen() {
 
               {/* Sign In Primary Action */}
               <TouchableOpacity
-                style={styles.signInButton}
+                style={[styles.signInButton, { backgroundColor: currentAccent.primary }]}
                 onPress={handleEmailLogin}
                 disabled={loading}
                 activeOpacity={0.85}
@@ -339,7 +341,7 @@ export default function LoginScreen() {
                   router.push('/(auth)/signup');
                 }}
               >
-                <Text style={styles.footerLink}> Sign Up</Text>
+                <Text style={[styles.footerLink, { color: currentAccent.primary }]}> Sign Up</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

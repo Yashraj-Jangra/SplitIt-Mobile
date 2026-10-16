@@ -40,6 +40,7 @@ import {
   TicketCategory,
   FaqItem,
 } from '../../src/services/support.service';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -72,6 +73,7 @@ function formatRelativeTime(dateStr: string): string {
 export default function SupportTicketsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currentAccent } = useAppTheme();
   const [tickets, setTickets] = useState<SupportTicketItem[]>(() =>
     supportService.getInMemoryTickets()
   );
@@ -127,9 +129,9 @@ export default function SupportTicketsScreen() {
       case 'resolved':
         return {
           label: 'Resolved',
-          color: THEME.colors.primary,
-          bg: 'rgba(16, 185, 129, 0.12)',
-          border: 'rgba(16, 185, 129, 0.28)',
+          color: currentAccent.primary,
+          bg: `${currentAccent.primary}20`,
+          border: `${currentAccent.primary}48`,
           icon: CheckCircle2,
         };
       case 'in_progress':
@@ -162,7 +164,7 @@ export default function SupportTicketsScreen() {
   const getCategoryMeta = (category: TicketCategory) => {
     switch (category) {
       case 'billing':
-        return { label: 'Billing & UPI', icon: CreditCard, color: THEME.colors.primary };
+        return { label: 'Billing & UPI', icon: CreditCard, color: currentAccent.primary };
       case 'bug':
         return { label: 'Bug Report', icon: Bug, color: THEME.colors.negative };
       case 'feature':
@@ -226,7 +228,7 @@ export default function SupportTicketsScreen() {
             haptics.tap();
             router.push('/support/new');
           }}
-          style={styles.newButton}
+          style={[styles.newButton, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
           activeOpacity={0.8}
           accessibilityLabel="Open new support ticket"
           accessibilityRole="button"
@@ -238,7 +240,7 @@ export default function SupportTicketsScreen() {
 
       {loading && tickets.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <QuantumSpinner size={36} color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={currentAccent.primary} />
         </View>
       ) : (
         <ScrollView
@@ -251,7 +253,7 @@ export default function SupportTicketsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={THEME.colors.primary}
+              tintColor={currentAccent.primary}
             />
           }
         >
@@ -259,10 +261,10 @@ export default function SupportTicketsScreen() {
           <View style={styles.heroCard}>
             <View style={styles.heroStatusRow}>
               <View style={styles.pulseContainer}>
-                <View style={styles.pulseDot} />
+                <View style={[styles.pulseDot, { backgroundColor: currentAccent.primary }]} />
                 <View style={styles.pulseRing} />
               </View>
-              <Text style={styles.heroStatusText}>
+              <Text style={[styles.heroStatusText, { color: currentAccent.primary }]}>
                 Support Desk Active • Typical reply &lt; 2h
               </Text>
             </View>
@@ -334,7 +336,7 @@ export default function SupportTicketsScreen() {
                       >
                         <ChevronDown
                           size={15}
-                          color={isExpanded ? THEME.colors.primary : THEME.colors.textMuted}
+                          color={isExpanded ? currentAccent.primary : THEME.colors.textMuted}
                         />
                       </View>
                     </TouchableOpacity>
@@ -449,7 +451,7 @@ export default function SupportTicketsScreen() {
             {filteredTickets.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <View style={styles.emptyIconCircle}>
-                  <LifeBuoy size={28} color={THEME.colors.primary} />
+                  <LifeBuoy size={28} color={currentAccent.primary} />
                 </View>
                 <Text style={styles.emptyTitle}>
                   {searchQuery ? 'No matching tickets' : 'No support tickets found'}
@@ -461,7 +463,7 @@ export default function SupportTicketsScreen() {
                 </Text>
                 {!searchQuery && (
                   <TouchableOpacity
-                    style={styles.emptyCtaButton}
+                    style={[styles.emptyCtaButton, { backgroundColor: currentAccent.primary }]}
                     onPress={() => {
                       haptics.tap();
                       router.push('/support/new');

@@ -18,11 +18,13 @@ import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { groupService, RegisteredUser } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function NewGroupModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currentAccent } = useAppTheme();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -160,7 +162,7 @@ export default function NewGroupModal() {
         <TouchableOpacity
           onPress={handleCreate}
           disabled={isSubmitting}
-          style={[styles.saveButton, isSubmitting && { opacity: 0.6 }]}
+          style={[styles.saveButton, { backgroundColor: currentAccent.primary }, isSubmitting && { opacity: 0.6 }]}
           accessibilityLabel="Create Group"
           accessibilityRole="button"
         >
@@ -232,7 +234,7 @@ export default function NewGroupModal() {
                 return (
                   <TouchableOpacity
                     key={`${url}-${idx}`}
-                    style={[styles.coverCard, isSelected && styles.coverCardSelected]}
+                    style={[styles.coverCard, isSelected && [styles.coverCardSelected, { borderColor: currentAccent.primary }]]}
                     onPress={() => {
                       haptics.tap();
                       setSelectedCover(url);
@@ -242,7 +244,7 @@ export default function NewGroupModal() {
                     <Image source={{ uri: url }} style={styles.coverImage} />
                     {isSelected && (
                       <View style={styles.coverCheckBadge}>
-                        <CheckCircle2 size={16} color={THEME.colors.primary} />
+                        <CheckCircle2 size={16} color={currentAccent.primary} />
                       </View>
                     )}
                   </TouchableOpacity>
@@ -344,8 +346,8 @@ export default function NewGroupModal() {
                         {user.username ? `@${user.username} • ` : ''}{user.email}
                       </Text>
                     </View>
-                    <View style={styles.addMemberPlus}>
-                      <Text style={styles.addMemberPlusText}>Add</Text>
+                    <View style={[styles.addMemberPlus, { backgroundColor: currentAccent.primaryMuted }]}>
+                      <Text style={[styles.addMemberPlusText, { color: currentAccent.primary }]}>Add</Text>
                     </View>
                   </TouchableOpacity>
                 ))}

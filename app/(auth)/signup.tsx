@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { GoogleLogo } from '../../src/components/brand/GoogleLogo';
 import { haptics } from '../../src/services/haptics.service';
@@ -27,6 +28,7 @@ const HERO_IMAGE_HEIGHT = 190;
 export default function SignupScreen() {
   const router = useRouter();
   const { signUpWithEmail, signInWithGoogle } = useAuth();
+  const { currentAccent } = useAppTheme();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -187,7 +189,7 @@ export default function SignupScreen() {
               <View style={styles.imageOverlay} />
               <View style={styles.heroBrandOverlay}>
                 <View style={styles.brandRow}>
-                  <QuantumLogo size={40} useGradient={false} color={THEME.colors.primary} />
+                  <QuantumLogo size={40} useGradient={false} color={currentAccent.primary} />
                   <Text style={styles.brandName}>SplitIt</Text>
                 </View>
               </View>
@@ -318,7 +320,7 @@ export default function SignupScreen() {
 
               {/* Submit Action */}
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[styles.submitButton, { backgroundColor: currentAccent.primary }]}
                 onPress={handleSignup}
                 disabled={loading}
                 activeOpacity={0.85}
@@ -379,7 +381,7 @@ export default function SignupScreen() {
                   router.back();
                 }}
               >
-                <Text style={styles.footerLink}> Log In</Text>
+                <Text style={[styles.footerLink, { color: currentAccent.primary }]}> Log In</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

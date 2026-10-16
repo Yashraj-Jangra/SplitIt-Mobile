@@ -2,11 +2,13 @@ import { Tabs } from 'expo-router';
 import { Home, Users, Activity, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { THEME } from '../../src/constants/theme';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 10);
+  const { currentAccent } = useAppTheme();
 
   return (
     <Tabs
@@ -22,7 +24,7 @@ export default function TabsLayout() {
           paddingTop: 8,
           elevation: 0,
         },
-        tabBarActiveTintColor: THEME.colors.primary,
+        tabBarActiveTintColor: currentAccent.primary,
         tabBarInactiveTintColor: THEME.colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 11,
