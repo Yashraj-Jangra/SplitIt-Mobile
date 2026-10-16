@@ -11,8 +11,6 @@ import {
   Keyboard,
   Alert,
   Modal,
-  Animated,
-  Easing,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -185,11 +183,6 @@ export default function AiChatModal() {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
 
-  // Dynamic smooth bottom padding animation synchronized with keyboard transitions
-  const closedBottomPadding = Math.max(insets.bottom, 12);
-  const openBottomPadding = Platform.OS === 'ios' ? 10 : 12;
-  const bottomPaddingAnim = useRef(new Animated.Value(closedBottomPadding)).current;
-
   const scrollViewRef = useRef<ScrollView>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -203,14 +196,7 @@ export default function AiChatModal() {
     }, 200);
   }, []);
 
-  // Ensure bottomPaddingAnim stays in sync if safe area insets change while keyboard is closed
-  useEffect(() => {
-    if (!isKeyboardOpen) {
-      bottomPaddingAnim.setValue(closedBottomPadding);
-    }
-  }, [closedBottomPadding, isKeyboardOpen, bottomPaddingAnim]);
-
-  // Smooth, synchronized Keyboard Listener for both iOS and Android
+  // Synchronized Keyboard Listener for both iOS and Android
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -219,29 +205,12 @@ export default function AiChatModal() {
       const height = e?.endCoordinates?.height || 0;
       setKeyboardHeight(height);
       setIsKeyboardOpen(true);
-
-      const duration = Platform.OS === 'ios' ? (e?.duration || 250) : 160;
-      Animated.timing(bottomPaddingAnim, {
-        toValue: openBottomPadding,
-        duration,
-        easing: Platform.OS === 'ios' ? Easing.bezier(0.25, 0.1, 0.25, 1) : Easing.out(Easing.ease),
-        useNativeDriver: false,
-      }).start();
-
       scrollToEndThrottled();
     };
 
-    const onKeyboardHide = (e: any) => {
+    const onKeyboardHide = () => {
       setKeyboardHeight(0);
       setIsKeyboardOpen(false);
-
-      const duration = Platform.OS === 'ios' ? (e?.duration || 250) : 160;
-      Animated.timing(bottomPaddingAnim, {
-        toValue: closedBottomPadding,
-        duration,
-        easing: Platform.OS === 'ios' ? Easing.bezier(0.25, 0.1, 0.25, 1) : Easing.out(Easing.ease),
-        useNativeDriver: false,
-      }).start();
     };
 
     const showSub = Keyboard.addListener(showEvent, onKeyboardShow);
@@ -251,7 +220,7 @@ export default function AiChatModal() {
       showSub.remove();
       hideSub.remove();
     };
-  }, [closedBottomPadding, openBottomPadding, scrollToEndThrottled, bottomPaddingAnim]);
+  }, [scrollToEndThrottled]);
 
   // Starter Cards for Empty / Welcome State
   const starterCards = useMemo(
@@ -431,154 +400,116 @@ export default function AiChatModal() {
     scrollToEndThrottled();
   }, [messages, isStreaming, scrollToEndThrottled]);
 
-  // Show inline follow-up chips ONLY when conversation is active, input is empty, and keyboard is NOT covering the screen
+  // Show inline follow-up chips when conversation is active and not dismissed
   const showFollowUpChips =
     messages.length > 1 &&
-    input.trim().length === 0 &&
     !isStreaming &&
-    !arePillsDismissed &&
-    !isKeyboardOpen;
+    !arePillsDismissed;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
-      <View style={styles.modalGrabber} />
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
+        <View style={styles.modalGrabber} />
 
-      {/* ── Flagship Header ────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            haptics.tap();
-            router.back();
-          }}
-          style={styles.headerIconButton}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          accessibilityLabel="Close"
-        >
-          <X size={18} color={THEME.colors.textSecondary} />
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <View style={styles.headerTitleRow}>
-            <QuantumLogo size={18} color={THEME.colors.aiLight} glowColor={currentAccent.primary} style={{ marginRight: 6 }} />
-            <Text style={styles.headerTitle}>SplitIt Financial AI</Text>
-          </View>
-          <View style={styles.headerStatusRow}>
-            <Text style={styles.headerSubtitle}>
-              {groupName ? `Scoped to ${groupName}` : 'Zero Math Hallucinations · RAG Ledger'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.headerRightActions}>
+        {/* ── Flagship Header ────────────────────────────────────────────── */}
+        <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
               haptics.tap();
-              setIsInfoModalVisible(true);
+              router.back();
             }}
             style={styles.headerIconButton}
-            accessibilityLabel="Assistant Info"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityLabel="Close"
           >
-            <Info size={18} color={THEME.colors.textSecondary} />
+            <X size={18} color={THEME.colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleClearHistory}
-            style={styles.headerIconButton}
-            accessibilityLabel="Clear history"
-          >
-            <Trash2 size={17} color={THEME.colors.textMuted} />
-          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <View style={styles.headerTitleRow}>
+              <QuantumLogo size={18} color={THEME.colors.aiLight} glowColor={currentAccent.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.headerTitle}>SplitIt Financial AI</Text>
+            </View>
+            <View style={styles.headerStatusRow}>
+              <Text style={styles.headerSubtitle}>
+                {groupName ? `Scoped to ${groupName}` : 'Zero Math Hallucinations · RAG Ledger'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              onPress={() => {
+                haptics.tap();
+                setIsInfoModalVisible(true);
+              }}
+              style={styles.headerIconButton}
+              accessibilityLabel="Assistant Info"
+            >
+              <Info size={18} color={THEME.colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleClearHistory}
+              style={styles.headerIconButton}
+              accessibilityLabel="Clear history"
+            >
+              <Trash2 size={17} color={THEME.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* ── Keyboard-Adaptive Container ─────────────────────────────────── */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-        style={styles.keyboardContainer}
-      >
-        <View style={styles.innerContentWrapper}>
-          {/* ── Messages Feed ─────────────────────────────────────────────── */}
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesScroll}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Welcome State: Expands when keyboard is closed, collapses compactly when keyboard is open */}
-            {messages.length <= 1 && (
-              isKeyboardOpen ? (
-                /* Compact 1-line Starter Bar when Keyboard is Active */
-                <View style={styles.compactWelcomeContainer}>
-                  <View style={styles.compactWelcomeHeader}>
-                    <Sparkles size={14} color={currentAccent.primary} />
-                    <Text style={styles.compactWelcomeTitle}>Quick Financial Prompts</Text>
-                  </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.compactChipsRow}
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {starterCards.map((card) => {
-                      const CardIcon = card.icon;
-                      return (
-                        <TouchableOpacity
-                          key={card.id}
-                          style={styles.compactStarterChip}
-                          onPress={() => handleSend(card.prompt)}
-                          activeOpacity={0.75}
-                          disabled={isStreaming}
-                        >
-                          <CardIcon size={12} color={card.accentColor} />
-                          <Text style={styles.compactStarterChipText}>{card.title}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              ) : (
-                /* Full Flagship Hero Starter Cards Grid when Keyboard is Closed */
-                <View style={styles.welcomeHeroContainer}>
-                  <View style={styles.heroSparkleBadge}>
-                    <Sparkles size={24} color={currentAccent.primary} />
-                  </View>
-                  <Text style={styles.heroTitle}>Financial Intelligence</Text>
-                  <Text style={styles.heroSubtitle}>
-                    Real-time ledger context on your balances, debts, and budgets with zero math hallucinations.
-                  </Text>
+        {/* ── Messages Feed ─────────────────────────────────────────────── */}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesScroll}
+          contentContainerStyle={styles.messagesContent}
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Welcome State: Full Flagship Hero Starter Cards Grid */}
+          {messages.length <= 1 && (
+            <View style={styles.welcomeHeroContainer}>
+              <View style={styles.heroSparkleBadge}>
+                <Sparkles size={24} color={currentAccent.primary} />
+              </View>
+              <Text style={styles.heroTitle}>Financial Intelligence</Text>
+              <Text style={styles.heroSubtitle}>
+                Real-time ledger context on your balances, debts, and budgets with zero math hallucinations.
+              </Text>
 
-                  <View style={styles.starterGrid}>
-                    {starterCards.map((card) => {
-                      const CardIcon = card.icon;
-                      return (
-                        <TouchableOpacity
-                          key={card.id}
-                          style={styles.starterCard}
-                          onPress={() => handleSend(card.prompt)}
-                          activeOpacity={0.75}
-                          disabled={isStreaming}
-                        >
-                          <View style={styles.starterCardHeader}>
-                            <View style={[styles.starterIconBadge, { backgroundColor: card.badgeBg }]}>
-                              <CardIcon size={16} color={card.accentColor} />
-                            </View>
-                            <ArrowRight size={14} color={THEME.colors.textMuted} />
-                          </View>
-                          <Text style={styles.starterCardTitle}>{card.title}</Text>
-                          <Text style={styles.starterCardDesc} numberOfLines={2}>
-                            {card.description}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              )
-            )}
+              <View style={styles.starterGrid}>
+                {starterCards.map((card) => {
+                  const CardIcon = card.icon;
+                  return (
+                    <TouchableOpacity
+                      key={card.id}
+                      style={styles.starterCard}
+                      onPress={() => handleSend(card.prompt)}
+                      activeOpacity={0.75}
+                      disabled={isStreaming}
+                    >
+                      <View style={styles.starterCardHeader}>
+                        <View style={[styles.starterIconBadge, { backgroundColor: card.badgeBg }]}>
+                          <CardIcon size={16} color={card.accentColor} />
+                        </View>
+                        <ArrowRight size={14} color={THEME.colors.textMuted} />
+                      </View>
+                      <Text style={styles.starterCardTitle}>{card.title}</Text>
+                      <Text style={styles.starterCardDesc} numberOfLines={2}>
+                        {card.description}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
             {/* Messages Flow */}
             {messages.map((msg) => {
@@ -707,51 +638,51 @@ export default function AiChatModal() {
                 </View>
               </View>
             )}
+
+            {/* ── Follow-Up Suggestion Chips (Inside Feed) ───────────────── */}
+            {showFollowUpChips && (
+              <View style={styles.chipsWrapper}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipsScrollContent}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {followUpChips.map((chip, idx) => {
+                    const ChipIcon = chip.icon;
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.chipButton}
+                        onPress={() => handleSend(chip.prompt)}
+                        activeOpacity={0.7}
+                      >
+                        <ChipIcon size={12} color={THEME.colors.aiLight} />
+                        <Text style={styles.chipText}>{chip.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  <TouchableOpacity
+                    style={styles.chipDismissButton}
+                    onPress={() => {
+                      haptics.tap();
+                      setArePillsDismissed(true);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <X size={12} color={THEME.colors.textMuted} />
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            )}
           </ScrollView>
 
-          {/* ── Follow-Up Suggestion Chips (Above Input, hidden when typing/keyboard open) ── */}
-          {showFollowUpChips && (
-            <View style={styles.chipsWrapper}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipsScrollContent}
-                keyboardShouldPersistTaps="handled"
-              >
-                {followUpChips.map((chip, idx) => {
-                  const ChipIcon = chip.icon;
-                  return (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.chipButton}
-                      onPress={() => handleSend(chip.prompt)}
-                      activeOpacity={0.7}
-                    >
-                      <ChipIcon size={12} color={THEME.colors.aiLight} />
-                      <Text style={styles.chipText}>{chip.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-                <TouchableOpacity
-                  style={styles.chipDismissButton}
-                  onPress={() => {
-                    haptics.tap();
-                    setArePillsDismissed(true);
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <X size={12} color={THEME.colors.textMuted} />
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          )}
-
           {/* ── Input Bar Capsule ─────────────────────────────────────────── */}
-          <Animated.View
+          <View
             style={[
               styles.inputContainer,
               {
-                paddingBottom: bottomPaddingAnim,
+                paddingBottom: isKeyboardOpen ? 10 : Math.max(insets.bottom, 12),
               },
             ]}
           >
@@ -764,7 +695,10 @@ export default function AiChatModal() {
                 onChangeText={setInput}
                 multiline
                 maxLength={800}
-                onFocus={() => scrollToEndThrottled()}
+                onFocus={() => {
+                  setIsKeyboardOpen(true);
+                  scrollToEndThrottled();
+                }}
               />
 
               {input.length > 0 && !isStreaming && (
@@ -805,9 +739,7 @@ export default function AiChatModal() {
                 </TouchableOpacity>
               )}
             </View>
-          </Animated.View>
-        </View>
-      </KeyboardAvoidingView>
+          </View>
 
       {/* ── Financial Assistant Info Modal ─────────────────────────────── */}
       <Modal
@@ -883,6 +815,7 @@ export default function AiChatModal() {
         </TouchableOpacity>
       </Modal>
     </SafeAreaView>
+  </KeyboardAvoidingView>
   );
 }
 
@@ -966,6 +899,7 @@ const styles = StyleSheet.create({
   },
   keyboardContainer: {
     flex: 1,
+    backgroundColor: THEME.colors.background,
   },
   innerContentWrapper: {
     flex: 1,
@@ -1368,15 +1302,13 @@ const styles = StyleSheet.create({
     color: THEME.colors.aiLight,
     fontWeight: '500',
   },
-  // Follow-Up Chips (Above Input)
+  // Follow-Up Chips (Inside Feed)
   chipsWrapper: {
-    paddingVertical: 6,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
-    backgroundColor: THEME.colors.background,
+    paddingVertical: 4,
+    marginVertical: 4,
   },
   chipsScrollContent: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 0,
     gap: 8,
     alignItems: 'center',
   },

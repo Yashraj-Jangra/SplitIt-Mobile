@@ -1,5 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Chat Input Docking & Layout Stabilization (`app/ai/chat.tsx`, `app/support/[id].tsx`)**:
+  - **Root Keyboard Avoidance Architecture**:
+    - Wrapped both AI Chat (`app/ai/chat.tsx`) and Support Thread (`app/support/[id].tsx`) screens in a root `<KeyboardAvoidingView style={styles.keyboardContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>` encompassing `SafeAreaView edges={['top']}`.
+    - Eliminates under-padding and header offset miscalculations on iOS so the input field always docks flush directly above the soft keyboard.
+    - Android native `adjustResize` resizes viewport cleanly without layout collision or pan distortion.
+  - **Screen Layout Stabilization in AI Chat (`app/ai/chat.tsx`)**:
+    - Abolished the disruptive conditional unmounting of the welcome hero (`welcomeHeroContainer`), keeping the starter prompt cards permanently stable in the `ScrollView` without swapping out for a 1-line chip bar on keyboard show.
+    - Relocated follow-up suggestion chips (`showFollowUpChips`) directly into the `ScrollView` feed immediately below the conversation, preventing outer container height shifts and input capsule jumps.
+    - Replaced the laggy JS-thread `Animated.timing` bottom padding animation with instant, responsive keyboard-aware docking (`isKeyboardOpen ? 10 : Math.max(insets.bottom, 12)`).
+  - **Support Chat Thread Parity (`app/support/[id].tsx`)**:
+    - Added `isKeyboardOpen` state and `Keyboard.addListener` synchronization for both iOS and Android.
+    - Added `onFocus` auto-scrolling to `TextInput` so messages scroll smoothly into view directly above the docked input bar.
+    - Dynamic bottom padding on `inputBar` collapses to 10px when keyboard is active and restores to `Math.max(insets.bottom, 12)` when dismissed.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Settings Profile Hero Refinement (`app/(tabs)/profile.tsx`)**:
   - **Refined Avatar Scale**: Decreased avatar diameter from 96px to 72px (`width: 72, height: 72, borderRadius: 36`) with crisp 2px dynamic accent border ring and balanced 26px initials typography.
   - **Enlarged User Identity**: Increased username title from 20px to 24px (`fontSize: 24, fontWeight: '900', letterSpacing: -0.6`), with enlarged handle and email subheadings for bold typographic prominence.

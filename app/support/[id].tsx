@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -49,8 +50,33 @@ export default function TicketThreadScreen() {
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = () => {
+      setIsKeyboardOpen(true);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 60);
+    };
+
+    const onHide = () => {
+      setIsKeyboardOpen(false);
+    };
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -215,7 +241,11 @@ export default function TicketThreadScreen() {
   const isResolved = ticket.status === 'resolved' || ticket.status === 'closed';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -262,21 +292,18 @@ export default function TicketThreadScreen() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollFlex}
+        contentContainerStyle={[
+          styles.messagesContent,
+          { paddingBottom: isResolved ? 32 : 16 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: false })}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={[
-            styles.messagesContent,
-            { paddingBottom: isResolved ? 32 : 16 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: false })}
-        >
           {/* Thread Overview Card */}
           <View style={styles.overviewCard}>
             <View style={styles.overviewTopRow}>
@@ -401,7 +428,7 @@ export default function TicketThreadScreen() {
           <View
             style={[
               styles.inputBar,
-              { paddingBottom: Math.max(insets.bottom, 12) },
+              { paddingBottom: isKeyboardOpen ? 10 : Math.max(insets.bottom, 12) },
             ]}
           >
             <View style={styles.inputContainer}>
@@ -413,6 +440,12 @@ export default function TicketThreadScreen() {
                 placeholderTextColor={THEME.colors.textMuted}
                 multiline
                 maxLength={2000}
+                onFocus={() => {
+                  setIsKeyboardOpen(true);
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  }, 60);
+                }}
               />
             </View>
             <TouchableOpacity
@@ -435,12 +468,19 @@ export default function TicketThreadScreen() {
             </TouchableOpacity>
           </View>
         ) : null}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+  },
+  scrollFlex: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: THEME.colors.background,
