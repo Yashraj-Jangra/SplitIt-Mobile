@@ -1,6 +1,22 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Modular App Preferences Redesign with BottomSheet Popup Pickers (`app/settings/preferences.tsx`)**:
+  - **Modular Settings Architecture**:
+    - Replaced disjointed forms and expanded presets with standardized modular sections (`DISPLAY & THEMING`, `HARDWARE & INTERACTION`, `WORKFLOW DEFAULTS`, `FORMATTING PREVIEW`).
+    - Standardized all settings rows with uniform 34px glyph containers, titles, subtitles, and right-aligned accessories (accent badge, currency pill, group pill, or switch).
+  - **Currency Selection BottomSheetModal**:
+    - Tapping the Currency row launches a dedicated hardware-accelerated bottom sheet popup picker (`BottomSheetModal`).
+    - Features a compact search filter input to quickly search presets by code, name, or symbol.
+    - Displays clean ledger of all 14 preset currencies with flags, names, symbols, and checkmark indicators.
+    - At the bottom of the picker, integrated a dedicated "Custom Currency Logo" section with inline symbol input, "Apply" button, and active status badge.
+  - **Default Circle Selection BottomSheetModal**:
+    - Tapping the Default Circle row launches a dedicated popup picker bottom sheet.
+    - Includes option for "None (Auto-pick most recent)" and lists all user circles with cover avatars and member counts.
+  - **Open Editorial Formatting Preview**:
+    - Replaced old card with a sleek open banner featuring a 3px vertical accent bar, 36px currency symbol glyph, live formatted amount, and active indicator dot.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Abolished Box Soup: Open Editorial & No-Div Architecture Standard (`design.md`, `.agents/rules/theming.md`, `AGENTS.md`, `app/settings/preferences.tsx`, `app/analysis/index.tsx`, `src/components/groups/GroupAnalysisTab.tsx`)**:
   - **Codified Permanent Design Rules**:
     - Updated `design.md` with Section 4: "Strict Open-Editorial & No-Div Architecture Standard" (prohibiting nested card soup, boxes inside boxes, and requiring single-layer containers, continuous hairlines, and nodes) and Section 5: "Screen Width & Layout Metrics Consistency" (16px standard horizontal padding on screens; 0px child tab padding inside `tabSectionWrapper`).
