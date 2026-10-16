@@ -44,6 +44,7 @@ import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { ObligationsModal } from '../../src/components/dashboard/ObligationsModal';
+import { sortGroups, GroupSortOption } from '../../src/utils/group-sort';
 
 interface HomeActivityEntry {
   type: 'expense' | 'settlement';
@@ -62,6 +63,7 @@ export default function HomeScreen() {
   const { currentAccent } = useAppTheme();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authUser || authService.getInMemoryUser());
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
+  const [groupSortBy, setGroupSortBy] = useState<GroupSortOption>('last_usage');
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
   const [settlements, setSettlements] = useState<GroupSettlementItem[]>(() => []);
   const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(() => balanceService.getInMemoryUserBalanceSummary());
@@ -164,6 +166,11 @@ export default function HomeScreen() {
         setLoading(false);
       }
     });
+
+    storageService.getItem<GroupSortOption>(STORAGE_KEYS.GROUPS_SORT_PREFERENCE).then((saved) => {
+      if (saved) setGroupSortBy(saved);
+    });
+
     loadData(false);
   }, [authUser]);
 
@@ -171,6 +178,9 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!authUser) return;
+      storageService.getItem<GroupSortOption>(STORAGE_KEYS.GROUPS_SORT_PREFERENCE).then((saved) => {
+        if (saved) setGroupSortBy(saved);
+      });
       loadData(false);
     }, [authUser])
   );
@@ -186,6 +196,9 @@ export default function HomeScreen() {
         setBalanceSummary(null);
         return;
       }
+      storageService.getItem<GroupSortOption>(STORAGE_KEYS.GROUPS_SORT_PREFERENCE).then((saved) => {
+        if (saved) setGroupSortBy(saved);
+      });
       loadData(true);
     });
     return unsubscribe;
@@ -221,6 +234,12 @@ export default function HomeScreen() {
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
+
+  // Sorted and filtered active groups for Home dashboard (max 5, matching Groups tab sort)
+  const displayedHomeGroups = useMemo(() => {
+    const active = groups.filter((g) => !g.archived);
+    return sortGroups(active, groupSortBy).slice(0, 5);
+  }, [groups, groupSortBy]);
 
   // Unified recent activities (Expenses & Settlements, last 10 entries)
   const recentActivities: HomeActivityEntry[] = useMemo(() => {
@@ -530,8 +549,8 @@ export default function HomeScreen() {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pebblesScroll}>
-            {groups.length > 0 ? (
-              groups.slice(0, 5).map((group) => {
+            {displayedHomeGroups.length > 0 ? (
+              displayedHomeGroups.map((group) => {
                 const isOwed = group.userNetBalance > 0;
                 const isOwe = group.userNetBalance < 0;
 

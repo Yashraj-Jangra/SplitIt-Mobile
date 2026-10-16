@@ -41,17 +41,11 @@ import { haptics } from '../../src/services/haptics.service';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
 import { appEventEmitter } from '../../src/services/event-emitter';
+import { sortGroups, GroupSortOption } from '../../src/utils/group-sort';
 
 type FilterType = 'all' | 'owed' | 'owe' | 'archived';
 
-export type SortOptionType =
-  | 'last_usage'
-  | 'name_asc'
-  | 'name_desc'
-  | 'owed_desc'
-  | 'owed_asc'
-  | 'owes_desc'
-  | 'owes_asc';
+export type SortOptionType = GroupSortOption;
 
 interface SortOptionItem {
   id: SortOptionType;
@@ -235,6 +229,7 @@ export default function GroupsScreen() {
     setShowSortModal(false);
     try {
       await storageService.setItem(STORAGE_KEYS.GROUPS_SORT_PREFERENCE, newSort);
+      appEventEmitter.emit('data-changed', { type: 'group_updated' });
     } catch {
       // Non-blocking offline storage
     }
@@ -277,39 +272,7 @@ export default function GroupsScreen() {
       );
     });
 
-    return [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case 'name_asc':
-          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-        case 'name_desc':
-          return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' });
-        case 'owed_desc':
-          return (b.userNetBalance || 0) - (a.userNetBalance || 0);
-        case 'owed_asc':
-          return (a.userNetBalance || 0) - (b.userNetBalance || 0);
-        case 'owes_desc':
-          return (a.userNetBalance || 0) - (b.userNetBalance || 0);
-        case 'owes_asc':
-          return (b.userNetBalance || 0) - (a.userNetBalance || 0);
-        case 'last_usage':
-        default: {
-          const timeA = a.updatedAt
-            ? new Date(a.updatedAt).getTime()
-            : a.createdAt
-            ? new Date(a.createdAt).getTime()
-            : 0;
-          const timeB = b.updatedAt
-            ? new Date(b.updatedAt).getTime()
-            : b.createdAt
-            ? new Date(b.createdAt).getTime()
-            : 0;
-          if (timeA !== timeB) {
-            return timeB - timeA;
-          }
-          return a.name.localeCompare(b.name);
-        }
-      }
-    });
+    return sortGroups(filtered, sortBy);
   }, [groups, activeFilter, searchQuery, sortBy]);
 
   return (

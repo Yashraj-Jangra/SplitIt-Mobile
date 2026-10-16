@@ -1,5 +1,16 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Synchronized Group Sorting & Max 5 Limit on Home Dashboard (`src/utils/group-sort.ts`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`)**:
+  - **Shared Sorting Utility (`src/utils/group-sort.ts`)**:
+    - Created modular `sortGroups(groups, sortBy)` utility supporting all standard sorting modes: `'last_usage'` (most recently active first), `'name_asc'`, `'name_desc'`, `'owed_desc'`, `'owed_asc'`, `'owes_desc'`, and `'owes_asc'`.
+    - Refactored `app/(tabs)/groups.tsx` to utilize this shared sorting engine, ensuring 100% logic and order parity across screens.
+  - **Home Dashboard Integration (`app/(tabs)/index.tsx`)**:
+    - Filtered out archived circles so only active circles appear in the "Your Groups" pebble strip.
+    - Hydrated the user's active `groupSortBy` preference from `STORAGE_KEYS.GROUPS_SORT_PREFERENCE` on mount, screen focus (`useFocusEffect`), and whenever `data-changed` is emitted.
+    - Added `appEventEmitter.emit('data-changed', { type: 'group_updated' })` in `groups.tsx` on sort preference change so the Home page immediately updates in real-time.
+    - Sorted active groups with the shared algorithm and strictly capped the display at max 5 (`displayedHomeGroups.slice(0, 5)`).
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Fixed Clean Logout & Redesigned Logout Button and Brand Footer (`src/services/auth.service.ts`, `src/services/storage.service.ts`, `src/services/demo.service.ts`, `src/services/event-emitter.ts`, `src/contexts/auth.context.tsx`, `app/(tabs)/profile.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`, `app/(tabs)/activity.tsx`, `app/groups/[id]/index.tsx`)**:
   - **Single-Tap 100% Clean Logout Resolution**:
     - **Eliminated Race Condition**: In `authService.fetchUserProfile`, added an active session check ensuring that if a user signs out while a profile request is in-flight, the lagged response never writes back or resurrects user data in `SecureStore`.
