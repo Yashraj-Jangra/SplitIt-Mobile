@@ -1,5 +1,16 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Fixed Activity Screen Scrolling Glitch & Half-Hidden Subtitle Text (`app/(tabs)/activity.tsx`)**:
+  - **Identified Root Causes**:
+    1. **Half-Hidden Subtitle Text**: The `collapsibleHeader` had an artificial fixed initial height (`outputRange: [56, 0]` at `scrollY = 0`) coupled with `overflow: 'hidden'`. Because the natural measured height of title (26px) + subtitle (13px) + `paddingTop: 8` was ~64px, the bottom half of the subtitle text ("Recent transactions & settlements ledger") was clipped off at rest.
+    2. **Severe Scrolling Glitch**: The header was driven by legacy JS-thread `Animated` (`useNativeDriver: false`) changing the layout height of a sibling view *above* the ScrollView dynamically on scroll. When an element above an active ScrollView resizes during gestures, the ScrollView's anchor point shifts under the user's finger, triggering rapid layout feedback jitter and violent visual glitching.
+  - **Resolution**:
+    - Removed the flawed `scrollY` height/margin collapse animation and legacy `Animated` imports.
+    - Replaced `collapsibleHeader` with a clean, pinned `header` matching the design standard of Circles (`groups.tsx`) and Profile (`profile.tsx`).
+    - Removed `overflow: 'hidden'` and fixed height constraints, allowing the title and subtitle to render with 100% natural typography and comfortable spacing (`paddingBottom: 10`).
+    - Converted `<Animated.ScrollView>` back to standard hardware-accelerated `<ScrollView>`, eliminating layout shifting and providing buttery smooth 60fps scrolling.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Strict Vertical Scroll Locking During Balance Graph & Timeline Scrubbing (`src/components/dashboard/BalanceHistoryGraph.tsx`, `src/components/charts/SpendingTimelineChart.tsx`, `app/(tabs)/index.tsx`, `app/analysis/index.tsx`)**:
   - **Eliminated Vertical Scroll Jitter & Accidental Drag Interceptions**:
     - Resolved the issue where touching, scrubbing, or hovering across the Balance History Graph on the home dashboard caused the parent screen `ScrollView` to hijack touch responders and scroll vertically.

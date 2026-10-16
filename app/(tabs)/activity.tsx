@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   RefreshControl,
   TouchableOpacity,
   TextInput,
-  Animated,
   ScrollView,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -70,27 +69,6 @@ export default function ActivityScreen() {
   const [roleFilter, setRoleFilter] = useState<'all' | 'paid_by_me' | 'split_with_me'>('all');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-
-  // Scroll animation for gracefully hiding the header text when scrolled
-  const scrollY = useRef(new Animated.Value(0)).current;
-
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 42],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
-  const headerHeight = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [56, 0],
-    extrapolate: 'clamp',
-  });
-
-  const headerMargin = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [8, 0],
-    extrapolate: 'clamp',
-  });
 
   const isDemoActive =
     !isDemoDismissed &&
@@ -317,20 +295,11 @@ export default function ActivityScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* ── Collapsible Header Section (Hides on Scroll) ── */}
-      <Animated.View
-        style={[
-          styles.collapsibleHeader,
-          {
-            opacity: headerOpacity,
-            height: headerHeight,
-            marginBottom: headerMargin,
-          },
-        ]}
-      >
+      {/* ── Top Header Section ── */}
+      <View style={styles.header}>
         <Text style={styles.title}>Activity</Text>
         <Text style={styles.subtitle}>Recent transactions & settlements ledger</Text>
-      </Animated.View>
+      </View>
 
       {/* ── Pinned Top Search Bar ── */}
       <View style={styles.searchBarWrapper}>
@@ -603,14 +572,9 @@ export default function ActivityScreen() {
       </View>
 
       {/* ── Main Activity Feed (Open Editorial No-Div Architecture) ── */}
-      <Animated.ScrollView
+      <ScrollView
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -739,7 +703,7 @@ export default function ActivityScreen() {
         )}
 
         <View style={{ height: 40 }} />
-      </Animated.ScrollView>
+      </ScrollView>
 
       {/* ── Filters Bottom Sheet Modal ── */}
       <ActivityFilterModal
@@ -764,10 +728,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  collapsibleHeader: {
+  header: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    overflow: 'hidden',
+    paddingBottom: 10,
   },
   title: {
     fontSize: 26,
