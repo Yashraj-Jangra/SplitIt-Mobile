@@ -310,58 +310,60 @@ export default function ActivityScreen() {
         </View>
       </View>
 
-      {/* Segmented Filter Pills */}
+      {/* Compact Combined Segmented Filter Track (Right-Aligned) */}
       <View style={styles.filterPillsRow}>
-        <TouchableOpacity
-          style={[styles.filterPill, activeFilter === 'all' && styles.filterPillActive]}
-          activeOpacity={0.7}
-          onPress={() => {
-            haptics.tap();
-            setActiveFilter('all');
-          }}
-        >
-          <Text
-            style={[styles.filterPillText, activeFilter === 'all' && styles.filterPillTextActive]}
+        <View style={styles.segmentedTrack}>
+          <TouchableOpacity
+            style={[styles.segmentBtn, activeFilter === 'all' && styles.segmentBtnActive]}
+            activeOpacity={0.7}
+            onPress={() => {
+              haptics.tap();
+              setActiveFilter('all');
+            }}
           >
-            All ({unifiedActivity.length})
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[styles.segmentText, activeFilter === 'all' && styles.segmentTextActive]}
+            >
+              All
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.filterPill, activeFilter === 'expenses' && styles.filterPillActive]}
-          activeOpacity={0.7}
-          onPress={() => {
-            haptics.tap();
-            setActiveFilter('expenses');
-          }}
-        >
-          <Text
-            style={[
-              styles.filterPillText,
-              activeFilter === 'expenses' && styles.filterPillTextActive,
-            ]}
+          <TouchableOpacity
+            style={[styles.segmentBtn, activeFilter === 'expenses' && styles.segmentBtnActive]}
+            activeOpacity={0.7}
+            onPress={() => {
+              haptics.tap();
+              setActiveFilter('expenses');
+            }}
           >
-            Expenses ({expenseCount})
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.segmentText,
+                activeFilter === 'expenses' && styles.segmentTextActive,
+              ]}
+            >
+              Expenses
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.filterPill, activeFilter === 'settlements' && styles.filterPillActive]}
-          activeOpacity={0.7}
-          onPress={() => {
-            haptics.tap();
-            setActiveFilter('settlements');
-          }}
-        >
-          <Text
-            style={[
-              styles.filterPillText,
-              activeFilter === 'settlements' && styles.filterPillTextActive,
-            ]}
+          <TouchableOpacity
+            style={[styles.segmentBtn, activeFilter === 'settlements' && styles.segmentBtnActive]}
+            activeOpacity={0.7}
+            onPress={() => {
+              haptics.tap();
+              setActiveFilter('settlements');
+            }}
           >
-            Settlements ({settlementCount})
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.segmentText,
+                activeFilter === 'settlements' && styles.segmentTextActive,
+              ]}
+            >
+              Settlements
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Secondary Multi-Facet Filter (Roles & Circles) */}
@@ -645,22 +647,50 @@ const styles = StyleSheet.create({
   },
   filterPillsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 14,
-    gap: 8,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
     marginBottom: 8,
+  },
+  segmentedTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 20,
+    padding: 2.5,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  segmentBtn: {
+    paddingHorizontal: 11,
+    paddingVertical: 4.5,
+    borderRadius: 16,
+  },
+  segmentBtnActive: {
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  segmentText: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    fontWeight: '600',
+  },
+  segmentTextActive: {
+    color: THEME.colors.primary,
+    fontWeight: '700',
   },
   subFilterRow: {
     marginBottom: 12,
   },
   subFilterScroll: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     gap: 6,
     alignItems: 'center',
   },
   subPill: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 6,
+    borderRadius: 8,
     backgroundColor: THEME.colors.surface,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
@@ -683,27 +713,6 @@ const styles = StyleSheet.create({
     height: 16,
     backgroundColor: THEME.colors.hairline,
     marginHorizontal: 4,
-  },
-  filterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-  },
-  filterPillActive: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderColor: THEME.colors.primary,
-  },
-  filterPillText: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    fontWeight: '500',
-  },
-  filterPillTextActive: {
-    color: THEME.colors.primary,
-    fontWeight: '700',
   },
   listContent: {
     paddingHorizontal: 14,

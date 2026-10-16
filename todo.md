@@ -1,5 +1,24 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Modular Full-Screen Budget Modal, Right-Aligned Compact Segmented Activity Filters & Header Cover Cleanup (`app/(tabs)/activity.tsx`, `app/groups/[id]/index.tsx`, `src/components/groups/SetBudgetModal.tsx`)**:
+  - **Compact Combined Segmented Activity Filters (`app/(tabs)/activity.tsx`, `app/groups/[id]/index.tsx`)**:
+    - Removed count indicators from all filter pills (`All`, `Expenses`, `Settlements`).
+    - Aligned filters to the right (`justifyContent: 'flex-end'`) and housed them inside a compact, combined sliding segmented track (`segmentedTrack` with `surfaceElevated` background, hairline border, and 20px radius).
+    - Compact 11px typography with active pill elevation and tactile haptic response.
+    - Synchronized identical design across both the Global Activity tab and the Circle Activity Stream.
+  - **Group Details Header Cleanup (`app/groups/[id]/index.tsx`)**:
+    - Removed floating "Cover" camera button from the top hero image, reserving cover photo configuration exclusively for Group Settings (`app/groups/[id]/settings.tsx`).
+  - **Modular Full-Screen Budget Modal (`src/components/groups/SetBudgetModal.tsx`)**:
+    - Replaced the cramped 54% bottom sheet with a full-screen, screen-like modal (`animationType="slide"`, `transparent={false}`, `SafeAreaView`).
+    - Pinned editorial header with back button, screen title ("Edit Monthly Budget" / "Set Monthly Budget"), circle name subtitle, and quick-action trash icon for disabling budget.
+    - Open Editorial "no-div" hero amount section: abolished nested box soup; large 36px hero input with currency symbol, continuous baseline hairline, overline label, quick sum-sync button, and horizontal preset chips (10k, 25k, 50k, 100k).
+    - Pinned bottom action bar (`Save Budget`) with full safe-area inset adaptation.
+  - **Collapsible Automated Alerts Accordion (`src/components/groups/SetBudgetModal.tsx`)**:
+    - Transformed Automated Alerts section into a click-to-expand accordion matching Category Caps.
+    - Guaranteed **closed by default every time** (`useState(false)`).
+    - Added accordion header with icon badge, title, subtitle, active count badge, and smooth animated layout transition.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Atmospheric Top Formatting Preview Hero & Fully Synchronized Default Group Selection (`app/settings/preferences.tsx`, `src/components/common/GroupPickerModal.tsx`, `src/services/group.service.ts`, `src/services/storage.service.ts`, `app/expenses/new.tsx`, `app/settle/new.tsx`)**:
   - **Atmospheric Top Formatting Preview Hero (`app/settings/preferences.tsx`)**:
     - Replaced the bottom list-item card preview with a real preview hero card at the **TOP** of the screen, creating visual parity with `AppearanceScreen` (`app/settings/appearance.tsx`).

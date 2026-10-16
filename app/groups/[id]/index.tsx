@@ -751,73 +751,75 @@ export default function GroupDetailScreen() {
         {/* TAB 1: EXPENSES & SETTLEMENTS (ACTIVITY STREAM) */}
         {visitedTabs.expenses && (
           <View style={[styles.tabSection, activeTab !== 'expenses' && styles.tabHidden]}>
-            {/* Segmented Filter Pills */}
+            {/* Compact Combined Segmented Filter Track (Right-Aligned) */}
             <View style={styles.activityFilterBar}>
-              <TouchableOpacity
-                style={[
-                  styles.activityFilterPill,
-                  activityFilter === 'all' && styles.activityFilterPillActive,
-                ]}
-                onPress={() => {
-                  haptics.tap();
-                  setActivityFilter('all');
-                  setVisibleExpenseCount(PAGE_SIZE);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
+              <View style={styles.segmentedTrack}>
+                <TouchableOpacity
                   style={[
-                    styles.activityFilterText,
-                    activityFilter === 'all' && styles.activityFilterTextActive,
+                    styles.segmentBtn,
+                    activityFilter === 'all' && styles.segmentBtnActive,
                   ]}
+                  onPress={() => {
+                    haptics.tap();
+                    setActivityFilter('all');
+                    setVisibleExpenseCount(PAGE_SIZE);
+                  }}
+                  activeOpacity={0.7}
                 >
-                  All ({activityStream.length})
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activityFilter === 'all' && styles.segmentTextActive,
+                    ]}
+                  >
+                    All
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.activityFilterPill,
-                  activityFilter === 'expenses' && styles.activityFilterPillActive,
-                ]}
-                onPress={() => {
-                  haptics.tap();
-                  setActivityFilter('expenses');
-                  setVisibleExpenseCount(PAGE_SIZE);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
+                <TouchableOpacity
                   style={[
-                    styles.activityFilterText,
-                    activityFilter === 'expenses' && styles.activityFilterTextActive,
+                    styles.segmentBtn,
+                    activityFilter === 'expenses' && styles.segmentBtnActive,
                   ]}
+                  onPress={() => {
+                    haptics.tap();
+                    setActivityFilter('expenses');
+                    setVisibleExpenseCount(PAGE_SIZE);
+                  }}
+                  activeOpacity={0.7}
                 >
-                  Expenses ({(group?.expenses || []).length})
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activityFilter === 'expenses' && styles.segmentTextActive,
+                    ]}
+                  >
+                    Expenses
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.activityFilterPill,
-                  activityFilter === 'settlements' && styles.activityFilterPillActive,
-                ]}
-                onPress={() => {
-                  haptics.tap();
-                  setActivityFilter('settlements');
-                  setVisibleExpenseCount(PAGE_SIZE);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
+                <TouchableOpacity
                   style={[
-                    styles.activityFilterText,
-                    activityFilter === 'settlements' && styles.activityFilterTextActive,
+                    styles.segmentBtn,
+                    activityFilter === 'settlements' && styles.segmentBtnActive,
                   ]}
+                  onPress={() => {
+                    haptics.tap();
+                    setActivityFilter('settlements');
+                    setVisibleExpenseCount(PAGE_SIZE);
+                  }}
+                  activeOpacity={0.7}
                 >
-                  Settlements ({(group?.settlements || []).length})
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activityFilter === 'settlements' && styles.segmentTextActive,
+                    ]}
+                  >
+                    Settlements
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {loading && activityStream.length === 0 ? (
@@ -1301,30 +1303,6 @@ export default function GroupDetailScreen() {
           resizeMode="cover"
         />
         <Animated.View style={[styles.heroVignette, { opacity: vignetteOpacity }]} />
-
-        {/* Floating Change Cover Badge (Visible when hero is expanded) */}
-        {!group.archived && (
-          <Animated.View
-            style={[
-              styles.heroCoverBadgeWrap,
-              {
-                top: topInset + 46,
-                opacity: expandedContentOpacity,
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.heroCoverBadge}
-              onPress={handleOpenCoverPicker}
-              activeOpacity={0.8}
-              accessibilityLabel="Change Cover Image"
-              accessibilityRole="button"
-            >
-              <Camera size={13} color="#FFFFFF" strokeWidth={2.2} />
-              <Text style={styles.heroCoverBadgeText}>Cover</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
 
         {/* Hero Expanded Title & Floating Actions */}
         <Animated.View
@@ -1838,30 +1816,37 @@ const styles = StyleSheet.create({
   },
   activityFilterBar: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: 8,
     paddingHorizontal: 2,
-    marginBottom: -4,
+    marginBottom: 2,
   },
-  activityFilterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.full,
+  segmentedTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 20,
+    padding: 2.5,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  segmentBtn: {
+    paddingHorizontal: 11,
+    paddingVertical: 4.5,
+    borderRadius: 16,
+  },
+  segmentBtnActive: {
     backgroundColor: THEME.colors.surface,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
   },
-  activityFilterPillActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderColor: THEME.colors.textSecondary,
-  },
-  activityFilterText: {
-    fontSize: 12,
-    fontWeight: '600',
+  segmentText: {
+    fontSize: 11,
     color: THEME.colors.textMuted,
+    fontWeight: '600',
   },
-  activityFilterTextActive: {
-    color: THEME.colors.text,
+  segmentTextActive: {
+    color: THEME.colors.primary,
     fontWeight: '700',
   },
 
