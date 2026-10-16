@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { Handshake, ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { useAppTheme } from '../../contexts/theme.context';
@@ -24,6 +24,7 @@ export interface ActivitySettlementRowProps {
   currentUserId?: string;
   isLast?: boolean;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const ActivitySettlementRow = React.memo(function ActivitySettlementRow({
@@ -31,6 +32,7 @@ export const ActivitySettlementRow = React.memo(function ActivitySettlementRow({
   currentUserId,
   isLast = false,
   onPress,
+  style,
 }: ActivitySettlementRowProps) {
   const { currentAccent } = useAppTheme();
   const { formatCurrency } = useCurrency();
@@ -47,7 +49,7 @@ export const ActivitySettlementRow = React.memo(function ActivitySettlementRow({
 
   return (
     <TouchableOpacity
-      style={[styles.row, !isLast && styles.rowBorder]}
+      style={[styles.row, !isLast && styles.rowBorder, style]}
       activeOpacity={0.7}
       onPress={onPress}
       accessibilityRole="button"

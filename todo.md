@@ -1,5 +1,14 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Group Activity Width Parity & Modular Row Alignment (`app/groups/[id]/index.tsx`, `src/components/activity/*`)**:
+  - **Eliminated Width Discrepancy Between Expenses and Settlements**:
+    - Resolved the layout imbalance in the Group Activity feed where settlement records appeared narrower than expenses due to nested double padding (`12px` from `ledgerStream` + `16px` inner padding in `ActivitySettlementRow`).
+    - Standardized `ledgerStream` container with `overflow: 'hidden'` and removed the redundant nested `paddingHorizontal: 12`.
+    - Swapped the legacy inline expense row with the modular [`ActivityExpenseRow`](file:///d:/Projects/SplitIt-Mobile/src/components/activity/ActivityExpenseRow.tsx), ensuring both expense and settlement rows share the exact same `16px` horizontal padding, 40x40 glyph alignment, details column, and full-bleed hairline dividers.
+    - Added optional `style?: StyleProp<ViewStyle>` support to both [`ActivityExpenseRow`](file:///d:/Projects/SplitIt-Mobile/src/components/activity/ActivityExpenseRow.tsx) and [`ActivitySettlementRow`](file:///d:/Projects/SplitIt-Mobile/src/components/activity/ActivitySettlementRow.tsx) for layout flexibility.
+    - Cleaned up obsolete legacy inline styles (`ledgerRow`, `categoryGlyph`, `settlementRow`, `settlementAmountCol`, etc.).
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Dashboard Recent Transactions: Last 10 Activities & Modular Parity (`app/(tabs)/index.tsx`)**:
   - **Unified Activity Stream for Home Dashboard**:
     - Upgraded the "Recent Transactions" section on the home screen from a hard-capped 4-expense list to a unified feed displaying the **last 10 activities** across both expenses and settlements.

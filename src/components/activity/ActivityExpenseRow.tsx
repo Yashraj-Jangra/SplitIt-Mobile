@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { THEME } from '../../constants/theme';
 import { CategoryIcon } from '../../utils/category-icons';
 import { ExpenseImpactCol } from '../expenses/ExpenseImpactCol';
@@ -23,6 +23,7 @@ export interface ActivityExpenseRowProps {
   currentUserId?: string;
   isLast?: boolean;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const ActivityExpenseRow = React.memo(function ActivityExpenseRow({
@@ -30,6 +31,7 @@ export const ActivityExpenseRow = React.memo(function ActivityExpenseRow({
   currentUserId,
   isLast = false,
   onPress,
+  style,
 }: ActivityExpenseRowProps) {
   const subCat =
     typeof expense.category === 'string'
@@ -39,7 +41,7 @@ export const ActivityExpenseRow = React.memo(function ActivityExpenseRow({
 
   return (
     <TouchableOpacity
-      style={[styles.row, !isLast && styles.rowBorder]}
+      style={[styles.row, !isLast && styles.rowBorder, style]}
       activeOpacity={0.7}
       onPress={onPress}
       accessibilityRole="button"

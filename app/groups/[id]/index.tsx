@@ -56,7 +56,7 @@ import { BottomSheetModal } from '../../../src/components/common/BottomSheetModa
 import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../../src/services/settings.service';
 import { haptics } from '../../../src/services/haptics.service';
 import { appEventEmitter } from '../../../src/services/event-emitter';
-import { ActivitySettlementRow } from '../../../src/components/activity';
+import { ActivityExpenseRow, ActivitySettlementRow } from '../../../src/components/activity';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity', 'analysis'] as const;
 type TabType = typeof TABS[number];
@@ -864,9 +864,14 @@ export default function GroupDetailScreen() {
                       if (entry.type === 'expense') {
                         const exp = entry.data;
                         return (
-                          <TouchableOpacity
+                          <ActivityExpenseRow
                             key={entry.id}
-                            style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                            expense={{
+                              ...exp,
+                              groupName: undefined,
+                            }}
+                            currentUserId={currentUserId}
+                            isLast={isLast}
                             onPress={() => {
                               haptics.tap();
                               router.push({
@@ -878,32 +883,14 @@ export default function GroupDetailScreen() {
                                   amount: String(exp.amount),
                                   paidByName: exp.paidByName || 'Member',
                                   date: exp.date,
-                                  category: exp.category?.sub || exp.category?.master || 'Other',
+                                  category:
+                                    exp.category?.sub ||
+                                    exp.category?.master ||
+                                    (typeof exp.category === 'string' ? exp.category : 'Other'),
                                 },
                               });
                             }}
-                            activeOpacity={0.7}
-                          >
-                            <View style={styles.categoryGlyph}>
-                              <CategoryIcon
-                                subCategory={exp.category?.sub}
-                                masterCategory={exp.category?.master}
-                                size={20}
-                                color={THEME.colors.textSecondary}
-                              />
-                            </View>
-
-                            <View style={styles.ledgerDetails}>
-                              <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
-                                {exp.title}
-                              </Text>
-                              <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
-                                {exp.paidByName || 'Member'} paid • {exp.date}
-                              </Text>
-                            </View>
-
-                            <ExpenseImpactCol expense={exp} />
-                          </TouchableOpacity>
+                          />
                         );
                       }
 
@@ -913,7 +900,10 @@ export default function GroupDetailScreen() {
                       return (
                         <ActivitySettlementRow
                           key={entry.id}
-                          settlement={set}
+                          settlement={{
+                            ...set,
+                            groupName: undefined,
+                          }}
                           currentUserId={currentUserId}
                           isLast={isLast}
                           onPress={() => {
@@ -1842,121 +1832,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    paddingHorizontal: 12,
-  },
-  ledgerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 12,
-  },
-  ledgerRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
-  },
-  categoryGlyph: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME.colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  settlementGlyph: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ledgerDetails: {
-    flex: 1,
-  },
-  ledgerExpenseTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  ledgerExpenseSubtitle: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    marginTop: 2,
-  },
-  ledgerImpactCol: {
-    alignItems: 'flex-end',
-  },
-  ledgerImpactAmount: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  ledgerImpactLabel: {
-    fontSize: 10,
-    color: THEME.colors.textMuted,
-    marginTop: 1,
-  },
-
-  // Settlement Activity Row
-  settlementRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 12,
-  },
-  settlementRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
-  },
-  settlementLeftCol: {
-    flex: 1,
-  },
-  settlementTransferRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 3,
-  },
-  settlementPartyName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.text,
-    letterSpacing: -0.2,
-    flexShrink: 1,
-  },
-  settlementViewerHighlight: {
-    fontWeight: '700',
-  },
-  settlementArrowIcon: {
-    marginHorizontal: 1,
-    alignSelf: 'center',
-  },
-  settlementSubtitle: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    marginTop: 2,
-  },
-  settlementAmountCol: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  settlementAmountText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: THEME.colors.palette.emerald,
-    letterSpacing: -0.2,
-  },
-  settlementStatusText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: THEME.colors.palette.emerald,
-    opacity: 0.85,
-    textTransform: 'uppercase',
-    marginTop: 2,
-    letterSpacing: 0.4,
+    overflow: 'hidden',
   },
 
   // Balances Tab & Redesigned Header
