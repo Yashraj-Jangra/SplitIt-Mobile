@@ -1,6 +1,24 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
 ## Recent Work Done
+- **Fixed Emerald Green Balance Graph & Interactive Hover-Style Date/Balance Tooltip (`src/components/dashboard/BalanceHistoryGraph.tsx`, `app/(tabs)/index.tsx`)**:
+  - **Decoupled from Theme Accent Color**:
+    - Replaced dynamic `THEME.colors.primary` in `BalanceHistoryGraph.tsx` with fixed canonical financial Emerald Green (`#10B981` / `GRAPH_GREEN`) for positive trajectories/glows and Rose Red (`#F43F5E` / `GRAPH_ROSE`) for negative trajectories.
+    - Graph colors now strictly adhere to universal financial green/red semantics, invariant to user-configured custom accent palettes.
+    - Updated 30-day net balance number and trend indicator in `app/(tabs)/index.tsx` to use fixed `THEME.colors.success` rather than accent color.
+  - **Removed Zero Axis Label (`₹0`)**:
+    - Eliminated `<SvgText>{currencySymbol}0</SvgText>` label from the zero line; subtle hairline dashed reference line remains without visual clutter.
+  - **Interactive Hover-Style Minimalist Compact Tooltip**:
+    - Implemented hardware-smooth touch responder gestures (`onStartShouldSetResponder`, `onMoveShouldSetResponder`, `onResponderGrant`, `onResponderMove`, `onResponderTerminationRequest`).
+    - Supports tap-to-inspect and continuous horizontal scrubbing across the 30-day timeline with subtle tactile haptic pulses (`haptics.tap()`) on date changes.
+    - Non-blocking vertical scroll coordination (`onResponderTerminationRequest: () => true`) so parent dashboard `ScrollView` scrolls naturally.
+    - Displays active beacon point indicator and vertical dashed hairline cursor.
+    - Renders sleek, minimal dark-glass compact tooltip card (`rgba(18, 20, 24, 0.96)`) displaying:
+      - Formatted date (e.g. `Oct 14`).
+      - Signed formatted balance (e.g. `+₹1,250.00` or `-₹500.00`) with matching colored dot indicator.
+      - Discrete dismiss (`X`) button, tap-again toggle to dismiss, and automatic 7-second inactivity fade-out.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Admin-Configurable Group Cover Image Synchronization (`src/services/settings.service.ts`, `src/services/group.service.ts`, `app/groups/new.tsx`, `app/groups/[id]/index.tsx`, `app/groups/[id]/settings.tsx`, `app/(tabs)/groups.tsx`)**:
   - **Identified Source of Truth**: Connected group cover handling to `GET /api/public/settings` where web admin configures `coverImages` in `SYSTEM/SETTINGS`.
   - **Shared Fallback Alignment**: Synchronized fallback covers across web and mobile via `FALLBACK_GROUP_COVER_IMAGES` matching `SplitWise-Clone/src/lib/services/settings.service.ts`.

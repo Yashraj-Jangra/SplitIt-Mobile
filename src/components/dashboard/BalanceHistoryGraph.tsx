@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, LayoutChangeEvent, ViewStyle, StyleProp, TouchableOpacity } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle, Text as SvgText } from 'react-native-svg';
-import { TrendingUp } from 'lucide-react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  LayoutChangeEvent,
+  ViewStyle,
+  StyleProp,
+  TouchableOpacity,
+  GestureResponderEvent,
+} from 'react-native';
+import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle } from 'react-native-svg';
+import { TrendingUp, X } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { useCurrency } from '../../contexts/currency.context';
+import { haptics } from '../../services/haptics.service';
 
 export interface BalanceHistoryGraphProps {
   data: Array<{ date: string; balance: number }>;
@@ -15,7 +25,12 @@ export interface BalanceHistoryGraphProps {
   style?: StyleProp<ViewStyle>;
   hasNoBalance?: boolean;
   onPress?: () => void;
+  onSelectPoint?: (point: { date: string; balance: number } | null) => void;
 }
+
+// Fixed Financial Colors (Independent of user-selected theme accent)
+const GRAPH_GREEN = '#10B981'; // Canonical financial Emerald Green
+const GRAPH_ROSE = '#F43F5E'; // Clean Rose Red for negative balance
 
 /**
  * Generates a smooth cubic Bezier path string from an array of 2D coordinates.
@@ -51,9 +66,30 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   style,
   hasNoBalance,
   onPress,
+  onSelectPoint,
 }) => {
-  const { currencySymbol } = useCurrency();
+  const { formatCurrency } = useCurrency();
   const [layoutWidth, setLayoutWidth] = useState<number>(340);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetAutoDismiss = useCallback(() => {
+    if (autoDismissTimerRef.current) {
+      clearTimeout(autoDismissTimerRef.current);
+    }
+    autoDismissTimerRef.current = setTimeout(() => {
+      setSelectedIndex(null);
+      onSelectPoint?.(null);
+    }, 7000);
+  }, [onSelectPoint]);
+
+  useEffect(() => {
+    return () => {
+      if (autoDismissTimerRef.current) {
+        clearTimeout(autoDismissTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width } = e.nativeEvent.layout;
@@ -88,7 +124,7 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
         </Svg>
         <View style={styles.emptyContent}>
           <View style={styles.emptyBadgeRow}>
-            <TrendingUp size={13} color={THEME.colors.primary} strokeWidth={2.2} />
+            <TrendingUp size={13} color={GRAPH_GREEN} strokeWidth={2.2} />
             <Text style={styles.emptyTitle}>No balance yet</Text>
           </View>
           <Text style={styles.emptySubtitle}>
@@ -134,85 +170,116 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   const lastPoint = points[points.length - 1] || { x: w, y: h / 2, balance: 0 };
   const lastBalance = lastPoint.balance;
 
+  // Selected point details
+  const activeIndex = selectedIndex !== null && selectedIndex >= 0 && selectedIndex < points.length ? selectedIndex : null;
+  const activePoint = activeIndex !== null ? points[activeIndex] : null;
+  const activeData = activeIndex !== null ? data[activeIndex] : null;
+
   // Clamp offset between 0 and 1
   const safeOffset = Math.max(0, Math.min(1, gradientOffset));
   const offsetPct = Math.round(safeOffset * 100);
 
+  const updateSelectionFromX = (touchX: number, isGrant = false) => {
+    if (!points.length) return;
+    const clampedX = Math.max(0, Math.min(w, touchX));
+    const rawIdx = Math.round((clampedX / w) * (points.length - 1));
+    const idx = Math.max(0, Math.min(points.length - 1, rawIdx));
+
+    if (idx !== selectedIndex) {
+      haptics.tap();
+      setSelectedIndex(idx);
+      onSelectPoint?.(data[idx]);
+      resetAutoDismiss();
+    } else if (isGrant && selectedIndex !== null) {
+      haptics.tap();
+      setSelectedIndex(null);
+      onSelectPoint?.(null);
+      if (autoDismissTimerRef.current) {
+        clearTimeout(autoDismissTimerRef.current);
+      }
+    }
+  };
+
+  const handleGrant = (evt: GestureResponderEvent) => {
+    updateSelectionFromX(evt.nativeEvent.locationX, true);
+  };
+
+  const handleMove = (evt: GestureResponderEvent) => {
+    updateSelectionFromX(evt.nativeEvent.locationX, false);
+  };
+
   return (
-    <View style={[styles.container, { height }, style]} onLayout={handleLayout} pointerEvents="none">
-      <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+    <View
+      style={[styles.container, { height }, style]}
+      onLayout={handleLayout}
+      onStartShouldSetResponder={() => true}
+      onMoveShouldSetResponder={() => true}
+      onResponderGrant={handleGrant}
+      onResponderMove={handleMove}
+      onResponderTerminationRequest={() => true}
+    >
+      <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} pointerEvents="none">
         <Defs>
-          {/* Fill Gradient: Soft fintech ambient glow */}
+          {/* Fill Gradient: Fixed green & rose fintech ambient glow */}
           <LinearGradient id="balanceAreaGrad" x1="0" y1="0" x2="0" y2="1">
             <Stop
               offset="0%"
-              stopColor={crossesZero || minBalance >= 0 ? THEME.colors.primary : THEME.colors.negative}
+              stopColor={crossesZero || minBalance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
               stopOpacity={crossesZero || minBalance >= 0 ? 0.24 : 0.04}
             />
             <Stop
               offset={`${crossesZero ? Math.max(0, offsetPct - 8) : 50}%`}
-              stopColor={crossesZero || minBalance >= 0 ? THEME.colors.primary : THEME.colors.negative}
+              stopColor={crossesZero || minBalance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
               stopOpacity={0.06}
             />
             <Stop
               offset={`${crossesZero ? Math.min(100, offsetPct + 8) : 50}%`}
-              stopColor={crossesZero || maxBalance <= 0 ? THEME.colors.negative : THEME.colors.primary}
+              stopColor={crossesZero || maxBalance <= 0 ? GRAPH_ROSE : GRAPH_GREEN}
               stopOpacity={0.06}
             />
             <Stop
               offset="100%"
-              stopColor={crossesZero || maxBalance <= 0 ? THEME.colors.negative : THEME.colors.primary}
+              stopColor={crossesZero || maxBalance <= 0 ? GRAPH_ROSE : GRAPH_GREEN}
               stopOpacity={crossesZero || maxBalance <= 0 ? 0.24 : 0.02}
             />
           </LinearGradient>
 
-          {/* Stroke Gradient: Crisp, high-contrast dynamic curve */}
+          {/* Stroke Gradient: Fixed green & rose crisp curve */}
           <LinearGradient id="balanceStrokeGrad" x1="0" y1="0" x2="0" y2="1">
             <Stop
               offset="0%"
-              stopColor={crossesZero || minBalance >= 0 ? THEME.colors.primary : THEME.colors.negative}
-              stopOpacity={0.9}
+              stopColor={crossesZero || minBalance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
+              stopOpacity={0.95}
             />
             <Stop
               offset={`${crossesZero ? Math.max(0, offsetPct - 3) : 50}%`}
-              stopColor={crossesZero || minBalance >= 0 ? THEME.colors.primary : THEME.colors.negative}
-              stopOpacity={0.9}
+              stopColor={crossesZero || minBalance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
+              stopOpacity={0.95}
             />
             <Stop
               offset={`${crossesZero ? Math.min(100, offsetPct + 3) : 50}%`}
-              stopColor={crossesZero || maxBalance <= 0 ? THEME.colors.negative : THEME.colors.primary}
-              stopOpacity={0.9}
+              stopColor={crossesZero || maxBalance <= 0 ? GRAPH_ROSE : GRAPH_GREEN}
+              stopOpacity={0.95}
             />
             <Stop
               offset="100%"
-              stopColor={crossesZero || maxBalance <= 0 ? THEME.colors.negative : THEME.colors.primary}
-              stopOpacity={0.9}
+              stopColor={crossesZero || maxBalance <= 0 ? GRAPH_ROSE : GRAPH_GREEN}
+              stopOpacity={0.95}
             />
           </LinearGradient>
         </Defs>
 
-        {/* Zero Axis Reference Line (Only if domain spans across positive and negative) */}
+        {/* Zero Axis Reference Line (No text label per user request) */}
         {crossesZero && (
-          <>
-            <Line
-              x1="0"
-              y1={zeroY}
-              x2={w}
-              y2={zeroY}
-              stroke="rgba(255, 255, 255, 0.10)"
-              strokeDasharray="3 3"
-              strokeWidth={1}
-            />
-            <SvgText
-              x={w - 18}
-              y={zeroY - 4}
-              fill="rgba(255, 255, 255, 0.3)"
-              fontSize={8}
-              fontWeight="600"
-            >
-              {currencySymbol}0
-            </SvgText>
-          </>
+          <Line
+            x1="0"
+            y1={zeroY}
+            x2={w}
+            y2={zeroY}
+            stroke="rgba(255, 255, 255, 0.09)"
+            strokeDasharray="3 3"
+            strokeWidth={1}
+          />
         )}
 
         {/* Soft Background Area Fill */}
@@ -228,20 +295,101 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
           strokeLinejoin="round"
         />
 
-        {/* Current Endpoint Indicator */}
-        <Circle
-          cx={lastPoint.x}
-          cy={lastPoint.y}
-          r={5.5}
-          fill={lastBalance >= 0 ? 'rgba(28, 194, 159, 0.25)' : 'rgba(244, 63, 94, 0.25)'}
-        />
-        <Circle
-          cx={lastPoint.x}
-          cy={lastPoint.y}
-          r={2.5}
-          fill={lastBalance >= 0 ? THEME.colors.primary : THEME.colors.negative}
-        />
+        {/* Interactive Vertical Cursor Line */}
+        {activePoint && (
+          <Line
+            x1={activePoint.x}
+            y1={0}
+            x2={activePoint.x}
+            y2={h}
+            stroke="rgba(255, 255, 255, 0.22)"
+            strokeDasharray="2 3"
+            strokeWidth={1}
+          />
+        )}
+
+        {/* Point Indicators */}
+        {activePoint ? (
+          <>
+            <Circle
+              cx={activePoint.x}
+              cy={activePoint.y}
+              r={7}
+              fill={activePoint.balance >= 0 ? 'rgba(16, 185, 129, 0.28)' : 'rgba(244, 63, 94, 0.28)'}
+            />
+            <Circle
+              cx={activePoint.x}
+              cy={activePoint.y}
+              r={3.5}
+              fill={activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
+              stroke="#FFFFFF"
+              strokeWidth={1.5}
+            />
+          </>
+        ) : (
+          <>
+            <Circle
+              cx={lastPoint.x}
+              cy={lastPoint.y}
+              r={5.5}
+              fill={lastBalance >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)'}
+            />
+            <Circle
+              cx={lastPoint.x}
+              cy={lastPoint.y}
+              r={2.5}
+              fill={lastBalance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
+            />
+          </>
+        )}
       </Svg>
+
+      {/* Sleek Minimal Compact Tooltip */}
+      {activePoint && activeData && (
+        <View
+          style={[
+            styles.tooltipCard,
+            {
+              left: Math.max(6, Math.min(w - 146, activePoint.x - 70)),
+              ...(activePoint.y >= 38 ? { top: 4 } : { bottom: 4 }),
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.tooltipHeaderRow}>
+            <Text style={styles.tooltipDateText}>{activeData.date}</Text>
+            <TouchableOpacity
+              onPress={() => {
+                haptics.tap();
+                setSelectedIndex(null);
+                onSelectPoint?.(null);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.tooltipCloseBtn}
+              accessibilityLabel="Dismiss balance details"
+              accessibilityRole="button"
+            >
+              <X size={10} color={THEME.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.tooltipValueRow}>
+            <View
+              style={[
+                styles.tooltipIndicatorDot,
+                { backgroundColor: activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE },
+              ]}
+            />
+            <Text
+              style={[
+                styles.tooltipBalanceText,
+                { color: activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE },
+              ]}
+            >
+              {formatCurrency(activePoint.balance, { showSign: true, decimals: 2 })}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -249,7 +397,7 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    overflow: 'hidden',
+    position: 'relative',
   },
   emptyContainer: {
     width: '100%',
@@ -282,5 +430,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     color: THEME.colors.textMuted,
+  },
+  tooltipCard: {
+    position: 'absolute',
+    width: 140,
+    backgroundColor: 'rgba(18, 20, 24, 0.96)',
+    borderRadius: THEME.radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    shadowColor: THEME.colors.palette.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 8,
+    zIndex: 100,
+  },
+  tooltipHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  tooltipDateText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+    letterSpacing: 0.2,
+  },
+  tooltipCloseBtn: {
+    padding: 1,
+  },
+  tooltipValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  tooltipIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  tooltipBalanceText: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: -0.2,
   },
 });

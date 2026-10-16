@@ -275,7 +275,7 @@ export default function HomeScreen() {
                   <View style={styles.widgetTrendInline}>
                     <Text style={styles.widgetTrendSeparator}>·</Text>
                     {balanceSummary.trendPercentage >= 0 ? (
-                      <TrendingUp size={11} color={THEME.colors.primary} />
+                      <TrendingUp size={11} color={THEME.colors.success} />
                     ) : (
                       <TrendingDown size={11} color={THEME.colors.negative} />
                     )}
@@ -285,7 +285,7 @@ export default function HomeScreen() {
                         {
                           color:
                             balanceSummary.trendPercentage >= 0
-                              ? THEME.colors.primary
+                              ? THEME.colors.success
                               : THEME.colors.negative,
                         },
                       ]}
@@ -300,7 +300,7 @@ export default function HomeScreen() {
                 <Text
                   style={[
                     styles.widgetNumber,
-                    netBalance > 0.01 && { color: THEME.colors.primary },
+                    netBalance > 0.01 && { color: THEME.colors.success },
                     netBalance < -0.01 && { color: THEME.colors.negative },
                   ]}
                 >
