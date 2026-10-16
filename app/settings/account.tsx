@@ -14,9 +14,11 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, User, Mail, Check } from 'lucide-react-native';
+import { ArrowLeft, User, Mail, Check, Camera } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
+import { authService } from '../../src/services/auth.service';
 import { haptics } from '../../src/services/haptics.service';
 
 export default function AccountSettingsScreen() {
@@ -34,6 +36,7 @@ export default function AccountSettingsScreen() {
   const [avatarUrl, setAvatarUrl] = useState(() => user?.avatarUrl || '');
   const [imageError, setImageError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const initials = user?.name
     ? user.name
@@ -43,6 +46,73 @@ export default function AccountSettingsScreen() {
         .slice(0, 2)
         .toUpperCase()
     : 'U';
+
+  const handlePickAvatar = () => {
+    Alert.alert('Profile Photo', 'Choose a source for your avatar', [
+      {
+        text: 'Take Photo',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'Camera access is required to take a photo.');
+            return;
+          }
+          const res = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
+          if (!res.canceled && res.assets[0]?.uri) {
+            await uploadAvatarFile(res.assets[0].uri);
+          }
+        },
+      },
+      {
+        text: 'Choose from Gallery',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'Gallery access is required.');
+            return;
+          }
+          const res = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
+          if (!res.canceled && res.assets[0]?.uri) {
+            await uploadAvatarFile(res.assets[0].uri);
+          }
+        },
+      },
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+    ]);
+  };
+
+  const uploadAvatarFile = async (uri: string) => {
+    setIsUploadingAvatar(true);
+    haptics.tap();
+    try {
+      const uploadedUrl = await authService.uploadAvatar(uri);
+      if (uploadedUrl) {
+        setAvatarUrl(uploadedUrl);
+        setImageError(false);
+        haptics.saveSuccess();
+      } else {
+        haptics.error();
+        Alert.alert('Upload Failed', 'Failed to upload profile photo. Please try again.');
+      }
+    } catch {
+      haptics.error();
+      Alert.alert('Upload Error', 'An unexpected error occurred during photo upload.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!firstName.trim()) {
@@ -104,20 +174,44 @@ export default function AccountSettingsScreen() {
         >
           {/* Avatar Hero Banner */}
           <View style={styles.avatarSection}>
-            <View style={styles.avatarCircle}>
-              {avatarUrl && !imageError ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  style={styles.avatarImage}
-                  onError={() => setImageError(true)}
-                />
-              ) : (
-                <Text style={styles.avatarText}>{initials}</Text>
-              )}
-            </View>
-            <Text style={styles.avatarSubtext}>
-              {avatarUrl && !imageError ? 'Custom Avatar Photo' : 'Initials Placeholder'}
-            </Text>
+            <TouchableOpacity
+              onPress={handlePickAvatar}
+              disabled={isUploadingAvatar}
+              activeOpacity={0.85}
+              style={styles.avatarWrapper}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile picture"
+            >
+              <View style={styles.avatarCircle}>
+                {avatarUrl && !imageError ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={styles.avatarImage}
+                    onError={() => setImageError(true)}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>{initials}</Text>
+                )}
+                {isUploadingAvatar && (
+                  <View style={styles.avatarLoadingOverlay}>
+                    <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                  </View>
+                )}
+              </View>
+              <View style={styles.cameraBadge}>
+                <Camera size={13} color={THEME.colors.primaryForeground} />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handlePickAvatar}
+              disabled={isUploadingAvatar}
+              hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+            >
+              <Text style={styles.changePhotoText}>
+                {isUploadingAvatar ? 'Uploading Photo...' : 'Change Profile Photo'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* ── CARD: PERSONAL INFORMATION ── */}
@@ -130,22 +224,6 @@ export default function AccountSettingsScreen() {
                 <Text style={styles.cardTitle}>Personal Information</Text>
                 <Text style={styles.cardSubtitle}>Your public profile across groups</Text>
               </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>AVATAR IMAGE URL</Text>
-              <TextInput
-                style={styles.input}
-                value={avatarUrl}
-                onChangeText={(text) => {
-                  setAvatarUrl(text);
-                  setImageError(false);
-                }}
-                placeholder="https://images.com/your-avatar.jpg"
-                placeholderTextColor={THEME.colors.textMuted}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
             </View>
 
             <View style={styles.rowFields}>
@@ -283,31 +361,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
   },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 8,
+  },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 2.5,
     borderColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginBottom: 8,
   },
   avatarImage: {
     width: '100%',
     height: '100%',
   },
   avatarText: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '900',
     color: THEME.colors.text,
   },
-  avatarSubtext: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.textMuted,
+  avatarLoadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: THEME.colors.glassDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: THEME.colors.background,
+  },
+  changePhotoText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+    marginTop: 4,
   },
   card: {
     backgroundColor: THEME.colors.surface,

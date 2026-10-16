@@ -2,6 +2,7 @@ import { NativeModules, TurboModuleRegistry } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import * as ImageManipulator from 'expo-image-manipulator';
 import Constants from 'expo-constants';
 
 type GoogleSigninModuleType = typeof import('@react-native-google-signin/google-signin');
@@ -639,6 +640,54 @@ export const authService = {
       return { success: true, message: data.message || 'Password updated successfully.' };
     } catch (err: any) {
       return { success: false, error: err.message || 'Network error resetting password' };
+    }
+  },
+
+  /**
+   * Upload user avatar image to backend storage.
+   */
+  async uploadAvatar(localUri: string): Promise<string | null> {
+    try {
+      const manipulated = await ImageManipulator.manipulateAsync(
+        localUri,
+        [{ resize: { width: 400, height: 400 } }],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      const token = await this.getToken();
+      if (!token) return null;
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: manipulated.uri,
+        name: 'avatar.jpg',
+        type: 'image/jpeg',
+      } as any);
+
+      const headers = getAuthHeaders({}, token);
+      delete (headers as any)['Content-Type'];
+
+      const res = await fetch(`${API_BASE_URL}/api/upload/avatar`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          const cached = await this.getCachedUser();
+          if (cached) {
+            const updated = { ...cached, avatarUrl: data.url };
+            _cachedUser = updated;
+            await SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated));
+          }
+          return data.url;
+        }
+      }
+      return null;
+    } catch {
+      return null;
     }
   },
 };
