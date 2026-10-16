@@ -1,5 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Notifications Center No-Div Redesign, Swipe Actions & Header Modernization (`app/notifications/index.tsx`)**:
+  - **Header Modernization (`app/notifications/index.tsx`)**:
+    - Moved the "Notifications" headline directly into the pinned top header bar with an unread count badge.
+    - Added an instant, non-blocking "Mark all read" button in the top action bar that marks all notifications read immediately without confirmation alerts or dialogs.
+    - Removed the redundant separate `headerSection` to reclaim vertical screen space.
+  - **Open Editorial No-Div Full-Width Architecture**:
+    - Completely abolished the outer card container (`listCard`) and nested boxes.
+    - Extended notification rows edge-to-edge across the screen width with continuous hairline dividers (`borderBottomWidth: StyleSheet.hairlineWidth`).
+  - **Bidirectional Swipe Actions (Gmail-Style)**:
+    - Integrated `Swipeable` from `react-native-gesture-handler/Swipeable` on each notification item.
+    - **Swipe Left-to-Right**: Reveals dynamic theme accent strip with `CheckCheck` icon and animated "Mark Read" label, marking unread items as read.
+    - **Swipe Right-to-Left**: Reveals identical dynamic theme accent action on the right side.
+    - Both directions immediately mark notifications as read, trigger tactile haptic confirmation (`haptics.saveSuccess()`), and smoothly snap closed.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Settings Profile Hero Avatar Redesign & UPI QR Parity (`app/(tabs)/profile.tsx`, `app/settings/my-qr.tsx`)**:
   - **Settings Profile Hero Layout Modernization (`app/(tabs)/profile.tsx`)**:
     - **Enlarged Left-Aligned Avatar**: Shifted user avatar from screen center to the far left, increasing diameter from 80px to 96px (`width: 96, height: 96, borderRadius: 48`) with `borderWidth: 2.5` colored by `currentAccent.primary`. Tapping navigates to Account Information.

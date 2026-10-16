@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
+  Animated,
 } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
@@ -35,11 +37,13 @@ import {
   InAppNotification,
 } from '../../src/services/notification.service';
 import { haptics } from '../../src/services/haptics.service';
+import { useAppTheme } from '../../src/contexts/theme.context';
 
 type NotificationCategoryTab = 'all' | 'expenses' | 'settlements' | 'reminders' | 'other';
 
 export default function NotificationsCenterScreen() {
   const router = useRouter();
+  const { currentAccent } = useAppTheme();
   const [notifications, setNotifications] = useState<InAppNotification[]>(() =>
     notificationService.getInMemoryNotifications()
   );
@@ -248,58 +252,84 @@ export default function NotificationsCenterScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Top App Bar */}
+      {/* Top App Bar with Title */}
       <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => {
-            haptics.tap();
-            router.back();
-          }}
-          style={styles.circleButton}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={19} color={THEME.colors.text} />
-        </TouchableOpacity>
+        <View style={styles.topBarLeft}>
+          <TouchableOpacity
+            onPress={() => {
+              haptics.tap();
+              router.back();
+            }}
+            style={styles.circleButton}
+            activeOpacity={0.7}
+            accessibilityLabel="Go back"
+          >
+            <ArrowLeft size={19} color={THEME.colors.text} />
+          </TouchableOpacity>
+
+          <View style={styles.topBarTitleRow}>
+            <Text style={styles.topBarTitle}>Notifications</Text>
+            {unreadCount > 0 && (
+              <View
+                style={[
+                  styles.unreadHeaderBadge,
+                  {
+                    borderColor: `${currentAccent.primary}40`,
+                    backgroundColor: `${currentAccent.primary}18`,
+                  },
+                ]}
+              >
+                <Text style={[styles.unreadHeaderBadgeText, { color: currentAccent.primary }]}>
+                  {unreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
 
         <View style={styles.topBarActions}>
+          <TouchableOpacity
+            onPress={handleMarkAllRead}
+            style={[
+              styles.markAllButton,
+              unreadCount > 0
+                ? {
+                    backgroundColor: `${currentAccent.primary}18`,
+                    borderColor: `${currentAccent.primary}40`,
+                  }
+                : styles.markAllButtonDisabled,
+            ]}
+            activeOpacity={0.7}
+            disabled={unreadCount === 0}
+            accessibilityRole="button"
+            accessibilityLabel="Mark all as read"
+          >
+            <CheckCheck
+              size={15}
+              color={unreadCount > 0 ? currentAccent.primary : THEME.colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.markAllButtonText,
+                { color: unreadCount > 0 ? currentAccent.primary : THEME.colors.textMuted },
+              ]}
+            >
+              Mark all read
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => {
               haptics.tap();
               router.push('/notifications/preferences');
             }}
-            style={styles.settingsButton}
+            style={styles.circleButton}
             activeOpacity={0.7}
+            accessibilityLabel="Notification settings"
           >
-            <Settings size={15} color={THEME.colors.text} />
-            <Text style={styles.settingsButtonText}>Settings</Text>
+            <Settings size={17} color={THEME.colors.textSecondary} />
           </TouchableOpacity>
-
-          {unreadCount > 0 && (
-            <TouchableOpacity
-              onPress={handleMarkAllRead}
-              style={styles.markAllButton}
-              activeOpacity={0.7}
-            >
-              <CheckCheck size={15} color={THEME.colors.primary} />
-              <Text style={styles.markAllButtonText}>Mark all read</Text>
-            </TouchableOpacity>
-          )}
         </View>
-      </View>
-
-      {/* Main Header Headline with Unread Pill */}
-      <View style={styles.headerSection}>
-        <View style={styles.headerTitleRow}>
-          <Text style={styles.headerTitle}>Notifications</Text>
-          {unreadCount > 0 && (
-            <View style={styles.unreadHeaderBadge}>
-              <Text style={styles.unreadHeaderBadgeText}>{unreadCount} unread</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.headerSubtitle}>
-          Stay updated with activity across your shared groups.
-        </Text>
       </View>
 
       {/* Website-Style Category Tabs with Badges */}
@@ -313,7 +343,10 @@ export default function NotificationsCenterScreen() {
           <TouchableOpacity
             style={[
               styles.tabPill,
-              activeTab === 'all' && styles.tabPillActive,
+              activeTab === 'all' && [
+                styles.tabPillActive,
+                { borderColor: currentAccent.primary, backgroundColor: `${currentAccent.primary}12` },
+              ],
             ]}
             onPress={() => {
               haptics.tap();
@@ -330,8 +363,8 @@ export default function NotificationsCenterScreen() {
               All
             </Text>
             {unreadCount > 0 && (
-              <View style={[styles.tabBadge, { backgroundColor: 'rgba(28, 194, 159, 0.2)' }]}>
-                <Text style={[styles.tabBadgeText, { color: THEME.colors.primary }]}>
+              <View style={[styles.tabBadge, { backgroundColor: `${currentAccent.primary}20` }]}>
+                <Text style={[styles.tabBadgeText, { color: currentAccent.primary }]}>
                   {unreadCount}
                 </Text>
               </View>
@@ -457,9 +490,10 @@ export default function NotificationsCenterScreen() {
       </View>
 
       {/* Notification List Container */}
+      {/* Notification List Container — No-Div Wider Layout */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <QuantumSpinner size={36} color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={currentAccent.primary} />
         </View>
       ) : (
         <ScrollView
@@ -469,29 +503,27 @@ export default function NotificationsCenterScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={THEME.colors.primary}
+              tintColor={currentAccent.primary}
             />
           }
         >
-          {/* Outer Card with Hairline Dividers (matches web Card divide-y) */}
-          <View style={styles.listCard}>
-            {currentTabList.length === 0 ? (
-              <EmptyState message={getEmptyMessage()} />
-            ) : (
-              currentTabList.map((item, index) => {
-                const isLast = index === currentTabList.length - 1;
-                return (
-                  <NotificationItemRow
-                    key={item.id}
-                    notification={item}
-                    isLast={isLast}
-                    onPress={() => handleTapNotification(item)}
-                    onMarkRead={() => handleMarkSingleRead(item.id)}
-                  />
-                );
-              })
-            )}
-          </View>
+          {currentTabList.length === 0 ? (
+            <EmptyState message={getEmptyMessage()} />
+          ) : (
+            currentTabList.map((item, index) => {
+              const isLast = index === currentTabList.length - 1;
+              return (
+                <NotificationItemRow
+                  key={item.id}
+                  notification={item}
+                  isLast={isLast}
+                  accentColor={currentAccent.primary}
+                  onPress={() => handleTapNotification(item)}
+                  onMarkRead={() => handleMarkSingleRead(item.id)}
+                />
+              );
+            })
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -499,11 +531,11 @@ export default function NotificationsCenterScreen() {
 }
 
 // Helper to determine icon, color, and left accent border by notification type
-function getNotificationVisuals(type: string, isRead: boolean) {
+function getNotificationVisuals(type: string, isRead: boolean, accentColor: string = THEME.colors.primary) {
   let Icon = Bell;
-  let iconColor: string = THEME.colors.primary;
-  let iconBg: string = 'rgba(28, 194, 159, 0.12)';
-  let accentBorderColor: string = THEME.colors.primary;
+  let iconColor: string = accentColor;
+  let iconBg: string = `${accentColor}18`;
+  let accentBorderColor: string = accentColor;
 
   switch (type) {
     case 'expense_added':
@@ -637,6 +669,7 @@ function formatTimeAgo(dateStr: string): string {
 interface NotificationItemRowProps {
   notification: InAppNotification;
   isLast: boolean;
+  accentColor: string;
   onPress: () => void;
   onMarkRead: () => void;
 }
@@ -644,9 +677,11 @@ interface NotificationItemRowProps {
 function NotificationItemRow({
   notification,
   isLast,
+  accentColor,
   onPress,
   onMarkRead,
 }: NotificationItemRowProps) {
+  const swipeableRef = useRef<Swipeable | null>(null);
   const isRead =
     notification.isRead !== undefined
       ? !!notification.isRead
@@ -654,80 +689,144 @@ function NotificationItemRow({
 
   const { Icon, iconColor, iconBg, leftBorderColor } = getNotificationVisuals(
     notification.type,
-    isRead
+    isRead,
+    accentColor
   );
 
   const actor = notification.actor;
   const initials = actor ? getInitials(actor.firstName, actor.lastName) : '';
   const messageBody = notification.body || notification.message || '';
 
-  return (
-    <TouchableOpacity
-      style={[
-        styles.itemRow,
-        !isRead && styles.itemRowUnread,
-        { borderLeftColor: leftBorderColor },
-        isLast && styles.itemRowLast,
-      ]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      {/* Avatar or Icon Badge */}
-      {actor?.avatarUrl ? (
-        <Image source={{ uri: actor.avatarUrl }} style={styles.avatarImg} />
-      ) : actor ? (
-        <View style={styles.avatarFallback}>
-          <Text style={styles.avatarInitialText}>{initials}</Text>
-        </View>
-      ) : (
-        <View style={[styles.iconBadge, { backgroundColor: iconBg }]}>
-          <Icon size={19} color={iconColor} />
-        </View>
-      )}
+  const handleSwipeOpen = (direction: 'left' | 'right') => {
+    haptics.saveSuccess();
+    onMarkRead();
+    setTimeout(() => {
+      swipeableRef.current?.close();
+    }, 200);
+  };
 
-      {/* Main Text Content */}
-      <View style={styles.itemTextContainer}>
-        <Text
+  const renderSwipeAction = (
+    dragX: Animated.AnimatedInterpolation<number>,
+    direction: 'left' | 'right'
+  ) => {
+    const trans = dragX.interpolate({
+      inputRange: direction === 'left' ? [0, 80] : [-80, 0],
+      outputRange: direction === 'left' ? [-16, 0] : [0, 16],
+      extrapolate: 'clamp',
+    });
+
+    const opacity = dragX.interpolate({
+      inputRange: direction === 'left' ? [0, 25, 70] : [-70, -25, 0],
+      outputRange: direction === 'left' ? [0, 0.5, 1] : [1, 0.5, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <View
+        style={[
+          styles.swipeActionContainer,
+          direction === 'left' ? styles.swipeActionLeft : styles.swipeActionRight,
+          { backgroundColor: accentColor },
+        ]}
+      >
+        <Animated.View
           style={[
-            styles.itemTitle,
-            !isRead && styles.itemTitleUnread,
+            styles.swipeActionContent,
+            {
+              transform: [{ translateX: trans }],
+              opacity,
+            },
           ]}
-          numberOfLines={1}
         >
-          {notification.title}
-        </Text>
-
-        {messageBody ? (
-          <Text style={styles.itemBody} numberOfLines={2}>
-            {messageBody}
+          <CheckCheck size={20} color={THEME.colors.primaryForeground} />
+          <Text style={[styles.swipeActionText, { color: THEME.colors.primaryForeground }]}>
+            Mark Read
           </Text>
-        ) : null}
-
-        <View style={styles.itemTimeRow}>
-          <History size={11} color={THEME.colors.textMuted} />
-          <Text style={styles.itemTimeText}>
-            {formatTimeAgo(notification.createdAt)}
-          </Text>
-        </View>
+        </Animated.View>
       </View>
+    );
+  };
 
-      {/* Unread Action Buttons: Checkmark Mark-Read + Pulsing Dot */}
-      {!isRead && (
-        <View style={styles.itemRightActions}>
-          <TouchableOpacity
-            style={styles.checkButton}
-            onPress={(e) => {
-              onMarkRead();
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.6}
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      friction={1.5}
+      leftThreshold={60}
+      rightThreshold={60}
+      overshootLeft={false}
+      overshootRight={false}
+      renderLeftActions={(_progress, dragX) => renderSwipeAction(dragX, 'left')}
+      renderRightActions={(_progress, dragX) => renderSwipeAction(dragX, 'right')}
+      onSwipeableOpen={handleSwipeOpen}
+      containerStyle={styles.swipeableContainer}
+    >
+      <TouchableOpacity
+        style={[
+          styles.itemRow,
+          !isRead && styles.itemRowUnread,
+          { borderLeftColor: leftBorderColor },
+          isLast && styles.itemRowLast,
+        ]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {/* Avatar or Icon Badge */}
+        {actor?.avatarUrl ? (
+          <Image source={{ uri: actor.avatarUrl }} style={styles.avatarImg} />
+        ) : actor ? (
+          <View style={styles.avatarFallback}>
+            <Text style={styles.avatarInitialText}>{initials}</Text>
+          </View>
+        ) : (
+          <View style={[styles.iconBadge, { backgroundColor: iconBg }]}>
+            <Icon size={19} color={iconColor} />
+          </View>
+        )}
+
+        {/* Main Text Content */}
+        <View style={styles.itemTextContainer}>
+          <Text
+            style={[
+              styles.itemTitle,
+              !isRead && styles.itemTitleUnread,
+            ]}
+            numberOfLines={1}
           >
-            <Check size={14} color={THEME.colors.textSecondary} />
-          </TouchableOpacity>
-          <View style={styles.unreadDot} />
+            {notification.title}
+          </Text>
+
+          {messageBody ? (
+            <Text style={styles.itemBody} numberOfLines={2}>
+              {messageBody}
+            </Text>
+          ) : null}
+
+          <View style={styles.itemTimeRow}>
+            <History size={11} color={THEME.colors.textMuted} />
+            <Text style={styles.itemTimeText}>
+              {formatTimeAgo(notification.createdAt)}
+            </Text>
+          </View>
         </View>
-      )}
-    </TouchableOpacity>
+
+        {/* Unread Action Buttons: Checkmark Mark-Read + Pulsing Dot */}
+        {!isRead && (
+          <View style={styles.itemRightActions}>
+            <TouchableOpacity
+              style={styles.checkButton}
+              onPress={(e) => {
+                onMarkRead();
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.6}
+            >
+              <Check size={14} color={THEME.colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.unreadDot, { backgroundColor: accentColor }]} />
+          </View>
+        )}
+      </TouchableOpacity>
+    </Swipeable>
   );
 }
 
@@ -755,7 +854,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  topBarTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  topBarTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: THEME.colors.text,
+    letterSpacing: -0.4,
   },
   circleButton: {
     width: 38,
@@ -772,74 +889,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  settingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-  },
-  settingsButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: THEME.colors.text,
-  },
   markAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: THEME.radius.md,
-    backgroundColor: 'rgba(28, 194, 159, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(28, 194, 159, 0.3)',
+  },
+  markAllButtonDisabled: {
+    backgroundColor: THEME.colors.surface,
+    borderColor: THEME.colors.hairline,
+    opacity: 0.5,
   },
   markAllButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: THEME.colors.primary,
-  },
-  headerSection: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 14,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    color: THEME.colors.text,
   },
   unreadHeaderBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: THEME.radius.full,
-    backgroundColor: 'rgba(28, 194, 159, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(28, 194, 159, 0.3)',
   },
   unreadHeaderBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: THEME.colors.primary,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: THEME.colors.textMuted,
-    marginTop: 4,
   },
   tabsContainer: {
-    paddingBottom: 12,
+    paddingBottom: 10,
   },
   tabsScrollContent: {
     paddingHorizontal: 16,
@@ -885,31 +964,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    paddingHorizontal: 16,
     paddingBottom: 36,
   },
-  listCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    overflow: 'hidden',
+  swipeableContainer: {
+    backgroundColor: THEME.colors.background,
+  },
+  swipeActionContainer: {
+    justifyContent: 'center',
+    width: 110,
+    height: '100%',
+  },
+  swipeActionLeft: {
+    alignItems: 'flex-start',
+    paddingLeft: 20,
+  },
+  swipeActionRight: {
+    alignItems: 'flex-end',
+    paddingRight: 20,
+  },
+  swipeActionContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  swipeActionText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     gap: 12,
-    borderLeftWidth: 4,
-    borderBottomWidth: 1,
+    borderLeftWidth: 3.5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: THEME.colors.hairline,
-    backgroundColor: 'transparent',
+    backgroundColor: THEME.colors.background,
   },
   itemRowUnread: {
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   itemRowLast: {
-    borderBottomWidth: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   avatarImg: {
     width: 38,
