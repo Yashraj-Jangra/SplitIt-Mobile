@@ -408,6 +408,55 @@ export const settlementService = {
     return fromStorage;
   },
 
+  async updateSettlement(
+    settlementId: string,
+    data: {
+      groupId: string;
+      amount: number;
+      method: string;
+      notes?: string;
+      date?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const currentUser = await authService.getCachedUser();
+    const currentUserId = currentUser?.id || '';
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/api/settlements/${settlementId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Cookie: `better-auth.session_token=${token}`,
+          },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) {
+          _cachedSettlementDetailsMap.delete(settlementId);
+          await storageService.removeItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId));
+          expenseService.clearCache();
+          groupService.invalidateCache(data.groupId);
+          balanceService.clearCache();
+          appEventEmitter.emit('data-changed', { groupId: data.groupId, type: 'settlement_updated' });
+          return { success: true };
+        }
+        const errData = await res.json().catch(() => ({}));
+        return { success: false, error: errData.error || 'Failed to update settlement' };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Network error' };
+    }
+    _cachedSettlementDetailsMap.delete(settlementId);
+    await storageService.removeItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUserId));
+    expenseService.clearCache();
+    groupService.invalidateCache(data.groupId);
+    balanceService.clearCache();
+    appEventEmitter.emit('data-changed', { groupId: data.groupId, type: 'settlement_updated' });
+    return { success: true };
+  },
+
   async deleteSettlement(settlementId: string, groupId: string): Promise<{ success: boolean; error?: string }> {
     const cachedDetail = _cachedSettlementDetailsMap.get(settlementId);
     const currentUser = await authService.getCachedUser();

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { settlementService, SettlementDetailModel } from '../../src/services/settlement.service';
+import { EditSettlementModal } from '../../src/components/settlements/EditSettlementModal';
 import { authService } from '../../src/services/auth.service';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { haptics } from '../../src/services/haptics.service';
@@ -58,6 +59,7 @@ export default function SettlementDetailScreen() {
   const settlementId = Array.isArray(params.id) ? params.id[0] : params.id;
   const rawGroupId = Array.isArray(params.groupId) ? params.groupId[0] : (params.groupId || '');
   const [groupId, setGroupId] = useState(rawGroupId);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const [settlement, setSettlement] = useState<SettlementDetailModel | null>(() => {
     const inMem = settlementService.getInMemorySettlementDetails(settlementId);
@@ -239,15 +241,30 @@ export default function SettlementDetailScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          onPress={handleDelete}
-          style={styles.frostedIconButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityRole="button"
-          accessibilityLabel="Delete settlement"
-        >
-          <Trash2 size={18} color={THEME.colors.critical} />
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            onPress={() => {
+              haptics.tap();
+              setShowEditModal(true);
+            }}
+            style={styles.frostedIconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Edit settlement"
+          >
+            <Pencil size={18} color={THEME.colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleDelete}
+            style={styles.frostedIconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Delete settlement"
+          >
+            <Trash2 size={18} color={THEME.colors.critical} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── 2. SCROLLABLE CONTENT BODY ── */}
@@ -518,6 +535,16 @@ export default function SettlementDetailScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <EditSettlementModal
+        visible={showEditModal}
+        settlement={settlement}
+        onClose={() => setShowEditModal(false)}
+        onSuccess={(updated) => {
+          setSettlement((prev) => (prev ? { ...prev, ...updated } : null));
+          fetchSettlement();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -540,6 +567,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
     zIndex: 10,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   frostedIconButton: {
     width: 38,
