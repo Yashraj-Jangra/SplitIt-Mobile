@@ -16,7 +16,6 @@ import {
   ChevronRight,
   ShieldCheck,
   Send,
-  Users,
   ArrowRight,
 } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
@@ -42,7 +41,7 @@ export function ObligationsModal({
   totalAmount,
 }: ObligationsModalProps) {
   const router = useRouter();
-  const { formatCurrency, currencySymbol } = useCurrency();
+  const { formatCurrency } = useCurrency();
   const [remindingUserIds, setRemindingUserIds] = useState<Set<string>>(new Set());
   const [remindedUserIds, setRemindedUserIds] = useState<Set<string>>(new Set());
   const [isRemindingAll, setIsRemindingAll] = useState(false);
@@ -160,15 +159,15 @@ export function ObligationsModal({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Total Summary Strip */}
-        <View style={styles.summaryBox}>
-          <View>
-            <Text style={styles.summaryLabel}>
+        {/* Open Editorial Hero Net Total (No Outer Box Card) */}
+        <View style={styles.heroSection}>
+          <View style={styles.heroLeft}>
+            <Text style={styles.heroEyebrow}>
               {isOwed ? 'TOTAL RECEIVABLE' : 'TOTAL PAYABLE'}
             </Text>
             <Text
               style={[
-                styles.summaryAmount,
+                styles.heroAmount,
                 { color: isOwed ? THEME.colors.primary : THEME.colors.negative },
               ]}
             >
@@ -178,24 +177,28 @@ export function ObligationsModal({
 
           {isOwed && obligations.length > 1 && (
             <TouchableOpacity
-              style={styles.remindAllBtn}
+              style={styles.remindAllPill}
               activeOpacity={0.8}
               onPress={handleRemindAll}
               disabled={isRemindingAll}
+              accessibilityRole="button"
+              accessibilityLabel="Remind all people"
             >
               {isRemindingAll ? (
-                <QuantumSpinner size={16} color={THEME.colors.background} />
+                <QuantumSpinner size={13} color={THEME.colors.primaryForeground} />
               ) : (
                 <>
-                  <Send size={13} color={THEME.colors.background} />
-                  <Text style={styles.remindAllText}>Remind All</Text>
+                  <Send size={12} color={THEME.colors.primaryForeground} />
+                  <Text style={styles.remindAllText}>Remind All ({obligations.length})</Text>
                 </>
               )}
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Obligations List */}
+        <View style={styles.hairlineDivider} />
+
+        {/* Obligations Ledger Rows (Anti-Card Soup: No Outer Container Box) */}
         {obligations.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
@@ -209,53 +212,56 @@ export function ObligationsModal({
             </Text>
           </View>
         ) : (
-          <View style={styles.listContainer}>
-            {obligations.map((item, index) => {
+          <View style={styles.ledgerContainer}>
+            {obligations.map((item) => {
               const isReminding = remindingUserIds.has(item.user.id);
               const isReminded = remindedUserIds.has(item.user.id);
-              const isLast = index === obligations.length - 1;
 
               return (
-                <View
-                  key={item.user.id}
-                  style={[styles.itemCard, !isLast && styles.itemCardBorder]}
-                >
-                  <View style={styles.itemHeaderRow}>
-                    {/* User Avatar */}
-                    {item.user.avatarUrl ? (
-                      <Image
-                        source={{ uri: item.user.avatarUrl }}
-                        style={styles.avatarImg}
+                <View key={item.user.id} style={styles.ledgerRow}>
+                  {/* Main Identity & Impact Line */}
+                  <View style={styles.rowMain}>
+                    {/* Avatar Node with Status Node Dot */}
+                    <View style={styles.avatarWrap}>
+                      {item.user.avatarUrl ? (
+                        <Image
+                          source={{ uri: item.user.avatarUrl }}
+                          style={styles.avatarImg}
+                        />
+                      ) : (
+                        <View style={styles.avatarFallback}>
+                          <Text style={styles.avatarText}>
+                            {getInitials(item.user.name)}
+                          </Text>
+                        </View>
+                      )}
+                      <View
+                        style={[
+                          styles.avatarStatusNode,
+                          { backgroundColor: isOwed ? THEME.colors.primary : THEME.colors.negative },
+                        ]}
                       />
-                    ) : (
-                      <View style={styles.avatarFallback}>
-                        <Text style={styles.avatarText}>
-                          {getInitials(item.user.name)}
-                        </Text>
-                      </View>
-                    )}
+                    </View>
 
-                    {/* Name & Details */}
-                    <View style={styles.userDetails}>
+                    {/* Name & UPI / Details */}
+                    <View style={styles.userCol}>
                       <Text style={styles.userName} numberOfLines={1}>
                         {item.user.name}
                       </Text>
-                      {item.user.upiId ? (
-                        <Text style={styles.userSub} numberOfLines={1}>
-                          UPI: {item.user.upiId}
-                        </Text>
-                      ) : item.user.email ? (
-                        <Text style={styles.userSub} numberOfLines={1}>
-                          {item.user.email}
-                        </Text>
-                      ) : null}
+                      <Text style={styles.userSub} numberOfLines={1}>
+                        {item.user.upiId
+                          ? `UPI: ${item.user.upiId}`
+                          : item.user.email
+                          ? item.user.email
+                          : `${item.sharedGroups.length} shared group${item.sharedGroups.length === 1 ? '' : 's'}`}
+                      </Text>
                     </View>
 
-                    {/* Amount & Main Action */}
+                    {/* Amount & Direct Action */}
                     <View style={styles.actionCol}>
                       <Text
                         style={[
-                          styles.amountText,
+                          styles.amountValue,
                           { color: isOwed ? THEME.colors.primary : THEME.colors.negative },
                         ]}
                       >
@@ -265,58 +271,64 @@ export function ObligationsModal({
                       {isOwed ? (
                         <TouchableOpacity
                           style={[
-                            styles.actionBtn,
-                            isReminded && styles.actionBtnDone,
+                            styles.remindBtn,
+                            isReminded && styles.remindBtnDone,
                           ]}
                           activeOpacity={0.7}
                           onPress={() => handleSendReminder(item)}
                           disabled={isReminding || isReminded}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remind ${item.user.name}`}
                         >
                           {isReminding ? (
-                            <QuantumSpinner size={14} color={THEME.colors.text} />
+                            <QuantumSpinner size={12} color={THEME.colors.text} />
                           ) : isReminded ? (
                             <>
-                              <CheckCircle2 size={12} color={THEME.colors.primary} />
-                              <Text style={styles.actionBtnTextDone}>Sent</Text>
+                              <CheckCircle2 size={11} color={THEME.colors.primary} />
+                              <Text style={styles.remindBtnTextDone}>Sent</Text>
                             </>
                           ) : (
                             <>
-                              <Bell size={12} color={THEME.colors.text} />
-                              <Text style={styles.actionBtnText}>Remind</Text>
+                              <Bell size={11} color={THEME.colors.text} />
+                              <Text style={styles.remindBtnText}>Remind</Text>
                             </>
                           )}
                         </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
-                          style={styles.actionBtnSettle}
+                          style={styles.settleBtn}
                           activeOpacity={0.8}
                           onPress={() => handleSettleUp(item)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Settle up with ${item.user.name}`}
                         >
-                          <Text style={styles.actionBtnSettleText}>Settle Up</Text>
-                          <ChevronRight size={13} color={THEME.colors.background} />
+                          <Text style={styles.settleBtnText}>Settle</Text>
+                          <ChevronRight size={12} color={THEME.colors.primaryForeground} />
                         </TouchableOpacity>
                       )}
                     </View>
                   </View>
 
-                  {/* Shared Groups Breakdown Pills */}
+                  {/* Visual Connecting Stem with Shared Group Breakdown */}
                   {item.sharedGroups.length > 0 && (
-                    <View style={styles.groupsRow}>
+                    <View style={styles.stemContainer}>
                       {item.sharedGroups.map((sg) => (
                         <TouchableOpacity
                           key={sg.groupId}
-                          style={styles.groupPill}
-                          activeOpacity={0.7}
+                          style={styles.stemRow}
+                          activeOpacity={isOwed ? 1 : 0.7}
                           onPress={() => {
                             if (!isOwed) {
                               handleSettleUp(item, sg);
                             }
                           }}
+                          disabled={isOwed}
                         >
-                          <Text style={styles.groupPillName} numberOfLines={1}>
+                          <View style={styles.stemDot} />
+                          <Text style={styles.stemGroupName} numberOfLines={1}>
                             {sg.groupName}
                           </Text>
-                          <Text style={styles.groupPillAmount}>
+                          <Text style={styles.stemAmount}>
                             {formatCurrency(sg.amount, { decimals: 0 })}
                           </Text>
                           {!isOwed && (
@@ -337,48 +349,55 @@ export function ObligationsModal({
 }
 
 const styles = StyleSheet.create({
+  // Universal Width: 0 horizontal padding here preserves standard 16px screen padding from BottomSheetModal
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingBottom: 32,
   },
-  summaryBox: {
+  // Open Editorial Hero Total
+  heroSection: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 2,
   },
-  summaryLabel: {
+  heroLeft: {
+    gap: 3,
+  },
+  heroEyebrow: {
     fontSize: 10,
     fontWeight: '700',
     color: THEME.colors.textMuted,
-    letterSpacing: 0.8,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-  summaryAmount: {
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 2,
-    letterSpacing: -0.5,
+  heroAmount: {
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: -1,
+    lineHeight: 38,
   },
-  remindAllBtn: {
+  remindAllPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.full,
+    marginBottom: 4,
   },
   remindAllText: {
     fontSize: 12,
     fontWeight: '700',
-    color: THEME.colors.background,
+    color: THEME.colors.primaryForeground,
+  },
+  hairlineDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.hairline,
+    marginTop: 8,
+    marginBottom: 4,
   },
   emptyContainer: {
     paddingVertical: 48,
@@ -387,10 +406,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0, 196, 204, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
@@ -407,135 +426,150 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 18,
   },
-  listContainer: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    overflow: 'hidden',
+  // Open Ledger Rows
+  ledgerContainer: {
+    width: '100%',
   },
-  itemCard: {
-    paddingHorizontal: 14,
+  ledgerRow: {
     paddingVertical: 14,
-  },
-  itemCardBorder: {
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: THEME.colors.hairline,
   },
-  itemHeaderRow: {
+  rowMain: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatarImg: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  avatarWrap: {
+    position: 'relative',
+    width: 40,
+    height: 40,
     marginRight: 12,
+  },
+  avatarImg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   avatarFallback: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: THEME.colors.hairlineLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.text,
   },
-  userDetails: {
+  avatarStatusNode: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: THEME.colors.surface,
+  },
+  userCol: {
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
   userName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: THEME.colors.text,
+    letterSpacing: -0.2,
   },
   userSub: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: '500',
     color: THEME.colors.textMuted,
     marginTop: 2,
   },
   actionCol: {
     alignItems: 'flex-end',
-    gap: 6,
+    gap: 5,
   },
-  amountText: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+  amountValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
-  actionBtn: {
+  remindBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
-    paddingHorizontal: 10,
+    borderColor: THEME.colors.hairlineLight,
+    paddingHorizontal: 11,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: THEME.radius.full,
   },
-  actionBtnDone: {
-    backgroundColor: 'rgba(52, 211, 153, 0.1)',
-    borderColor: 'rgba(52, 211, 153, 0.3)',
+  remindBtnDone: {
+    backgroundColor: THEME.colors.successMuted,
+    borderColor: THEME.colors.successBorder,
   },
-  actionBtnText: {
+  remindBtnText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: THEME.colors.text,
   },
-  actionBtnTextDone: {
+  remindBtnTextDone: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: THEME.colors.primary,
   },
-  actionBtnSettle: {
+  settleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
     backgroundColor: THEME.colors.primary,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: THEME.radius.full,
   },
-  actionBtnSettleText: {
+  settleBtnText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.background,
+    fontWeight: '800',
+    color: THEME.colors.primaryForeground,
   },
-  groupsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  // Visual Stem Lines for Shared Groups
+  stemContainer: {
+    marginLeft: 19,
+    paddingLeft: 18,
+    borderLeftWidth: 1,
+    borderLeftColor: THEME.colors.hairline,
+    marginTop: 8,
     gap: 6,
-    marginTop: 10,
-    paddingLeft: 54,
   },
-  groupPill: {
+  stemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    gap: 6,
+    paddingVertical: 2,
   },
-  groupPillName: {
-    fontSize: 10,
+  stemDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: THEME.colors.textMuted,
+  },
+  stemGroupName: {
+    fontSize: 12,
+    fontWeight: '500',
     color: THEME.colors.textSecondary,
-    maxWidth: 120,
+    maxWidth: 160,
   },
-  groupPillAmount: {
-    fontSize: 10,
+  stemAmount: {
+    fontSize: 12,
     fontWeight: '700',
     color: THEME.colors.text,
   },
 });
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -33,7 +33,7 @@ import { MockDataBanner } from '../../src/components/common/MockDataBanner';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol';
 import { CategoryIcon } from '../../src/utils/category-icons';
-import { BalanceHistoryGraph } from '../../src/components/dashboard/BalanceHistoryGraph';
+import { BalanceHistoryGraph, BalanceHistoryGraphHandle } from '../../src/components/dashboard/BalanceHistoryGraph';
 import { BalanceSkeleton } from '../../src/components/skeletons/BalanceSkeleton';
 import { TransactionRowSkeleton } from '../../src/components/skeletons/TransactionRowSkeleton';
 import { UniversalSearchModal } from '../../src/components/search/UniversalSearchModal';
@@ -55,6 +55,8 @@ export default function HomeScreen() {
   const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(() => balanceService.getInMemoryUserBalanceSummary());
   const [obligationsType, setObligationsType] = useState<'owed' | 'owes' | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const balanceGraphRef = useRef<BalanceHistoryGraphHandle>(null);
+  const [isGraphActive, setIsGraphActive] = useState(false);
   const [loading, setLoading] = useState(() => {
     return (
       groupService.getInMemoryGroups().length === 0 &&
@@ -183,6 +185,11 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={() => balanceGraphRef.current?.deselect()}
+        onStartShouldSetResponder={() => isGraphActive}
+        onResponderGrant={() => {
+          if (isGraphActive) balanceGraphRef.current?.deselect();
+        }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.primary} />}
       >
         {/* Minimalist Header with Official Branding */}
@@ -254,7 +261,13 @@ export default function HomeScreen() {
         ) : (
           <View style={styles.balanceWidget}>
             {/* TIER 1: Hero Metrics Header */}
-            <View style={styles.widgetHeader}>
+            <TouchableOpacity
+              style={styles.widgetHeader}
+              activeOpacity={1}
+              onPress={() => {
+                if (isGraphActive) balanceGraphRef.current?.deselect();
+              }}
+            >
               <View style={styles.widgetEyebrowRow}>
                 <View
                   style={[
@@ -314,12 +327,13 @@ export default function HomeScreen() {
                     : 'All settled up • No outstanding balance'}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* TIER 2: Dedicated In-Flow Sparkline Track (Zero Overlap Guaranteed!) */}
             {balanceSummary && (
               <View style={styles.graphTrack}>
                 <BalanceHistoryGraph
+                  ref={balanceGraphRef}
                   data={balanceSummary.chartData}
                   domain={balanceSummary.domain}
                   gradientOffset={balanceSummary.gradientOffset}
@@ -331,6 +345,7 @@ export default function HomeScreen() {
                     totalOwed < 0.01 &&
                     totalOwe < 0.01
                   }
+                  onSelectPoint={(point) => setIsGraphActive(Boolean(point))}
                   onPress={() => {
                     haptics.tap();
                     router.push('/expenses/new');
@@ -345,6 +360,10 @@ export default function HomeScreen() {
                 style={styles.statColumn}
                 activeOpacity={0.7}
                 onPress={() => {
+                  if (isGraphActive) {
+                    balanceGraphRef.current?.deselect();
+                    return;
+                  }
                   haptics.tap();
                   setObligationsType('owed');
                 }}
@@ -365,6 +384,10 @@ export default function HomeScreen() {
                 style={styles.statColumn}
                 activeOpacity={0.7}
                 onPress={() => {
+                  if (isGraphActive) {
+                    balanceGraphRef.current?.deselect();
+                    return;
+                  }
                   haptics.tap();
                   setObligationsType('owes');
                 }}

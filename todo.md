@@ -1,5 +1,25 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Home Balance Graph Refinements & Open Editorial "No-Div" Obligations Modal Redesign (`src/components/dashboard/BalanceHistoryGraph.tsx`, `src/components/dashboard/ObligationsModal.tsx`, `app/(tabs)/index.tsx`)**:
+  - **Home Balance History Graph Refinements (`src/components/dashboard/BalanceHistoryGraph.tsx`, `app/(tabs)/index.tsx`)**:
+    - **Edge Dot Clipping Fixed**: Applied symmetrical `horizontalPadding = 12` and mapped coordinates over `usableWidth = w - horizontalPadding * 2`. Dots (radius 8 with glow rings) are now fully visible and never clipped or cut off by the container edge on either side.
+    - **Interactive Vertical Cursor Guideline**: Added a crisp, dashed vertical indicator line (`stroke="rgba(255, 255, 255, 0.38)"`, `strokeWidth={1.2}`) through the selected point across the entire graph height (`y1=0` to `y2=h`).
+    - **Tactile Nearest-Point Scrubbing**: Replaced rough index math with exact nearest-neighbor distance calculation on touch/drag (`onResponderGrant`, `onResponderMove`), firing tactile haptic feedback on each scrubbed point.
+    - **Clicking Outside Hides It**:
+      - Implemented `BalanceHistoryGraphHandle` with `useImperativeHandle` and `forwardRef` exporting `deselect()` and `isSelected`.
+      - Connected gesture responder protocol on `ScrollView` (`onStartShouldSetResponder={() => isGraphActive}`, `onResponderGrant`) and `onScrollBeginDrag` so tapping anywhere outside the graph track or scrolling immediately dismisses the active guideline and tooltip.
+      - Tapping the tooltip `X` button, tapping the active point again, or waiting 7 seconds also auto-dismisses gracefully.
+    - **Sleek Floating Tooltip Capsule**: Redesigned the tooltip from a heavy boxed card into a frosted, minimal pill capsule (`rgba(18, 20, 24, 0.96)`) displaying formatted date, hairline separator, colored net amount, and close button, clamped horizontally within screen bounds.
+  - **Open Editorial "No-Div" Obligations Modal Redesign (`src/components/dashboard/ObligationsModal.tsx`)**:
+    - **Universal Width Parity**: Removed redundant nested `paddingHorizontal: 16` from `scrollContent` inside `BottomSheetModal`, aligning all items with the standard 16px screen padding.
+    - **Abolished Card Soup**: Removed nested boxed containers (`summaryBox`, `listContainer`, `itemCard`). Transformed the summary into an unboxed Open Editorial Hero Total with bold 32px headline typography, uppercase status label, and compact `Remind All` pill button.
+    - **Open Ledger Rows & Continuous Connecting Stems**:
+      - Rendered open ledger rows separated by continuous hairline dividers (`THEME.colors.hairline`).
+      - 40px avatar nodes with identity ring and bottom status node dots (`primary` cyan for owed, `negative` rose for owe).
+      - Visual connecting stem lines (`borderLeftWidth: 1`) under each avatar connecting shared group items with minimal dot nodes and amounts, eliminating boxed chips.
+      - Sleek tactile action buttons for "Remind" (with instant "Sent" state) and "Settle Up".
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Hardware-Accelerated QuantumLogo Spinner & Large Spinning Boot Screen (`src/components/brand/QuantumLogo.tsx`, `src/components/common/AppSpinner.tsx`, `app/_layout.tsx`, and all app screens)**:
   - **Hardware-Accelerated 360° QuantumLogo Spinning Engine (`src/components/brand/QuantumLogo.tsx`, `src/components/common/AppSpinner.tsx`)**:
     - Enhanced `QuantumLogo` with native `react-native-reanimated` hardware-accelerated rotation (`useSharedValue`, `useAnimatedStyle`, `withRepeat`, `withTiming`, `Easing.linear`), matching the web application's CSS `animate-spin` at 60/120fps.

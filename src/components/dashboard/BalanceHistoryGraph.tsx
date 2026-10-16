@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
   Text,
@@ -28,9 +28,14 @@ export interface BalanceHistoryGraphProps {
   onSelectPoint?: (point: { date: string; balance: number } | null) => void;
 }
 
+export interface BalanceHistoryGraphHandle {
+  deselect: () => void;
+  isSelected: boolean;
+}
+
 // Fixed Financial Colors (Independent of user-selected theme accent)
-const GRAPH_GREEN = '#10B981'; // Canonical financial Emerald Green
-const GRAPH_ROSE = '#F43F5E'; // Clean Rose Red for negative balance
+const GRAPH_GREEN = THEME.colors.success; // Canonical financial Emerald Green
+const GRAPH_ROSE = THEME.colors.negative; // Clean Rose Red for negative balance
 
 /**
  * Generates a smooth cubic Bezier path string from an array of 2D coordinates.
@@ -56,18 +61,24 @@ function buildSmoothPath(points: Array<{ x: number; y: number }>): string {
   return path;
 }
 
-export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
-  data,
-  domain,
-  gradientOffset,
-  minBalance,
-  maxBalance,
-  height = 75,
-  style,
-  hasNoBalance,
-  onPress,
-  onSelectPoint,
-}) => {
+export const BalanceHistoryGraph = forwardRef<
+  BalanceHistoryGraphHandle,
+  BalanceHistoryGraphProps
+>(function BalanceHistoryGraph(
+  {
+    data,
+    domain,
+    gradientOffset,
+    minBalance,
+    maxBalance,
+    height = 75,
+    style,
+    hasNoBalance,
+    onPress,
+    onSelectPoint,
+  },
+  ref
+) {
   const { formatCurrency } = useCurrency();
   const [layoutWidth, setLayoutWidth] = useState<number>(340);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -90,6 +101,23 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
       }
     };
   }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      deselect: () => {
+        if (selectedIndex !== null) {
+          setSelectedIndex(null);
+          onSelectPoint?.(null);
+          if (autoDismissTimerRef.current) {
+            clearTimeout(autoDismissTimerRef.current);
+          }
+        }
+      },
+      isSelected: selectedIndex !== null,
+    }),
+    [selectedIndex, onSelectPoint]
+  );
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width } = e.nativeEvent.layout;
@@ -148,13 +176,15 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   const [minDomain, maxDomain] = domain;
   const domainSpan = maxDomain - minDomain || 1;
 
-  // Map data items to screen coordinates with slight padding so peak/trough never clips
+  // Symmetrical horizontal insets prevent the first/last circles (r=8 with outer glow) from being clipped by the card edge
+  const horizontalPadding = 12;
   const topPadding = 8;
   const bottomPadding = 8;
+  const usableWidth = Math.max(10, w - horizontalPadding * 2);
   const usableHeight = Math.max(10, h - topPadding - bottomPadding);
 
   const points = data.map((item, index) => {
-    const x = (index / Math.max(1, ptsCount - 1)) * w;
+    const x = horizontalPadding + (index / Math.max(1, ptsCount - 1)) * usableWidth;
     const normalizedY = (item.balance - minDomain) / domainSpan;
     const y = topPadding + usableHeight * (1 - normalizedY);
     return { x, y, balance: item.balance };
@@ -165,9 +195,11 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   const crossesZero = minBalance < -0.01 && maxBalance > 0.01;
 
   const lineCurve = buildSmoothPath(points);
-  const areaPath = `${lineCurve} L ${w.toFixed(1)} ${h.toFixed(1)} L 0 ${h.toFixed(1)} Z`;
+  const firstPointX = points[0]?.x ?? horizontalPadding;
+  const lastPointX = points[points.length - 1]?.x ?? (w - horizontalPadding);
+  const areaPath = `${lineCurve} L ${lastPointX.toFixed(1)} ${h.toFixed(1)} L ${firstPointX.toFixed(1)} ${h.toFixed(1)} Z`;
 
-  const lastPoint = points[points.length - 1] || { x: w, y: h / 2, balance: 0 };
+  const lastPoint = points[points.length - 1] || { x: w - horizontalPadding, y: h / 2, balance: 0 };
   const lastBalance = lastPoint.balance;
 
   // Selected point details
@@ -179,16 +211,24 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
   const safeOffset = Math.max(0, Math.min(1, gradientOffset));
   const offsetPct = Math.round(safeOffset * 100);
 
+  // Exact nearest-point detection on touch/drag
   const updateSelectionFromX = (touchX: number, isGrant = false) => {
     if (!points.length) return;
-    const clampedX = Math.max(0, Math.min(w, touchX));
-    const rawIdx = Math.round((clampedX / w) * (points.length - 1));
-    const idx = Math.max(0, Math.min(points.length - 1, rawIdx));
 
-    if (idx !== selectedIndex) {
+    let closestIdx = 0;
+    let minDistance = Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const dist = Math.abs(points[i].x - touchX);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIdx = i;
+      }
+    }
+
+    if (closestIdx !== selectedIndex) {
       haptics.tap();
-      setSelectedIndex(idx);
-      onSelectPoint?.(data[idx]);
+      setSelectedIndex(closestIdx);
+      onSelectPoint?.(data[closestIdx]);
       resetAutoDismiss();
     } else if (isGrant && selectedIndex !== null) {
       haptics.tap();
@@ -269,7 +309,7 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
           </LinearGradient>
         </Defs>
 
-        {/* Zero Axis Reference Line (No text label per user request) */}
+        {/* Zero Axis Reference Line */}
         {crossesZero && (
           <Line
             x1="0"
@@ -295,27 +335,35 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
           strokeLinejoin="round"
         />
 
-        {/* Interactive Vertical Cursor Line */}
+        {/* Interactive Vertical Cursor Guide Line */}
         {activePoint && (
           <Line
             x1={activePoint.x}
             y1={0}
             x2={activePoint.x}
             y2={h}
-            stroke="rgba(255, 255, 255, 0.22)"
+            stroke="rgba(255, 255, 255, 0.38)"
             strokeDasharray="2 3"
-            strokeWidth={1}
+            strokeWidth={1.2}
           />
         )}
 
-        {/* Point Indicators */}
+        {/* Point Indicators (Zero Edge Clipping Guaranteed via horizontalPadding) */}
         {activePoint ? (
           <>
             <Circle
               cx={activePoint.x}
               cy={activePoint.y}
-              r={7}
-              fill={activePoint.balance >= 0 ? 'rgba(16, 185, 129, 0.28)' : 'rgba(244, 63, 94, 0.28)'}
+              r={8}
+              fill={activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
+              fillOpacity={0.25}
+            />
+            <Circle
+              cx={activePoint.x}
+              cy={activePoint.y}
+              r={5}
+              fill={activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
+              fillOpacity={0.45}
             />
             <Circle
               cx={activePoint.x}
@@ -331,68 +379,68 @@ export const BalanceHistoryGraph: React.FC<BalanceHistoryGraphProps> = ({
             <Circle
               cx={lastPoint.x}
               cy={lastPoint.y}
-              r={5.5}
-              fill={lastBalance >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)'}
+              r={6}
+              fill={lastBalance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
+              fillOpacity={0.25}
             />
             <Circle
               cx={lastPoint.x}
               cy={lastPoint.y}
-              r={2.5}
+              r={3}
               fill={lastBalance >= 0 ? GRAPH_GREEN : GRAPH_ROSE}
+              stroke="#FFFFFF"
+              strokeWidth={1}
             />
           </>
         )}
       </Svg>
 
-      {/* Sleek Minimal Compact Tooltip */}
+      {/* Sleek Minimal Floating Tooltip Capsule */}
       {activePoint && activeData && (
         <View
           style={[
-            styles.tooltipCard,
+            styles.tooltipPill,
             {
-              left: Math.max(6, Math.min(w - 146, activePoint.x - 70)),
-              ...(activePoint.y >= 38 ? { top: 4 } : { bottom: 4 }),
+              left: Math.max(8, Math.min(w - 158, activePoint.x - 75)),
+              ...(activePoint.y >= 36 ? { top: 4 } : { bottom: 4 }),
             },
           ]}
           pointerEvents="box-none"
         >
-          <View style={styles.tooltipHeaderRow}>
-            <Text style={styles.tooltipDateText}>{activeData.date}</Text>
-            <TouchableOpacity
-              onPress={() => {
-                haptics.tap();
-                setSelectedIndex(null);
-                onSelectPoint?.(null);
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={styles.tooltipCloseBtn}
-              accessibilityLabel="Dismiss balance details"
-              accessibilityRole="button"
-            >
-              <X size={10} color={THEME.colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.tooltipValueRow}>
-            <View
-              style={[
-                styles.tooltipIndicatorDot,
-                { backgroundColor: activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE },
-              ]}
-            />
-            <Text
-              style={[
-                styles.tooltipBalanceText,
-                { color: activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE },
-              ]}
-            >
-              {formatCurrency(activePoint.balance, { showSign: true, decimals: 2 })}
-            </Text>
-          </View>
+          <View
+            style={[
+              styles.tooltipIndicatorDot,
+              { backgroundColor: activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE },
+            ]}
+          />
+          <Text style={styles.tooltipDateText}>{activeData.date}</Text>
+          <View style={styles.tooltipSep} />
+          <Text
+            style={[
+              styles.tooltipBalanceText,
+              { color: activePoint.balance >= 0 ? GRAPH_GREEN : GRAPH_ROSE },
+            ]}
+          >
+            {formatCurrency(activePoint.balance, { showSign: true, decimals: 2 })}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              haptics.tap();
+              setSelectedIndex(null);
+              onSelectPoint?.(null);
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.tooltipCloseBtn}
+            accessibilityLabel="Dismiss balance point"
+            accessibilityRole="button"
+          >
+            <X size={10} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
         </View>
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -431,50 +479,47 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: THEME.colors.textMuted,
   },
-  tooltipCard: {
+  tooltipPill: {
     position: 'absolute',
-    width: 140,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(18, 20, 24, 0.96)',
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.16)',
-    paddingHorizontal: 10,
+    borderColor: THEME.colors.hairlineLight,
+    paddingHorizontal: 9,
     paddingVertical: 5,
+    gap: 6,
     shadowColor: THEME.colors.palette.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.5,
-    shadowRadius: 5,
+    shadowRadius: 6,
     elevation: 8,
     zIndex: 100,
-  },
-  tooltipHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  tooltipDateText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
-    letterSpacing: 0.2,
-  },
-  tooltipCloseBtn: {
-    padding: 1,
-  },
-  tooltipValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
   },
   tooltipIndicatorDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
+  tooltipDateText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+    letterSpacing: 0.1,
+  },
+  tooltipSep: {
+    width: 1,
+    height: 10,
+    backgroundColor: THEME.colors.hairlineLight,
+  },
   tooltipBalanceText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: -0.2,
+  },
+  tooltipCloseBtn: {
+    padding: 2,
+    marginLeft: 2,
   },
 });
