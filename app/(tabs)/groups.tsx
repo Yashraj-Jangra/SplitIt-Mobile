@@ -158,6 +158,12 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     let isMounted = true;
+    if (!authUser) {
+      setGroups([]);
+      setLoading(false);
+      return;
+    }
+
     const uid = authUser?.id || '';
     if (uid) {
       setIsDemoDismissed(demoService.isDemoDismissedSync(uid));
@@ -200,17 +206,22 @@ export default function GroupsScreen() {
   // Screen focus: background refresh when navigating back to Groups tab
   useFocusEffect(
     useCallback(() => {
+      if (!authUser) return;
       loadGroups(false);
-    }, [])
+    }, [authUser])
   );
 
   // Global event listener: re-fetch groups whenever groups/expenses/settlements change
   useEffect(() => {
-    const unsubscribe = appEventEmitter.on('data-changed', () => {
+    const unsubscribe = appEventEmitter.on('data-changed', (event) => {
+      if (event?.type === 'auth_logout' || !authUser) {
+        setGroups([]);
+        return;
+      }
       loadGroups(true);
     });
     return unsubscribe;
-  }, []);
+  }, [authUser]);
 
   const onRefresh = () => {
     setRefreshing(true);

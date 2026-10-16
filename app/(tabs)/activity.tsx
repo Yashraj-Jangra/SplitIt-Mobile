@@ -111,6 +111,13 @@ export default function ActivityScreen() {
   };
 
   useEffect(() => {
+    if (!authUser) {
+      setExpenses([]);
+      setSettlements([]);
+      setLoading(false);
+      return;
+    }
+
     const uid = authUser?.id || '';
     if (uid) {
       setIsDemoDismissed(demoService.isDemoDismissedSync(uid));
@@ -132,17 +139,23 @@ export default function ActivityScreen() {
   // Screen focus: background refresh when navigating to Activity screen
   useFocusEffect(
     useCallback(() => {
+      if (!authUser) return;
       loadData(false);
-    }, [])
+    }, [authUser])
   );
 
   // Global event listener: auto re-fetch activity when any expense/settlement/group changes
   useEffect(() => {
-    const unsubscribe = appEventEmitter.on('data-changed', () => {
+    const unsubscribe = appEventEmitter.on('data-changed', (event) => {
+      if (event?.type === 'auth_logout' || !authUser) {
+        setExpenses([]);
+        setSettlements([]);
+        return;
+      }
       loadData(true);
     });
     return unsubscribe;
-  }, []);
+  }, [authUser]);
 
   const onRefresh = () => {
     setRefreshing(true);

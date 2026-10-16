@@ -208,6 +208,12 @@ export const authService = {
       if (res.ok) {
         const profile = await res.json();
         if (profile) {
+          // Guard: if user has logged out while request was in-flight, abort to prevent session resurrection
+          const activeToken = await this.getToken();
+          if (!activeToken) {
+            return null;
+          }
+
           const cached = await this.getCachedUser();
           const nameParts = (profile.name || '').split(' ');
           const resolvedName =
@@ -259,18 +265,47 @@ export const authService = {
 
   /**
    * Clear session on logout.
+   * Invalidates backend session, wipes Keychain/Keystore items, and signs out of Google.
    */
   async clearSession(): Promise<void> {
+    _cachedUser = null;
+
     try {
-      _cachedUser = null;
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
-      await SecureStore.deleteItemAsync(USER_KEY);
+      // 1. Notify Better-Auth backend of sign-out with short timeout
+      const token = await this.getToken().catch(() => null);
+      if (token) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500);
+          await fetch(`${API_BASE_URL}/api/auth/sign-out`, {
+            method: 'POST',
+            headers: getAuthHeaders({}, token),
+            body: JSON.stringify({}),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+        } catch {
+          // Network or abort fallback
+        }
+      }
+    } catch {
+      // Safe ignore
+    }
+
+    // 2. Delete SecureStore items independently so one failure cannot block the other
+    await Promise.allSettled([
+      SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {}),
+      SecureStore.deleteItemAsync(USER_KEY).catch(() => {}),
+    ]);
+
+    // 3. Clear Google Sign-In native session
+    try {
       const mod = getNativeGoogleSignin();
       if (mod) {
         await mod.GoogleSignin.signOut().catch(() => {});
       }
     } catch {
-      // SecureStore clear fallback
+      // Safe ignore
     }
   },
 

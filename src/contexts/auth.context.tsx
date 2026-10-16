@@ -8,6 +8,7 @@ import { settlementService } from '../services/settlement.service';
 import { supportService } from '../services/support.service';
 import { demoService } from '../services/demo.service';
 import { storageService } from '../services/storage.service';
+import { appEventEmitter } from '../services/event-emitter';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -54,9 +55,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = async () => {
     try {
       const cached = await authService.getCachedUser();
-      if (cached) {
-        setUser(cached);
+      if (!cached) {
+        return;
       }
+      setUser(cached);
       const remote = await authService.fetchUserProfile();
       if (remote) {
         setUser(remote);
@@ -144,9 +146,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    await clearAllAppData();
-    await authService.clearSession();
+    // 1. Immediately reset React context user state
     setUser(null);
+
+    // 2. Notify all active screens to clear their local in-memory lists
+    appEventEmitter.emit('data-changed', { type: 'auth_logout' });
+
+    // 3. Wipe persistent storage, SecureStore, and backend session concurrently
+    await Promise.allSettled([
+      clearAllAppData(),
+      authService.clearSession(),
+    ]);
   };
 
   const updateUserProfile = async (updates: Partial<AuthUser>): Promise<AuthUser | null> => {

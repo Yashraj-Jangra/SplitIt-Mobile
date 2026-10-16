@@ -116,6 +116,6 @@ export const demoService = {
   },
 
   clearCache(): void {
-    // Intentionally keep in-memory dismissed markers intact to prevent 1-frame mock data flashes on re-login
+    _inMemoryDismissedUserIds.clear();
   },
 };

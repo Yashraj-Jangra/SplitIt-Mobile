@@ -53,8 +53,13 @@ export default function ProfileScreen() {
         text: 'Log Out',
         style: 'destructive',
         onPress: async () => {
-          await signOut();
-          router.replace('/(auth)/login');
+          try {
+            await signOut();
+          } catch {
+            // Safe fallback
+          } finally {
+            router.replace('/(auth)/login');
+          }
         },
       },
     ]);
@@ -237,15 +242,21 @@ export default function ProfileScreen() {
 
         {/* Log Out */}
         <View style={styles.logoutSection}>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-            <LogOut size={16} color={THEME.colors.textSecondary} />
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Log out of SplitIt"
+          >
+            <LogOut size={16} color={THEME.colors.danger} />
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
 
         {/* Brand Footer */}
         <View style={styles.brandFooter}>
-          <QuantumLogo size={36} />
+          <QuantumLogo size={60} />
           <Text style={styles.brandTitle}>SplitIt</Text>
           <Text style={styles.brandTagline}>Shared expenses, settled simply.</Text>
           <Text style={styles.brandVersion}>v1.0.0 · Mobile & Web Synchronized</Text>
@@ -376,43 +387,45 @@ const styles = StyleSheet.create({
   },
   // Log Out
   logoutSection: {
-    marginTop: 4,
+    marginTop: 6,
+    marginBottom: 8,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: THEME.colors.dangerMuted,
     paddingVertical: 14,
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: THEME.colors.hairline,
+    borderColor: THEME.colors.danger + '33',
   },
   logoutText: {
     fontSize: 14,
     fontWeight: '700',
-    color: THEME.colors.textSecondary,
+    color: THEME.colors.danger,
   },
   // Brand footer
   brandFooter: {
     alignItems: 'center',
-    paddingVertical: 16,
-    gap: 4,
+    paddingVertical: 26,
+    gap: 6,
   },
   brandTitle: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '900',
     color: THEME.colors.text,
-    letterSpacing: -0.3,
-    marginTop: 4,
+    letterSpacing: -0.5,
+    marginTop: 6,
   },
   brandTagline: {
-    fontSize: 11,
+    fontSize: 13,
+    fontWeight: '500',
     color: THEME.colors.textMuted,
   },
   brandVersion: {
-    fontSize: 10,
+    fontSize: 11,
     color: THEME.colors.textMuted + '80',
     marginTop: 2,
   },

@@ -279,6 +279,10 @@ export default function GroupDetailScreen() {
   // Real-time event listener when any mutation occurs in this group or globally
   useEffect(() => {
     const unsubscribe = appEventEmitter.on('data-changed', (event) => {
+      if (event?.type === 'auth_logout') {
+        setGroup(null);
+        return;
+      }
       if (!event?.groupId || event.groupId === targetId) {
         loadGroup(true);
       }

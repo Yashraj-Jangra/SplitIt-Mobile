@@ -128,6 +128,15 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    if (!authUser) {
+      setCurrentUser(null);
+      setGroups([]);
+      setRecentTransactions([]);
+      setSettlements([]);
+      setBalanceSummary(null);
+      return;
+    }
+
     if (authUser && !currentUser) setCurrentUser(authUser);
     const activeUid = authUser?.id || currentUser?.id || '';
     if (activeUid) {
@@ -161,17 +170,26 @@ export default function HomeScreen() {
   // Screen focus: background refresh when returning to HomeScreen from any modal/flow
   useFocusEffect(
     useCallback(() => {
+      if (!authUser) return;
       loadData(false);
-    }, [])
+    }, [authUser])
   );
 
   // Global event listener: automatic re-sync when expense, group, or settlement is added/changed
   useEffect(() => {
-    const unsubscribe = appEventEmitter.on('data-changed', () => {
+    const unsubscribe = appEventEmitter.on('data-changed', (event) => {
+      if (event?.type === 'auth_logout' || !authUser) {
+        setCurrentUser(null);
+        setGroups([]);
+        setRecentTransactions([]);
+        setSettlements([]);
+        setBalanceSummary(null);
+        return;
+      }
       loadData(true);
     });
     return unsubscribe;
-  }, []);
+  }, [authUser]);
 
   const onRefresh = () => {
     haptics.tap();

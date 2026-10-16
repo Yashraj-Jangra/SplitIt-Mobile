@@ -101,30 +101,23 @@ export const storageService = {
   /**
    * Complete clean sweep of all user-specific data from persistent offline storage.
    * Invoked on logout, account switch, or auth token invalidation.
-   * Safely preserves:
-   * 1. Global device preferences (currency, haptics, group sort).
-   * 2. Per-user demo mode dismissed markers (so returning users don't see mock data again).
+   * Wipes 100% of cached groups, expenses, settlements, balances, searches, and session artifacts.
+   * Safely preserves only hardware/device preferences (currency, haptics, theme, group sort).
    */
   async clearAllUserData(): Promise<void> {
     try {
       const allKeys = await AsyncStorage.getAllKeys();
-      const keysToRemove = allKeys.filter((k) => {
-        // Preserve device preferences
-        if (k.startsWith('splitit_pref_')) return false;
-        // Preserve demo dismissal flags so returning users never see mock data again
-        if (k.startsWith('splitit_demo_mode_dismissed_v1_')) return false;
-        // Target all user-specific caches, search histories, default groups, and session artifacts
-        return (
-          k.startsWith('splitit_cache_') ||
-          k.startsWith('splitit_default_group_') ||
-          k.startsWith('splitit_ai_') ||
-          k.startsWith('splitit_search_') ||
-          k.startsWith('splitit_user_')
-        );
-      });
+      const keysToRemove = allKeys.filter((k) => !k.startsWith('splitit_pref_'));
 
       if (keysToRemove.length > 0) {
-        await AsyncStorage.multiRemove(keysToRemove);
+        try {
+          await AsyncStorage.multiRemove(keysToRemove);
+        } catch {
+          // Fallback individual removal if multiRemove encounters batch constraint
+          for (const k of keysToRemove) {
+            await AsyncStorage.removeItem(k).catch(() => {});
+          }
+        }
       }
     } catch {
       // Safe ignore

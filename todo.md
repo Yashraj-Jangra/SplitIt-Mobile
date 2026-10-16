@@ -1,5 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Fixed Clean Logout & Redesigned Logout Button and Brand Footer (`src/services/auth.service.ts`, `src/services/storage.service.ts`, `src/services/demo.service.ts`, `src/services/event-emitter.ts`, `src/contexts/auth.context.tsx`, `app/(tabs)/profile.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`, `app/(tabs)/activity.tsx`, `app/groups/[id]/index.tsx`)**:
+  - **Single-Tap 100% Clean Logout Resolution**:
+    - **Eliminated Race Condition**: In `authService.fetchUserProfile`, added an active session check ensuring that if a user signs out while a profile request is in-flight, the lagged response never writes back or resurrects user data in `SecureStore`.
+    - **Independent SecureStore Deletion**: In `authService.clearSession`, isolated `deleteItemAsync(TOKEN_KEY)` and `deleteItemAsync(USER_KEY)` using `Promise.allSettled`, preventing an error on one key from skipping deletion of the other.
+    - **Backend Session Invalidation**: Added `POST /api/auth/sign-out` call with short abort timeout in `clearSession`, cleanly terminating the session token on the Better-Auth backend.
+    - **Complete Offline Storage Wipe**: In `storageService.clearAllUserData`, inverted the filter to delete 100% of keys in `AsyncStorage` except hardware/device preferences (`splitit_pref_*`), with a batch fallback loop. Wipes all cached groups, expenses, settlements, balances, searches, AI chat histories, and session artifacts.
+    - **In-Memory Cache & Screen State Purge**: In `AuthProvider.signOut`, immediately reset `user` state to `null` and emitted `appEventEmitter.emit('data-changed', { type: 'auth_logout' })`. Updated `index.tsx`, `groups.tsx`, `activity.tsx`, and `groups/[id]/index.tsx` to immediately flush local component state (`[]` and `null`) and reject unauthenticated focus/event syncs. Zero residual data remains across the entire app.
+    - **Guaranteed Navigation**: Wrapped `handleLogout` in `profile.tsx` with `try / finally { router.replace('/(auth)/login'); }` ensuring immediate navigation on the very first tap.
+  - **Red Logout Button Styling**:
+    - Re-themed the Logout button in `app/(tabs)/profile.tsx` with `THEME.colors.danger` (`#F43F5E`) for the `LogOut` icon and text label.
+    - Applied subtle destructive background `THEME.colors.dangerMuted` (`rgba(244, 63, 94, 0.14)`) and tinted hairline border (`THEME.colors.danger + '33'`).
+  - **Enlarged Logo & Brand Typography (Pure Open Editorial)**:
+    - Increased `QuantumLogo` size from `36` to `60` in the profile brand footer.
+    - Scaled brand title to `fontSize: 22, fontWeight: '900'` with tight letter spacing (`-0.5`).
+    - Scaled brand tagline to `fontSize: 13, fontWeight: '500'`.
+    - Maintained pure open editorial design with no card/box div wrapper.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Removed Apple Login & Enabled Native Google Login for iOS / iPhones (`src/services/auth.service.ts`, `app/(auth)/login.tsx`, `app/(auth)/signup.tsx`)**:
   - **Removed Apple Login**:
     - Removed non-functional Apple login buttons from `app/(auth)/login.tsx` and `app/(auth)/signup.tsx`.
