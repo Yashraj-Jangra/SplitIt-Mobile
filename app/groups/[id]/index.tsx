@@ -56,6 +56,7 @@ import { BottomSheetModal } from '../../../src/components/common/BottomSheetModa
 import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../../src/services/settings.service';
 import { haptics } from '../../../src/services/haptics.service';
 import { appEventEmitter } from '../../../src/services/event-emitter';
+import { ActivitySettlementRow } from '../../../src/components/activity';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity', 'analysis'] as const;
 type TabType = typeof TABS[number];
@@ -906,17 +907,15 @@ export default function GroupDetailScreen() {
                         );
                       }
 
-                      // Settlement row: no front icon, person -> person amount, "You" if viewer
+                      // Settlement row: modular theme-based ActivitySettlementRow
                       const set = entry.data;
-                      const isPayerViewer = set.payerId === currentUserId || set.payerName === 'You';
-                      const isPayeeViewer = set.payeeId === currentUserId || set.payeeName === 'You';
-                      const payerText = isPayerViewer ? 'You' : set.payerName;
-                      const payeeText = isPayeeViewer ? 'You' : set.payeeName;
 
                       return (
-                        <TouchableOpacity
+                        <ActivitySettlementRow
                           key={entry.id}
-                          style={[styles.settlementRow, !isLast && styles.settlementRowBorder]}
+                          settlement={set}
+                          currentUserId={currentUserId}
+                          isLast={isLast}
                           onPress={() => {
                             haptics.tap();
                             router.push({
@@ -935,41 +934,7 @@ export default function GroupDetailScreen() {
                               },
                             });
                           }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.settlementGlyph}>
-                            <Handshake size={20} color={THEME.colors.palette.emerald} />
-                          </View>
-
-                          <View style={styles.settlementLeftCol}>
-                            <View style={styles.settlementTransferRow}>
-                              <Text
-                                style={styles.settlementPartyName}
-                                numberOfLines={1}
-                              >
-                                {payerText}
-                              </Text>
-                              <ArrowRight size={13} color={THEME.colors.textMuted} style={styles.settlementArrowIcon} />
-                              <Text
-                                style={styles.settlementPartyName}
-                                numberOfLines={1}
-                              >
-                                {payeeText}
-                              </Text>
-                            </View>
-
-                            <Text style={styles.settlementSubtitle}>
-                              Settlement • {set.date}
-                            </Text>
-                          </View>
-
-                          <View style={styles.settlementAmountCol}>
-                            <Text style={styles.settlementAmountText}>
-                              {formatCurrency(Number(set.amount || 0), { decimals: 2 })}
-                            </Text>
-                            <Text style={styles.settlementStatusText}>Settled</Text>
-                          </View>
-                        </TouchableOpacity>
+                        />
                       );
                     })}
 

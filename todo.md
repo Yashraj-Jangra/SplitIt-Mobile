@@ -1,5 +1,15 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Modular Activity Stream, Theme-Based Settlements & Neutral Icons Parity (`app/(tabs)/activity.tsx`, `app/groups/[id]/index.tsx`, `src/components/activity/*`)**:
+  - **Modular Activity Components (`src/components/activity/`)**:
+    - Built [`ActivityExpenseRow.tsx`](file:///d:/Projects/SplitIt-Mobile/src/components/activity/ActivityExpenseRow.tsx): Renders clean, open editorial expense items with neutral `CategoryIcon` (`THEME.colors.textSecondary`), title, payer/group ribbon, date, and `ExpenseImpactCol`.
+    - Built [`ActivitySettlementRow.tsx`](file:///d:/Projects/SplitIt-Mobile/src/components/activity/ActivitySettlementRow.tsx): Renders theme-based settlement items with `currentAccent.primary` handshake glyph node, `Payer ➔ Payee` transfer flow with arrow icon, subtitle, and bold amount in dynamic accent color with uppercase `SETTLED` status badge.
+    - Exported clean barrel interface from `src/components/activity/index.ts`.
+  - **Activity & Group Stream Alignment**:
+    - Both `app/(tabs)/activity.tsx` and `app/groups/[id]/index.tsx` now use `ActivitySettlementRow` and unified modular layouts.
+    - Expense category icons are kept strictly neutral, while settlements adopt dynamic theme accent styling across both feeds.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Activity Screen Refinement, Filter Popup Modal & Group Activity Parity (`app/(tabs)/activity.tsx`, `src/components/activity/ActivityFilterModal.tsx`, `app/groups/[id]/index.tsx`)**:
   - **Activity Filter Popup Modal (`src/components/activity/ActivityFilterModal.tsx`)**:
     - Created dedicated dark-mode glass-pane bottom sheet modal with smooth spring animations.

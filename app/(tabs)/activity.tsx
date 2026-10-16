@@ -34,7 +34,11 @@ import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { haptics } from '../../src/services/haptics.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
-import { ActivityFilterModal } from '../../src/components/activity/ActivityFilterModal';
+import {
+  ActivityFilterModal,
+  ActivityExpenseRow,
+  ActivitySettlementRow,
+} from '../../src/components/activity';
 
 export type ActivityEntry =
   | { type: 'expense'; id: string; date: string; rawDate: string; data: UserTransactionItem }
@@ -647,17 +651,12 @@ export default function ActivityScreen() {
 
                   if (entry.type === 'expense') {
                     const tx = entry.data;
-                    const isGet = tx.yourImpact === 'get';
-                    const isOwe = tx.yourImpact === 'owe';
-
                     return (
-                      <TouchableOpacity
+                      <ActivityExpenseRow
                         key={entry.id}
-                        style={[
-                          styles.activityRow,
-                          !isLast && styles.activityRowBorder,
-                        ]}
-                        activeOpacity={0.7}
+                        expense={tx}
+                        currentUserId={authUser?.id}
+                        isLast={isLast}
                         onPress={() => {
                           haptics.tap();
                           router.push({
@@ -673,47 +672,18 @@ export default function ActivityScreen() {
                             },
                           });
                         }}
-                      >
-                        <View style={styles.iconNode}>
-                          <CategoryIcon
-                            subCategory={tx.category}
-                            masterCategory={tx.masterCategory}
-                            size={18}
-                            color={
-                              isGet
-                                ? currentAccent.primary
-                                : isOwe
-                                ? THEME.colors.negative
-                                : THEME.colors.textSecondary
-                            }
-                          />
-                        </View>
-
-                        <View style={styles.detailsCol}>
-                          <Text style={styles.itemTitle} numberOfLines={1}>
-                            {tx.title}
-                          </Text>
-                          <Text style={styles.itemSubtitle} numberOfLines={1}>
-                            {tx.paidByName} • {tx.groupName}
-                          </Text>
-                          <Text style={styles.itemDate}>{tx.date}</Text>
-                        </View>
-
-                        <ExpenseImpactCol expense={tx} currentUserId={authUser?.id} />
-                      </TouchableOpacity>
+                      />
                     );
                   }
 
                   // Settlement Entry
                   const stl = entry.data;
                   return (
-                    <TouchableOpacity
+                    <ActivitySettlementRow
                       key={entry.id}
-                      style={[
-                        styles.activityRow,
-                        !isLast && styles.activityRowBorder,
-                      ]}
-                      activeOpacity={0.7}
+                      settlement={stl}
+                      currentUserId={authUser?.id}
+                      isLast={isLast}
                       onPress={() => {
                         haptics.tap();
                         router.push({
@@ -724,62 +694,7 @@ export default function ActivityScreen() {
                           },
                         });
                       }}
-                    >
-                      <View
-                        style={[
-                          styles.iconNode,
-                          styles.settleIconNode,
-                          {
-                            backgroundColor: currentAccent.primaryMuted,
-                            borderColor: currentAccent.borderFocus,
-                          },
-                        ]}
-                      >
-                        <Handshake size={18} color={currentAccent.primary} />
-                      </View>
-
-                      <View style={styles.detailsCol}>
-                        <View style={styles.settleTitleRow}>
-                          <Text style={styles.itemTitle} numberOfLines={1}>
-                            Payment Recorded
-                          </Text>
-                          <View
-                            style={[
-                              styles.settledBadge,
-                              { backgroundColor: currentAccent.primaryMuted },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.settledBadgeText,
-                                { color: currentAccent.primary },
-                              ]}
-                            >
-                              Settled
-                            </Text>
-                          </View>
-                        </View>
-                        <Text style={styles.itemSubtitle} numberOfLines={1}>
-                          {stl.payerName} paid {stl.payeeName}
-                          {stl.groupName ? ` • ${stl.groupName}` : ''}
-                        </Text>
-                        <Text style={styles.itemDate}>{stl.date}</Text>
-                      </View>
-
-                      <View style={styles.settleAmountCol}>
-                        <Text
-                          style={[
-                            styles.settleAmountText,
-                            { color: THEME.colors.palette.emerald },
-                          ]}
-                        >
-                          {formatCurrency(stl.amount, { decimals: 2 })}
-                        </Text>
-                        <Text style={styles.settleSubText}>
-                          via {stl.method || 'UPI'}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                    />
                   );
                 })}
               </View>
