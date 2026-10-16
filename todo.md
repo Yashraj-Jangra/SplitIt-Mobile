@@ -1,5 +1,26 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Activity Screen Refinement, Filter Popup Modal & Group Activity Parity (`app/(tabs)/activity.tsx`, `src/components/activity/ActivityFilterModal.tsx`, `app/groups/[id]/index.tsx`)**:
+  - **Activity Filter Popup Modal (`src/components/activity/ActivityFilterModal.tsx`)**:
+    - Created dedicated dark-mode glass-pane bottom sheet modal with smooth spring animations.
+    - Organized filters by Transaction Type (`All`, `Expenses`, `Settlements` with icons), Your Role (`All Roles`, `Paid by me`, `Split with me`), and Circles / Groups with initial nodes.
+    - Header includes title, subtitle, and an instant "Reset All" button when filters are active; footer has a dynamic "Show N results" action button.
+  - **Horizontal Filter Strip with Cross 'X' Removal (`app/(tabs)/activity.tsx`)**:
+    - Pinned horizontal scroll strip starting with a dedicated "Filters" button displaying active count badge.
+    - Applied filters are displayed as active pills with a cross 'X' in front (`X Expenses`, `X Paid by me`, etc.); tapping any pill immediately removes that filter with haptic feedback.
+    - Quick-toggle shortcut pills (`Expenses`, `Settlements`, `Paid by me`, `Split with me`) allow fast single-tap filtering from rest.
+    - Added "Clear all" action when multiple filters are active.
+  - **Graceful Scroll-Driven Header Animation (`app/(tabs)/activity.tsx`)**:
+    - Integrated animated header collapse using `Animated.ScrollView` with `scrollY`.
+    - As the user scrolls down, the large "Activity" title and subtitle gracefully fade out and collapse, smoothly sliding the search bar and filter strip to the pinned top under the status bar.
+    - Searching and filtering remain accessible from any scroll position.
+  - **Open Editorial "No-Div" Feed Architecture**:
+    - Abolished the boxed card container (`ledgerCard`); rows now stretch full width with 16px horizontal padding and continuous hairline dividers.
+    - Month overline headers with uppercase typography and item counters matching the audit logs design.
+  - **Group Activity Header Parity (`app/groups/[id]/index.tsx`)**:
+    - Added `<Activity size={17} color={currentAccent.primary} />` and "Activity" title on the left side of the activity filter bar, matching the layout of Group Balances (`ArrowLeftRight`) and Audit Logs (`HistoryIcon`).
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Universal Search Flagship Redesign, Full-Screen Immersion & Bespoke Entity Architecture (`src/components/search/UniversalSearchModal.tsx`)**:
   - **Full-Screen Flagship Presentation**:
     - Replaced the constrained iOS page sheet (`presentationStyle="pageSheet"`) with an edge-to-edge, immersive canvas (`statusBarTranslucent`, `transparent={false}`, and `SafeAreaView edges={['top', 'bottom']}`).

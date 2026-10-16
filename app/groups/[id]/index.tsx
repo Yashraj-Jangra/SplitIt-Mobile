@@ -31,6 +31,7 @@ import {
   ArrowRight,
   ArrowLeftRight,
   Camera,
+  Activity,
 } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
@@ -753,8 +754,13 @@ export default function GroupDetailScreen() {
         {/* TAB 1: EXPENSES & SETTLEMENTS (ACTIVITY STREAM) */}
         {visitedTabs.expenses && (
           <View style={[styles.tabSection, activeTab !== 'expenses' && styles.tabHidden]}>
-            {/* Compact Combined Segmented Filter Track (Right-Aligned) */}
+            {/* Activity Stream Section Header (Activity Title on Left, Segmented Filter on Right) */}
             <View style={styles.activityFilterBar}>
+              <View style={styles.activityTitleRow}>
+                <Activity size={17} color={currentAccent.primary} />
+                <Text style={styles.activitySectionTitle}>Activity</Text>
+              </View>
+
               <View style={styles.segmentedTrack}>
                 <TouchableOpacity
                   style={[
@@ -1819,10 +1825,22 @@ const styles = StyleSheet.create({
   },
   activityFilterBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 2,
-    marginBottom: 2,
+    paddingHorizontal: 4,
+    marginBottom: 6,
+    marginTop: 2,
+  },
+  activityTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  activitySectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    letterSpacing: -0.2,
   },
   segmentedTrack: {
     flexDirection: 'row',
