@@ -6,13 +6,13 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Switch,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   X,
   Send,
@@ -332,7 +332,7 @@ export default function NewSupportTicketModal() {
             accessibilityRole="button"
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+              <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
             ) : (
               <>
                 <Send size={16} color={THEME.colors.primaryForeground} strokeWidth={2.4} />

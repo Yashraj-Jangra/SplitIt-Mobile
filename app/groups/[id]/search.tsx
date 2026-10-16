@@ -6,12 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { QuantumSpinner } from '../../../src/components/brand/QuantumLogo';
 import {
   Search,
   X,
@@ -277,7 +277,7 @@ export default function GroupSearchScreen() {
         {/* Results Stream */}
         {loading ? (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="small" color={THEME.colors.primary} />
+            <QuantumSpinner size={28} color={THEME.colors.primary} />
           </View>
         ) : (
           <ScrollView

@@ -8,10 +8,10 @@ import {
   TextInput,
   Image,
   RefreshControl,
-  ActivityIndicator,
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   Users,
   Plus,
@@ -400,7 +400,7 @@ export default function GroupsScreen() {
       {/* Main Groups List */}
       {loading && groups.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={THEME.colors.primary} />
         </View>
       ) : (
         <ScrollView

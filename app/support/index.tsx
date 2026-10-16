@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   TextInput,
   LayoutAnimation,
   Platform,
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   ArrowLeft,
   Plus,
@@ -238,7 +238,7 @@ export default function SupportTicketsScreen() {
 
       {loading && tickets.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={THEME.colors.primary} />
         </View>
       ) : (
         <ScrollView

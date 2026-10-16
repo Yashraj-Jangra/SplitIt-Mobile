@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +14,7 @@ import {
   AppState,
   AppStateStatus,
 } from 'react-native';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -605,7 +605,7 @@ export default function SettleUpModal() {
         >
           {isLoadingGroup && members.length === 0 ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator size="small" color={THEME.colors.primary} />
+              <QuantumSpinner size={24} color={THEME.colors.primary} />
               <Text style={styles.loadingText}>Loading group members...</Text>
             </View>
           ) : (

@@ -8,7 +8,6 @@ import {
   ScrollView,
   Modal,
   Image,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Alert,
@@ -17,6 +16,7 @@ import {
   Dimensions,
   BackHandler,
 } from 'react-native';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -894,7 +894,7 @@ export default function NewExpenseModal() {
       <View style={styles.rootWrapper}>
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={THEME.colors.primary} />
+            <QuantumSpinner size={36} color={THEME.colors.primary} />
             <Text style={styles.loadingText}>Loading expense details...</Text>
           </View>
         </SafeAreaView>
@@ -1209,7 +1209,7 @@ export default function NewExpenseModal() {
               disabled={isUploadingReceipt}
             >
               {isUploadingReceipt ? (
-                <ActivityIndicator size="small" color={THEME.colors.primary} />
+                <QuantumSpinner size={14} color={THEME.colors.primary} />
               ) : (
                 <Camera
                   size={13}

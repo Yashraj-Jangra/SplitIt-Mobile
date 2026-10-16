@@ -4,13 +4,13 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { haptics } from '../../src/services/haptics.service';
 import {
   X,
@@ -224,7 +224,7 @@ export default function ReceiptScannerScreen() {
 
             {isProcessing && (
               <View style={styles.processingBadge}>
-                <ActivityIndicator size="small" color={THEME.colors.primary} />
+                <QuantumSpinner size={14} color={THEME.colors.primary} />
                 <Text style={styles.processingBadgeText}>Analyzing with MiniMax AI...</Text>
               </View>
             )}

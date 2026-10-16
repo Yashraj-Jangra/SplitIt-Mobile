@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -17,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, User, Mail, Check, Camera } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../../src/constants/theme';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { useAuth } from '../../src/contexts/auth.context';
 import { authService } from '../../src/services/auth.service';
 import { haptics } from '../../src/services/haptics.service';
@@ -194,7 +194,7 @@ export default function AccountSettingsScreen() {
                 )}
                 {isUploadingAvatar && (
                   <View style={styles.avatarLoadingOverlay}>
-                    <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                    <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
                   </View>
                 )}
               </View>
@@ -306,7 +306,7 @@ export default function AccountSettingsScreen() {
               activeOpacity={0.8}
             >
               {isSaving ? (
-                <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
               ) : (
                 <>
                   <Check size={16} color={THEME.colors.primaryForeground} strokeWidth={2.5} />

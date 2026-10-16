@@ -8,13 +8,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Mail, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
-import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
+import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { authService } from '../../src/services/auth.service';
 import { haptics } from '../../src/services/haptics.service';
 
@@ -157,7 +156,7 @@ export default function ForgotPasswordScreen() {
                 accessibilityLabel="Send recovery link"
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                  <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
                 ) : (
                   <>
                     <Text style={styles.primaryButtonText}>Send Recovery Link</Text>

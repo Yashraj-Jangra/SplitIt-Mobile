@@ -6,7 +6,6 @@ import {
   Modal,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { X, Banknote, Smartphone, Landmark, Check } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { QuantumSpinner } from '../brand/QuantumLogo';
 import { SettlementDetailModel, settlementService } from '../../services/settlement.service';
 import { useCurrency } from '../../contexts/currency.context';
 import { haptics } from '../../services/haptics.service';
@@ -225,7 +225,7 @@ export const EditSettlementModal: React.FC<EditSettlementModalProps> = ({
                   disabled={submitting}
                 >
                   {submitting ? (
-                    <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                    <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
                   ) : (
                     <>
                       <Check size={16} color={THEME.colors.primaryForeground} strokeWidth={2.5} />

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   Animated,
   Dimensions,
@@ -13,6 +12,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import { QuantumSpinner } from '../../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -639,7 +639,7 @@ export default function GroupDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <QuantumSpinner size={40} color={THEME.colors.primary} />
           <Text style={styles.loadingText}>Loading circle...</Text>
         </View>
       </SafeAreaView>

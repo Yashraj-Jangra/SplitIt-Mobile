@@ -5,11 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { QuantumSpinner } from '../brand/QuantumLogo';
 import {
   Bell,
   CheckCircle2,
@@ -184,7 +184,7 @@ export function ObligationsModal({
               disabled={isRemindingAll}
             >
               {isRemindingAll ? (
-                <ActivityIndicator size="small" color={THEME.colors.background} />
+                <QuantumSpinner size={16} color={THEME.colors.background} />
               ) : (
                 <>
                   <Send size={13} color={THEME.colors.background} />
@@ -273,7 +273,7 @@ export function ObligationsModal({
                           disabled={isReminding || isReminded}
                         >
                           {isReminding ? (
-                            <ActivityIndicator size="small" color={THEME.colors.text} />
+                            <QuantumSpinner size={14} color={THEME.colors.text} />
                           ) : isReminded ? (
                             <>
                               <CheckCircle2 size={12} color={THEME.colors.primary} />

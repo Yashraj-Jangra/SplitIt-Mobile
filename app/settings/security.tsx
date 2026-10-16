@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +20,7 @@ import {
   Check,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { authService } from '../../src/services/auth.service';
 import { haptics } from '../../src/services/haptics.service';
 
@@ -188,7 +188,7 @@ export default function SecuritySettingsScreen() {
             activeOpacity={0.8}
           >
             {isUpdating ? (
-              <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+              <QuantumSpinner size={16} color={THEME.colors.primaryForeground} />
             ) : (
               <>
                 <Check size={16} color={THEME.colors.primaryForeground} strokeWidth={2.5} />

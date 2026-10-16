@@ -1,5 +1,22 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Hardware-Accelerated QuantumLogo Spinner & Large Spinning Boot Screen (`src/components/brand/QuantumLogo.tsx`, `src/components/common/AppSpinner.tsx`, `app/_layout.tsx`, and all app screens)**:
+  - **Hardware-Accelerated 360° QuantumLogo Spinning Engine (`src/components/brand/QuantumLogo.tsx`, `src/components/common/AppSpinner.tsx`)**:
+    - Enhanced `QuantumLogo` with native `react-native-reanimated` hardware-accelerated rotation (`useSharedValue`, `useAnimatedStyle`, `withRepeat`, `withTiming`, `Easing.linear`), matching the web application's CSS `animate-spin` at 60/120fps.
+    - Extracted modular, atomic `QuantumSpinner` (also exported as `AppSpinner`) supporting polymorphic sizing (`'small' = 18`, `'large' = 36`, or custom numeric size) and dynamic theme colors.
+  - **Large Spinning Boot / Initial App Opening Screen (`app/_layout.tsx`)**:
+    - Replaced the static 76px logo and OS `ActivityIndicator` wheel with a prominent 96px spinning `QuantumLogo` matching the website's `h-24 w-24 text-primary animate-spin` loading experience.
+    - Refined brand typography and removed redundant nested spinners.
+  - **Global Universal Replacement of `ActivityIndicator` Across Entire App**:
+    - Replaced every single instance of generic OS `ActivityIndicator` with `QuantumSpinner` across all 35+ components and routes:
+      - Core Action Buttons: `PrimaryActionButton.tsx`, `SetBudgetModal.tsx`, `EditSettlementModal.tsx`, `ObligationsModal.tsx`, `MockDataBanner.tsx`, `GroupHistoryTab.tsx`.
+      - Auth Flows: `app/(auth)/login.tsx`, `app/(auth)/signup.tsx`, `app/(auth)/forgot-password.tsx`, `app/(auth)/reset-password.tsx`.
+      - Main Tabs & Circles: `app/(tabs)/activity.tsx`, `app/(tabs)/groups.tsx`, `app/groups/[id]/index.tsx`, `app/groups/[id]/search.tsx`, `app/groups/[id]/settings.tsx`, `app/groups/new.tsx`.
+      - Expenses & Settle: `app/expenses/[id].tsx`, `app/expenses/new.tsx`, `app/settle/new.tsx`, `app/settlements/[id].tsx`.
+      - Settings & Support: `app/settings/account.tsx`, `app/settings/payment.tsx`, `app/settings/security.tsx`, `app/settings/my-qr.tsx`, `app/legal/delete-account.tsx`, `app/notifications/index.tsx`, `app/notifications/preferences.tsx`, `app/support/index.tsx`, `app/support/[id].tsx`, `app/support/new.tsx`.
+      - AI Features: `app/ai/chat.tsx`, `app/ai/scanner.tsx`.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`), zero remaining `ActivityIndicator` instances in `app/` and `src/`.
+
 - **Modular Full-Screen Budget Modal, Right-Aligned Compact Segmented Activity Filters & Header Cover Cleanup (`app/(tabs)/activity.tsx`, `app/groups/[id]/index.tsx`, `src/components/groups/SetBudgetModal.tsx`)**:
   - **Compact Combined Segmented Activity Filters (`app/(tabs)/activity.tsx`, `app/groups/[id]/index.tsx`)**:
     - Removed count indicators from all filter pills (`All`, `Expenses`, `Settlements`).

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  ActivityIndicator,
   TouchableOpacity,
   TextInput,
 } from 'react-native';
@@ -20,6 +19,7 @@ import {
   Filter,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { settlementService, GroupSettlementItem } from '../../src/services/settlement.service';
 import { groupService, GroupListItem } from '../../src/services/group.service';
@@ -466,7 +466,7 @@ export default function ActivityScreen() {
 
         {loading && unifiedActivity.length === 0 ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" color={THEME.colors.primary} />
+            <QuantumSpinner size={28} color={THEME.colors.primary} />
           </View>
         ) : groupedActivity.length > 0 ? (
           groupedActivity.map((group) => (

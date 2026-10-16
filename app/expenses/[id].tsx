@@ -8,11 +8,11 @@ import {
   TextInput,
   Image,
   Alert,
-  ActivityIndicator,
   Modal,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -533,7 +533,7 @@ export default function ExpenseDetailScreen() {
   if (loading && !expense) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={THEME.colors.primary} />
+        <QuantumSpinner size={40} color={THEME.colors.primary} />
       </SafeAreaView>
     );
   }
@@ -746,7 +746,7 @@ export default function ExpenseDetailScreen() {
             {!hasSplitLoaded || !areParticipantsValid(participants) ? (
               <View style={styles.splitSkeletonBlock}>
                 <View style={styles.splitLoadingNotice}>
-                  <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginRight: 8 }} />
+                  <QuantumSpinner size={16} color={THEME.colors.primary} style={{ marginRight: 8 }} />
                   <Text style={styles.splitLoadingNoticeText}>Loading split breakdown...</Text>
                 </View>
                 <SplitBreakdownSkeleton count={3} />
@@ -938,7 +938,7 @@ export default function ExpenseDetailScreen() {
               ]}
             >
               {isSendingComment ? (
-                <ActivityIndicator size="small" color={THEME.colors.success} />
+                <QuantumSpinner size={16} color={THEME.colors.success} />
               ) : (
                 <Send size={16} color={commentInput.trim() ? THEME.colors.success : THEME.colors.textMuted} />
               )}

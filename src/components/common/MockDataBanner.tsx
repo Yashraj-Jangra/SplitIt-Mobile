@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Sparkles, Trash2, Plus, X } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { QuantumSpinner } from '../brand/QuantumLogo';
 import { haptics } from '../../services/haptics.service';
 
 interface MockDataBannerProps {
@@ -58,7 +59,7 @@ export function MockDataBanner({ onRemove, onCreateGroup, style }: MockDataBanne
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             {isRemoving ? (
-              <ActivityIndicator size="small" color={THEME.colors.primary} />
+              <QuantumSpinner size={15} color={THEME.colors.primary} />
             ) : (
               <X size={15} color={THEME.colors.textMuted} />
             )}
@@ -95,7 +96,7 @@ export function MockDataBanner({ onRemove, onCreateGroup, style }: MockDataBanne
             disabled={isRemoving}
           >
             {isRemoving ? (
-              <ActivityIndicator size="small" color={THEME.colors.textSecondary} />
+              <QuantumSpinner size={15} color={THEME.colors.textSecondary} />
             ) : (
               <>
                 <Trash2 size={13} color={THEME.colors.textSecondary} strokeWidth={2} />

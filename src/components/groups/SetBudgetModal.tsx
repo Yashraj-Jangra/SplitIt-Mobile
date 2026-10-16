@@ -9,7 +9,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
   Switch,
   LayoutAnimation,
@@ -32,6 +31,7 @@ import {
   PieChart,
 } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { QuantumSpinner } from '../brand/QuantumLogo';
 import { groupService, GroupBudget } from '../../services/group.service';
 import { haptics } from '../../services/haptics.service';
 import { MASTER_CATEGORY_ICONS } from '../../utils/category-icons';
@@ -747,7 +747,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
               activeOpacity={0.8}
             >
               {isSaving ? (
-                <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
               ) : (
                 <>
                   <Check size={16} color={THEME.colors.primaryForeground} strokeWidth={2.5} />

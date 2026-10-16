@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { QuantumSpinner } from '../brand/QuantumLogo';
 import { haptics } from '../../services/haptics.service';
 import {
   Plus,
@@ -343,7 +343,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               activeOpacity={0.7}
             >
               {isItemRestoring ? (
-                <ActivityIndicator size="small" color={THEME.colors.palette.purple} />
+                <QuantumSpinner size={14} color={THEME.colors.palette.purple} />
               ) : (
                 <RotateCcw size={14} color={THEME.colors.palette.purple} />
               )}
@@ -360,7 +360,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               activeOpacity={0.7}
             >
               {isItemDeleting ? (
-                <ActivityIndicator size="small" color={THEME.colors.critical} />
+                <QuantumSpinner size={14} color={THEME.colors.critical} />
               ) : (
                 <Trash2 size={14} color={THEME.colors.critical} />
               )}

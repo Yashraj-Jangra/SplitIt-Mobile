@@ -2,13 +2,13 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
-  ActivityIndicator,
   StyleSheet,
   ViewStyle,
   TextStyle,
   StyleProp,
 } from 'react-native';
 import { Check } from 'lucide-react-native';
+import { QuantumSpinner } from '@/components/brand/QuantumLogo';
 import { haptics } from '@/services/haptics.service';
 import { THEME } from '@/constants/theme';
 
@@ -101,7 +101,7 @@ export function PrimaryActionButton({
       testID={testID}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={iconColor} />
+        <QuantumSpinner size={18} color={iconColor} />
       ) : (
         <>
           {renderedIcon}

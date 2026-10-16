@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   ArrowLeft,
   Bell,
@@ -95,7 +95,7 @@ export default function NotificationPreferencesScreen() {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={THEME.colors.primary} />
         </View>
       ) : (
         <ScrollView

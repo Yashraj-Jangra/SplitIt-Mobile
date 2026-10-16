@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Trash2, ShieldAlert } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { useAuth } from '../../src/contexts/auth.context';
 import { authService, API_BASE_URL } from '../../src/services/auth.service';
 import { haptics } from '../../src/services/haptics.service';
@@ -153,7 +153,7 @@ export default function DeleteAccountScreen() {
             disabled={!isConfirmed || isDeleting}
           >
             {isDeleting ? (
-              <ActivityIndicator size="small" color={THEME.colors.text} />
+              <QuantumSpinner size={18} color={THEME.colors.text} />
             ) : (
               <>
                 <Trash2 size={18} color={THEME.colors.text} />

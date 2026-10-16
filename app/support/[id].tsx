@@ -8,11 +8,11 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   ArrowLeft,
   Send,
@@ -200,7 +200,7 @@ export default function TicketThreadScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={THEME.colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -425,7 +425,7 @@ export default function TicketThreadScreen() {
               accessibilityRole="button"
             >
               {isSending ? (
-                <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                <QuantumSpinner size={16} color={THEME.colors.primaryForeground} />
               ) : (
                 <Send size={16} color={THEME.colors.primaryForeground} strokeWidth={2.4} />
               )}

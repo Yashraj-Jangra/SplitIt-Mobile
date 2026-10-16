@@ -2,7 +2,7 @@ import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, Theme, ErrorBo
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, Text, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, Text, Platform } from 'react-native';
 import { enableFreeze } from 'react-native-screens';
 import { THEME } from '../src/constants/theme';
 import { QuantumLogo } from '../src/components/brand/QuantumLogo';
@@ -276,9 +276,8 @@ function NavigationGate() {
 
         {isLoading && (
           <View style={[StyleSheet.absoluteFill, styles.loadingContainer]} pointerEvents="auto">
-            <QuantumLogo size={76} />
+            <QuantumLogo size={96} spinning />
             <Text style={styles.loadingTitle}>SplitIt</Text>
-            <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginTop: 24 }} />
           </View>
         )}
       </View>

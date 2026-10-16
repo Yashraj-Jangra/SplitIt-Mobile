@@ -1,28 +1,41 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Image, StyleSheet, ImageStyle, TextStyle, ViewStyle, StyleProp } from 'react-native';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+  cancelAnimation,
+} from 'react-native-reanimated';
 import { THEME } from '../../constants/theme';
 
-interface QuantumLogoProps {
+export interface QuantumLogoProps {
   size?: number;
   color?: string;
   glowColor?: string;
   useGradient?: boolean;
+  spinning?: boolean;
+  spinDuration?: number;
   style?: StyleProp<ViewStyle>;
 }
 
-/**
- * SplitIt Quantum Atomic Logo (Vector Component)
- * Exact mathematical arc replica matching website's Icons.Logo & Icons.AppLogo
- * Rendered with hardware acceleration via react-native-svg.
- */
-export function QuantumLogo({
+export interface QuantumSpinnerProps {
+  size?: 'small' | 'large' | number;
+  color?: string;
+  glowColor?: string;
+  spinDuration?: number;
+  style?: StyleProp<ViewStyle>;
+}
+
+function QuantumLogoBase({
   size = 32,
   color = THEME.colors.primary,
   glowColor,
   useGradient = false,
   style,
-}: QuantumLogoProps) {
+}: Omit<QuantumLogoProps, 'spinning' | 'spinDuration'>) {
   return (
     <View style={[{ width: size, height: size }, style]}>
       <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
@@ -55,6 +68,116 @@ export function QuantumLogo({
     </View>
   );
 }
+
+function QuantumLogoRotating({
+  size = 32,
+  color = THEME.colors.primary,
+  glowColor,
+  useGradient = false,
+  spinDuration = 1000,
+  style,
+}: QuantumLogoProps) {
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, {
+        duration: spinDuration,
+        easing: Easing.linear,
+      }),
+      -1,
+      false
+    );
+    return () => {
+      cancelAnimation(rotation);
+    };
+  }, [rotation, spinDuration]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <Animated.View style={[{ width: size, height: size }, animatedStyle, style]}>
+      <QuantumLogoBase
+        size={size}
+        color={color}
+        glowColor={glowColor}
+        useGradient={useGradient}
+      />
+    </Animated.View>
+  );
+}
+
+/**
+ * SplitIt Quantum Atomic Logo (Vector Component)
+ * Exact mathematical arc replica matching website's Icons.Logo & Icons.AppLogo
+ * Rendered with hardware acceleration via react-native-svg and react-native-reanimated.
+ */
+export function QuantumLogo({
+  size = 32,
+  color = THEME.colors.primary,
+  glowColor,
+  useGradient = false,
+  spinning = false,
+  spinDuration = 1000,
+  style,
+}: QuantumLogoProps) {
+  if (spinning) {
+    return (
+      <QuantumLogoRotating
+        size={size}
+        color={color}
+        glowColor={glowColor}
+        useGradient={useGradient}
+        spinDuration={spinDuration}
+        style={style}
+      />
+    );
+  }
+
+  return (
+    <QuantumLogoBase
+      size={size}
+      color={color}
+      glowColor={glowColor}
+      useGradient={useGradient}
+      style={style}
+    />
+  );
+}
+
+/**
+ * SplitIt Branded Spinner
+ * Flagship spinner using QuantumLogo with 360-degree linear rotation matching the web app.
+ */
+export function QuantumSpinner({
+  size = 'small',
+  color = THEME.colors.primary,
+  glowColor,
+  spinDuration = 1000,
+  style,
+}: QuantumSpinnerProps) {
+  const numericSize =
+    typeof size === 'number'
+      ? size
+      : size === 'large'
+        ? 36
+        : 18;
+
+  return (
+    <QuantumLogo
+      size={numericSize}
+      color={color}
+      glowColor={glowColor}
+      spinning
+      spinDuration={spinDuration}
+      style={style}
+    />
+  );
+}
+
+export const AppSpinner = QuantumSpinner;
 
 /**
  * SplitIt Branded Wordmark (Logo + "SplitIt" Typography)

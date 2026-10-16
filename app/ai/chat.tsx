@@ -8,7 +8,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Keyboard,
   Alert,
   Modal,
@@ -43,7 +42,7 @@ import * as Clipboard from 'expo-clipboard';
 import { haptics } from '../../src/services/haptics.service';
 import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
-import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
+import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { useCurrency, getActiveCurrencySymbol } from '../../src/contexts/currency.context';
 
 interface ChatMessage {
@@ -698,7 +697,7 @@ export default function AiChatModal() {
             {isStreaming && (
               <View style={styles.thinkingContainer}>
                 <View style={styles.thinkingPill}>
-                  <ActivityIndicator size="small" color={THEME.colors.aiLight} />
+                  <QuantumSpinner size={14} color={THEME.colors.aiLight} />
                   <Text style={styles.thinkingText}>
                     {streamStage || 'Analyzing ledger records...'}
                   </Text>

@@ -8,10 +8,10 @@ import {
   TextInput,
   Image,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -527,7 +527,7 @@ export default function SettlementDetailScreen() {
               accessibilityLabel="Send comment"
             >
               {isSendingComment ? (
-                <ActivityIndicator size="small" color={THEME.colors.success} />
+                <QuantumSpinner size={16} color={THEME.colors.success} />
               ) : (
                 <Send size={16} color={commentInput.trim() ? THEME.colors.success : THEME.colors.textMuted} />
               )}

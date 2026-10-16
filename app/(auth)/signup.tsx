@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -19,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
-import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
+import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { GoogleLogo } from '../../src/components/brand/GoogleLogo';
 import { haptics } from '../../src/services/haptics.service';
 
@@ -325,7 +324,7 @@ export default function SignupScreen() {
                 activeOpacity={0.85}
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                  <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
                 ) : (
                   <>
                     <Text style={styles.submitButtonText}>Create Account</Text>
@@ -351,7 +350,7 @@ export default function SignupScreen() {
                 activeOpacity={0.8}
               >
                 {googleLoading ? (
-                  <ActivityIndicator size="small" color={THEME.colors.text} />
+                  <QuantumSpinner size={18} color={THEME.colors.text} />
                 ) : (
                   <>
                     <GoogleLogo size={20} />

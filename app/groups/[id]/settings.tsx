@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
+import { QuantumSpinner } from '../../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -373,7 +373,7 @@ export default function GroupSettingsScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={THEME.colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -408,7 +408,7 @@ export default function GroupSettingsScreen() {
           accessibilityRole="button"
         >
           {isSaving ? (
-            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+            <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
           ) : (
             <Check size={18} color={THEME.colors.primaryForeground} />
           )}
@@ -519,7 +519,7 @@ export default function GroupSettingsScreen() {
                 disabled={isSaving}
               >
                 {isSaving ? (
-                  <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+                  <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
                 ) : (
                   <Text style={styles.actionBtnText}>Save Details</Text>
                 )}
@@ -736,7 +736,7 @@ export default function GroupSettingsScreen() {
                   disabled={isDeleting}
                 >
                   {isDeleting ? (
-                    <ActivityIndicator size="small" color={THEME.colors.negative} />
+                    <QuantumSpinner size={15} color={THEME.colors.negative} />
                   ) : (
                     <>
                       <Trash2 size={15} color={THEME.colors.negative} />
@@ -805,7 +805,7 @@ export default function GroupSettingsScreen() {
               returnKeyType="search"
             />
             {loadingUsers && (
-              <ActivityIndicator size="small" color={THEME.colors.textMuted} />
+              <QuantumSpinner size={16} color={THEME.colors.textMuted} />
             )}
             {!!searchTerm && !loadingUsers && (
               <TouchableOpacity onPress={() => setSearchTerm('')}>
@@ -868,7 +868,7 @@ export default function GroupSettingsScreen() {
             disabled={selectedNewMembers.length === 0 || isSubmittingMembers}
           >
             {isSubmittingMembers ? (
-              <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+              <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
             ) : (
               <Text style={styles.actionBtnText}>
                 Add {selectedNewMembers.length > 0 ? `${selectedNewMembers.length} ` : ''}Member

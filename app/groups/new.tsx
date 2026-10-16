@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -15,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import { X, Check, Users, Search, Sparkles, CheckCircle2 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { groupService, RegisteredUser } from '../../src/services/group.service';
 import { authService, AuthUser } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
@@ -165,7 +165,7 @@ export default function NewGroupModal() {
           accessibilityRole="button"
         >
           {isSubmitting ? (
-            <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+            <QuantumSpinner size={18} color={THEME.colors.primaryForeground} />
           ) : (
             <Check size={20} color={THEME.colors.primaryForeground} />
           )}
@@ -305,7 +305,7 @@ export default function NewGroupModal() {
                 returnKeyType="search"
               />
               {loadingUsers && (
-                <ActivityIndicator size="small" color={THEME.colors.textMuted} />
+                <QuantumSpinner size={16} color={THEME.colors.textMuted} />
               )}
               {!!searchTerm && !loadingUsers && (
                 <TouchableOpacity onPress={() => setSearchTerm('')}>

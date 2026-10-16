@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   Share,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
+import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -92,7 +92,7 @@ export default function MyQrScreen() {
           <Text style={styles.headerTitle}>My Payment QR</Text>
         </View>
         <View style={[styles.content, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
+          <QuantumSpinner size={36} color={THEME.colors.primary} />
         </View>
       </SafeAreaView>
     );
