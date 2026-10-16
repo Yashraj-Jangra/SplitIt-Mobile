@@ -22,7 +22,7 @@ import {
 import { THEME } from '../../src/constants/theme';
 import { expenseService, UserTransactionItem } from '../../src/services/expense.service';
 import { settlementService, GroupSettlementItem } from '../../src/services/settlement.service';
-import { groupService } from '../../src/services/group.service';
+import { groupService, GroupListItem } from '../../src/services/group.service';
 import { balanceService } from '../../src/services/balance.service';
 import { storageService, STORAGE_KEYS } from '../../src/services/storage.service';
 import { demoService } from '../../src/services/demo.service';
@@ -58,6 +58,9 @@ export default function ActivityScreen() {
   // Search & Filtering
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'expenses' | 'settlements'>('all');
+  const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
+  const [roleFilter, setRoleFilter] = useState<'all' | 'paid_by_me' | 'split_with_me'>('all');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
 
   const isDemoActive =
     !isDemoDismissed &&
@@ -83,12 +86,14 @@ export default function ActivityScreen() {
 
   const loadData = async (forceRefresh = false) => {
     try {
-      const [expData, setttData] = await Promise.all([
+      const [expData, setttData, grpData] = await Promise.all([
         expenseService.getUserExpenses(50, { forceRefresh }),
         settlementService.getUserSettlements({ forceRefresh }),
+        groupService.getUserGroups({ forceRefresh }),
       ]);
       setExpenses(expData || []);
       setSettlements(setttData || []);
+      setGroups(grpData || []);
     } catch {
       // Graceful fallback
     } finally {
@@ -173,6 +178,27 @@ export default function ActivityScreen() {
       result = result.filter((item) => item.type === 'settlement');
     }
 
+    if (selectedGroupId !== 'all') {
+      result = result.filter((item) => item.data.groupId === selectedGroupId);
+    }
+
+    const currentUserId = authUser?.id || '';
+    if (roleFilter === 'paid_by_me') {
+      result = result.filter((item) => {
+        if (item.type === 'expense') {
+          return item.data.yourImpact === 'get' || item.data.paidByName === 'You';
+        }
+        return item.data.payerId === currentUserId || item.data.payerName === 'You';
+      });
+    } else if (roleFilter === 'split_with_me') {
+      result = result.filter((item) => {
+        if (item.type === 'expense') {
+          return item.data.yourImpact === 'owe';
+        }
+        return item.data.payeeId === currentUserId || item.data.payeeName === 'You';
+      });
+    }
+
     const query = searchQuery.trim().toLowerCase();
     if (query) {
       result = result.filter((item) => {
@@ -210,7 +236,7 @@ export default function ActivityScreen() {
     }
 
     return result;
-  }, [unifiedActivity, activeFilter, searchQuery]);
+  }, [unifiedActivity, activeFilter, searchQuery, selectedGroupId, roleFilter, authUser?.id]);
 
   // Group by Month & Year (e.g., "October 2026")
   const groupedActivity = useMemo(() => {
@@ -334,6 +360,83 @@ export default function ActivityScreen() {
             Settlements ({settlementCount})
           </Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Secondary Multi-Facet Filter (Roles & Circles) */}
+      <View style={styles.subFilterRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.subFilterScroll}
+        >
+          <TouchableOpacity
+            style={[styles.subPill, roleFilter === 'all' && styles.subPillActive]}
+            onPress={() => {
+              haptics.tick();
+              setRoleFilter('all');
+            }}
+          >
+            <Text style={[styles.subPillText, roleFilter === 'all' && styles.subPillTextActive]}>
+              All Roles
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.subPill, roleFilter === 'paid_by_me' && styles.subPillActive]}
+            onPress={() => {
+              haptics.tick();
+              setRoleFilter('paid_by_me');
+            }}
+          >
+            <Text style={[styles.subPillText, roleFilter === 'paid_by_me' && styles.subPillTextActive]}>
+              Paid by me
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.subPill, roleFilter === 'split_with_me' && styles.subPillActive]}
+            onPress={() => {
+              haptics.tick();
+              setRoleFilter('split_with_me');
+            }}
+          >
+            <Text style={[styles.subPillText, roleFilter === 'split_with_me' && styles.subPillTextActive]}>
+              Split with me
+            </Text>
+          </TouchableOpacity>
+
+          {groups.length > 0 && <View style={styles.pillDivider} />}
+
+          {groups.length > 0 && (
+            <TouchableOpacity
+              style={[styles.subPill, selectedGroupId === 'all' && styles.subPillActive]}
+              onPress={() => {
+                haptics.tick();
+                setSelectedGroupId('all');
+              }}
+            >
+              <Text style={[styles.subPillText, selectedGroupId === 'all' && styles.subPillTextActive]}>
+                All Circles
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {groups.map((g) => (
+            <TouchableOpacity
+              key={g.id}
+              style={[styles.subPill, selectedGroupId === g.id && styles.subPillActive]}
+              onPress={() => {
+                haptics.tick();
+                setSelectedGroupId(selectedGroupId === g.id ? 'all' : g.id);
+              }}
+            >
+              <Text
+                style={[styles.subPillText, selectedGroupId === g.id && styles.subPillTextActive]}
+                numberOfLines={1}
+              >
+                {g.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       <ScrollView
@@ -539,7 +642,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 14,
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 8,
+  },
+  subFilterRow: {
+    marginBottom: 12,
+  },
+  subFilterScroll: {
+    paddingHorizontal: 14,
+    gap: 6,
+    alignItems: 'center',
+  },
+  subPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  subPillActive: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderColor: THEME.colors.info,
+  },
+  subPillText: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    fontWeight: '600',
+  },
+  subPillTextActive: {
+    color: THEME.colors.info,
+    fontWeight: '700',
+  },
+  pillDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: THEME.colors.hairline,
+    marginHorizontal: 4,
   },
   filterPill: {
     paddingHorizontal: 12,

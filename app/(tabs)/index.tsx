@@ -36,6 +36,7 @@ import { CategoryIcon } from '../../src/utils/category-icons';
 import { BalanceHistoryGraph } from '../../src/components/dashboard/BalanceHistoryGraph';
 import { BalanceSkeleton } from '../../src/components/skeletons/BalanceSkeleton';
 import { TransactionRowSkeleton } from '../../src/components/skeletons/TransactionRowSkeleton';
+import { UniversalSearchModal } from '../../src/components/search/UniversalSearchModal';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
@@ -53,6 +54,7 @@ export default function HomeScreen() {
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
   const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(() => balanceService.getInMemoryUserBalanceSummary());
   const [obligationsType, setObligationsType] = useState<'owed' | 'owes' | null>(null);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const [loading, setLoading] = useState(() => {
     return (
       groupService.getInMemoryGroups().length === 0 &&
@@ -196,6 +198,19 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.iconCircle}
+              activeOpacity={0.7}
+              onPress={() => {
+                haptics.tap();
+                setShowSearchModal(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Search"
+            >
+              <Search size={17} color={THEME.colors.text} />
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.iconCircle}
               activeOpacity={0.7}
@@ -582,6 +597,11 @@ export default function HomeScreen() {
           totalAmount={obligationsType === 'owed' ? totalOwed : totalOwe}
         />
       )}
+
+      <UniversalSearchModal
+        visible={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+      />
     </SafeAreaView>
   );
 }
