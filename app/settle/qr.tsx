@@ -7,10 +7,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { X, Copy, Check, ShieldCheck, ArrowRight } from 'lucide-react-native';
+import { X, Copy, Check, ShieldCheck, ArrowRight, Smartphone } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { THEME } from '../../src/constants/theme';
 import { buildUpiUrl, copyToClipboard } from '../../src/utils/upi';
@@ -75,6 +76,29 @@ export default function UpiQrModal() {
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  const handleOpenUpiApp = async () => {
+    if (!hasUpiId || !upiUrl) return;
+    haptics.tap();
+    try {
+      const supported = await Linking.canOpenURL(upiUrl);
+      if (supported) {
+        await Linking.openURL(upiUrl);
+      } else {
+        await copyToClipboard(upiId);
+        Alert.alert(
+          'UPI App Not Detected',
+          `${payeeName}'s UPI ID (${upiId}) has been copied to your clipboard. Open Google Pay, PhonePe, or Paytm to complete the payment.`
+        );
+      }
+    } catch {
+      await copyToClipboard(upiId);
+      Alert.alert(
+        'UPI Payment',
+        `${payeeName}'s UPI ID (${upiId}) has been copied to your clipboard.`
+      );
     }
   };
 
@@ -173,6 +197,20 @@ export default function UpiQrModal() {
               {payeeName} has not added their UPI ID yet. They can configure it in their profile settings.
             </Text>
           </View>
+        )}
+
+        {/* 1-Tap Native UPI Intent Launcher */}
+        {hasUpiId && (
+          <TouchableOpacity
+            style={styles.payUpiButton}
+            onPress={handleOpenUpiApp}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Pay with UPI App"
+          >
+            <Smartphone size={18} color={THEME.colors.primaryForeground} />
+            <Text style={styles.payUpiButtonText}>Pay with UPI App (GPay / PhonePe / Paytm)</Text>
+          </TouchableOpacity>
         )}
 
         {/* UPI ID Pill with 1-Tap Copy */}
@@ -290,9 +328,25 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: THEME.colors.dangerMuted,
     width: '100%',
     gap: 8,
+  },
+  payUpiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.primary,
+    borderRadius: THEME.radius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    width: '100%',
+    gap: 8,
+  },
+  payUpiButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.primaryForeground,
   },
   noUpiTitle: {
     fontSize: 15,
