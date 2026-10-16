@@ -1,5 +1,15 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Removed Apple Login & Enabled Native Google Login for iOS / iPhones (`src/services/auth.service.ts`, `app/(auth)/login.tsx`, `app/(auth)/signup.tsx`)**:
+  - **Removed Apple Login**:
+    - Removed non-functional Apple login buttons from `app/(auth)/login.tsx` and `app/(auth)/signup.tsx`.
+    - Cleaned up obsolete `appleButton` and `appleButtonText` stylesheet definitions.
+  - **Native Google Login Parity for iPhones**:
+    - Updated `src/services/auth.service.ts` to configure `iosClientId` alongside `webClientId` in `GoogleSignin.configure`.
+    - Made `hasPlayServices` check Android-exclusive so native Google Sign-In is directly triggered on iOS via the official Google iOS SDK / GIDSignIn.
+    - Preserved seamless WebBrowser OAuth fallback for Expo Go and non-native environments.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Fixed Activity Screen Scrolling Glitch & Half-Hidden Subtitle Text (`app/(tabs)/activity.tsx`)**:
   - **Identified Root Causes**:
     1. **Half-Hidden Subtitle Text**: The `collapsibleHeader` had an artificial fixed initial height (`outputRange: [56, 0]` at `scrollY = 0`) coupled with `overflow: 'hidden'`. Because the natural measured height of title (26px) + subtitle (13px) + `paddingTop: 8` was ~64px, the bottom half of the subtitle text ("Recent transactions & settlements ledger") was clipped off at rest.

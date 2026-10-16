@@ -1,4 +1,4 @@
-import { NativeModules, TurboModuleRegistry } from 'react-native';
+import { NativeModules, TurboModuleRegistry, Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -76,6 +76,7 @@ function ensureGoogleConfigured(): boolean {
   try {
     mod.GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
+      iosClientId: Platform.OS === 'ios' ? GOOGLE_WEB_CLIENT_ID : undefined,
       scopes: ['email', 'profile'],
       offlineAccess: false,
     });
@@ -358,14 +359,22 @@ export const authService = {
       try {
         ensureGoogleConfigured();
 
-        // Check for Google Play Services availability
-        const hasPlay = await nativeModule.GoogleSignin.hasPlayServices({
-          showPlayServicesUpdateDialog: true,
-        }).catch(() => false);
+        // Check for Google Play Services availability on Android only (iOS does not use Play Services)
+        if (Platform.OS === 'android') {
+          const hasPlay = await nativeModule.GoogleSignin.hasPlayServices({
+            showPlayServicesUpdateDialog: true,
+          }).catch(() => false);
 
-        if (hasPlay) {
-          // Trigger native Android / iOS Google Sign-In prompt
-          const signInResult = await nativeModule.GoogleSignin.signIn();
+          if (!hasPlay) {
+            return {
+              success: false,
+              error: 'Google Play Services is not available on this device',
+            };
+          }
+        }
+
+        // Trigger native Android / iOS Google Sign-In prompt
+        const signInResult = await nativeModule.GoogleSignin.signIn();
 
           if (signInResult.type === 'cancelled') {
             return { success: false, error: 'Google sign-in was canceled' };
@@ -424,7 +433,6 @@ export const authService = {
               error: 'Google sign-in succeeded on device but no ID token was returned. Check OAuth Web Client configuration.',
             };
           }
-        }
       } catch (nativeErr: any) {
         if (nativeErr?.code === nativeModule.statusCodes?.SIGN_IN_CANCELLED) {
           return { success: false, error: 'Google sign-in was canceled' };

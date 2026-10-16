@@ -320,16 +320,6 @@ export default function LoginScreen() {
                   </>
                 )}
               </TouchableOpacity>
-
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity
-                  style={styles.appleButton}
-                  onPress={() => haptics.tap()}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.appleButtonText}> Continue with Apple</Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Switch to Signup */}
@@ -528,19 +518,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.text,
-  },
-  appleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.colors.palette.white,
-    paddingVertical: 13,
-    borderRadius: THEME.radius.md,
-  },
-  appleButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.palette.black,
   },
   footerRow: {
     flexDirection: 'row',
