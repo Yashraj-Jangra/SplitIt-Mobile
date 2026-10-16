@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Share,
   Alert,
+  Image,
 } from 'react-native';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,9 +35,11 @@ export default function MyQrScreen() {
   const qrRef = useRef<any>(null);
 
   const [copied, setCopied] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     refreshUser();
+    setImageError(false);
   }, [refreshUser]);
 
   const upiId = user?.upiId?.trim() || '';
@@ -121,7 +124,15 @@ export default function MyQrScreen() {
         {/* User Identity */}
         <View style={styles.identitySection}>
           <View style={[styles.avatarCircle, { borderColor: currentAccent.primary }]}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            {user?.avatarUrl && !imageError ? (
+              <Image
+                source={{ uri: user.avatarUrl }}
+                style={styles.avatarImage}
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
           </View>
           <Text style={styles.displayName}>{displayName}</Text>
           <Text style={styles.instructionLabel}>
@@ -269,18 +280,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   avatarCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 2.5,
     borderColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     marginBottom: 4,
   },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
   avatarText: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '900',
     color: THEME.colors.text,
   },

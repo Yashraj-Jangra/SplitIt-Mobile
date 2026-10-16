@@ -15,6 +15,8 @@ import {
   CreditCard,
   Info,
   Palette,
+  QrCode,
+  Lock,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
@@ -199,7 +201,16 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* User Profile Hero */}
         <View style={styles.userHero}>
-          <View style={[styles.avatarCircle, { borderColor: currentAccent.primary }]}>
+          <TouchableOpacity
+            style={[styles.avatarCircle, { borderColor: currentAccent.primary }]}
+            onPress={() => {
+              haptics.tap();
+              router.push('/settings/account');
+            }}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Edit account information"
+          >
             {user?.avatarUrl && !imageError ? (
               <Image
                 source={{ uri: user.avatarUrl }}
@@ -209,29 +220,51 @@ export default function ProfileScreen() {
             ) : (
               <Text style={styles.avatarText}>{initials}</Text>
             )}
-          </View>
-          <Text style={styles.userName}>{effectiveName}</Text>
-          <Text style={styles.userEmail}>{user?.email || ''}</Text>
+          </TouchableOpacity>
 
-          {effectiveUpi ? (
-            <TouchableOpacity
-              style={[styles.upiPill, { borderColor: currentAccent.borderFocus, backgroundColor: currentAccent.primaryMuted }]}
-              onPress={() => router.push('/settings/payment')}
-              activeOpacity={0.7}
-            >
-              <CreditCard size={12} color={currentAccent.primary} />
-              <Text style={[styles.upiPillText, { color: currentAccent.primary }]}>{effectiveUpi}</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.upiPill, { borderColor: THEME.colors.hairline }]}
-              onPress={() => router.push('/settings/payment')}
-              activeOpacity={0.7}
-            >
-              <CreditCard size={12} color={THEME.colors.textMuted} />
-              <Text style={[styles.upiPillText, { color: THEME.colors.textMuted }]}>Set up UPI ID</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.userInfo}>
+            <Text style={styles.userName} numberOfLines={1}>{effectiveName}</Text>
+            {user?.username ? (
+              <Text style={styles.userHandle} numberOfLines={1}>@{user.username}</Text>
+            ) : null}
+            <Text style={styles.userEmail} numberOfLines={1}>{user?.email || ''}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.qrIconButton,
+              effectiveUpi
+                ? {
+                    borderColor: `${currentAccent.primary}40`,
+                    backgroundColor: `${currentAccent.primary}14`,
+                  }
+                : {
+                    borderColor: THEME.colors.hairline,
+                    backgroundColor: THEME.colors.surfaceElevated,
+                  },
+            ]}
+            onPress={() => {
+              haptics.tap();
+              if (effectiveUpi) {
+                router.push('/settings/my-qr');
+              } else {
+                router.push('/settings/payment');
+              }
+            }}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={effectiveUpi ? 'Open Payment QR Code' : 'Set up UPI ID (Locked)'}
+          >
+            <QrCode
+              size={22}
+              color={effectiveUpi ? currentAccent.primary : THEME.colors.textMuted}
+            />
+            {!effectiveUpi && (
+              <View style={styles.qrLockBadge}>
+                <Lock size={9} color={THEME.colors.palette.white} />
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {renderSection('ACCOUNT', accountItems)}
@@ -284,57 +317,73 @@ const styles = StyleSheet.create({
   },
   // Hero
   userHero: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    gap: 16,
   },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 2.5,
     borderColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginBottom: 12,
   },
   avatarImage: {
     width: '100%',
     height: '100%',
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: '900',
     color: THEME.colors.text,
   },
+  userInfo: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 3,
+  },
   userName: {
-    fontSize: 19,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
     color: THEME.colors.text,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
+  },
+  userHandle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
   },
   userEmail: {
     fontSize: 12,
     color: THEME.colors.textMuted,
-    marginTop: 2,
+    fontWeight: '500',
   },
-  upiPill: {
-    flexDirection: 'row',
+  qrIconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: THEME.colors.surfaceElevated,
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: THEME.radius.full,
-    marginTop: 8,
+    position: 'relative',
   },
-  upiPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
+  qrLockBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: THEME.colors.surfacePill,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Sections
   sectionContainer: {

@@ -1,5 +1,18 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Settings Profile Hero Avatar Redesign & UPI QR Parity (`app/(tabs)/profile.tsx`, `app/settings/my-qr.tsx`)**:
+  - **Settings Profile Hero Layout Modernization (`app/(tabs)/profile.tsx`)**:
+    - **Enlarged Left-Aligned Avatar**: Shifted user avatar from screen center to the far left, increasing diameter from 80px to 96px (`width: 96, height: 96, borderRadius: 48`) with `borderWidth: 2.5` colored by `currentAccent.primary`. Tapping navigates to Account Information.
+    - **Side-Aligned Typography**: Aligned user details (`effectiveName`, `@username`, `email`) in a dedicated column directly adjacent to the avatar.
+    - **Abolished VPA Text Pill**: Removed obsolete centered VPA pill element.
+    - **Right-Aligned Payment QR Action Icon**: Added a sleek, textless 48x48 icon button on the right edge.
+      - **Unlocked State** (when UPI is configured): Shows vibrant `QrCode` icon and navigates to `/settings/my-qr`.
+      - **Locked State** (when UPI is unconfigured): Shows muted `QrCode` with a locked badge indicator and navigates to `/settings/payment` so the user can set up their UPI ID.
+  - **UPI QR Screen Avatar Parity (`app/settings/my-qr.tsx`)**:
+    - Updated identity section on `MyQrScreen` to render the user's custom photo avatar (`user.avatarUrl` with graceful error fallback to initials), replacing the prior hardcoded text-only initials.
+    - Styled with 80px circle, accent border ring, and smooth clipped image geometry.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Global Dynamic Accent Theme Propagation Across All Screens & Components (`app/(tabs)/_layout.tsx`, `app/(tabs)/*`, `app/(auth)/*`, `app/groups/*`, `app/expenses/*`, `app/settings/*`, `app/settle/*`, `app/support/*`, `app/ai/*`, `src/components/*`)**:
   - **Dynamic Theme Reactivity Engine**:
     - Addressed React Native's static `StyleSheet.create` module-evaluation caching where compiled stylesheets do not automatically update on theme changes.
