@@ -5,6 +5,7 @@ import { isRunningInExpoGo } from 'expo';
 import { authService } from './auth.service';
 import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
 import { THEME } from '../constants/theme';
+import { appEventEmitter } from './event-emitter';
 
 const DEVICE_ID_KEY = 'splitit_device_id';
 
@@ -244,9 +245,28 @@ export const notificationService = {
   },
 
   /**
+   * Synchronous check for unread notifications count from in-memory cache.
+   */
+  getUnreadCount(): number {
+    return _cachedNotifications.filter((n) => (n.isRead !== undefined ? !n.isRead : !n.read)).length;
+  },
+
+  /**
+   * Asynchronously fetch in-app notifications and return the authoritative unread count.
+   */
+  async fetchUnreadCount(): Promise<number> {
+    const list = await this.getInAppNotifications();
+    return list.filter((n) => (n.isRead !== undefined ? !n.isRead : !n.read)).length;
+  },
+
+  /**
    * Mark single notification as read
    */
   async markNotificationRead(id: string): Promise<boolean> {
+    _cachedNotifications = _cachedNotifications.map((n) =>
+      n.id === id ? { ...n, read: true, isRead: true } : n
+    );
+    appEventEmitter.emit('data-changed', { type: 'notifications_updated' });
     try {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
@@ -264,6 +284,8 @@ export const notificationService = {
    * Mark all notifications as read
    */
   async markAllNotificationsRead(): Promise<boolean> {
+    _cachedNotifications = _cachedNotifications.map((n) => ({ ...n, read: true, isRead: true }));
+    appEventEmitter.emit('data-changed', { type: 'notifications_updated' });
     try {
       const token = await authService.getToken();
       const res = await fetch(`${API_BASE_URL}/api/notifications/mark-all-read`, {

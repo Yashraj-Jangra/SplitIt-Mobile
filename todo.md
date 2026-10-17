@@ -1,5 +1,18 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Notification Dot Condition & Real-Time Sync (`src/services/event-emitter.ts`, `src/services/notification.service.ts`, `app/(tabs)/index.tsx`)**:
+  - **Dynamic Unread Notification Badge Dot**:
+    - Updated the Bell notification button on the home dashboard (`app/(tabs)/index.tsx`) so the red/accent notification dot (`bellDot`) renders ONLY when there is at least 1 unread notification (`unreadNotificationCount > 0`).
+    - When all notifications are read or the notification list is empty, the badge dot is completely hidden.
+  - **Cached & Async Unread Count APIs (`src/services/notification.service.ts`)**:
+    - Added `getUnreadCount(): number` to synchronously query cached notifications.
+    - Added `fetchUnreadCount(): Promise<number>` to fetch and accurately calculate unread notifications (`isRead === false` or `read === false`).
+    - Updated `markNotificationRead` and `markAllNotificationsRead` to update local cache and broadcast real-time updates via `appEventEmitter.emit('data-changed', { type: 'notifications_updated' })`.
+  - **Real-Time Cross-Screen Reactivity (`src/services/event-emitter.ts`, `app/(tabs)/index.tsx`)**:
+    - Added `'notifications_updated'` event type to `AppDataChangedEvent`.
+    - Wired `refreshNotificationCount` to trigger on initial mount, auth state changes, screen refocus (`useFocusEffect`), and data change events, guaranteeing instant badge synchronization when marking notifications as read in the Notifications Center.
+  - **Quality Gates Passed**: Zero TypeScript errors (`npx tsc --noEmit`), test gate passed (`npx jest --passWithNoTests`).
+
 - **Synchronized Group Sorting & Max 5 Limit on Home Dashboard (`src/utils/group-sort.ts`, `app/(tabs)/index.tsx`, `app/(tabs)/groups.tsx`)**:
   - **Shared Sorting Utility (`src/utils/group-sort.ts`)**:
     - Created modular `sortGroups(groups, sortBy)` utility supporting all standard sorting modes: `'last_usage'` (most recently active first), `'name_asc'`, `'name_desc'`, `'owed_desc'`, `'owed_asc'`, `'owes_desc'`, and `'owes_asc'`.

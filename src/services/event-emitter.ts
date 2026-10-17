@@ -20,7 +20,8 @@ export interface AppDataChangedEvent {
     | 'group_deleted'
     | 'budget_updated'
     | 'members_updated'
-    | 'auth_logout';
+    | 'auth_logout'
+    | 'notifications_updated';
 }
 
 class AppEventEmitter {

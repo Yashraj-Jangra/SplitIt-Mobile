@@ -45,6 +45,7 @@ import { haptics } from '../../src/services/haptics.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { ObligationsModal } from '../../src/components/dashboard/ObligationsModal';
 import { sortGroups, GroupSortOption } from '../../src/utils/group-sort';
+import { notificationService } from '../../src/services/notification.service';
 
 interface HomeActivityEntry {
   type: 'expense' | 'settlement';
@@ -64,6 +65,9 @@ export default function HomeScreen() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authUser || authService.getInMemoryUser());
   const [groups, setGroups] = useState<GroupListItem[]>(() => groupService.getInMemoryGroups());
   const [groupSortBy, setGroupSortBy] = useState<GroupSortOption>('last_usage');
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(() =>
+    notificationService.getUnreadCount()
+  );
   const [recentTransactions, setRecentTransactions] = useState<UserTransactionItem[]>(() => expenseService.getInMemoryUserExpenses());
   const [settlements, setSettlements] = useState<GroupSettlementItem[]>(() => []);
   const [balanceSummary, setBalanceSummary] = useState<UserBalanceSummary | null>(() => balanceService.getInMemoryUserBalanceSummary());
@@ -129,6 +133,15 @@ export default function HomeScreen() {
     }
   };
 
+  const refreshNotificationCount = useCallback(async () => {
+    try {
+      const count = await notificationService.fetchUnreadCount();
+      setUnreadNotificationCount(count);
+    } catch {
+      // Safe fallback
+    }
+  }, []);
+
   useEffect(() => {
     if (!authUser) {
       setCurrentUser(null);
@@ -136,6 +149,7 @@ export default function HomeScreen() {
       setRecentTransactions([]);
       setSettlements([]);
       setBalanceSummary(null);
+      setUnreadNotificationCount(0);
       return;
     }
 
@@ -171,8 +185,9 @@ export default function HomeScreen() {
       if (saved) setGroupSortBy(saved);
     });
 
+    refreshNotificationCount();
     loadData(false);
-  }, [authUser]);
+  }, [authUser, refreshNotificationCount]);
 
   // Screen focus: background refresh when returning to HomeScreen from any modal/flow
   useFocusEffect(
@@ -181,8 +196,9 @@ export default function HomeScreen() {
       storageService.getItem<GroupSortOption>(STORAGE_KEYS.GROUPS_SORT_PREFERENCE).then((saved) => {
         if (saved) setGroupSortBy(saved);
       });
+      refreshNotificationCount();
       loadData(false);
-    }, [authUser])
+    }, [authUser, refreshNotificationCount])
   );
 
   // Global event listener: automatic re-sync when expense, group, or settlement is added/changed
@@ -194,15 +210,21 @@ export default function HomeScreen() {
         setRecentTransactions([]);
         setSettlements([]);
         setBalanceSummary(null);
+        setUnreadNotificationCount(0);
+        return;
+      }
+      if (event?.type === 'notifications_updated') {
+        refreshNotificationCount();
         return;
       }
       storageService.getItem<GroupSortOption>(STORAGE_KEYS.GROUPS_SORT_PREFERENCE).then((saved) => {
         if (saved) setGroupSortBy(saved);
       });
+      refreshNotificationCount();
       loadData(true);
     });
     return unsubscribe;
-  }, [authUser]);
+  }, [authUser, refreshNotificationCount]);
 
   const onRefresh = () => {
     haptics.tap();
@@ -334,7 +356,9 @@ export default function HomeScreen() {
               accessibilityLabel="Notifications"
             >
               <Bell size={18} color={THEME.colors.text} />
-              <View style={[styles.bellDot, { backgroundColor: currentAccent.primary }]} />
+              {unreadNotificationCount > 0 ? (
+                <View style={[styles.bellDot, { backgroundColor: currentAccent.primary }]} />
+              ) : null}
             </TouchableOpacity>
           </View>
         </View>
