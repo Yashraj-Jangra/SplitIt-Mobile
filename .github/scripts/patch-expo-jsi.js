@@ -445,12 +445,12 @@ const oldDynamicViewBody = `    return try performSynchronouslyOnMainThread {
       // For views using WithHostingView protocol.
       // e.g. View(HostView.self) where HostView conforms to WithHostingView
       guard let view = appContext.findView(withTag: viewTag, ofType: AnyExpoSwiftUIHostingView.self) else {
-        return nil
+        throw Exceptions.SwiftUIViewNotFound((tag: viewTag, type: innerType.self))
       }
-      return view.getContentView() as? ViewType
+      return view.getContentView()
     }`;
 const newDynamicViewBody = `    return try performSynchronouslyOnMainThread {
-      return MainActor.assumeIsolated {
+      return try MainActor.assumeIsolated {
         if let view = appContext.findView(withTag: viewTag, ofType: ExpoSwiftUI.SwiftUIVirtualView<ViewType.Props, ViewType>.self) {
           return view.contentView
         }
@@ -466,12 +466,27 @@ const newDynamicViewBody = `    return try performSynchronouslyOnMainThread {
         // For views using WithHostingView protocol.
         // e.g. View(HostView.self) where HostView conforms to WithHostingView
         guard let view = appContext.findView(withTag: viewTag, ofType: AnyExpoSwiftUIHostingView.self) else {
-          return nil
+          throw Exceptions.SwiftUIViewNotFound((tag: viewTag, type: innerType.self))
         }
-        return view.getContentView() as? ViewType
+        return view.getContentView()
       }
     }`;
 replaceInFile(dynamicSwiftUIViewTypeSwift, oldDynamicViewBody, newDynamicViewBody);
+
+const swiftUIViewDefinitionSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Core',
+  'Views',
+  'SwiftUI',
+  'SwiftUIViewDefinition.swift'
+);
+replaceInFile(
+  swiftUIViewDefinitionSwift,
+  'let content = hostingUIView.getContentView()',
+  'let content = MainActor.assumeIsolated { hostingUIView.getContentView() }'
+);
 
 // Walk all Swift files in expo-modules-core/ios to replace 'weak let' with 'weak var'
 const expoCoreIosDir = path.join(
