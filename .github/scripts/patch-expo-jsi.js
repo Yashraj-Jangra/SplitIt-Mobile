@@ -488,6 +488,24 @@ replaceInFile(
   'let content = MainActor.assumeIsolated { hostingUIView.getContentView() }'
 );
 
+// 9. Patch ExpoNotifications for iOS 18.5 SDK compatibility
+const dateComponentsSerializerSwift = path.join(
+  'node_modules',
+  'expo-notifications',
+  'ios',
+  'ExpoNotifications',
+  'Notifications',
+  'DateComponentsSerializer.swift'
+);
+const oldRepeatedDay = `    if #available(iOS 26.0, *) {
+      serializedComponents["isRepeatedDay"] = dateComponents.isRepeatedDay ?? false
+    }`;
+replaceInFile(
+  dateComponentsSerializerSwift,
+  oldRepeatedDay,
+  '    // iOS 26 isRepeatedDay omitted for iOS 18.5 SDK compatibility'
+);
+
 // Walk all Swift files in expo-modules-core/ios to replace 'weak let' with 'weak var'
 const expoCoreIosDir = path.join(
   'node_modules',
