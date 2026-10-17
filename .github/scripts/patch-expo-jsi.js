@@ -90,18 +90,4 @@ if (fs.existsSync(sourcesDir)) {
   walkDir(sourcesDir);
 }
 
-// 5. Inject concurrency & warning flags into build-xcframework.sh
-const buildScript = path.join(
-  'node_modules',
-  'expo-modules-jsi',
-  'apple',
-  'scripts',
-  'build-xcframework.sh'
-);
-replaceInFile(
-  buildScript,
-  'CLANG_COVERAGE_MAPPING=NO \\',
-  'CLANG_COVERAGE_MAPPING=NO \\\n    OTHER_SWIFT_FLAGS="-strict-concurrency=minimal -suppress-warnings" \\'
-);
-
 console.log('[Patch] ExpoModulesJSI patch complete.');
