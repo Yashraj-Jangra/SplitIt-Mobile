@@ -8,6 +8,18 @@ function replaceInFile(filePath, search, replacement) {
       content = content.replaceAll(search, replacement);
       fs.writeFileSync(filePath, content, 'utf8');
       console.log(`[Patch] Updated: ${filePath}`);
+    } else {
+      const searchCRLF = search.replace(/\r?\n/g, '\r\n');
+      const searchLF = search.replace(/\r?\n/g, '\n');
+      if (content.includes(searchCRLF)) {
+        content = content.replaceAll(searchCRLF, replacement.replace(/\r?\n/g, '\r\n'));
+        fs.writeFileSync(filePath, content, 'utf8');
+        console.log(`[Patch] Updated (CRLF): ${filePath}`);
+      } else if (content.includes(searchLF)) {
+        content = content.replaceAll(searchLF, replacement.replace(/\r?\n/g, '\n'));
+        fs.writeFileSync(filePath, content, 'utf8');
+        console.log(`[Patch] Updated (LF): ${filePath}`);
+      }
     }
   }
 }
@@ -505,6 +517,123 @@ replaceInFile(
   oldRepeatedDay,
   '    // iOS 26 isRepeatedDay omitted for iOS 18.5 SDK compatibility'
 );
+
+// 10. Patch expo-router Toolbar for iOS 18.5 SDK compatibility
+const routerToolbarHostViewSwift = path.join(
+  'node_modules',
+  'expo-router',
+  'ios',
+  'Toolbar',
+  'RouterToolbarHostView.swift'
+);
+const oldSharedBgHost = `            if #available(iOS 26.0, *) {
+              if let hidesSharedBackground = menu.hidesSharedBackground {
+                item.hidesSharedBackground = hidesSharedBackground
+              }
+              if let sharesBackground = menu.sharesBackground {
+                item.sharesBackground = sharesBackground
+              }
+            }`;
+replaceInFile(
+  routerToolbarHostViewSwift,
+  oldSharedBgHost,
+  '            // iOS 26 hidesSharedBackground / sharesBackground omitted for iOS 18.5 SDK compatibility'
+);
+
+const routerToolbarItemViewSwift = path.join(
+  'node_modules',
+  'expo-router',
+  'ios',
+  'Toolbar',
+  'RouterToolbarItemView.swift'
+);
+const oldSearchBarBlock = `    } else if type == .searchBar {
+      guard #available(iOS 26.0, *), let controller = self.host?.findViewController() else {
+        // Check for iOS 26, should already be guarded by the JS side, so this warning will only fire if controller is nil
+        logger?.warn(
+          "[expo-router] navigationItem.searchBarPlacementBarButtonItem not available. This is most likely a bug in expo-router."
+        )
+        currentBarButtonItem = nil
+        return
+      }
+      guard let navController = controller.navigationController else {
+        currentBarButtonItem = nil
+        return
+      }
+      guard navController.isNavigationBarHidden == false else {
+        logger?.warn(
+          "[expo-router] Toolbar.SearchBarPreferredSlot should only be used when stack header is shown."
+        )
+        currentBarButtonItem = nil
+        return
+      }
+
+      item = controller.navigationItem.searchBarPlacementBarButtonItem`;
+const newSearchBarBlock = `    } else if type == .searchBar {
+      logger?.warn("[expo-router] Toolbar.SearchBarPreferredSlot is not supported on iOS 18.5 SDK.")
+      currentBarButtonItem = nil
+      return`;
+replaceInFile(routerToolbarItemViewSwift, oldSearchBarBlock, newSearchBarBlock);
+
+const oldSharedBgItem = `    if #available(iOS 26.0, *) {
+      item.hidesSharedBackground = hidesSharedBackground
+      item.sharesBackground = sharesBackground
+    }`;
+replaceInFile(
+  routerToolbarItemViewSwift,
+  oldSharedBgItem,
+  '    // iOS 26 hidesSharedBackground / sharesBackground omitted for iOS 18.5 SDK compatibility'
+);
+
+const oldBadgeBlock = `    if #available(iOS 26.0, *) {
+      if let badgeConfig = badgeConfiguration {
+        var badge = UIBarButtonItem.Badge.indicator()
+        if let value = badgeConfig.value {
+          badge = .string(value)
+        }
+        if let backgroundColor = badgeConfig.backgroundColor {
+          badge.backgroundColor = backgroundColor
+        }
+        if let foregroundColor = badgeConfig.color {
+          badge.foregroundColor = foregroundColor
+        }
+        if badgeConfig.fontFamily != nil || badgeConfig.fontSize != nil
+          || badgeConfig.fontWeight != nil {
+          let font = RouterFontUtils.convertTitleStyleToFont(
+            TitleStyle(
+              fontFamily: badgeConfig.fontFamily,
+              fontSize: badgeConfig.fontSize,
+              fontWeight: badgeConfig.fontWeight
+            ))
+          badge.font = font
+        }
+        item.badge = badge
+      } else {
+        item.badge = nil
+      }
+    }`;
+replaceInFile(
+  routerToolbarItemViewSwift,
+  oldBadgeBlock,
+  '    // iOS 26 badge logic omitted for iOS 18.5 SDK compatibility'
+);
+
+const routerToolbarModuleSwift = path.join(
+  'node_modules',
+  'expo-router',
+  'ios',
+  'Toolbar',
+  'RouterToolbarModule.swift'
+);
+const oldProminentBlock = `    case .prominent:
+      if #available(iOS 26.0, *) {
+        return .prominent
+      } else {
+        return .done
+      }`;
+const newProminentBlock = `    case .prominent:
+      return .done`;
+replaceInFile(routerToolbarModuleSwift, oldProminentBlock, newProminentBlock);
 
 // Walk all Swift files in expo-modules-core/ios to replace 'weak let' with 'weak var'
 const expoCoreIosDir = path.join(
