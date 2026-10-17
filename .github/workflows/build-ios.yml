@@ -23,21 +23,6 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Select Xcode 26
-        run: |
-          if [ -d "/Applications/Xcode_26.3.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_26.2.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_26.1.1.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_26.1.1.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_26.0.1.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_26.0.1.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_26.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
-          fi
-          xcodebuild -version
-
       - name: Patch ExpoModulesJSI for Xcode compiler compatibility
         run: node .github/scripts/patch-expo-jsi.js
 

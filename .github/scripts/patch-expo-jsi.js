@@ -12,7 +12,16 @@ function replaceInFile(filePath, search, replacement) {
   }
 }
 
-// 1. Fix RuntimeScheduler.h constructor annotation
+// 1. Fix Swift tools version for Xcode 16.4 (Swift 6.1)
+const packageSwift = path.join(
+  'node_modules',
+  'expo-modules-jsi',
+  'apple',
+  'Package.swift'
+);
+replaceInFile(packageSwift, '// swift-tools-version: 6.2', '// swift-tools-version: 6.1');
+
+// 2. Fix RuntimeScheduler.h constructor annotation
 const headerFile = path.join(
   'node_modules',
   'expo-modules-jsi',
@@ -24,30 +33,7 @@ const headerFile = path.join(
 );
 replaceInFile(headerFile, 'SWIFT_RETURNS_RETAINED RuntimeScheduler', 'RuntimeScheduler');
 
-// 2. Fix Package.swift concurrency flags
-const packageSwift = path.join(
-  'node_modules',
-  'expo-modules-jsi',
-  'apple',
-  'Package.swift'
-);
-replaceInFile(
-  packageSwift,
-  '.enableUpcomingFeature("NonisolatedNonsendingByDefault"),',
-  '// .enableUpcomingFeature("NonisolatedNonsendingByDefault"),'
-);
-replaceInFile(
-  packageSwift,
-  '.enableUpcomingFeature("InferIsolatedConformances"),',
-  '// .enableUpcomingFeature("InferIsolatedConformances"),'
-);
-replaceInFile(
-  packageSwift,
-  'swiftLanguageModes: [.v6],',
-  'swiftLanguageModes: [.v5],'
-);
-
-// 3. Fix any 'weak let' -> 'weak var' across expo-modules-jsi sources
+// 3. Fix non-standard 'weak let' -> 'weak var' across all Swift sources in ExpoModulesJSI
 const sourcesDir = path.join(
   'node_modules',
   'expo-modules-jsi',
