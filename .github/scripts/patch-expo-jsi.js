@@ -202,4 +202,36 @@ if (fs.existsSync(sourcesDir)) {
   walkDir(sourcesDir);
 }
 
-console.log('[Patch] ExpoModulesJSI patch complete.');
+// 7. Force all Expo modules to build from source matching the runner's Swift toolchain
+// Remove any prebuilt xcframework tarballs shipped with npm packages that were compiled with incompatible Swift 6.3 / Xcode 26
+function removePrebuilds(dir) {
+  if (fs.existsSync(dir)) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'prebuilds') {
+          fs.rmSync(fullPath, { recursive: true, force: true });
+          console.log(`[Patch] Removed prebuilt tarballs: ${fullPath}`);
+        } else {
+          removePrebuilds(fullPath);
+        }
+      }
+    }
+  }
+}
+removePrebuilds('node_modules');
+
+// Ensure ExpoModulesCore podspec builds from source
+const expoModulesCorePodspec = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ExpoModulesCore.podspec'
+);
+replaceInFile(
+  expoModulesCorePodspec,
+  'if (!Expo::PackagesConfig.instance.try_link_with_prebuilt_xcframework(s))',
+  'if true'
+);
+
+console.log('[Patch] ExpoModulesJSI and native dependencies patch complete.');
