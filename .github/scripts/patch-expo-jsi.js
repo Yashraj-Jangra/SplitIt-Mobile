@@ -222,7 +222,7 @@ function removePrebuilds(dir) {
 }
 removePrebuilds('node_modules');
 
-// Ensure ExpoModulesCore podspec builds from source
+// 8. Patch ExpoModulesCore for Xcode 16.4 / Swift 6.1 compatibility
 const expoModulesCorePodspec = path.join(
   'node_modules',
   'expo-modules-core',
@@ -233,5 +233,265 @@ replaceInFile(
   'if (!Expo::PackagesConfig.instance.try_link_with_prebuilt_xcframework(s))',
   'if true'
 );
+
+replaceInFile(
+  expoModulesCorePodspec,
+  "  # Swift/Objective-C compatibility\n  s.pod_target_xcconfig = {",
+  "  # Swift/Objective-C compatibility\n  s.swift_version = '5.0'\n  s.pod_target_xcconfig = {\n    'SWIFT_VERSION' => '5.0',\n    'SWIFT_STRICT_CONCURRENCY' => 'minimal',\n    'SWIFT_TREAT_WARNINGS_AS_ERRORS' => 'NO',\n    'GCC_TREAT_WARNINGS_AS_ERRORS' => 'NO',"
+);
+replaceInFile(
+  expoModulesCorePodspec,
+  "'OTHER_SWIFT_FLAGS' => \"$(inherited) #{new_arch_enabled ? new_arch_compiler_flags : ''}\",",
+  "'OTHER_SWIFT_FLAGS' => \"$(inherited) #{new_arch_enabled ? new_arch_compiler_flags : ''} -strict-concurrency=minimal -suppress-warnings\","
+);
+
+// Fix invalid @MainActor attribute on protocol conformances and inheritance clauses
+const viewDefinitionSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Core',
+  'Views',
+  'ViewDefinition.swift'
+);
+replaceInFile(
+  viewDefinitionSwift,
+  'extension UIView: @MainActor AnyArgument {',
+  'extension UIView: AnyArgument {'
+);
+
+const swiftUIHostingViewSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Core',
+  'Views',
+  'SwiftUI',
+  'SwiftUIHostingView.swift'
+);
+replaceInFile(
+  swiftUIHostingViewSwift,
+  'internal protocol AnyExpoSwiftUIHostingView {',
+  '@MainActor\ninternal protocol AnyExpoSwiftUIHostingView {'
+);
+replaceInFile(
+  swiftUIHostingViewSwift,
+  ': ExpoView, @MainActor AnyExpoSwiftUIHostingView {',
+  ': ExpoView, AnyExpoSwiftUIHostingView {'
+);
+
+const swiftUIVirtualViewSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Core',
+  'Views',
+  'SwiftUI',
+  'SwiftUIVirtualView.swift'
+);
+replaceInFile(
+  swiftUIVirtualViewSwift,
+  ': SwiftUIVirtualViewObjC, @MainActor ExpoSwiftUIView {',
+  ': SwiftUIVirtualViewObjC, ExpoSwiftUIView {'
+);
+replaceInFile(
+  swiftUIVirtualViewSwift,
+  'extension ExpoSwiftUI.SwiftUIVirtualView: @MainActor ExpoSwiftUI.ViewWrapper {',
+  'extension ExpoSwiftUI.SwiftUIVirtualView: ExpoSwiftUI.ViewWrapper {'
+);
+replaceInFile(
+  swiftUIVirtualViewSwift,
+  ': SwiftUIVirtualViewObjCDev, @MainActor ExpoSwiftUIView {',
+  ': SwiftUIVirtualViewObjCDev, ExpoSwiftUIView {'
+);
+replaceInFile(
+  swiftUIVirtualViewSwift,
+  'extension ExpoSwiftUI.SwiftUIVirtualViewDev: @MainActor ExpoSwiftUI.ViewWrapper {',
+  'extension ExpoSwiftUI.SwiftUIVirtualViewDev: ExpoSwiftUI.ViewWrapper {'
+);
+
+const expoSwiftUISwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Core',
+  'Views',
+  'SwiftUI',
+  'ExpoSwiftUI.swift'
+);
+replaceInFile(
+  expoSwiftUISwift,
+  '  public protocol ViewWrapper {\n    func getWrappedView() -> Any\n  }',
+  '  @MainActor\n  public protocol ViewWrapper {\n    func getWrappedView() -> Any\n  }'
+);
+
+const sceneGeometrySwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Utilities',
+  'SceneGeometry.swift'
+);
+replaceInFile(
+  sceneGeometrySwift,
+  'public enum SceneGeometry {',
+  '@MainActor public enum SceneGeometry {'
+);
+
+const urlAuthForwardSenderSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'DevTools',
+  'URLAuthenticationChallengeForwardSender.swift'
+);
+replaceInFile(
+  urlAuthForwardSenderSwift,
+  'internal final class URLAuthenticationChallengeForwardSender: NSObject, URLAuthenticationChallengeSender {',
+  'internal final class URLAuthenticationChallengeForwardSender: NSObject, URLAuthenticationChallengeSender, @unchecked Sendable {'
+);
+
+const urlSessionProxySwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'DevTools',
+  'URLSessionSessionDelegateProxy.swift'
+);
+replaceInFile(
+  urlSessionProxySwift,
+  'public final class URLSessionSessionDelegateProxy: NSObject, URLSessionDataDelegate {',
+  'public final class URLSessionSessionDelegateProxy: NSObject, URLSessionDataDelegate, @unchecked Sendable {'
+);
+
+const persistentFileLogSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Core',
+  'Logging',
+  'PersistentFileLog.swift'
+);
+replaceInFile(
+  persistentFileLogSwift,
+  'public typealias PersistentFileLogFilter = (String) -> Bool',
+  'public typealias PersistentFileLogFilter = @Sendable (String) -> Bool'
+);
+replaceInFile(
+  persistentFileLogSwift,
+  'public typealias PersistentFileLogCompletionHandler = (Error?) -> Void',
+  'public typealias PersistentFileLogCompletionHandler = @Sendable (Error?) -> Void'
+);
+
+const expoReactDelegateSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'ReactDelegates',
+  'ExpoReactDelegate.swift'
+);
+const oldRootVC = `  @objc
+  public func createRootViewController() -> UIViewController {
+    return self.handlers.lazy
+      .compactMap { $0.createRootViewController() }
+      .first(where: { _ in true }) ?? UIViewController()
+  }`;
+const newRootVC = `  @objc
+  public func createRootViewController() -> UIViewController {
+    return MainActor.assumeIsolated {
+      return self.handlers.lazy
+        .compactMap { $0.createRootViewController() }
+        .first(where: { _ in true }) ?? UIViewController()
+    }
+  }`;
+replaceInFile(expoReactDelegateSwift, oldRootVC, newRootVC);
+
+const frameObserverSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Core',
+  'Views',
+  'SwiftUI',
+  'SwiftUIViewFrameObserver.swift'
+);
+replaceInFile(
+  frameObserverSwift,
+  'callback(CGRect(origin: view.frame.origin, size: newValue.size))',
+  'MainActor.assumeIsolated { callback(CGRect(origin: view.frame.origin, size: newValue.size)) }'
+);
+
+const dynamicSwiftUIViewTypeSwift = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios',
+  'Core',
+  'DynamicTypes',
+  'DynamicSwiftUIViewType.swift'
+);
+const oldDynamicViewBody = `    return try performSynchronouslyOnMainThread {
+      if let view = appContext.findView(withTag: viewTag, ofType: ExpoSwiftUI.SwiftUIVirtualView<ViewType.Props, ViewType>.self) {
+        return view.contentView
+      }
+      if let view = appContext.findView(withTag: viewTag, ofType: ExpoSwiftUI.SwiftUIVirtualViewDev<ViewType.Props, ViewType>.self) {
+        return view.contentView
+      }
+      // For wrapper types
+      // e.g. ExpoUIView(SecureFieldView.self)
+      if let provider = appContext.findView(withTag: viewTag, ofType: ExpoSwiftUI.ViewWrapper.self),
+         let innerView = provider.getWrappedView() as? ViewType {
+        return innerView
+      }
+      // For views using WithHostingView protocol.
+      // e.g. View(HostView.self) where HostView conforms to WithHostingView
+      guard let view = appContext.findView(withTag: viewTag, ofType: AnyExpoSwiftUIHostingView.self) else {
+        return nil
+      }
+      return view.getContentView() as? ViewType
+    }`;
+const newDynamicViewBody = `    return try performSynchronouslyOnMainThread {
+      return MainActor.assumeIsolated {
+        if let view = appContext.findView(withTag: viewTag, ofType: ExpoSwiftUI.SwiftUIVirtualView<ViewType.Props, ViewType>.self) {
+          return view.contentView
+        }
+        if let view = appContext.findView(withTag: viewTag, ofType: ExpoSwiftUI.SwiftUIVirtualViewDev<ViewType.Props, ViewType>.self) {
+          return view.contentView
+        }
+        // For wrapper types
+        // e.g. ExpoUIView(SecureFieldView.self)
+        if let provider = appContext.findView(withTag: viewTag, ofType: ExpoSwiftUI.ViewWrapper.self),
+           let innerView = provider.getWrappedView() as? ViewType {
+          return innerView
+        }
+        // For views using WithHostingView protocol.
+        // e.g. View(HostView.self) where HostView conforms to WithHostingView
+        guard let view = appContext.findView(withTag: viewTag, ofType: AnyExpoSwiftUIHostingView.self) else {
+          return nil
+        }
+        return view.getContentView() as? ViewType
+      }
+    }`;
+replaceInFile(dynamicSwiftUIViewTypeSwift, oldDynamicViewBody, newDynamicViewBody);
+
+// Walk all Swift files in expo-modules-core/ios to replace 'weak let' with 'weak var'
+const expoCoreIosDir = path.join(
+  'node_modules',
+  'expo-modules-core',
+  'ios'
+);
+if (fs.existsSync(expoCoreIosDir)) {
+  function walkExpoCore(dir) {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const fullPath = path.join(dir, file);
+      if (fs.statSync(fullPath).isDirectory()) {
+        walkExpoCore(fullPath);
+      } else if (file.endsWith('.swift')) {
+        replaceInFile(fullPath, 'weak let', 'weak var');
+      }
+    }
+  }
+  walkExpoCore(expoCoreIosDir);
+}
 
 console.log('[Patch] ExpoModulesJSI and native dependencies patch complete.');

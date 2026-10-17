@@ -32,6 +32,32 @@ jobs:
           EXPO_PUBLIC_API_URL: https://split.cvweb.qzz.io
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 178311275102-ph0shfc0dhs7cfnefre0q4bue6h0knvp.apps.googleusercontent.com
 
+      - name: Configure CocoaPods build settings for Xcode 16 compatibility
+        run: |
+          node -e '
+            const fs = require("fs");
+            if (fs.existsSync("ios/Podfile")) {
+              let podfile = fs.readFileSync("ios/Podfile", "utf8");
+              const postInstallHook = `
+                installer.pods_project.targets.each do |target|
+                  target.build_configurations.each do |config|
+                    config.build_settings["SWIFT_STRICT_CONCURRENCY"] = "minimal"
+                    config.build_settings["SWIFT_TREAT_WARNINGS_AS_ERRORS"] = "NO"
+                    config.build_settings["GCC_TREAT_WARNINGS_AS_ERRORS"] = "NO"
+                  end
+                end
+              `;
+              if (podfile.includes("post_install do |installer|")) {
+                podfile = podfile.replace(
+                  "post_install do |installer|",
+                  "post_install do |installer|\n" + postInstallHook
+                );
+                fs.writeFileSync("ios/Podfile", podfile, "utf8");
+                console.log("[CI] Injected concurrency settings into ios/Podfile");
+              }
+            }
+          '
+
       - name: Install CocoaPods
         run: |
           cd ios
@@ -50,6 +76,7 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE="" \
             COMPILER_INDEX_STORE_ENABLE=NO \
+            SWIFT_STRICT_CONCURRENCY=minimal \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
             GCC_TREAT_WARNINGS_AS_ERRORS=NO
 
