@@ -38,6 +38,13 @@ jobs:
           fi
           xcodebuild -version
 
+      - name: Patch ExpoModulesJSI RuntimeScheduler for Xcode
+        run: |
+          HEADER="node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h"
+          if [ -f "$HEADER" ]; then
+            sed -i '' 's/SWIFT_RETURNS_RETAINED RuntimeScheduler/RuntimeScheduler/g' "$HEADER"
+          fi
+
       - name: Expo Prebuild for iOS
         run: npx expo prebuild --platform ios --clean
         env:
