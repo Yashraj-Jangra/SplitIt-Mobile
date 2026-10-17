@@ -64,6 +64,18 @@ const hostFuncClosureHeader = path.join(
 );
 replaceInFile(hostFuncClosureHeader, '#include <swift/bridging>', immortalMacro);
 
+// Add static create() factory to HostFunctionClosure for Swift 6.1 reference type initialization
+const createFactory = `explicit HostFunctionClosure(Context context, Closure closure, Deallocator deallocator) : RetainedSwiftPointer(context, deallocator), _closure(closure) {};
+
+  static HostFunctionClosure *create(Context context, Closure *closure, Deallocator *deallocator) noexcept {
+    return new HostFunctionClosure(context, closure, deallocator);
+  }`;
+replaceInFile(
+  hostFuncClosureHeader,
+  'explicit HostFunctionClosure(Context context, Closure closure, Deallocator deallocator) : RetainedSwiftPointer(context, deallocator), _closure(closure) {};',
+  createFactory
+);
+
 // 3. Forward declare retain/release functions in RuntimeScheduler.h so SWIFT_SHARED_REFERENCE resolves
 const runtimeSchedulerHeader = path.join(
   'node_modules',
@@ -102,7 +114,7 @@ const oldTaskBody = `    if #available(macOS 26.0, iOS 26.0, watchOS 26.0, tvOS 
 const newTaskBody = `    return Task(priority: priority ?? .high, operation: operation)`;
 replaceInFile(taskImmediateSwift, oldTaskBody, newTaskBody);
 
-// 5. Fix JavaScriptRuntime.swift syntax for Swift 6.1 (remove SE-0439 trailing comma and consuming: label)
+// 5. Fix JavaScriptRuntime.swift syntax for Swift 6.1
 const jsRuntimeSwift = path.join(
   'node_modules',
   'expo-modules-jsi',
@@ -120,7 +132,17 @@ replaceInFile(
 replaceInFile(
   jsRuntimeSwift,
   'vector.push_back(consuming: propNameId)',
-  'vector.push_back(propNameId)'
+  'vector.push_back(consume propNameId)'
+);
+replaceInFile(
+  jsRuntimeSwift,
+  'vector.push_back(propNameId)',
+  'vector.push_back(consume propNameId)'
+);
+replaceInFile(
+  jsRuntimeSwift,
+  'return expo.HostFunctionClosure(context, call, deallocate)',
+  'return expo.HostFunctionClosure.create(context, call, deallocate)'
 );
 
 // 6. Fix 'weak let' and nonisolated(unsafe) for weak properties in Sendable classes
