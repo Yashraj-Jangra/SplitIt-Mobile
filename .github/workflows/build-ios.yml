@@ -23,12 +23,20 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Patch Swift tools version for Xcode compatibility
+      - name: Select Xcode 26
         run: |
-          find node_modules -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.1/g' {} +
-          if [ -f node_modules/@expo/expo-modules-macros-plugin/apple/Package.swift ]; then
-            sed -i '' 's/602.0.0/601.0.0/g' node_modules/@expo/expo-modules-macros-plugin/apple/Package.swift
+          if [ -d "/Applications/Xcode_26.3.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_26.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_26.1.1.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.1.1.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_26.0.1.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.0.1.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_26.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
           fi
+          xcodebuild -version
 
       - name: Expo Prebuild for iOS
         run: npx expo prebuild --platform ios --clean
