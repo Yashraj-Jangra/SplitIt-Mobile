@@ -88,7 +88,7 @@ const hostObjectCallbacksHeader = path.join(
 );
 const propNameIdsHelper = `using PropNameIds = std::vector<facebook::jsi::PropNameID>;
 
-  static inline void appendPropNameId(PropNameIds &vector, facebook::jsi::Runtime &runtime, const std::string &name) {
+  static inline void appendPropNameId(PropNameIds &vector, facebook::jsi::IRuntime &runtime, const std::string &name) {
     vector.emplace_back(facebook::jsi::PropNameID::forUtf8(runtime, name));
   }`;
 replaceInFile(
