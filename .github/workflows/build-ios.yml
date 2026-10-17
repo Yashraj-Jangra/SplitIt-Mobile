@@ -23,6 +23,13 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Patch Swift tools version for Xcode compatibility
+        run: |
+          find node_modules -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.1/g' {} +
+          if [ -f node_modules/@expo/expo-modules-macros-plugin/apple/Package.swift ]; then
+            sed -i '' 's/602.0.0/601.0.0/g' node_modules/@expo/expo-modules-macros-plugin/apple/Package.swift
+          fi
+
       - name: Expo Prebuild for iOS
         run: npx expo prebuild --platform ios --clean
         env:
@@ -50,8 +57,10 @@ jobs:
 
       - name: Package Standalone IPA
         run: |
+          APP_PATH=$(find ios/build/Build/Products/Release-iphoneos -name "*.app" -maxdepth 1)
+          echo "Found app at: $APP_PATH"
           mkdir -p Payload
-          cp -r ios/build/Build/Products/Release-iphoneos/SplitIt.app Payload/
+          cp -r "$APP_PATH" Payload/
           zip -r SplitIt-v1.1.0.ipa Payload
           rm -rf Payload
 
