@@ -12,7 +12,7 @@ function replaceInFile(filePath, search, replacement) {
   }
 }
 
-// 1. Fix Swift tools version for Xcode 16.4 (Swift 6.1) and add concurrency flags in Package.swift
+// 1. Fix Swift tools version and concurrency flags in Package.swift for Xcode 16.4 (Swift 6.1)
 const packageSwift = path.join(
   'node_modules',
   'expo-modules-jsi',
@@ -36,8 +36,36 @@ replaceInFile(
   '"-clang-header-expose-decls=has-expose-attr",\n          "-strict-concurrency=minimal",\n          "-suppress-warnings",'
 );
 
-// 2. Fix RuntimeScheduler.h constructor annotation
-const headerFile = path.join(
+// 2. Define SWIFT_IMMORTAL_REFERENCE macro for Swift 6.1 in C++ bridging headers
+const immortalMacro = `#include <swift/bridging>
+#ifndef SWIFT_IMMORTAL_REFERENCE
+#define SWIFT_IMMORTAL_REFERENCE __attribute__((swift_attr("import_reference"))) __attribute__((swift_attr("retain:immortal"))) __attribute__((swift_attr("release:immortal")))
+#endif`;
+
+const retainedPtrHeader = path.join(
+  'node_modules',
+  'expo-modules-jsi',
+  'apple',
+  'Sources',
+  'ExpoModulesJSI-Cxx',
+  'include',
+  'RetainedSwiftPointer.h'
+);
+replaceInFile(retainedPtrHeader, '#include <swift/bridging>', immortalMacro);
+
+const hostFuncClosureHeader = path.join(
+  'node_modules',
+  'expo-modules-jsi',
+  'apple',
+  'Sources',
+  'ExpoModulesJSI-Cxx',
+  'include',
+  'HostFunctionClosure.h'
+);
+replaceInFile(hostFuncClosureHeader, '#include <swift/bridging>', immortalMacro);
+
+// 3. Forward declare retain/release functions in RuntimeScheduler.h so SWIFT_SHARED_REFERENCE resolves
+const runtimeSchedulerHeader = path.join(
   'node_modules',
   'expo-modules-jsi',
   'apple',
@@ -46,9 +74,35 @@ const headerFile = path.join(
   'include',
   'RuntimeScheduler.h'
 );
-replaceInFile(headerFile, 'SWIFT_RETURNS_RETAINED RuntimeScheduler', 'RuntimeScheduler');
+const forwardDecl = `namespace expo {
+class RuntimeScheduler;
+}
+inline void retainRuntimeScheduler(expo::RuntimeScheduler *scheduler);
+inline void releaseRuntimeScheduler(expo::RuntimeScheduler *scheduler);
 
-// 3. Fix trailing comma in JavaScriptRuntime.swift (SE-0439 syntax rejected by Swift 6.1)
+namespace expo {`;
+replaceInFile(runtimeSchedulerHeader, 'namespace expo {', forwardDecl);
+
+// 4. Fix Task+immediate.swift for Swift 6.1 (remove Task.immediate and Task(name:) which require Swift 6.2 / OS 26)
+const taskImmediateSwift = path.join(
+  'node_modules',
+  'expo-modules-jsi',
+  'apple',
+  'Sources',
+  'ExpoModulesJSI',
+  'Extensions',
+  'Task+immediate.swift'
+);
+const oldTaskBody = `    if #available(macOS 26.0, iOS 26.0, watchOS 26.0, tvOS 26.0, *) {
+      return Task.immediate(name: name, priority: priority, operation: operation)
+    } else {
+      // In the polyfill always use the highest priority and hope it executes earlier.
+      return Task(name: name, priority: .high, operation: operation)
+    }`;
+const newTaskBody = `    return Task(priority: priority ?? .high, operation: operation)`;
+replaceInFile(taskImmediateSwift, oldTaskBody, newTaskBody);
+
+// 5. Fix JavaScriptRuntime.swift syntax for Swift 6.1 (remove SE-0439 trailing comma and consuming: label)
 const jsRuntimeSwift = path.join(
   'node_modules',
   'expo-modules-jsi',
@@ -63,8 +117,13 @@ replaceInFile(
   '_ arguments: consuming JavaScriptValuesBuffer,',
   '_ arguments: consuming JavaScriptValuesBuffer'
 );
+replaceInFile(
+  jsRuntimeSwift,
+  'vector.push_back(consuming: propNameId)',
+  'vector.push_back(propNameId)'
+);
 
-// 4. Fix 'weak let' and nonisolated(unsafe) for weak properties in Sendable classes
+// 6. Fix 'weak let' and nonisolated(unsafe) for weak properties in Sendable classes
 const sourcesDir = path.join(
   'node_modules',
   'expo-modules-jsi',
@@ -82,7 +141,6 @@ if (fs.existsSync(sourcesDir)) {
         replaceInFile(fullPath, 'weak let', 'nonisolated(unsafe) weak var');
         replaceInFile(fullPath, 'private weak var runtime:', 'nonisolated(unsafe) private weak var runtime:');
         replaceInFile(fullPath, 'internal weak var runtime:', 'nonisolated(unsafe) internal weak var runtime:');
-        // Clean up accidental duplicate annotations if previously patched
         replaceInFile(fullPath, 'nonisolated(unsafe) nonisolated(unsafe)', 'nonisolated(unsafe)');
       }
     }

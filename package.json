@@ -42,5 +42,8 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
+  "overrides": {
+    "expo-modules-jsi": "57.1.2"
+  },
   "private": true
 }
