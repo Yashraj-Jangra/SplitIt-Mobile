@@ -1,5 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Standalone iOS Release Binary (.IPA) Generated & Verified (`.github/workflows/build-ios.yml`, `.github/scripts/patch-expo-jsi.js`, `metro.config.js`, `SplitIt-v1.1.0.ipa`)**:
+  - **Zero Cost iOS Cloud Pipeline**:
+    - Created and verified an automated, standalone iOS release pipeline on free GitHub Actions macOS 15 runners without requiring a physical Mac or a $99/yr paid Apple Developer account.
+    - Compiles an unsigned release `.app` with Hermes, packages it into a standard `Payload/` folder, and compresses it into a production `.ipa` binary ready for sideloading.
+  - **Compiler & Framework Compatibility Patches (`.github/scripts/patch-expo-jsi.js`)**:
+    - **`ExpoModulesJSI`**: Pinned Swift tools to version 6.1 (Xcode 16.4), disabled unstable concurrency flags, added `SWIFT_IMMORTAL_REFERENCE` macro to C++ headers, added `HostFunctionClosure.create()` factory, forward-declared `RuntimeScheduler` retain/release functions, and patched `HostObjectCallbacks.appendPropNameId` to support move-only types.
+    - **`ExpoModulesCore`**: Isolated SwiftUI dynamic view lookups and view definition closures to `@MainActor` with `MainActor.assumeIsolated`. Added `@unchecked Sendable` to network forward senders and `@Sendable` annotations to file log filters.
+    - **`ExpoNotifications`**: Removed non-existent iOS 26 `isRepeatedDay` property check from `DateComponentsSerializer.swift`.
+    - **`ExpoRouter`**: Neutralized experimental iOS 26 native toolbar APIs in `RouterToolbarHostView.swift`, `RouterToolbarItemView.swift`, and `RouterToolbarModule.swift` (`hidesSharedBackground`, `sharesBackground`, `searchBarPlacementBarButtonItem`, `UIBarButtonItem.Badge`, `UIBarButtonItem.Style.prominent`).
+    - **`ExpoImagePicker`**: Replaced unreleased iOS 26 `PHAsset`/`PHAssetResource.contentType` properties in `MediaHandler.swift` with standard Uniform Type Identifier (`UTType`) resolution.
+    - **`@expo/ui` & Autolinking**: Excluded the experimental `@expo/ui` package from the iOS CocoaPods build by removing `"apple"` platform in `expo-module.config.json`, stripping its native iOS folder, and filtering it in `expo-modules-autolinking` and `ios/Podfile`.
+  - **Metro Bundler Watchers (`metro.config.js`)**:
+    - Dynamically inspected local package paths (`packages/core`) before adding them to `config.watchFolders`, preventing transformer ENOENT crashes on cloud CI runners.
+  - **Standalone Package Artifact (`SplitIt-v1.1.0.ipa`)**:
+    - Successfully compiled, packaged, and verified standalone iOS binary: [`SplitIt-v1.1.0.ipa`](file:///d:/Projects/SplitIt-Mobile/SplitIt-v1.1.0.ipa) (12.9 MB).
+    - Added `*.ipa` and `SplitIt-*-iOS-IPA/` to `.gitignore`.
+    - Ready for direct installation onto iPhones using Sideloadly on Windows via free Apple ID.
+
 - **Version 1.1.0 Milestone Release (`package.json`, `app.json`, `app/support/new.tsx`, `CHANGELOG.md`)**:
   - Bumped app semantic version to `1.1.0`, `buildNumber: "2"`, and `versionCode: 2`.
   - Replaced hardcoded client version strings in support diagnostics with dynamic `Constants.expoConfig?.version || '1.1.0'`.
