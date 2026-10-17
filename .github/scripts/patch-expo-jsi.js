@@ -76,6 +76,27 @@ replaceInFile(
   createFactory
 );
 
+// Add static appendPropNameId to HostObjectCallbacks to avoid vector.push_back move-only copy construction in Swift 6.1
+const hostObjectCallbacksHeader = path.join(
+  'node_modules',
+  'expo-modules-jsi',
+  'apple',
+  'Sources',
+  'ExpoModulesJSI-Cxx',
+  'include',
+  'HostObjectCallbacks.h'
+);
+const propNameIdsHelper = `using PropNameIds = std::vector<facebook::jsi::PropNameID>;
+
+  static inline void appendPropNameId(PropNameIds &vector, facebook::jsi::Runtime &runtime, const std::string &name) {
+    vector.emplace_back(facebook::jsi::PropNameID::forUtf8(runtime, name));
+  }`;
+replaceInFile(
+  hostObjectCallbacksHeader,
+  'using PropNameIds = std::vector<facebook::jsi::PropNameID>;',
+  propNameIdsHelper
+);
+
 // 3. Forward declare retain/release functions in RuntimeScheduler.h so SWIFT_SHARED_REFERENCE resolves
 const runtimeSchedulerHeader = path.join(
   'node_modules',
@@ -129,16 +150,27 @@ replaceInFile(
   '_ arguments: consuming JavaScriptValuesBuffer,',
   '_ arguments: consuming JavaScriptValuesBuffer'
 );
-replaceInFile(
-  jsRuntimeSwift,
-  'vector.push_back(consuming: propNameId)',
-  'vector.push_back(consume propNameId)'
-);
-replaceInFile(
-  jsRuntimeSwift,
-  'vector.push_back(propNameId)',
-  'vector.push_back(consume propNameId)'
-);
+
+// Replace vector.push_back loop with HostObjectCallbacks.appendPropNameId
+const oldPropLoop1 = `      for propertyName in propertyNames {
+        let propNameId = facebook.jsi.PropNameID.forUtf8(iRuntime, std.string(propertyName))
+        vector.push_back(consuming: propNameId)
+      }`;
+const oldPropLoop2 = `      for propertyName in propertyNames {
+        let propNameId = facebook.jsi.PropNameID.forUtf8(iRuntime, std.string(propertyName))
+        vector.push_back(consume propNameId)
+      }`;
+const oldPropLoop3 = `      for propertyName in propertyNames {
+        let propNameId = facebook.jsi.PropNameID.forUtf8(iRuntime, std.string(propertyName))
+        vector.push_back(propNameId)
+      }`;
+const newPropLoop = `      for propertyName in propertyNames {
+        expo.HostObjectCallbacks.appendPropNameId(&vector, iRuntime, std.string(propertyName))
+      }`;
+replaceInFile(jsRuntimeSwift, oldPropLoop1, newPropLoop);
+replaceInFile(jsRuntimeSwift, oldPropLoop2, newPropLoop);
+replaceInFile(jsRuntimeSwift, oldPropLoop3, newPropLoop);
+
 replaceInFile(
   jsRuntimeSwift,
   'return expo.HostFunctionClosure(context, call, deallocate)',
