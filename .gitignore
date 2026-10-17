@@ -20,6 +20,8 @@ expo-env.d.ts
 *.mobileprovision
 *.apk
 *.aab
+*.ipa
+SplitIt-*-iOS-IPA/
 
 # Metro
 .metro-health-check*
