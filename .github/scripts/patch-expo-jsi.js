@@ -635,6 +635,41 @@ const newProminentBlock = `    case .prominent:
       return .done`;
 replaceInFile(routerToolbarModuleSwift, oldProminentBlock, newProminentBlock);
 
+// 11. Patch expo-image-picker for iOS 18.5 SDK compatibility
+const mediaHandlerSwift = path.join(
+  'node_modules',
+  'expo-image-picker',
+  'ios',
+  'MediaHandler.swift'
+);
+const oldMimeAsset = `  private func getMimeType(from asset: PHAsset?, fileExtension: String) -> String? {
+    let utType: UTType? = if #available(iOS 26.0, *) {
+      asset?.contentType ?? UTType(filenameExtension: fileExtension)
+    } else {
+      UTType(filenameExtension: fileExtension)
+    }
+    return utType?.preferredMIMEType
+  }`;
+const newMimeAsset = `  private func getMimeType(from asset: PHAsset?, fileExtension: String) -> String? {
+    let utType: UTType? = UTType(filenameExtension: fileExtension)
+    return utType?.preferredMIMEType
+  }`;
+replaceInFile(mediaHandlerSwift, oldMimeAsset, newMimeAsset);
+
+const oldMimeResource = `  private func getMimeType(from resource: PHAssetResource, fileExtension: String) -> String? {
+    let utType: UTType? = if #available(iOS 26.0, *) {
+      resource.contentType
+    } else {
+      UTType(resource.uniformTypeIdentifier) ?? UTType(filenameExtension: fileExtension)
+    }
+    return utType?.preferredMIMEType
+  }`;
+const newMimeResource = `  private func getMimeType(from resource: PHAssetResource, fileExtension: String) -> String? {
+    let utType: UTType? = UTType(resource.uniformTypeIdentifier) ?? UTType(filenameExtension: fileExtension)
+    return utType?.preferredMIMEType
+  }`;
+replaceInFile(mediaHandlerSwift, oldMimeResource, newMimeResource);
+
 // Walk all Swift files in expo-modules-core/ios to replace 'weak let' with 'weak var'
 const expoCoreIosDir = path.join(
   'node_modules',
