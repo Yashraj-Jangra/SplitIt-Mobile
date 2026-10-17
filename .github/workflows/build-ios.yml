@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install Node dependencies
@@ -51,8 +51,7 @@ jobs:
             PROVISIONING_PROFILE="" \
             COMPILER_INDEX_STORE_ENABLE=NO \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
-            GCC_TREAT_WARNINGS_AS_ERRORS=NO \
-            OTHER_SWIFT_FLAGS="-strict-concurrency=minimal -suppress-warnings"
+            GCC_TREAT_WARNINGS_AS_ERRORS=NO
 
       - name: Package Standalone IPA
         run: |
