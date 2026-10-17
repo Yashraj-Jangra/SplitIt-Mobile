@@ -43,8 +43,8 @@ replaceInFile(
 );
 replaceInFile(
   packageSwift,
-  'platforms: [',
-  'swiftLanguageModes: [.v5],\n  platforms: ['
+  'swiftLanguageModes: [.v6],',
+  'swiftLanguageModes: [.v5],'
 );
 
 // 3. Fix any 'weak let' -> 'weak var' across expo-modules-jsi sources
