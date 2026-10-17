@@ -1,0 +1,63 @@
+name: Build Standalone iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev, master, main]
+
+jobs:
+  build-ipa:
+    name: Build iOS IPA
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Expo Prebuild for iOS
+        run: npx expo prebuild --platform ios --clean
+        env:
+          EXPO_PUBLIC_API_URL: https://split.cvweb.qzz.io
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 178311275102-ph0shfc0dhs7cfnefre0q4bue6h0knvp.apps.googleusercontent.com
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Compile iOS Binary (Release)
+        run: |
+          xcodebuild -workspace ios/SplitIt.xcworkspace \
+            -scheme SplitIt \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath ios/build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE="" \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Package Standalone IPA
+        run: |
+          mkdir -p Payload
+          cp -r ios/build/Build/Products/Release-iphoneos/SplitIt.app Payload/
+          zip -r SplitIt-v1.1.0.ipa Payload
+          rm -rf Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SplitIt-v1.1.0-iOS-IPA
+          path: SplitIt-v1.1.0.ipa
+          retention-days: 14
