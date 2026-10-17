@@ -691,4 +691,56 @@ if (fs.existsSync(expoCoreIosDir)) {
   walkExpoCore(expoCoreIosDir);
 }
 
+// 12. Disable unneeded @expo/ui Apple native module (only used by expo-router on Android for Jetpack Compose)
+function disableExpoUIForApple(dir) {
+  if (!fs.existsSync(dir)) return;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === '@expo') {
+        const uiDir = path.join(fullPath, 'ui');
+        if (fs.existsSync(uiDir)) {
+          // Remove apple platform from expo-module.config.json
+          const configPath = path.join(uiDir, 'expo-module.config.json');
+          if (fs.existsSync(configPath)) {
+            try {
+              const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+              config.platforms = (config.platforms || []).filter(p => p !== 'apple');
+              delete config.apple;
+              fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+              console.log(`[Patch] Removed Apple platform from: ${configPath}`);
+            } catch (e) {
+              console.error(`[Patch] Failed to patch ${configPath}:`, e);
+            }
+          }
+          // Remove native iOS files and podspec from @expo/ui so CocoaPods cannot link it
+          const uiIosDir = path.join(uiDir, 'ios');
+          if (fs.existsSync(uiIosDir)) {
+            fs.rmSync(uiIosDir, { recursive: true, force: true });
+            console.log(`[Patch] Removed native iOS folder: ${uiIosDir}`);
+          }
+        }
+      } else {
+        disableExpoUIForApple(fullPath);
+      }
+    }
+  }
+}
+disableExpoUIForApple('node_modules');
+
+// Patch expo-modules-autolinking to filter out @expo/ui / expo-ui on Apple platform
+const resolveModulesJs = path.join(
+  'node_modules',
+  'expo-modules-autolinking',
+  'build',
+  'autolinking',
+  'resolveModules.js'
+);
+replaceInFile(
+  resolveModulesJs,
+  '.filter((moduleDescriptor) => moduleDescriptor != null)',
+  '.filter((moduleDescriptor) => moduleDescriptor != null && moduleDescriptor.packageName !== "@expo/ui" && moduleDescriptor.packageName !== "expo-ui")'
+);
+
 console.log('[Patch] ExpoModulesJSI and native dependencies patch complete.');
