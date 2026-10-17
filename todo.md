@@ -1,5 +1,11 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Version 1.1.0 Milestone Release (`package.json`, `app.json`, `app/support/new.tsx`, `CHANGELOG.md`)**:
+  - Bumped app semantic version to `1.1.0`, `buildNumber: "2"`, and `versionCode: 2`.
+  - Replaced hardcoded client version strings in support diagnostics with dynamic `Constants.expoConfig?.version || '1.1.0'`.
+  - Generated comprehensive `CHANGELOG.md` grouping all major feature releases, bug fixes, security enhancements, and UI polish.
+  - Passed all pre-commit quality gates (`npx tsc --noEmit`, `npx jest --passWithNoTests`, and full production bundle compilation).
+
 - **Notification Dot Condition & Real-Time Sync (`src/services/event-emitter.ts`, `src/services/notification.service.ts`, `app/(tabs)/index.tsx`)**:
   - **Dynamic Unread Notification Badge Dot**:
     - Updated the Bell notification button on the home dashboard (`app/(tabs)/index.tsx`) so the red/accent notification dot (`bellDot`) renders ONLY when there is at least 1 unread notification (`unreadNotificationCount > 0`).

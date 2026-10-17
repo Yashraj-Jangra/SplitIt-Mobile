@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   X,
@@ -116,8 +117,9 @@ export default function NewSupportTicketModal() {
     setErrorMsg('');
     haptics.confirm();
 
+    const appVersion = Constants.expoConfig?.version || '1.1.0';
     const fullMessage = attachDiagnostics
-      ? `${message.trim()}\n\n─── System Diagnostics ───\n• Client: SplitIt Mobile v1.0.0\n• Platform: ${
+      ? `${message.trim()}\n\n─── System Diagnostics ───\n• Client: SplitIt Mobile v${appVersion}\n• Platform: ${
           Platform.OS
         } (${Platform.Version})\n• Timestamp: ${new Date().toISOString()}`
       : message.trim();
@@ -300,7 +302,7 @@ export default function NewSupportTicketModal() {
             <View style={styles.diagContent}>
               <Text style={styles.diagTitle}>Attach System Diagnostics</Text>
               <Text style={styles.diagSub}>
-                Includes SplitIt v1.0.0, {Platform.OS} version, and network status to help engineers trace bugs quickly.
+                Includes SplitIt v{Constants.expoConfig?.version || '1.1.0'}, {Platform.OS} version, and network status to help engineers trace bugs quickly.
               </Text>
             </View>
             <Switch
