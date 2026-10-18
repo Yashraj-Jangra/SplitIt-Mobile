@@ -4,6 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches: [dev, master, main]
+    paths-ignore:
+      - '**.md'
+      - '.agents/**'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
 
 jobs:
   build-ipa:
@@ -62,10 +68,34 @@ jobs:
             }
           '
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ~/.cocoapods/cache
+          key: cocoapods-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            cocoapods-${{ runner.os }}-
+
       - name: Install CocoaPods
         run: |
           cd ios
-          pod install --repo-update
+          pod install
+
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ios/build
+          key: xcode-deriveddata-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            xcode-deriveddata-${{ runner.os }}-
+
+      - name: Cache Metro Bundler
+        uses: actions/cache@v4
+        with:
+          path: ~/.metro-cache
+          key: metro-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/**', 'app/**') }}
+          restore-keys: |
+            metro-cache-${{ runner.os }}-
 
       - name: Compile iOS Binary (Release)
         run: |
@@ -75,11 +105,14 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath ios/build \
+            -parallelizeTargets \
+            -jobs $(sysctl -n hw.ncpu) \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE="" \
             COMPILER_INDEX_STORE_ENABLE=NO \
+            DEBUG_INFORMATION_FORMAT=dwarf \
             SWIFT_STRICT_CONCURRENCY=minimal \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
             GCC_TREAT_WARNINGS_AS_ERRORS=NO
