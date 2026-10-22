@@ -164,9 +164,14 @@ export default function SettlementDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             const targetGroupId = settlement?.groupId || groupId;
-            await settlementService.deleteSettlement(settlementId, targetGroupId);
-            haptics.destructive();
-            router.back();
+            const res = await settlementService.deleteSettlement(settlementId, targetGroupId);
+            if (res.success) {
+              haptics.destructive();
+              router.back();
+            } else {
+              haptics.error();
+              Alert.alert('Error', res.error || 'Failed to delete settlement.');
+            }
           },
         },
       ]

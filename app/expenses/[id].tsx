@@ -207,9 +207,14 @@ export default function ExpenseDetailScreen() {
           onPress: async () => {
             const amt = expense?.amount || parseFloat(params.amount || '0') || 0;
             const targetGroupId = expense?.groupId || groupId;
-            await expenseService.deleteExpense(expenseId, targetGroupId, amt);
-            haptics.saveSuccess();
-            router.back();
+            const success = await expenseService.deleteExpense(expenseId, targetGroupId, amt);
+            if (success) {
+              haptics.saveSuccess();
+              router.back();
+            } else {
+              haptics.error();
+              Alert.alert('Error', 'Failed to delete expense. Please try again.');
+            }
           },
         },
       ]

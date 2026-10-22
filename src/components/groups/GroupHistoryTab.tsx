@@ -111,6 +111,8 @@ function renderEventIcon(event: HistoryEventItem) {
       return <Trash2 size={15} color={THEME.colors.critical} />;
     case 'member_removed':
       return <UserMinus size={15} color={THEME.colors.critical} />;
+    case 'member_left':
+      return <UserMinus size={15} color={THEME.colors.warning} />;
     case 'expense_restored':
     case 'settlement_restored':
       return <RotateCcw size={15} color={THEME.colors.palette.purple} />;

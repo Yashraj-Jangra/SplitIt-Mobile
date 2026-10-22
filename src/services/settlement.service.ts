@@ -272,15 +272,31 @@ export const settlementService = {
           Cookie: `better-auth.session_token=${token}`,
         };
 
-        const settlementsUrl = groupId
-          ? `${API_BASE_URL}/api/settlements?groupId=${groupId}`
-          : `${API_BASE_URL}/api/settlements?all=true`;
+        let found: any = null;
+        try {
+          const singleRes = await fetch(
+            `${API_BASE_URL}/api/settlements/${settlementId}${groupId ? `?groupId=${groupId}` : ''}`,
+            { headers }
+          );
+          if (singleRes.ok) {
+            found = await singleRes.json();
+          }
+        } catch {
+          // Fallback to list search
+        }
 
-        const res = await fetch(settlementsUrl, { headers });
-        if (res.ok) {
-          const list = await res.json();
-          const found = Array.isArray(list) ? list.find((s: any) => s.id === settlementId) : null;
-          if (found) {
+        if (!found) {
+          const settlementsUrl = groupId
+            ? `${API_BASE_URL}/api/settlements?groupId=${groupId}`
+            : `${API_BASE_URL}/api/settlements?all=true`;
+          const res = await fetch(settlementsUrl, { headers });
+          if (res.ok) {
+            const list = await res.json();
+            found = Array.isArray(list) ? list.find((s: any) => s.id === settlementId) : null;
+          }
+        }
+
+        if (found) {
             const targetGId = found.groupId || groupId;
             let groupName = 'Group Settlement';
             if (targetGId) {
@@ -400,8 +416,7 @@ export const settlementService = {
             return detail;
           }
         }
-      }
-    } catch {
+      } catch {
       // Network error, fall back to storage
     }
 
