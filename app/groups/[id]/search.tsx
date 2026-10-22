@@ -16,19 +16,14 @@ import {
   Search,
   X,
   Receipt,
-  Sparkles,
   ArrowLeft,
-  ChevronRight,
-  Handshake,
-  ArrowRight,
 } from 'lucide-react-native';
 import { THEME } from '../../../src/constants/theme';
 import { groupService, GroupDetailData, GroupExpense } from '../../../src/services/group.service';
 import { GroupSettlementItem } from '../../../src/services/settlement.service';
 import { useAuth } from '../../../src/contexts/auth.context';
 import { useCurrency } from '../../../src/contexts/currency.context';
-import { ExpenseImpactCol } from '../../../src/components/expenses/ExpenseImpactCol';
-import { CategoryIcon } from '../../../src/utils/category-icons';
+import { ActivityExpenseRow, ActivitySettlementRow } from '../../../src/components/activity';
 import { haptics } from '../../../src/services/haptics.service';
 
 type SearchFilterType = 'all' | 'expenses' | 'settlements';
@@ -314,9 +309,14 @@ export default function GroupSearchScreen() {
                   if (item.type === 'expense') {
                     const exp = item.data;
                     return (
-                      <TouchableOpacity
+                      <ActivityExpenseRow
                         key={item.id}
-                        style={[styles.ledgerRow, !isLast && styles.ledgerRowBorder]}
+                        expense={{
+                          ...exp,
+                          groupName: undefined,
+                        }}
+                        currentUserId={currentUserId}
+                        isLast={isLast}
                         onPress={() => {
                           haptics.tap();
                           router.push({
@@ -328,46 +328,28 @@ export default function GroupSearchScreen() {
                               amount: String(exp.amount),
                               paidByName: exp.paidByName || 'Member',
                               date: exp.date,
-                              category: exp.category?.sub || exp.category?.master || 'Other',
+                              category:
+                                exp.category?.sub ||
+                                exp.category?.master ||
+                                (typeof exp.category === 'string' ? exp.category : 'Other'),
                             },
                           });
                         }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.categoryGlyph}>
-                          <CategoryIcon
-                            subCategory={exp.category?.sub}
-                            masterCategory={exp.category?.master}
-                            size={20}
-                            color={THEME.colors.textSecondary}
-                          />
-                        </View>
-
-                        <View style={styles.ledgerDetails}>
-                          <Text style={styles.ledgerExpenseTitle} numberOfLines={1}>
-                            {exp.title}
-                          </Text>
-                          <Text style={styles.ledgerExpenseSubtitle} numberOfLines={1}>
-                            {exp.paidByName || 'Member'} paid • {exp.date}
-                          </Text>
-                        </View>
-
-                        <ExpenseImpactCol expense={exp} />
-                      </TouchableOpacity>
+                      />
                     );
                   }
 
                   // Settlement row
                   const set = item.data;
-                  const isPayerViewer = set.payerId === currentUserId || set.payerName === 'You';
-                  const isPayeeViewer = set.payeeId === currentUserId || set.payeeName === 'You';
-                  const payerText = isPayerViewer ? 'You' : set.payerName;
-                  const payeeText = isPayeeViewer ? 'You' : set.payeeName;
-
                   return (
-                    <TouchableOpacity
+                    <ActivitySettlementRow
                       key={item.id}
-                      style={[styles.settlementRow, !isLast && styles.settlementRowBorder]}
+                      settlement={{
+                        ...set,
+                        groupName: undefined,
+                      }}
+                      currentUserId={currentUserId}
+                      isLast={isLast}
                       onPress={() => {
                         haptics.tap();
                         router.push({
@@ -386,39 +368,7 @@ export default function GroupSearchScreen() {
                           },
                         });
                       }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.settlementGlyph}>
-                        <Handshake size={20} color={THEME.colors.palette.emerald} />
-                      </View>
-
-                      <View style={styles.settlementLeftCol}>
-                        <View style={styles.settlementTransferRow}>
-                          <Text style={styles.settlementPartyName} numberOfLines={1}>
-                            {payerText}
-                          </Text>
-                          <ArrowRight
-                            size={13}
-                            color={THEME.colors.textMuted}
-                            style={styles.settlementArrowIcon}
-                          />
-                          <Text style={styles.settlementPartyName} numberOfLines={1}>
-                            {payeeText}
-                          </Text>
-                        </View>
-
-                        <Text style={styles.settlementSubtitle}>
-                          Settlement • {set.date}
-                        </Text>
-                      </View>
-
-                      <View style={styles.settlementAmountCol}>
-                        <Text style={styles.settlementAmountText}>
-                          {formatCurrency(Number(set.amount || 0), { decimals: 2 })}
-                        </Text>
-                        <Text style={styles.settlementStatusText}>SETTLED</Text>
-                      </View>
-                    </TouchableOpacity>
+                    />
                   );
                 })}
               </View>
@@ -528,53 +478,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
-    paddingHorizontal: 12,
-  },
-  ledgerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    gap: 12,
-  },
-  ledgerRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
-  },
-  categoryGlyph: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME.colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  ledgerDetails: {
-    flex: 1,
-    gap: 2,
-  },
-  ledgerExpenseTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: THEME.colors.text,
-  },
-  ledgerExpenseSubtitle: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-  },
-  ledgerImpactCol: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  ledgerImpactAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  ledgerImpactLabel: {
-    fontSize: 10,
-    color: THEME.colors.textMuted,
-    textTransform: 'uppercase',
+    overflow: 'hidden',
   },
   filterPillsRow: {
     flexDirection: 'row',
@@ -604,68 +508,5 @@ const styles = StyleSheet.create({
   filterPillTextActive: {
     color: THEME.colors.text,
     fontWeight: '700',
-  },
-  settlementRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    gap: 12,
-  },
-  settlementRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.hairline,
-  },
-  settlementGlyph: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settlementLeftCol: {
-    flex: 1,
-  },
-  settlementTransferRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 3,
-  },
-  settlementPartyName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.colors.text,
-    letterSpacing: -0.2,
-    flexShrink: 1,
-  },
-  settlementArrowIcon: {
-    marginHorizontal: 1,
-    alignSelf: 'center',
-  },
-  settlementSubtitle: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    marginTop: 2,
-  },
-  settlementAmountCol: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  settlementAmountText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: THEME.colors.palette.emerald,
-    letterSpacing: -0.2,
-  },
-  settlementStatusText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: THEME.colors.palette.emerald,
-    opacity: 0.85,
-    textTransform: 'uppercase',
-    marginTop: 2,
   },
 });

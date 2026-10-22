@@ -68,7 +68,7 @@ export const ActivitySettlementRow = React.memo(function ActivitySettlementRow({
         <Handshake size={19} color={currentAccent.primary} />
       </View>
 
-      {/* Center Details: Payer ➔ Payee, Subtitle */}
+      {/* Center Details: Payer ➔ Payee, Subtitle, Date */}
       <View style={styles.centerCol}>
         <View style={styles.transferRow}>
           <Text
@@ -90,10 +90,10 @@ export const ActivitySettlementRow = React.memo(function ActivitySettlementRow({
           </Text>
         </View>
 
-        <Text style={styles.subtitle} numberOfLines={1}>
-          Settlement • {settlement.date}
-          {settlement.groupName ? ` • ${settlement.groupName}` : ''}
+        <Text style={styles.itemSubtitle} numberOfLines={1}>
+          Settlement{settlement.groupName ? ` • ${settlement.groupName}` : ''}
         </Text>
+        <Text style={styles.itemDate}>{settlement.date}</Text>
       </View>
 
       {/* Right Column: Accent Amount & Settled Status */}
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   centerCol: {
     flex: 1,
     gap: 2,
-    marginRight: 8,
+    marginRight: 10,
   },
   transferRow: {
     flexDirection: 'row',
@@ -152,9 +152,14 @@ const styles = StyleSheet.create({
   arrowIcon: {
     alignSelf: 'center',
   },
-  subtitle: {
-    fontSize: 11.5,
+  itemSubtitle: {
+    fontSize: 12,
     color: THEME.colors.textSecondary,
+    fontWeight: '500',
+  },
+  itemDate: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
     fontWeight: '500',
   },
   amountCol: {

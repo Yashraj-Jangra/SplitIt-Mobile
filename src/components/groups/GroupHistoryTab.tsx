@@ -251,8 +251,10 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
   const isAiBudget =
     event.eventType === 'budget_updated' && Boolean(event.data?.aiInitiated);
 
-  const expenseDate =
-    event.data?.date && event.eventType.startsWith('expense_')
+  const targetDate =
+    event.data?.date &&
+    (event.eventType.startsWith('expense_') ||
+      event.eventType.startsWith('settlement_'))
       ? formatExpenseDate(event.data.date)
       : null;
 
@@ -300,8 +302,8 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               ]}
             >
               {event.description}
-              {expenseDate && (
-                <Text style={styles.expenseDateSuffix}> (for {expenseDate})</Text>
+              {targetDate && (
+                <Text style={styles.expenseDateSuffix}> (for {targetDate})</Text>
               )}
             </Text>
 
