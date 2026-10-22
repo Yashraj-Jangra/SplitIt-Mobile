@@ -170,7 +170,15 @@ export function ObligationsModal({
             <Text
               style={[
                 styles.heroAmount,
-                { color: isOwed ? currentAccent.primary : THEME.colors.negative },
+                {
+                  color: isOwed
+                    ? totalAmount > 0.009
+                      ? THEME.colors.success
+                      : THEME.colors.textMuted
+                    : totalAmount > 0.009
+                    ? THEME.colors.negative
+                    : THEME.colors.textMuted,
+                },
               ]}
             >
               {formatCurrency(totalAmount, { decimals: 2 })}
@@ -240,7 +248,7 @@ export function ObligationsModal({
                       <View
                         style={[
                           styles.avatarStatusNode,
-                          { backgroundColor: isOwed ? currentAccent.primary : THEME.colors.negative },
+                          { backgroundColor: isOwed ? THEME.colors.success : THEME.colors.negative },
                         ]}
                       />
                     </View>
@@ -264,7 +272,7 @@ export function ObligationsModal({
                       <Text
                         style={[
                           styles.amountValue,
-                          { color: isOwed ? currentAccent.primary : THEME.colors.negative },
+                          { color: isOwed ? THEME.colors.success : THEME.colors.negative },
                         ]}
                       >
                         {formatCurrency(item.amount, { decimals: 2 })}

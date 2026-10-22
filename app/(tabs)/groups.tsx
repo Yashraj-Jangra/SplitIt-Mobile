@@ -472,21 +472,21 @@ export default function GroupsScreen() {
                       style={[
                         styles.balanceGlassPill,
                         isOwed && {
-                          backgroundColor: currentAccent.primaryMuted,
-                          borderColor: currentAccent.borderFocus,
+                          backgroundColor: THEME.colors.successMuted,
+                          borderColor: THEME.colors.successBorder,
                         },
                         isOwe && styles.balancePillOwe,
                       ]}
                     >
                       {isOwed ? (
-                        <ArrowDownLeft size={11} color={currentAccent.primary} />
+                        <ArrowDownLeft size={11} color={THEME.colors.success} />
                       ) : isOwe ? (
                         <ArrowUpRight size={11} color={THEME.colors.negative} />
                       ) : null}
                       <Text
                         style={[
                           styles.balancePillText,
-                          isOwed && { color: currentAccent.primary },
+                          isOwed && { color: THEME.colors.success },
                           isOwe && { color: THEME.colors.negative },
                         ]}
                       >

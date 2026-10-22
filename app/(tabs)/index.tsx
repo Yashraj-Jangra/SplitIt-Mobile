@@ -391,7 +391,7 @@ export default function HomeScreen() {
                     {
                       backgroundColor:
                         netBalance > 0.01
-                          ? currentAccent.primary
+                          ? THEME.colors.success
                           : netBalance < -0.01
                           ? THEME.colors.negative
                           : THEME.colors.textMuted,
@@ -486,11 +486,20 @@ export default function HomeScreen() {
                 }}
               >
                 <View style={styles.statLabelRow}>
-                  <ArrowDownLeft size={12} color={currentAccent.primary} strokeWidth={2.5} />
+                  <ArrowDownLeft
+                    size={12}
+                    color={totalOwed > 0.009 ? THEME.colors.success : THEME.colors.textMuted}
+                    strokeWidth={2.5}
+                  />
                   <Text style={styles.statLabel}>Owed to you</Text>
                   <ChevronRight size={11} color={THEME.colors.textMuted} />
                 </View>
-                <Text style={[styles.statValue, { color: currentAccent.primary }]}>
+                <Text
+                  style={[
+                    styles.statValue,
+                    { color: totalOwed > 0.009 ? THEME.colors.success : THEME.colors.textMuted },
+                  ]}
+                >
                   {formatCurrency(totalOwed, { decimals: 2 })}
                 </Text>
               </TouchableOpacity>
@@ -510,11 +519,20 @@ export default function HomeScreen() {
                 }}
               >
                 <View style={styles.statLabelRow}>
-                  <ArrowUpRight size={12} color={THEME.colors.negative} strokeWidth={2.5} />
+                  <ArrowUpRight
+                    size={12}
+                    color={totalOwe > 0.009 ? THEME.colors.negative : THEME.colors.textMuted}
+                    strokeWidth={2.5}
+                  />
                   <Text style={styles.statLabel}>You owe</Text>
                   <ChevronRight size={11} color={THEME.colors.textMuted} />
                 </View>
-                <Text style={[styles.statValue, { color: THEME.colors.negative }]}>
+                <Text
+                  style={[
+                    styles.statValue,
+                    { color: totalOwe > 0.009 ? THEME.colors.negative : THEME.colors.textMuted },
+                  ]}
+                >
                   {formatCurrency(totalOwe, { decimals: 2 })}
                 </Text>
               </TouchableOpacity>
@@ -605,8 +623,9 @@ export default function HomeScreen() {
                     <Text
                       style={[
                         styles.pebbleBalance,
-                        isOwed && { color: currentAccent.primary },
+                        isOwed && { color: THEME.colors.success },
                         isOwe && { color: THEME.colors.negative },
+                        !isOwed && !isOwe && { color: THEME.colors.textMuted },
                       ]}
                     >
                       {isOwed || isOwe
