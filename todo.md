@@ -1,5 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Settlement Log 3-Line Layout & Height Parity with Expense Rows** 🎨 📱 ✨ ✅:
+  - **Identified Height Imbalance**:
+    - Settlement rows in `ActivitySettlementRow.tsx` previously concatenated the date into line 2 (`Settlement • ${settlement.date}`), producing a 2-line row that was noticeably shorter than the 3-line `ActivityExpenseRow.tsx`.
+  - **Architectural & Visual Fixes**:
+    1. *3-Line Text Structure*: Restructured `ActivitySettlementRow.tsx` to match the exact 3-line hierarchy of `ActivityExpenseRow.tsx`:
+       - Line 1: Payer ➔ Payee transfer row (`fontSize: 14.5`, `fontWeight: '700'`, matching `itemTitle`).
+       - Line 2: Dedicated subtitle (`Settlement • ${settlement.groupName}` or `Settlement`, `fontSize: 12`, `fontWeight: '500'`, matching `itemSubtitle`).
+       - Line 3: Dedicated date line (`settlement.date`, `fontSize: 11`, `fontWeight: '500'`, color `textMuted`, matching `itemDate`).
+    2. *Margin & Column Parity*: Updated `centerCol` in `ActivitySettlementRow.tsx` with `marginRight: 10, gap: 2` to match `detailsCol` in `ActivityExpenseRow.tsx`, achieving 100% height and visual rhythm parity.
+    3. *Search Screen Component Unification*: Replaced legacy custom rows in `app/groups/[id]/search.tsx` with shared `ActivityExpenseRow` and `ActivitySettlementRow` components and cleaned up orphaned styles.
+    4. *Audit Log Date Suffix*: Updated `GroupHistoryTab.tsx` so settlement history events with `event.data.date` display `(for ${targetDate})` uniformly with expense events.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed.
+
 - **Deep Scan Verification & Mobile Mutation Hardening** ✨ 📱 🛡️ ⚡ 🧪 ✅:
   - **Identified Edge Cases & Reliability Improvements**:
     1. *Deletion Mutation Response Guards*: In `app/settlements/[id].tsx` and `app/expenses/[id].tsx`, guarded delete callbacks to verify `res.success` before firing success haptics or popping navigation back, surfacing errors via `Alert.alert` if deletion fails on the server.
