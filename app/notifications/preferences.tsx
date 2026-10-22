@@ -56,7 +56,7 @@ export default function NotificationPreferencesScreen() {
   };
 
   const toggleEventPush = (eventKey: keyof UserNotificationPreferences['events']) => {
-    const current = prefs.events[eventKey];
+    const current = prefs.events[eventKey] || { inApp: true, push: true, email: false };
     const updated: UserNotificationPreferences = {
       ...prefs,
       events: {

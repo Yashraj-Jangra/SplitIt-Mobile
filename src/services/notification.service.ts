@@ -74,14 +74,20 @@ export interface UserNotificationPreferences {
     expense_added: NotificationEventPref;
     expense_updated: NotificationEventPref;
     expense_deleted: NotificationEventPref;
+    expense_restored: NotificationEventPref;
     settlement_added: NotificationEventPref;
+    settlement_updated: NotificationEventPref;
+    settlement_deleted: NotificationEventPref;
+    settlement_restored: NotificationEventPref;
     member_added: NotificationEventPref;
     member_removed: NotificationEventPref;
+    group_updated: NotificationEventPref;
     balance_reminder: NotificationEventPref;
     payment_reminder: NotificationEventPref;
     support_reply: NotificationEventPref;
     budget_alert: NotificationEventPref;
     budget_exceeded: NotificationEventPref;
+    budget_updated: NotificationEventPref;
   };
 }
 
@@ -93,14 +99,20 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
     expense_added: { inApp: true, push: true, email: false },
     expense_updated: { inApp: true, push: true, email: false },
     expense_deleted: { inApp: true, push: true, email: false },
+    expense_restored: { inApp: true, push: true, email: false },
     settlement_added: { inApp: true, push: true, email: true },
+    settlement_updated: { inApp: true, push: true, email: false },
+    settlement_deleted: { inApp: true, push: true, email: false },
+    settlement_restored: { inApp: true, push: true, email: true },
     member_added: { inApp: true, push: true, email: false },
     member_removed: { inApp: true, push: true, email: false },
+    group_updated: { inApp: true, push: true, email: false },
     balance_reminder: { inApp: true, push: true, email: true },
     payment_reminder: { inApp: true, push: true, email: true },
     support_reply: { inApp: true, push: true, email: true },
     budget_alert: { inApp: true, push: true, email: true },
     budget_exceeded: { inApp: true, push: true, email: true },
+    budget_updated: { inApp: true, push: true, email: true },
   },
 };
 
