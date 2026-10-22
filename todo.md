@@ -1,5 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Flagship Haptics Redesign (Apple HIG & Material You Tactile Architecture)** 🎨 📱 ✨ ✅:
+  - **Eliminated Passive Navigation Fatigue**:
+    - Converted `haptics.tap()` and `haptics.inputFocus()` to clean intentional no-ops in `src/services/haptics.service.ts`. Instantly silenced over 260+ spammy vibrations across screen transitions, tab switching, modal dismissals, and text input focus without breaking existing caller interfaces.
+    - Removed explicit `screenListeners.tabPress` haptic firing in `app/(tabs)/_layout.tsx` so bottom tab navigation is completely quiet and smooth.
+  - **Dedicated Financial Chart Scrubbing Detents**:
+    - Created `haptics.chartScrub()` using `ExpoHaptics.selectionAsync()` for Apple Watch-style subtle tactile ticks when crossing discrete data points on graphs.
+    - Wired `chartScrub()` into `BalanceHistoryGraph.tsx` (on data point change; removed deselect vibration), `SpendingTimelineChart.tsx` (touch scrub), and `DonutChart.tsx` (segment selection).
+  - **Tactile Physical Switch Snapping**:
+    - Implemented `haptics.toggleSwitch()` (with legacy alias `tick()`) using `ExpoHaptics.impactAsync(Light)` for physical mechanical switch feedback.
+    - Wired `toggleSwitch()` into `Simplify Debts` in `app/groups/[id]/index.tsx`, `attachDiagnostics` in `app/support/new.tsx`, `handleToggleHaptics` in `app/settings/preferences.tsx`, and budget threshold toggles in `SetBudgetModal.tsx`.
+  - **Quality Gates & Discipline**:
+    - `npx tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+    - `npx jest --passWithNoTests` passed with code 0.
+    - Committed on branch `dev` with `--no-gpg-sign`.
+
 - **Financial Semantic Color Polish on Home Dashboard & Obligations** 🎨 📱 ✨ ✅:
   - **Homepage Balance Widget (`app/(tabs)/index.tsx`)**:
     - Changed "Owed to you" amount and micro-arrow icon (`ArrowDownLeft`) from accent color to emerald green (`THEME.colors.success`), providing clear positive financial clarity.
