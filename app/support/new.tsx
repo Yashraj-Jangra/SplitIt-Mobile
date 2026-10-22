@@ -308,7 +308,7 @@ export default function NewSupportTicketModal() {
             <Switch
               value={attachDiagnostics}
               onValueChange={(val) => {
-                haptics.tick();
+                haptics.toggleSwitch();
                 setAttachDiagnostics(val);
               }}
               trackColor={{

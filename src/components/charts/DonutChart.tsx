@@ -114,7 +114,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
               strokeLinecap="butt"
               fill="none"
               onPress={() => {
-                haptics.tap();
+                haptics.chartScrub();
                 if (onSelectSlice) {
                   onSelectSlice(slice.isSelected ? null : slice);
                 }

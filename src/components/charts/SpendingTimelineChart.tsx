@@ -131,7 +131,7 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
       });
 
       if (closestIdx !== selectedIndex) {
-        haptics.tap();
+        haptics.chartScrub();
         setSelectedIndex(closestIdx);
       }
     },

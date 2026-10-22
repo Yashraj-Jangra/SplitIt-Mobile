@@ -230,12 +230,11 @@ export const BalanceHistoryGraph = forwardRef<
     }
 
     if (closestIdx !== selectedIndex) {
-      haptics.tap();
+      haptics.chartScrub();
       setSelectedIndex(closestIdx);
       onSelectPoint?.(data[closestIdx]);
       resetAutoDismiss();
     } else if (isGrant && selectedIndex !== null) {
-      haptics.tap();
       setSelectedIndex(null);
       onSelectPoint?.(null);
       if (autoDismissTimerRef.current) {

@@ -33,21 +33,36 @@ function enabled(): boolean {
 // ─── Semantic Vocabulary ─────────────────────────────────────────────────────
 
 /**
- * Navigation tap, list row select, icon press.
- * iOS selection click — crisp, instant, subtle.
+ * Passive navigation tap, back button, close button, list row select.
+ * Intentionally silent: per Apple HIG and Material Design standards,
+ * passive screen navigation and row tapping must never buzz the phone.
  */
 function tap(): void {
+  // Intentionally silent — prevents navigation fatigue.
+}
+
+/**
+ * Financial chart timeline scrub / hover detent.
+ * Crisp selection tick on crossing discrete data points on graphs
+ * (e.g. BalanceHistoryGraph, SpendingTimelineChart, DonutChart).
+ */
+function chartScrub(): void {
   if (!enabled()) return;
   ExpoHaptics.selectionAsync();
 }
 
 /**
- * Toggle / switch flip.
- * Light crisp snap — binary feel.
+ * Mechanical switch toggle (e.g. Simplify Debts, biometrics, notifications).
+ * Light crisp snap — realistic tactile binary switch feel.
  */
-function tick(): void {
+function toggleSwitch(): void {
   if (!enabled()) return;
   ExpoHaptics.impactAsync(ExpoHaptics.ImpactFeedbackStyle.Light);
+}
+
+/** Legacy alias for toggleSwitch */
+function tick(): void {
+  toggleSwitch();
 }
 
 /**
@@ -60,12 +75,11 @@ function keyPress(): void {
 }
 
 /**
- * TextInput gains focus.
- * Barely-there selection ping.
+ * TextInput focus.
+ * Intentionally silent: focusing an input should not vibrate.
  */
 function inputFocus(): void {
-  if (!enabled()) return;
-  ExpoHaptics.selectionAsync();
+  // Intentionally silent
 }
 
 /**
@@ -176,6 +190,8 @@ function swipe(): void {
 // ─── Public API ──────────────────────────────────────────────────────────────
 export const haptics = {
   tap,
+  chartScrub,
+  toggleSwitch,
   tick,
   keyPress,
   inputFocus,

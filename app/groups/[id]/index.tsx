@@ -975,7 +975,7 @@ export default function GroupDetailScreen() {
                       <Switch
                         value={isSimplified}
                         onValueChange={(val) => {
-                          haptics.tap();
+                          haptics.toggleSwitch();
                           setIsSimplified(val);
                         }}
                         trackColor={{

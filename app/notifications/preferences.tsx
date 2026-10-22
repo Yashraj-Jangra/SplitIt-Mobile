@@ -44,7 +44,7 @@ export default function NotificationPreferencesScreen() {
 
   const triggerSave = async (updated: UserNotificationPreferences) => {
     setPrefs(updated);
-    haptics.tick();
+    haptics.toggleSwitch();
     await notificationService.updatePreferences(updated);
     setSavedBanner(true);
     setTimeout(() => setSavedBanner(false), 2000);

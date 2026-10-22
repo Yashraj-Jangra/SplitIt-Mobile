@@ -687,7 +687,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                     <Switch
                       value={threshold75}
                       onValueChange={(val) => {
-                        haptics.tick();
+                        haptics.toggleSwitch();
                         setThreshold75(val);
                       }}
                       trackColor={{ false: THEME.colors.surfaceElevated, true: currentAccent.primary }}
@@ -707,7 +707,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                     <Switch
                       value={threshold90}
                       onValueChange={(val) => {
-                        haptics.tick();
+                        haptics.toggleSwitch();
                         setThreshold90(val);
                       }}
                       trackColor={{ false: THEME.colors.surfaceElevated, true: currentAccent.primary }}
@@ -727,7 +727,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                     <Switch
                       value={threshold100}
                       onValueChange={(val) => {
-                        haptics.tick();
+                        haptics.toggleSwitch();
                         setThreshold100(val);
                       }}
                       trackColor={{ false: THEME.colors.surfaceElevated, true: currentAccent.primary }}

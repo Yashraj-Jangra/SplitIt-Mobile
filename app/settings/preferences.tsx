@@ -112,7 +112,7 @@ export default function PreferencesScreen() {
 
   const handleToggleHaptics = async (val: boolean) => {
     await setHapticsEnabled(val);
-    if (val) haptics.tick();
+    if (val) haptics.toggleSwitch();
   };
 
   const handleSelectDefaultGroup = async (groupId: string | null) => {
