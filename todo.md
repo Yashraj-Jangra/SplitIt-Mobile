@@ -1,5 +1,13 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Group Event Notifications, Settlement Audit Logs & UI Parity Overhaul** ✨ 📱 🎨 🧪 ✅:
+  - **Identified Bugs & Mobile Parity Integrations**:
+    1. *Group History Deleted Settlements & Strikethrough*: Added `deletedSettlementIds` tracking to `GroupHistoryTab.tsx` so deleted settlements are struck through with parity to deleted expenses, and restoration (`restoreSettlement`) refreshes the state.
+    2. *Notification Types & Visual Styling*: Added visual tokens (icons, badge colors, accent borders, deep linking) in `app/notifications/index.tsx` for `settlement_updated`, `settlement_deleted`, `settlement_restored`, `expense_restored`, `group_updated`, and `budget_updated`.
+    3. *Notification Preferences Integration*: Updated `UserNotificationPreferences` and `DEFAULT_NOTIFICATION_PREFERENCES` in `src/services/notification.service.ts` and guarded switches in `app/notifications/preferences.tsx` against undefined properties.
+    4. *Type Check Passed*: `npx tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+    5. *Local Commits*: Saved cleanly on `dev` branch with `--no-gpg-sign`.
+
 - **Standalone iOS Release Binary (.IPA) Generated & Verified (`.github/workflows/build-ios.yml`, `.github/scripts/patch-expo-jsi.js`, `metro.config.js`, `SplitIt-v1.1.0.ipa`)**:
   - **Zero Cost iOS Cloud Pipeline**:
     - Created and verified an automated, standalone iOS release pipeline on free GitHub Actions macOS 15 runners without requiring a physical Mac or a $99/yr paid Apple Developer account.
