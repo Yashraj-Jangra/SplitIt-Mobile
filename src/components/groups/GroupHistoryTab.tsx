@@ -469,6 +469,17 @@ export function GroupHistoryTab({
     return deletedIds;
   }, [history]);
 
+  // Compute set of currently deleted settlement IDs (not restored)
+  const deletedSettlementIds = useMemo(() => {
+    const deletedIds = new Set<string>();
+    history.forEach((event) => {
+      if (event.eventType === 'settlement_deleted' && event.data?.settlementId && !event.restored) {
+        deletedIds.add(event.data.settlementId);
+      }
+    });
+    return deletedIds;
+  }, [history]);
+
   const toggleAccordion = useCallback((eventId: string) => {
     haptics.tap();
     setExpandedEvents((prev) => ({
@@ -577,9 +588,13 @@ export function GroupHistoryTab({
           <>
             {visibleEvents.map((event, index) => {
               const isLast = index === visibleEvents.length - 1 && !isLoadingMore && !hasMore;
-              const isDeleted =
+              const isExpenseDeleted =
                 (event.eventType === 'expense_created' || event.eventType === 'expense_updated') &&
                 Boolean(event.data?.expenseId && deletedExpenseIds.has(event.data.expenseId));
+              const isSettlementDeleted =
+                (event.eventType === 'settlement_created' || event.eventType === 'settlement_updated') &&
+                Boolean(event.data?.settlementId && deletedSettlementIds.has(event.data.settlementId));
+              const isDeleted = Boolean(isExpenseDeleted || isSettlementDeleted);
 
               return (
                 <HistoryEventRow

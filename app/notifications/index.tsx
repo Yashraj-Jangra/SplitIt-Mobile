@@ -30,6 +30,7 @@ import {
   Megaphone,
   ShieldAlert,
   Bell,
+  RotateCcw,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import {
@@ -105,6 +106,7 @@ export default function NotificationsCenterScreen() {
     switch (type) {
       case 'expense_added':
       case 'expense_updated':
+      case 'expense_restored':
         if (finalExpenseId && finalGroupId) {
           router.push(`/expenses/${finalExpenseId}?groupId=${finalGroupId}` as any);
         } else if (finalGroupId) {
@@ -114,6 +116,11 @@ export default function NotificationsCenterScreen() {
 
       case 'expense_deleted':
       case 'settlement_added':
+      case 'settlement_updated':
+      case 'settlement_deleted':
+      case 'settlement_restored':
+      case 'group_updated':
+      case 'budget_updated':
       case 'member_added':
       case 'member_removed':
       case 'balance_reminder':
@@ -547,8 +554,44 @@ function getNotificationVisuals(type: string, isRead: boolean, accentColor: stri
       accentBorderColor = THEME.colors.notification.expense;
       break;
 
+    case 'expense_restored':
+      Icon = RotateCcw;
+      iconColor = THEME.colors.palette.purple;
+      iconBg = 'rgba(168, 85, 247, 0.12)';
+      accentBorderColor = THEME.colors.palette.purple;
+      break;
+
     case 'settlement_added':
+    case 'settlement_updated':
       Icon = Handshake;
+      iconColor = THEME.colors.notification.payment;
+      iconBg = 'rgba(16, 185, 129, 0.12)';
+      accentBorderColor = THEME.colors.notification.payment;
+      break;
+
+    case 'settlement_deleted':
+      Icon = Handshake;
+      iconColor = THEME.colors.notification.critical;
+      iconBg = 'rgba(239, 68, 68, 0.12)';
+      accentBorderColor = THEME.colors.notification.critical;
+      break;
+
+    case 'settlement_restored':
+      Icon = RotateCcw;
+      iconColor = THEME.colors.palette.purple;
+      iconBg = 'rgba(168, 85, 247, 0.12)';
+      accentBorderColor = THEME.colors.palette.purple;
+      break;
+
+    case 'group_updated':
+      Icon = Users;
+      iconColor = THEME.colors.notification.member;
+      iconBg = 'rgba(249, 115, 22, 0.12)';
+      accentBorderColor = THEME.colors.notification.member;
+      break;
+
+    case 'budget_updated':
+      Icon = Wallet;
       iconColor = THEME.colors.notification.payment;
       iconBg = 'rgba(16, 185, 129, 0.12)';
       accentBorderColor = THEME.colors.notification.payment;
