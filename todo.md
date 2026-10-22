@@ -1,6 +1,14 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
-- **Group Event Notifications, Settlement Audit Logs & UI Parity Overhaul** ✨ 📱 🎨 🧪 ✅:
+- **Deep Scan Verification & Mobile Mutation Hardening** ✨ 📱 🛡️ ⚡ 🧪 ✅:
+  - **Identified Edge Cases & Reliability Improvements**:
+    1. *Deletion Mutation Response Guards*: In `app/settlements/[id].tsx` and `app/expenses/[id].tsx`, guarded delete callbacks to verify `res.success` before firing success haptics or popping navigation back, surfacing errors via `Alert.alert` if deletion fails on the server.
+    2. *Direct Settlement Lookup Parity*: In `settlementService.getSettlementDetails`, query the dedicated backend `GET /api/settlements/${id}` route directly for O(1) retrieval, falling back to cached lists if unavailable.
+    3. *Group History Member Left Mapping*: Added `member_left` to `getEventIcon` in `GroupHistoryTab.tsx` with warning amber styling.
+    4. *Debt Simplification Float Precision Parity*: Synchronized 2-decimal rounding in `packages/core/src/debts.ts` (`simplifyDebts`) to eliminate fractional penny floating point drift across mobile platforms.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed.
   - **Identified Bugs & Mobile Parity Integrations**:
     1. *Group History Deleted Settlements & Strikethrough*: Added `deletedSettlementIds` tracking to `GroupHistoryTab.tsx` so deleted settlements are struck through with parity to deleted expenses, and restoration (`restoreSettlement`) refreshes the state.
     2. *Notification Types & Visual Styling*: Added visual tokens (icons, badge colors, accent borders, deep linking) in `app/notifications/index.tsx` for `settlement_updated`, `settlement_deleted`, `settlement_restored`, `expense_restored`, `group_updated`, and `budget_updated`.
