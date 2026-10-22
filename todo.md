@@ -1,5 +1,18 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Financial Semantic Color Polish on Home Dashboard & Obligations** 🎨 📱 ✨ ✅:
+  - **Homepage Balance Widget (`app/(tabs)/index.tsx`)**:
+    - Changed "Owed to you" amount and micro-arrow icon (`ArrowDownLeft`) from accent color to emerald green (`THEME.colors.success`), providing clear positive financial clarity.
+    - Added zero-state neutral grey handling: when `totalOwed === 0`, amount and icon render in neutral grey (`THEME.colors.textMuted`) instead of green.
+    - Polished "You owe" zero-state: when `totalOwe === 0`, amount and icon render in neutral grey (`THEME.colors.textMuted`) instead of alarming red.
+    - Harmonized total balance status dot (`netBalance > 0.01 ? THEME.colors.success : netBalance < -0.01 ? THEME.colors.negative : THEME.colors.textMuted`) and group pebble balances.
+  - **Obligations Modal & Groups Tab (`ObligationsModal.tsx`, `groups.tsx`)**:
+    - Updated total receivable and person-level owed values to `THEME.colors.success` with `THEME.colors.textMuted` fallback when zero.
+    - Updated group balance glass pill in `app/(tabs)/groups.tsx` to use `THEME.colors.success` and `THEME.colors.successBorder` for positive balances.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed.
+
 - **Settlement Log 3-Line Layout & Height Parity with Expense Rows** 🎨 📱 ✨ ✅:
   - **Identified Height Imbalance**:
     - Settlement rows in `ActivitySettlementRow.tsx` previously concatenated the date into line 2 (`Settlement • ${settlement.date}`), producing a 2-line row that was noticeably shorter than the 3-line `ActivityExpenseRow.tsx`.
