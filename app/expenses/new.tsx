@@ -47,6 +47,7 @@ import { appEventEmitter } from '../../src/services/event-emitter';
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
+import { KeyboardStickyBottomBar } from '@/components/common/KeyboardStickyBottomBar';
 import { BottomSheetModal } from '../../src/components/common/BottomSheetModal';
 import { DatePickerModal } from '../../src/components/common/DatePickerModal';
 import { SplitOptionsModal, SplitParticipantItem } from '../../src/components/expenses/SplitOptionsModal';
@@ -949,6 +950,7 @@ export default function NewExpenseModal() {
             <KeyboardAvoidingView
               style={styles.keyboardContainer}
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
             >
               {/* Sleek Minimal Header */}
               <View style={styles.header}>
@@ -1283,7 +1285,12 @@ export default function NewExpenseModal() {
         </View>
 
         {/* Floating Bottom Sticky Action Button */}
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <KeyboardStickyBottomBar
+          insideKeyboardAvoidingView={true}
+          style={styles.bottomBar}
+          keyboardPaddingBottom={Platform.OS === 'ios' ? 4 : 8}
+          idlePaddingBottom={Platform.OS === 'ios' ? 12 : 10}
+        >
           {isEditMode && !hasChanges && (
             <View style={styles.unchangedPillWrap}>
               <View style={styles.unchangedDot} />
@@ -1309,7 +1316,7 @@ export default function NewExpenseModal() {
             variant={isEditMode && !hasChanges ? 'unchanged' : 'primary'}
             accessibilityLabel="Record Expense"
           />
-        </View>
+        </KeyboardStickyBottomBar>
 
         {/* MODAL 1: PAYER SELECTOR */}
         <PayerSelectModal
@@ -1960,7 +1967,6 @@ const styles = StyleSheet.create({
   /* Bottom Sticky Action Bar */
   bottomBar: {
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 4 : 12,
     backgroundColor: THEME.colors.background,
   },
   headerRightPlaceholder: {

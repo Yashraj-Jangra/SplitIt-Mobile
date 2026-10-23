@@ -15,8 +15,9 @@ import {
   NativeScrollEvent,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react-native';
+import { KeyboardStickyBottomBar } from '../common/KeyboardStickyBottomBar';
 import { calculateEqualAmounts } from '@splitit/core';
 import { THEME } from '../../constants/theme';
 import { useCurrency } from '../../contexts/currency.context';
@@ -67,6 +68,7 @@ export function PayerSelectModal({
 }: PayerSelectModalProps) {
   const { currencySymbol } = useCurrency();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const horizontalScrollRef = useRef<ScrollView>(null);
   const tabUnderlineAnim = useRef(new Animated.Value(0)).current;
 
@@ -333,10 +335,11 @@ export function PayerSelectModal({
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.fullScreen} edges={['top', 'bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.fullScreen} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
           {/* Top Bar: ← Back | Who paid? | ✓ Confirm */}
           <View style={styles.appBar}>
@@ -605,7 +608,13 @@ export function PayerSelectModal({
 
           {/* Bottom Dock (For Multiple People Mode) */}
           {payerType === 'multiple' && (
-            <View style={styles.bottomBar}>
+            <KeyboardStickyBottomBar
+              insideKeyboardAvoidingView
+              bordered
+              idlePaddingBottom={14}
+              keyboardPaddingBottom={8}
+              style={styles.bottomBar}
+            >
               {errorMessage && (
                 <View style={styles.errorStrip}>
                   <AlertCircle size={13} color={THEME.colors.negative} />
@@ -616,7 +625,7 @@ export function PayerSelectModal({
               <View style={styles.bottomStatRow}>
                 <View>
                   <Text style={styles.bottomMainStat}>
-                    {currencySymbol}${sumOfPaid.toFixed(2)} of {currencySymbol}${totalAmount.toFixed(2)}
+                    {currencySymbol}{sumOfPaid.toFixed(2)} of {currencySymbol}{totalAmount.toFixed(2)}
                   </Text>
                   {isBalanced ? (
                     <Text style={[styles.bottomSubStat, styles.textMint]}>
@@ -641,7 +650,7 @@ export function PayerSelectModal({
                   <Text style={styles.confirmBtnText}>Save</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </KeyboardStickyBottomBar>
           )}
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -929,11 +938,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
   },
   bottomBar: {
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
-    backgroundColor: THEME.colors.background,
     paddingHorizontal: 20,
-    paddingVertical: 14,
   },
   errorStrip: {
     flexDirection: 'row',

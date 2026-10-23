@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -639,6 +640,7 @@ export default function ExpenseDetailScreen() {
       <KeyboardAvoidingView
         style={styles.flexOne}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -925,7 +927,13 @@ export default function ExpenseDetailScreen() {
         </ScrollView>
 
         {/* Bottom Docked "Add a comment" Bar */}
-        <View style={[styles.bottomCommentDock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+        <KeyboardStickyBottomBar
+          insideKeyboardAvoidingView
+          bordered
+          idlePaddingBottom={10}
+          keyboardPaddingBottom={8}
+          style={styles.bottomCommentDock}
+        >
           <View style={styles.commentInputContainer}>
             <TextInput
               style={styles.commentTextInput}
@@ -951,7 +959,7 @@ export default function ExpenseDetailScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardStickyBottomBar>
       </KeyboardAvoidingView>
 
 
@@ -1526,10 +1534,6 @@ const styles = StyleSheet.create({
   // Bottom Floating "Add a comment" Bar
   bottomCommentDock: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: THEME.colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
   commentInputContainer: {
     flexDirection: 'row',

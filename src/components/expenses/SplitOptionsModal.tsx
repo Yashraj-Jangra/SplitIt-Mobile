@@ -15,8 +15,9 @@ import {
   NativeScrollEvent,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
+import { KeyboardStickyBottomBar } from '../common/KeyboardStickyBottomBar';
 import {
   calculateSplitAmounts,
   validateSplit,
@@ -95,6 +96,7 @@ export function SplitOptionsModal({
 }: SplitOptionsModalProps) {
   const { currencySymbol } = useCurrency();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const horizontalScrollRef = useRef<ScrollView>(null);
 
   // Normalize legacy 'shares' / 'percentage'
@@ -527,10 +529,11 @@ export function SplitOptionsModal({
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.fullScreen} edges={['top', 'bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.fullScreen} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
           {/* Splitwise App Bar: ← Back | Adjust split | ✓ Confirm */}
           <View style={styles.appBar}>
@@ -849,8 +852,14 @@ export function SplitOptionsModal({
             })}
           </ScrollView>
 
-          {/* Persistent Splitwise Bottom Status Bar */}
-          <View style={styles.splitwiseBottomBar}>
+          {/* Persistent Splitwise Bottom Status Bar (Anchored above keyboard) */}
+          <KeyboardStickyBottomBar
+            insideKeyboardAvoidingView={true}
+            style={styles.splitwiseBottomBar}
+            keyboardPaddingBottom={Platform.OS === 'ios' ? 6 : 8}
+            idlePaddingBottom={Platform.OS === 'ios' ? 14 : 12}
+            bordered
+          >
             {errorMessage && (
               <View style={styles.errorStrip}>
                 <AlertCircle size={13} color={THEME.colors.negative} />
@@ -901,7 +910,7 @@ export function SplitOptionsModal({
                         <Text style={[styles.bottomSubStat, styles.textWarning]}>
                           {percentageRemaining > 0
                             ? `${percentageRemaining.toFixed(2)}% left · Tap to balance`
-                            : `${Math.abs(percentageRemaining).toFixed(2)}% over · Tap to balance`}
+                            : `${Math.abs(percentageRemaining).toFixed(2)} over · Tap to balance`}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -940,7 +949,7 @@ export function SplitOptionsModal({
                 </View>
               </TouchableOpacity>
             </View>
-          </View>
+          </KeyboardStickyBottomBar>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
@@ -1209,11 +1218,9 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
   },
   splitwiseBottomBar: {
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
     backgroundColor: THEME.colors.background,
     paddingHorizontal: THEME.spacing.xl,
-    paddingVertical: 14,
+    paddingTop: 10,
   },
   errorStrip: {
     flexDirection: 'row',

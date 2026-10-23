@@ -41,6 +41,7 @@ import { haptics } from '../../src/services/haptics.service';
 import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
 import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import { useCurrency, getActiveCurrencySymbol } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
 
@@ -410,6 +411,7 @@ export default function AiChatModal() {
     <KeyboardAvoidingView
       style={styles.keyboardContainer}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
     >
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
@@ -678,13 +680,12 @@ export default function AiChatModal() {
           </ScrollView>
 
           {/* ── Input Bar Capsule ─────────────────────────────────────────── */}
-          <View
-            style={[
-              styles.inputContainer,
-              {
-                paddingBottom: isKeyboardOpen ? 10 : Math.max(insets.bottom, 12),
-              },
-            ]}
+          <KeyboardStickyBottomBar
+            insideKeyboardAvoidingView
+            bordered
+            idlePaddingBottom={12}
+            keyboardPaddingBottom={10}
+            style={styles.inputContainer}
           >
             <View style={styles.inputCapsule}>
               <TextInput
@@ -739,7 +740,7 @@ export default function AiChatModal() {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+          </KeyboardStickyBottomBar>
 
       {/* ── Financial Assistant Info Modal ─────────────────────────────── */}
       <Modal
@@ -1336,9 +1337,6 @@ const styles = StyleSheet.create({
   inputContainer: {
     paddingHorizontal: 14,
     paddingTop: 8,
-    backgroundColor: THEME.colors.background,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
   inputCapsule: {
     flexDirection: 'row',

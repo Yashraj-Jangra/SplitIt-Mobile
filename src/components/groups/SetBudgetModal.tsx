@@ -37,6 +37,7 @@ import { haptics } from '../../services/haptics.service';
 import { MASTER_CATEGORY_ICONS } from '../../utils/category-icons';
 import { useCurrency } from '../../contexts/currency.context';
 import { useAppTheme } from '../../contexts/theme.context';
+import { KeyboardStickyBottomBar } from '../common/KeyboardStickyBottomBar';
 
 interface SetBudgetModalProps {
   visible: boolean;
@@ -300,7 +301,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
       statusBarTranslucent={true}
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.fullScreenSafe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.fullScreenSafe} edges={['top']}>
         {/* Pinned Editorial Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -343,6 +344,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
           style={{ flex: 1 }}
         >
           <ScrollView
@@ -739,8 +741,14 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
             </View>
           </ScrollView>
 
-          {/* Pinned Bottom Footer Action */}
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          {/* Pinned Bottom Footer Action (Anchored flush above keyboard) */}
+          <KeyboardStickyBottomBar
+            insideKeyboardAvoidingView={true}
+            style={styles.footer}
+            keyboardPaddingBottom={Platform.OS === 'ios' ? 4 : 8}
+            idlePaddingBottom={Platform.OS === 'ios' ? 14 : 12}
+            bordered
+          >
             <TouchableOpacity
               style={[
                 styles.saveBtn,
@@ -760,7 +768,7 @@ const SetBudgetContent: React.FC<SetBudgetModalProps> = ({
                 </>
               )}
             </TouchableOpacity>
-          </View>
+          </KeyboardStickyBottomBar>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
@@ -1205,9 +1213,7 @@ const styles = StyleSheet.create({
   /* ── PINNED FOOTER ── */
   footer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
+    paddingTop: 10,
     backgroundColor: THEME.colors.surface,
   },
   saveBtn: {

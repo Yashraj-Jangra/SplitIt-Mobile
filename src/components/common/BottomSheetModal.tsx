@@ -10,6 +10,8 @@ import {
   DimensionValue,
   StyleProp,
   ViewStyle,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -22,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { haptics } from '../../services/haptics.service';
+import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 
 export interface BottomSheetModalProps {
   visible: boolean;
@@ -49,6 +52,7 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
   children,
 }: BottomSheetModalProps) {
   const insets = useSafeAreaInsets();
+  const { isKeyboardOpen } = useKeyboardHeight();
   const translateY = useSharedValue(0);
 
   useEffect(() => {
@@ -151,17 +155,21 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
           accessibilityLabel="Dismiss sheet"
         />
 
-        <Animated.View
-          style={[
-            styles.sheetContainer,
-            {
-              maxHeight,
-              paddingBottom: Math.max(insets.bottom, 16) + 12,
-            },
-            animatedSheetStyle,
-            containerStyle,
-          ]}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardWrap}
         >
+          <Animated.View
+            style={[
+              styles.sheetContainer,
+              {
+                maxHeight,
+                paddingBottom: isKeyboardOpen ? 12 : Math.max(insets.bottom, 16) + 12,
+              },
+              animatedSheetStyle,
+              containerStyle,
+            ]}
+          >
           {/* Top Handle Drag Area */}
           {showHandle && (
             <View {...handlePanResponder.panHandlers} style={styles.handleWrap}>
@@ -195,9 +203,10 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
             </View>
           )}
 
-          {/* Sheet Body Content */}
-          <View style={styles.bodyContent}>{children}</View>
-        </Animated.View>
+            {/* Sheet Body Content */}
+            <View style={styles.bodyContent}>{children}</View>
+          </Animated.View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -207,6 +216,10 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  keyboardWrap: {
+    width: '100%',
     justifyContent: 'flex-end',
   },
   sheetContainer: {

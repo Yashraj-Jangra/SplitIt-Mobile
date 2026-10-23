@@ -31,6 +31,7 @@ import {
   User,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import { useAuth } from '../../src/contexts/auth.context';
 import {
   groupService,
@@ -777,92 +778,97 @@ export default function SettleUpModal() {
             </>
           )}
         </ScrollView>
-      </KeyboardAvoidingView>
 
-      {/* ── 4. Bottom Dock: UPI Checkbox + Single Main Button ── */}
-      <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 14) }]}>
-        {/* UPI App Checkbox Row */}
-        <TouchableOpacity
-          style={[
-            styles.upiCheckboxRow,
-            isUpiLocked && styles.upiCheckboxRowDisabled,
-            effectivePayViaUpi && styles.upiCheckboxRowActive,
-          ]}
-          onPress={handleToggleUpi}
-          activeOpacity={0.75}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: effectivePayViaUpi, disabled: isUpiLocked }}
+        {/* ── 4. Bottom Dock: UPI Checkbox + Single Main Button (Anchored above keyboard) ── */}
+        <KeyboardStickyBottomBar
+          insideKeyboardAvoidingView={true}
+          style={styles.bottomDock}
+          keyboardPaddingBottom={8}
+          idlePaddingBottom={Platform.OS === 'ios' ? 16 : 14}
         >
-          <View style={styles.upiCheckLeft}>
-            <View
-              style={[
-                styles.checkboxBox,
-                effectivePayViaUpi && styles.checkboxBoxChecked,
-                isUpiLocked && styles.checkboxBoxLocked,
-              ]}
-            >
-              {effectivePayViaUpi ? (
-                <Check size={11} color={THEME.colors.primaryForeground} strokeWidth={3} />
-              ) : isUpiLocked ? (
-                <Lock size={10} color={THEME.colors.textMuted} />
-              ) : null}
-            </View>
-
-            <View style={styles.upiTextCol}>
-              <View style={styles.upiTitleRow}>
-                <Text style={[styles.upiTitleText, isUpiLocked && styles.upiTitleTextDisabled]}>
-                  Pay via UPI App
-                </Text>
-                {isReceiverViewer ? (
-                  <View style={styles.vpaNoticeBadge}>
-                    <Text style={styles.vpaNoticeText}>You are recipient</Text>
-                  </View>
-                ) : !receiverId ? (
-                  <View style={styles.vpaNoticeBadge}>
-                    <Text style={styles.vpaNoticeText}>No recipient</Text>
-                  </View>
-                ) : hasUpiId ? (
-                  <View style={styles.vpaBadge}>
-                    <Text style={styles.vpaBadgeText} numberOfLines={1}>
-                      {receiverUpiId}
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.vpaMissingBadge}>
-                    <Text style={styles.vpaMissingText}>VPA Missing</Text>
-                  </View>
-                )}
+          {/* UPI App Checkbox Row */}
+          <TouchableOpacity
+            style={[
+              styles.upiCheckboxRow,
+              isUpiLocked && styles.upiCheckboxRowDisabled,
+              effectivePayViaUpi && styles.upiCheckboxRowActive,
+            ]}
+            onPress={handleToggleUpi}
+            activeOpacity={0.75}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: effectivePayViaUpi, disabled: isUpiLocked }}
+          >
+            <View style={styles.upiCheckLeft}>
+              <View
+                style={[
+                  styles.checkboxBox,
+                  effectivePayViaUpi && styles.checkboxBoxChecked,
+                  isUpiLocked && styles.checkboxBoxLocked,
+                ]}
+              >
+                {effectivePayViaUpi ? (
+                  <Check size={11} color={THEME.colors.primaryForeground} strokeWidth={3} />
+                ) : isUpiLocked ? (
+                  <Lock size={10} color={THEME.colors.textMuted} />
+                ) : null}
               </View>
-              <Text style={styles.upiSubText}>
-                {isReceiverViewer
-                  ? 'Cannot pay yourself via UPI'
-                  : !receiverId
-                  ? 'Select recipient first'
-                  : hasUpiId
-                  ? 'Launches GPay, PhonePe, Paytm, or CRED with exact amount'
-                  : `${receiverDisplayName} has not setup their UPI VPA`}
-              </Text>
-            </View>
-          </View>
-        </TouchableOpacity>
 
-        {/* The ONLY Main Button */}
-        <PrimaryActionButton
-          title={
-            numAmount <= 0
-              ? 'Enter Amount to Settle'
-              : !isValidParties
-              ? 'Select Members to Settle'
-              : effectivePayViaUpi
-              ? `Pay ${currencySymbol}${formattedAmount} & Record`
-              : 'Record Settlement'
-          }
-          onPress={handleSubmit}
-          disabled={!isValidSubmit || isSubmitting}
-          loading={isSubmitting}
-          accessibilityLabel="Record Settlement"
-        />
-      </View>
+              <View style={styles.upiTextCol}>
+                <View style={styles.upiTitleRow}>
+                  <Text style={[styles.upiTitleText, isUpiLocked && styles.upiTitleTextDisabled]}>
+                    Pay via UPI App
+                  </Text>
+                  {isReceiverViewer ? (
+                    <View style={styles.vpaNoticeBadge}>
+                      <Text style={styles.vpaNoticeText}>You are recipient</Text>
+                    </View>
+                  ) : !receiverId ? (
+                    <View style={styles.vpaNoticeBadge}>
+                      <Text style={styles.vpaNoticeText}>No recipient</Text>
+                    </View>
+                  ) : hasUpiId ? (
+                    <View style={styles.vpaBadge}>
+                      <Text style={styles.vpaBadgeText} numberOfLines={1}>
+                        {receiverUpiId}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.vpaMissingBadge}>
+                      <Text style={styles.vpaMissingText}>VPA Missing</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.upiSubText}>
+                  {isReceiverViewer
+                    ? 'Cannot pay yourself via UPI'
+                    : !receiverId
+                    ? 'Select recipient first'
+                    : hasUpiId
+                    ? 'Launches GPay, PhonePe, Paytm, or CRED with exact amount'
+                    : `${receiverDisplayName} has not setup their UPI VPA`}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* The ONLY Main Button */}
+          <PrimaryActionButton
+            title={
+              numAmount <= 0
+                ? 'Enter Amount to Settle'
+                : !isValidParties
+                ? 'Select Members to Settle'
+                : effectivePayViaUpi
+                ? `Pay ${currencySymbol}${formattedAmount} & Record`
+                : 'Record Settlement'
+            }
+            onPress={handleSubmit}
+            disabled={!isValidSubmit || isSubmitting}
+            loading={isSubmitting}
+            accessibilityLabel="Record Settlement"
+          />
+        </KeyboardStickyBottomBar>
+      </KeyboardAvoidingView>
 
       {/* ── 5. User Selection Modal (Shows ALL Members; Auto-Deselects Opposite Party If Same) ── */}
       <BottomSheetModal
@@ -1100,7 +1106,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 14,
     paddingTop: 16,
-    paddingBottom: 160,
+    paddingBottom: 24,
     gap: 16,
   },
 
@@ -1304,16 +1310,11 @@ const styles = StyleSheet.create({
 
   /* 4. Bottom Dock */
   bottomDock: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: 'rgba(19, 20, 23, 0.95)',
     borderTopWidth: 1,
     borderTopColor: THEME.colors.hairline,
     paddingHorizontal: 14,
     paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     gap: 10,
   },
   upiCheckboxRow: {

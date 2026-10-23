@@ -1,6 +1,29 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
-- **Flagship Haptics Redesign (Apple HIG & Material You Tactile Architecture)** 🎨 📱 ✨ ✅:
+- **Full Forensic Scan & Keyboard Avoidance Architecture Overhaul** 📱 ⌨️ 🎨 🛡️ ✨ ✅:
+  - **Core Primitives & Synchronization**:
+    - Created `src/hooks/useKeyboardHeight.ts`: Synchronizes native keyboard listeners (`keyboardWillShow`/`keyboardWillHide` on iOS; `keyboardDidShow`/`keyboardDidHide` on Android), tracks exact duration and height, and exposes `bottomInsetCompensation` to collapse the 34px home indicator inset when open.
+    - Created `src/components/common/KeyboardStickyBottomBar.tsx`: Production-grade container for primary buttons, split status bars, and input accessory toolbars. Smoothly docks above the virtual keyboard across iOS and Android with zero floating gaps, correct safe-area transitions, and flexible padding.
+  - **High-Priority Financial & Mutation Screen Refactors**:
+    - `app/settle/new.tsx`: Fixed critical bug where `bottomDock` was positioned `absolute` outside `KeyboardAvoidingView` (burying "Record Payment" and UPI toggle beneath the keyboard). Moved inside `KeyboardAvoidingView`, wrapped in `<KeyboardStickyBottomBar>`, and trimmed scroll padding.
+    - `app/expenses/new.tsx`: Fixed 34px gap on iOS and multi-bar collision. Added `keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}`, docked `bottomBar` with `<KeyboardStickyBottomBar>`, and eliminated static safe-area double-padding.
+    - `src/components/expenses/SplitOptionsModal.tsx`: Fixed split status bar ("₹ remaining to split") and "Done" button being obscured on Android and having a 34px void on iOS. Removed `'bottom'` from `SafeAreaView`, added `keyboardVerticalOffset`, and docked with `<KeyboardStickyBottomBar>`.
+    - `src/components/expenses/PayerSelectModal.tsx`: Removed `'bottom'` from `SafeAreaView`, added `keyboardVerticalOffset`, wrapped multiple-payers balance summary and save button in `<KeyboardStickyBottomBar>`.
+    - `src/components/groups/SetBudgetModal.tsx`: Fixed floating modal footer button gap on iOS and bottom cutoff on Android. Removed `'bottom'` from `SafeAreaView`, added `keyboardVerticalOffset`, wrapped footer in `<KeyboardStickyBottomBar>`.
+    - `src/components/common/BottomSheetModal.tsx`: Wrapped sheet in `KeyboardAvoidingView` with dynamic `useKeyboardHeight` padding collapse, fixing keyboard overlap in `GroupPickerModal` and `CurrencyPickerModal` search inputs.
+  - **Thread & Detail Screen Comment Bar Refactors**:
+    - `app/expenses/[id].tsx`: Replaced fixed padding in `bottomCommentDock` with `<KeyboardStickyBottomBar insideKeyboardAvoidingView>` and added `keyboardVerticalOffset` to prevent comment bar from floating 34px above the iOS keyboard.
+    - `app/settlements/[id].tsx`: Replaced fixed padding in `bottomCommentDock` with `<KeyboardStickyBottomBar insideKeyboardAvoidingView>` and added `keyboardVerticalOffset`.
+    - `app/ai/chat.tsx`: Wrapped AI input capsule in `<KeyboardStickyBottomBar>` and added `keyboardVerticalOffset` to `KeyboardAvoidingView`.
+    - `app/support/[id].tsx`: Wrapped support ticket reply input bar in `<KeyboardStickyBottomBar>` and added `keyboardVerticalOffset`.
+  - **Auth & Settings Refactors**:
+    - `app/(auth)/login.tsx` & `app/(auth)/signup.tsx`: Removed `'bottom'` edge from `SafeAreaView`, added `keyboardVerticalOffset` to `KeyboardAvoidingView`, and applied dynamic `paddingBottom` to `scrollContent` to eliminate the 34px floating gap.
+    - `app/settings/payment.tsx`: Added `keyboardVerticalOffset` to `KeyboardAvoidingView` so "Save UPI ID" and suffix pills scroll into view cleanly.
+    - `app/groups/[id]/search.tsx`: Added `useSafeAreaInsets` and `keyboardVerticalOffset` to `KeyboardAvoidingView`.
+  - **Quality Gates & Pre-Commit Verification**:
+    - `npx tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+    - `npx jest --passWithNoTests` passed with code 0.
+
   - **Eliminated Passive Navigation Fatigue**:
     - Converted `haptics.tap()` and `haptics.inputFocus()` to clean intentional no-ops in `src/services/haptics.service.ts`. Instantly silenced over 260+ spammy vibrations across screen transitions, tab switching, modal dismissals, and text input focus without breaking existing caller interfaces.
     - Removed explicit `screenListeners.tabPress` haptic firing in `app/(tabs)/_layout.tsx` so bottom tab navigation is completely quiet and smooth.

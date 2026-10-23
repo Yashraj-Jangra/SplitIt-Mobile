@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { QuantumSpinner } from '../../../src/components/brand/QuantumLogo';
 import {
@@ -81,6 +81,7 @@ function getTimelineTimestamp(rawDate?: string, dateStr?: string): number {
 
 export default function GroupSearchScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
 
@@ -169,6 +170,7 @@ export default function GroupSearchScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
         {/* Sleek Top Search Bar Header */}
         <View style={styles.header}>
@@ -276,7 +278,7 @@ export default function GroupSearchScreen() {
           </View>
         ) : (
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"

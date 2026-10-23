@@ -98,6 +98,7 @@ export default function PaymentSettingsScreen() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         style={{ flex: 1 }}
       >
         <ScrollView

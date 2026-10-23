@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -278,6 +279,7 @@ export default function SettlementDetailScreen() {
       <KeyboardAvoidingView
         style={styles.flexOne}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -512,7 +514,13 @@ export default function SettlementDetailScreen() {
         </ScrollView>
 
         {/* Bottom Docked Comment Bar */}
-        <View style={[styles.bottomCommentDock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+        <KeyboardStickyBottomBar
+          insideKeyboardAvoidingView
+          bordered
+          idlePaddingBottom={10}
+          keyboardPaddingBottom={8}
+          style={styles.bottomCommentDock}
+        >
           <View style={styles.commentInputContainer}>
             <TextInput
               style={styles.commentTextInput}
@@ -540,7 +548,7 @@ export default function SettlementDetailScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardStickyBottomBar>
       </KeyboardAvoidingView>
 
       <EditSettlementModal
@@ -931,10 +939,6 @@ const styles = StyleSheet.create({
   },
   bottomCommentDock: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    backgroundColor: THEME.colors.background,
   },
   commentInputContainer: {
     flexDirection: 'row',

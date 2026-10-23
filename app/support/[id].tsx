@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import {
   ArrowLeft,
   Send,
@@ -244,6 +245,7 @@ export default function TicketThreadScreen() {
     <KeyboardAvoidingView
       style={styles.keyboardContainer}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
     >
       <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header */}
@@ -425,11 +427,12 @@ export default function TicketThreadScreen() {
 
         {/* Reply Input Bar (Visible when active) */}
         {!isResolved ? (
-          <View
-            style={[
-              styles.inputBar,
-              { paddingBottom: isKeyboardOpen ? 10 : Math.max(insets.bottom, 12) },
-            ]}
+          <KeyboardStickyBottomBar
+            insideKeyboardAvoidingView
+            bordered
+            idlePaddingBottom={12}
+            keyboardPaddingBottom={10}
+            style={styles.inputBar}
           >
             <View style={styles.inputContainer}>
               <TextInput
@@ -466,7 +469,7 @@ export default function TicketThreadScreen() {
                 <Send size={16} color={THEME.colors.primaryForeground} strokeWidth={2.4} />
               )}
             </TouchableOpacity>
-          </View>
+          </KeyboardStickyBottomBar>
         ) : null}
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -804,9 +807,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingTop: 10,
-    backgroundColor: THEME.colors.background,
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
     gap: 10,
   },
   inputContainer: {
