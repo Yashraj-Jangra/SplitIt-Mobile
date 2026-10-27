@@ -19,6 +19,7 @@
   - **Quality Gates**:
     - `npx tsc --noEmit` passed with 0 errors across `SplitIt-Mobile`.
     - `npx jest --passWithNoTests` passed with code 0.
+    - Native Android Release Build: `.\gradlew.bat assembleRelease` completed in 3m 37s (737 tasks, BUILD SUCCESSFUL). Generated standalone APK at `android/app/build/outputs/apk/release/app-release.apk` (120.6 MB).
 
 - **Homepage AI Assistant Header Quick-Access** ✨ 📱 🎨 ✅:
   - Added AI Financial Assistant icon circle button right after the Search button in `app/(tabs)/index.tsx`.
