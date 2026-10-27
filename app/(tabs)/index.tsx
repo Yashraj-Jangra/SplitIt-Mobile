@@ -337,6 +337,19 @@ export default function HomeScreen() {
               activeOpacity={0.7}
               onPress={() => {
                 haptics.tap();
+                router.push('/ai/chat');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="AI Financial Assistant"
+            >
+              <Sparkles size={17} color={THEME.colors.text} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.iconCircle}
+              activeOpacity={0.7}
+              onPress={() => {
+                haptics.tap();
                 router.push('/analysis');
               }}
               accessibilityRole="button"

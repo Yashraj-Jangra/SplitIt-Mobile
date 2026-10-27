@@ -1,5 +1,11 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Homepage AI Assistant Header Quick-Access** ✨ 📱 🎨 ✅:
+  - Added AI Financial Assistant icon circle button right after the Search button in `app/(tabs)/index.tsx`.
+  - Matched existing header icon circle design (`width: 38`, `height: 38`, `borderRadius: 19`, `surfaceElevated`, `hairline` border, `Sparkles` icon with `size: 17`, `color: text`).
+  - Wired direct navigation to `/ai/chat` with haptic feedback.
+  - Quality Gates: `npx tsc --noEmit` passed with 0 errors; `npx jest --passWithNoTests` passed with code 0.
+
 - **Android 13+ Categorized Notification Channels, Permission Lifecycle, and OS Status Indicators** 🔔 📱 🎨 🛡️ ✨ ✅:
   - **First-Launch Auto-Permission Lifecycle (`app/_layout.tsx`)**:
     - Proactively checks `notificationService.getPermissionStatus()` on app launch. If status is `undetermined`, automatically calls `notificationService.requestPermission()`, ensuring fresh installs immediately trigger the native OS permission prompt on Android 13+ (`POST_NOTIFICATIONS`) and iOS.
