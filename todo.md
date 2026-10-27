@@ -1,5 +1,33 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Android 13+ Categorized Notification Channels, Permission Lifecycle, and OS Status Indicators** 🔔 📱 🎨 🛡️ ✨ ✅:
+  - **First-Launch Auto-Permission Lifecycle (`app/_layout.tsx`)**:
+    - Proactively checks `notificationService.getPermissionStatus()` on app launch. If status is `undetermined`, automatically calls `notificationService.requestPermission()`, ensuring fresh installs immediately trigger the native OS permission prompt on Android 13+ (`POST_NOTIFICATIONS`) and iOS.
+    - Registers Expo push token on user authentication.
+  - **Android 13+ Categorized Notification Channels (`src/services/notification.service.ts`)**:
+    - Configured 7 distinct Android notification channels in `initNotifications()` with custom importance, vibration patterns, and LED colors:
+      - `expenses` (Max Priority, Cyan `#00C4CC`)
+      - `settlements` (Max Priority, Emerald `#10B981`)
+      - `reminders` (High Priority, Amber `#F59E0B`)
+      - `budgets` (High Priority, Coral `#EF4444`)
+      - `groups` (Default Priority, Purple `#8B5CF6`)
+      - `announcements` (High Priority, Indigo `#6366F1`)
+      - `default` (Fallback, Teal)
+    - Removed blanket `return null` in `getNotificationsModule()` for Expo Go on Android so permissions, channels, and in-app feeds initialize seamlessly across all runtime environments.
+    - Added helper methods: `getPermissionStatus()`, `requestPermission()`, and `openSystemSettings()`.
+  - **Live Push Status Banner (`app/notifications/index.tsx`)**:
+    - Added real-time permission status querying on mount and on `useFocusEffect` (re-queries when returning from system settings).
+    - When granted: Displays clean "Push Alerts Active" indicator badge with live pulse dot and quick link to channels.
+    - When disabled/denied: Displays actionable glass card with "Enable" (if undetermined) or "Settings" button (launching system app settings).
+  - **Android Notification Channels Settings Screen (`app/notifications/preferences.tsx`)**:
+    - Added system permission status card at top of preferences.
+    - Added Android-specific categorized channel directory with direct deep-link button (`Configure Android Channels in Settings`) calling `notificationService.openSystemSettings()`.
+  - **Config Plugin Injection (`app.json`)**:
+    - Added `expo-notifications` config plugin with monochrome icon and SplitIt cyan branding.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+    - `npx jest --passWithNoTests` passed with code 0.
+
 - **Ecosystem Logic Hardening, Edge-Case Protection, and Archived Immutability** 🛡️ ⚡ 🗄️ ✨ ✅:
   - **Shared Core Simplification & Balance Precision (`@splitit/core`)**:
     - Fixed infinite loop in `simplifyDebts` (`packages/core/src/debts.ts`) on 1-penny (0.01) leftover balances by adjusting threshold to `EPSILON = 0.005`, filtering sub-penny noise, and rounding deductions down to the cent.

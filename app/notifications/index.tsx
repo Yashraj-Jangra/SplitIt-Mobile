@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   ArrowLeft,
@@ -30,6 +30,9 @@ import {
   Megaphone,
   ShieldAlert,
   Bell,
+  BellRing,
+  BellOff,
+  ChevronRight,
   RotateCcw,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
@@ -53,6 +56,26 @@ export default function NotificationsCenterScreen() {
     () => notificationService.getInMemoryNotifications().length === 0
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<{
+    status: 'granted' | 'denied' | 'undetermined';
+    canAskAgain: boolean;
+    granted: boolean;
+  } | null>(null);
+
+  const checkPermission = useCallback(async () => {
+    try {
+      const status = await notificationService.getPermissionStatus();
+      setPermissionStatus(status);
+    } catch {
+      // Ignored
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPermission();
+    }, [checkPermission])
+  );
 
   const loadNotifications = async () => {
     const list = await notificationService.getInAppNotifications();
@@ -373,6 +396,74 @@ export default function NotificationsCenterScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Real-time System Push Notification Status */}
+      {permissionStatus && (
+        <View style={styles.systemStatusContainer}>
+          {permissionStatus.granted ? (
+            <View style={styles.grantedBanner}>
+              <View style={styles.grantedStatusLeft}>
+                <View style={styles.livePulseDot} />
+                <BellRing size={13} color={THEME.colors.success} />
+                <Text style={styles.grantedStatusText}>Push Alerts Active</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  haptics.tap();
+                  router.push('/notifications/preferences');
+                }}
+                style={styles.channelsLinkButton}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Notification channel preferences"
+              >
+                <Text style={styles.channelsLinkText}>Channels</Text>
+                <ChevronRight size={12} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.disabledBanner}>
+              <View style={styles.disabledLeft}>
+                <View style={styles.disabledIconBadge}>
+                  <BellOff size={16} color={THEME.colors.warning} />
+                </View>
+                <View style={styles.disabledTextCol}>
+                  <Text style={styles.disabledTitle}>Push Alerts Disabled</Text>
+                  <Text style={styles.disabledSubtitle} numberOfLines={2}>
+                    {permissionStatus.status === 'denied'
+                      ? 'Enable in system settings to receive bill & settlement alerts.'
+                      : 'Allow notifications to get instant alerts on expense splits.'}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={async () => {
+                  haptics.tap();
+                  if (permissionStatus.status === 'undetermined' && permissionStatus.canAskAgain) {
+                    await notificationService.requestPermission();
+                    await checkPermission();
+                  } else {
+                    await notificationService.openSystemSettings();
+                  }
+                }}
+                style={[
+                  styles.disabledActionButton,
+                  { backgroundColor: currentAccent.primary },
+                ]}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Enable push notifications"
+              >
+                <Text style={styles.disabledActionText}>
+                  {permissionStatus.status === 'undetermined' && permissionStatus.canAskAgain
+                    ? 'Enable'
+                    : 'Settings'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Website-Style Category Tabs with Badges */}
       <View style={styles.tabsContainer}>
@@ -1202,5 +1293,100 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 240,
     lineHeight: 18,
+  },
+  systemStatusContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  grantedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderRadius: THEME.radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.22)',
+  },
+  grantedStatusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.colors.success,
+  },
+  grantedStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.success,
+  },
+  channelsLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  channelsLinkText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: THEME.colors.textMuted,
+  },
+  disabledBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    gap: 12,
+  },
+  disabledLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  disabledIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: THEME.colors.warningMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledTextCol: {
+    flex: 1,
+  },
+  disabledTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: 2,
+  },
+  disabledSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    lineHeight: 15,
+  },
+  disabledActionButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: THEME.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primaryForeground,
   },
 });

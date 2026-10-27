@@ -2,6 +2,7 @@ import type * as NotificationsType from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
+import * as Linking from 'expo-linking';
 import { authService } from './auth.service';
 import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
 import { THEME } from '../constants/theme';
@@ -14,12 +15,6 @@ let cachedNotificationsModule: typeof NotificationsType | null | undefined = und
 function getNotificationsModule(): typeof NotificationsType | null {
   if (cachedNotificationsModule !== undefined) {
     return cachedNotificationsModule;
-  }
-  // Expo SDK 53+ removed Android remote notifications from Expo Go and throws a fatal error
-  // Development builds (npx expo run:android or EAS) have full native push support
-  if (isRunningInExpoGo() && Platform.OS === 'android') {
-    cachedNotificationsModule = null;
-    return null;
   }
   try {
     const mod = require('expo-notifications') as typeof NotificationsType;
@@ -137,7 +132,7 @@ export const notificationService = {
   },
 
   /**
-   * Configure notification handlers and default Android channel
+    * Configure notification handlers and modern categorized Android notification channels
    */
   async initNotifications(): Promise<void> {
     const Notifications = getNotificationsModule();
@@ -154,16 +149,157 @@ export const notificationService = {
       });
 
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'SplitIt Notifications',
+        // 1. Expenses & Splits Channel (High Importance, Cyan)
+        await Notifications.setNotificationChannelAsync('expenses', {
+          name: 'Expenses & Splits',
+          description: 'Alerts when someone adds, updates, or deletes expenses in your groups',
           importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#00C4CC',
+          sound: 'default',
+          enableLights: true,
+          enableVibrate: true,
+          showBadge: true,
+        });
+
+        // 2. Settlements & Payments Channel (High Importance, Emerald)
+        await Notifications.setNotificationChannelAsync('settlements', {
+          name: 'Settlements & Payments',
+          description: 'Alerts when settlements are recorded, paid, or cleared',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#10B981',
+          sound: 'default',
+          enableLights: true,
+          enableVibrate: true,
+          showBadge: true,
+        });
+
+        // 3. Reminders & Settle-up Channel (High Importance, Amber)
+        await Notifications.setNotificationChannelAsync('reminders', {
+          name: 'Payment & Balance Reminders',
+          description: 'Direct payment reminders, settle-up requests, and pending balance alerts',
+          importance: Notifications.AndroidImportance.HIGH,
+          vibrationPattern: [0, 300, 150, 300],
+          lightColor: '#F59E0B',
+          sound: 'default',
+          enableLights: true,
+          enableVibrate: true,
+          showBadge: true,
+        });
+
+        // 4. Budget & Spending Alerts Channel (High Importance, Coral)
+        await Notifications.setNotificationChannelAsync('budgets', {
+          name: 'Budget & Spending Alerts',
+          description: 'Monthly budget limits, burn rate warnings, and threshold alerts',
+          importance: Notifications.AndroidImportance.HIGH,
+          vibrationPattern: [0, 200, 200, 200],
+          lightColor: '#EF4444',
+          sound: 'default',
+          enableLights: true,
+          enableVibrate: true,
+          showBadge: true,
+        });
+
+        // 5. Group Activity & Members Channel (Default Importance, Purple)
+        await Notifications.setNotificationChannelAsync('groups', {
+          name: 'Group Activity & Members',
+          description: 'Member invites, members joining/leaving, and group settings changes',
+          importance: Notifications.AndroidImportance.DEFAULT,
+          lightColor: '#8B5CF6',
+          sound: 'default',
+          showBadge: true,
+        });
+
+        // 6. Announcements & System Channel (High Importance, Indigo)
+        await Notifications.setNotificationChannelAsync('announcements', {
+          name: 'Announcements & Updates',
+          description: 'Important service announcements, release updates, and support replies',
+          importance: Notifications.AndroidImportance.HIGH,
+          lightColor: '#6366F1',
+          sound: 'default',
+          showBadge: true,
+        });
+
+        // 7. Default Fallback Channel
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'General Notifications',
+          description: 'General account alerts and fallback notifications',
+          importance: Notifications.AndroidImportance.DEFAULT,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: THEME.colors.primary,
           sound: 'default',
+          showBadge: true,
         });
       }
     } catch {
       // Ignored for environments without native notification channels
+    }
+  },
+
+  /**
+   * Inspect current OS notification permission status without prompting
+   */
+  async getPermissionStatus(): Promise<{
+    status: 'granted' | 'denied' | 'undetermined';
+    canAskAgain: boolean;
+    granted: boolean;
+  }> {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) {
+      return { status: 'undetermined', canAskAgain: true, granted: false };
+    }
+    try {
+      const perms = await Notifications.getPermissionsAsync();
+      const status = perms.status === 'granted'
+        ? 'granted'
+        : perms.status === 'denied'
+        ? 'denied'
+        : 'undetermined';
+      return {
+        status,
+        canAskAgain: perms.canAskAgain !== false,
+        granted: perms.granted || perms.status === 'granted',
+      };
+    } catch {
+      return { status: 'undetermined', canAskAgain: true, granted: false };
+    }
+  },
+
+  /**
+   * Request notification permission from OS (e.g. Android 13+ POST_NOTIFICATIONS / iOS)
+   */
+  async requestPermission(): Promise<boolean> {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) return false;
+
+    try {
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      });
+
+      const granted = status === 'granted';
+      if (granted) {
+        this.registerForPushNotifications().catch(() => {});
+      }
+      return granted;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Open Device System App Details / Notification Settings
+   */
+  async openSystemSettings(): Promise<void> {
+    try {
+      await Linking.openSettings();
+    } catch {
+      // Fallback
     }
   },
 
@@ -193,19 +329,26 @@ export const notificationService = {
     }
 
     try {
-      if (isRunningInExpoGo()) {
-        return null;
-      }
-
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
       if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+          },
+        });
         finalStatus = status;
       }
 
       if (finalStatus !== 'granted') {
+        return null;
+      }
+
+      if (isRunningInExpoGo() && Platform.OS === 'android') {
+        // Expo Go on Android does not support remote push tokens (requires development build)
         return null;
       }
 

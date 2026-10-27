@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   ArrowLeft,
@@ -16,6 +17,16 @@ import {
   Smartphone,
   Mail,
   Check,
+  ShieldCheck,
+  ShieldAlert,
+  SlidersHorizontal,
+  ExternalLink,
+  Receipt,
+  Handshake,
+  Clock,
+  PieChart,
+  Users,
+  Megaphone,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import {
@@ -24,14 +35,36 @@ import {
   DEFAULT_NOTIFICATION_PREFERENCES,
 } from '../../src/services/notification.service';
 import { haptics } from '../../src/services/haptics.service';
+import { useAppTheme } from '../../src/contexts/theme.context';
 
 export default function NotificationPreferencesScreen() {
   const router = useRouter();
+  const { currentAccent } = useAppTheme();
   const [prefs, setPrefs] = useState<UserNotificationPreferences>(
     DEFAULT_NOTIFICATION_PREFERENCES
   );
   const [loading, setLoading] = useState(true);
   const [savedBanner, setSavedBanner] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<{
+    status: 'granted' | 'denied' | 'undetermined';
+    canAskAgain: boolean;
+    granted: boolean;
+  } | null>(null);
+
+  const checkPermission = useCallback(async () => {
+    try {
+      const status = await notificationService.getPermissionStatus();
+      setPermissionStatus(status);
+    } catch {
+      // Ignored
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPermission();
+    }, [checkPermission])
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -112,6 +145,154 @@ export default function NotificationPreferencesScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Device System Notification Status */}
+          {permissionStatus && (
+            <View style={styles.section}>
+              <Text style={styles.sectionHeader}>DEVICE SYSTEM STATUS</Text>
+              <View style={styles.card}>
+                <View style={styles.row}>
+                  <View
+                    style={[
+                      styles.rowIcon,
+                      {
+                        backgroundColor: permissionStatus.granted
+                          ? 'rgba(16, 185, 129, 0.12)'
+                          : 'rgba(245, 158, 11, 0.12)',
+                      },
+                    ]}
+                  >
+                    {permissionStatus.granted ? (
+                      <ShieldCheck size={18} color={THEME.colors.success} />
+                    ) : (
+                      <ShieldAlert size={18} color={THEME.colors.warning} />
+                    )}
+                  </View>
+                  <View style={styles.rowText}>
+                    <Text style={styles.rowTitle}>
+                      {permissionStatus.granted
+                        ? 'Push Notifications Active'
+                        : 'Push Notifications Disabled'}
+                    </Text>
+                    <Text style={styles.rowSubtitle}>
+                      {permissionStatus.granted
+                        ? 'OS background push delivery & wakeups enabled'
+                        : 'Blocked by device settings — notifications will not show'}
+                    </Text>
+                  </View>
+                  {!permissionStatus.granted && (
+                    <TouchableOpacity
+                      onPress={async () => {
+                        haptics.tap();
+                        if (permissionStatus.status === 'undetermined' && permissionStatus.canAskAgain) {
+                          await notificationService.requestPermission();
+                          await checkPermission();
+                        } else {
+                          await notificationService.openSystemSettings();
+                        }
+                      }}
+                      style={[styles.systemStatusButton, { backgroundColor: currentAccent.primary }]}
+                      activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Enable notifications in system settings"
+                    >
+                      <Text style={styles.systemStatusButtonText}>
+                        {permissionStatus.status === 'undetermined' && permissionStatus.canAskAgain
+                          ? 'Enable'
+                          : 'Fix'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {permissionStatus.granted && (
+                    <View style={styles.statusPillActive}>
+                      <Text style={styles.statusPillActiveText}>Active</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Android Categorized Notification Channels */}
+          {Platform.OS === 'android' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionHeader}>ANDROID SYSTEM CHANNELS</Text>
+              <View style={styles.card}>
+                <View style={styles.channelHeader}>
+                  <Text style={styles.channelHeaderTitle}>Categorized Notification Channels</Text>
+                  <Text style={styles.channelHeaderSubtitle}>
+                    Android 8.0+ organizes alerts into dedicated channels. You can customize individual notification sounds, vibration patterns, lock screen visibility, and priority:
+                  </Text>
+                </View>
+
+                {/* Channel List Items */}
+                <View style={[styles.channelItemRow, styles.borderTop]}>
+                  <View style={[styles.channelDot, { backgroundColor: '#00C4CC' }]} />
+                  <View style={styles.channelItemTextCol}>
+                    <Text style={styles.channelItemName}>Expenses & Splits</Text>
+                    <Text style={styles.channelItemDesc}>Max Priority • Sound & Vibration • Cyan</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.channelItemRow, styles.borderTop]}>
+                  <View style={[styles.channelDot, { backgroundColor: '#10B981' }]} />
+                  <View style={styles.channelItemTextCol}>
+                    <Text style={styles.channelItemName}>Settlements & Payments</Text>
+                    <Text style={styles.channelItemDesc}>Max Priority • Sound & Vibration • Emerald</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.channelItemRow, styles.borderTop]}>
+                  <View style={[styles.channelDot, { backgroundColor: '#F59E0B' }]} />
+                  <View style={styles.channelItemTextCol}>
+                    <Text style={styles.channelItemName}>Payment & Balance Reminders</Text>
+                    <Text style={styles.channelItemDesc}>High Priority • Custom Pattern • Amber</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.channelItemRow, styles.borderTop]}>
+                  <View style={[styles.channelDot, { backgroundColor: '#EF4444' }]} />
+                  <View style={styles.channelItemTextCol}>
+                    <Text style={styles.channelItemName}>Budget & Spending Alerts</Text>
+                    <Text style={styles.channelItemDesc}>High Priority • Limit Warnings • Coral</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.channelItemRow, styles.borderTop]}>
+                  <View style={[styles.channelDot, { backgroundColor: '#8B5CF6' }]} />
+                  <View style={styles.channelItemTextCol}>
+                    <Text style={styles.channelItemName}>Group Activity & Members</Text>
+                    <Text style={styles.channelItemDesc}>Default Priority • Invites & Changes • Purple</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.channelItemRow, styles.borderTop]}>
+                  <View style={[styles.channelDot, { backgroundColor: '#6366F1' }]} />
+                  <View style={styles.channelItemTextCol}>
+                    <Text style={styles.channelItemName}>Announcements & System</Text>
+                    <Text style={styles.channelItemDesc}>High Priority • Broadcasts & Replies • Indigo</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={async () => {
+                    haptics.tap();
+                    await notificationService.openSystemSettings();
+                  }}
+                  style={[styles.manageChannelsButton, styles.borderTop]}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Manage Android notification channels in system settings"
+                >
+                  <SlidersHorizontal size={15} color={currentAccent.primary} />
+                  <Text style={[styles.manageChannelsButtonText, { color: currentAccent.primary }]}>
+                    Configure Android Channels in Settings
+                  </Text>
+                  <ExternalLink size={13} color={currentAccent.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {/* Master Delivery Channels */}
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>DELIVERY CHANNELS</Text>
@@ -406,5 +587,81 @@ const styles = StyleSheet.create({
   rowSubtitle: {
     fontSize: 11,
     color: THEME.colors.textMuted,
+  },
+  systemStatusButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  systemStatusButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primaryForeground,
+  },
+  statusPillActive: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(16, 185, 129, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  statusPillActiveText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.success,
+  },
+  channelHeader: {
+    padding: 14,
+    gap: 4,
+  },
+  channelHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  channelHeaderSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    lineHeight: 16,
+  },
+  channelItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  channelDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  channelItemTextCol: {
+    flex: 1,
+  },
+  channelItemName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.text,
+    marginBottom: 1,
+  },
+  channelItemDesc: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  manageChannelsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    gap: 8,
+    backgroundColor: THEME.colors.surfaceSubtle,
+  },
+  manageChannelsButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -44,9 +44,18 @@ function NavigationGate() {
 
   useEffect(() => {
     notificationService.initNotifications();
+
+    // Proactively prompt for notification permission on initial install/launch if undetermined
+    notificationService.getPermissionStatus().then((status) => {
+      if (status.status === 'undetermined' && status.canAskAgain) {
+        notificationService.requestPermission().catch(() => {});
+      }
+    }).catch(() => {});
+
     if (user) {
-      notificationService.registerForPushNotifications();
+      notificationService.registerForPushNotifications().catch(() => {});
     }
+
     const sub = notificationService.setupResponseListener((route) => {
       router.push(route as any);
     });
