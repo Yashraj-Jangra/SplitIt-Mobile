@@ -99,7 +99,8 @@
           "icon": "./assets/android-icon-monochrome.png",
           "color": "#00C4CC"
         }
-      ]
+      ],
+      "./plugins/withPredictiveBack"
     ],
     "extra": {
       "apiUrl": "https://split.cvweb.qzz.io",

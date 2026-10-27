@@ -85,14 +85,35 @@ function NavigationGate() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: THEME.colors.background },
-            animation: Platform.OS === 'android' ? 'fade' : 'default',
+            animation: 'slide_from_right',
+            gestureEnabled: true,
+            fullScreenGestureEnabled: true,
+            animationMatchesGesture: true,
             freezeOnBlur: false,
           }}
         >
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="groups/[id]/index" options={{ headerShown: false }} />
-          <Stack.Screen name="groups/[id]/settings" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen
+            name="groups/[id]/index"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
+            }}
+          />
+          <Stack.Screen
+            name="groups/[id]/settings"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
+            }}
+          />
           <Stack.Screen
             name="expenses/new"
             options={{
@@ -105,16 +126,19 @@ function NavigationGate() {
           <Stack.Screen
             name="expenses/[id]"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="groups/new"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              gestureEnabled: true,
               headerShown: false,
             }}
           />
@@ -122,54 +146,66 @@ function NavigationGate() {
             name="groups/[id]/search"
             options={{
               headerShown: false,
-              animation: 'fade',
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="settle/new"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              gestureEnabled: true,
               headerShown: false,
             }}
           />
           <Stack.Screen
             name="settle/qr"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              gestureEnabled: true,
               headerShown: false,
             }}
           />
           <Stack.Screen
             name="settlements/[id]"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="analysis/index"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="ai/chat"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="ai/scanner"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              gestureEnabled: true,
               headerShown: false,
             }}
           />
@@ -177,25 +213,38 @@ function NavigationGate() {
             name="notifications/index"
             options={{
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="notifications/preferences"
             options={{
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="support/index"
             options={{
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="support/new"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              gestureEnabled: true,
               headerShown: false,
             }}
           />
@@ -203,82 +252,109 @@ function NavigationGate() {
             name="support/[id]"
             options={{
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="legal/privacy"
             options={{
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="legal/terms"
             options={{
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="legal/delete-account"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              gestureEnabled: true,
               headerShown: false,
             }}
           />
           <Stack.Screen
             name="settings/account"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="settings/preferences"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="settings/appearance"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="settings/security"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="settings/payment"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="settings/my-qr"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
           <Stack.Screen
             name="info/about"
             options={{
-              presentation: Platform.OS === 'android' ? 'card' : 'modal',
-              animation: Platform.OS === 'android' ? 'fade' : 'default',
               headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              animationMatchesGesture: true,
             }}
           />
         </Stack>

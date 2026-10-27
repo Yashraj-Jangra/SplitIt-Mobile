@@ -208,6 +208,7 @@ export default function GroupDetailScreen() {
   // Smooth Tab Transitions
   const tabIndicatorAnim = useRef(new Animated.Value(0)).current;
   const tabContentAnim = useRef(new Animated.Value(1)).current;
+  const tabSlideAnim = useRef(new Animated.Value(0)).current;
   const fabAnim = useRef(new Animated.Value(1)).current;
   const fabPressAnim = useRef(new Animated.Value(0)).current;
   const fabButtonRef = useRef<any>(null);
@@ -258,6 +259,7 @@ export default function GroupDetailScreen() {
     setActivityFilter('all');
     tabIndicatorAnim.setValue(destTabIndex >= 0 ? destTabIndex : 0);
     tabContentAnim.setValue(1);
+    tabSlideAnim.setValue(0);
     setVisibleExpenseCount(PAGE_SIZE);
     setVisibleActivityCount(PAGE_SIZE);
 
@@ -310,7 +312,9 @@ export default function GroupDetailScreen() {
   const handleTabChange = (tab: TabType) => {
     if (tab === activeTab) return;
     haptics.tap();
+    const prevIndex = TABS.indexOf(activeTab);
     const tabIndex = TABS.indexOf(tab);
+    const isMovingRight = tabIndex > prevIndex;
 
     // 1. Snappy native spring sliding indicator pill
     Animated.spring(tabIndicatorAnim, {
@@ -321,14 +325,25 @@ export default function GroupDetailScreen() {
       mass: 0.6,
     }).start();
 
-    // 2. Snappy micro-transition: reset to 0.4 and animate to 1
-    // The previous tab is immediately hidden via display: 'none', preventing any ghosting of the old tab
-    tabContentAnim.setValue(0.4);
-    Animated.timing(tabContentAnim, {
-      toValue: 1,
-      duration: 140,
-      useNativeDriver: true,
-    }).start();
+    // 2. Hardware-accelerated directional horizontal slide transition
+    const slideOffset = isMovingRight ? 54 : -54;
+    tabSlideAnim.setValue(slideOffset);
+    tabContentAnim.setValue(0.25);
+
+    Animated.parallel([
+      Animated.spring(tabSlideAnim, {
+        toValue: 0,
+        damping: 24,
+        stiffness: 300,
+        mass: 0.7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tabContentAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
     // 3. Fast spring scale & fade for Add Expense FAB
     Animated.spring(fabAnim, {
@@ -758,12 +773,7 @@ export default function GroupDetailScreen() {
             {
               opacity: tabContentAnim,
               transform: [
-                {
-                  translateY: tabContentAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [6, 0],
-                  }),
-                },
+                { translateX: tabSlideAnim },
               ],
             },
           ]}
@@ -1813,6 +1823,7 @@ const styles = StyleSheet.create({
   tabSectionWrapper: {
     width: '100%',
     paddingHorizontal: 10,
+    overflow: 'hidden',
   },
 
   // Content Scroll

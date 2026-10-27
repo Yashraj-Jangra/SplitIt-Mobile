@@ -1,5 +1,25 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Screen Transitions, Android 14+ Predictive Back, and In-Group Tab Sliding Redesign** 🎨 📱 ⚡ 🚀 ✅:
+  - **Android 14+ Predictive Back Integration**:
+    - Created Expo Config Plugin `plugins/withPredictiveBack.js` using `@expo/config-plugins` to automatically inject `android:enableOnBackInvokedCallback="true"` into the AndroidManifest `<application>` during CNG prebuilds.
+    - Added `./plugins/withPredictiveBack` to `plugins` array in `app.json`.
+    - Updated `android/app/src/main/AndroidManifest.xml` line 17 from `false` to `true`.
+  - **Native Interactive Stack Navigation (`app/_layout.tsx`)**:
+    - Replaced global Android `'fade'` transition with native horizontal spatial sliding:
+      - `animation: 'slide_from_right'`, `gestureEnabled: true`, `fullScreenGestureEnabled: true`, `animationMatchesGesture: true`.
+    - Preserved `expenses/new` transparent bottom sheet modal animation (`presentation: 'transparentModal'`, `animation: 'none'`) 100% intact as requested.
+    - Upgraded modals (`groups/new`, `settle/new`, `settle/qr`, `support/new`, `legal/delete-account`, `ai/scanner`) to `presentation: 'modal'`, `animation: 'slide_from_bottom'`, and `gestureEnabled: true` for native swipe-down dismissal.
+    - Set all detail and sub-screens (`groups/[id]/index`, `groups/[id]/settings`, `groups/[id]/search`, `expenses/[id]`, `settlements/[id]`, `analysis/index`, `ai/chat`, `notifications/*`, `support/*`, `settings/*`) to native slide-from-right with full-screen interactive edge-to-edge gestures.
+  - **In-Group Tab Sliding Animation (`app/groups/[id]/index.tsx`)**:
+    - Introduced `tabSlideAnim` Animated value for directional horizontal sliding.
+    - Calculates tab index direction (`isMovingRight = nextIndex > prevIndex`). Moving right offsets the new tab from `+54px -> 0`, moving left offsets from `-54px -> 0`.
+    - Runs spring translation (`damping: 24`, `stiffness: 300`, `mass: 0.7`) in parallel with opacity fade (`duration: 180`) using native driver (`useNativeDriver: true`).
+    - Added `overflow: 'hidden'` to `tabSectionWrapper` to keep slide animations strictly bounded within screen borders.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` passed with 0 errors across `SplitIt-Mobile`.
+    - `npx jest --passWithNoTests` passed with code 0.
+
 - **Homepage AI Assistant Header Quick-Access** ✨ 📱 🎨 ✅:
   - Added AI Financial Assistant icon circle button right after the Search button in `app/(tabs)/index.tsx`.
   - Matched existing header icon circle design (`width: 38`, `height: 38`, `borderRadius: 19`, `surfaceElevated`, `hairline` border, `Sparkles` icon with `size: 17`, `color: text`).
