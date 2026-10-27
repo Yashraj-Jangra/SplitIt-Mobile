@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
   TouchableOpacity,
   Image,
   ScrollView,
@@ -38,7 +39,7 @@ export default function LoginScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const passwordInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInputInstance>(null);
   const keyboardAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {

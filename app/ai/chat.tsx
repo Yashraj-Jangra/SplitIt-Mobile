@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  type ScrollViewInstance,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
@@ -184,7 +185,7 @@ export default function AiChatModal() {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const scrollToEndThrottled = useCallback(() => {

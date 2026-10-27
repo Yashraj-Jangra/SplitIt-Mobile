@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
   TouchableOpacity,
   ScrollView,
   Modal,
@@ -104,7 +105,7 @@ export default function NewExpenseModal() {
   const startScaleY = 52 / SCREEN_HEIGHT;
 
   const expandAnim = useRef(new Animated.Value(0)).current;
-  const amountInputRef = useRef<TextInput>(null);
+  const amountInputRef = useRef<TextInputInstance>(null);
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {

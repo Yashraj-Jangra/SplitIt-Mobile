@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  type ScrollViewInstance,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -53,7 +54,7 @@ export default function TicketThreadScreen() {
   const [loading, setLoading] = useState(true);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';

@@ -1,5 +1,28 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Upgrade to Expo SDK 58, React Native 0.88 & React 19.3** 📦 🚀 ⚡ 📱 ✅:
+  - **Core SDK & Runtime Upgrades**:
+    - Upgraded `expo` from SDK 57 (`^57.0.26`) to SDK 58 (`^58.0.0`).
+    - Upgraded runtime to `react-native` 0.88.0 and `react` 19.3.0.
+    - Upgraded 22 accompanying packages to official SDK 58 versions (`expo-router` ~58.0.27, `expo-notifications` ~58.1.6, `react-native-reanimated` 4.7.1, `react-native-gesture-handler` ~3.3.0, `react-native-screens` ~4.30.0, `react-native-safe-area-context` ~5.10.1, `react-native-worklets` 0.13.0, etc.).
+    - Installed `expo-system-ui` (~58.0.9) to power native system-level dark mode (`userInterfaceStyle: 'dark'`).
+  - **React 19 & RN 0.88 Ref Types Migration (`TextInputInstance`, `ScrollViewInstance`)**:
+    - Converted component refs across 12 files from `useRef<TextInput>` / `useRef<ScrollView>` to `useRef<TextInputInstance>` / `useRef<ScrollViewInstance>` matching React Native 0.88's new functional ref forwarding typings.
+    - Updated: `app/(auth)/login.tsx`, `app/(auth)/signup.tsx`, `app/ai/chat.tsx`, `app/expenses/[id].tsx`, `app/expenses/new.tsx`, `app/settlements/[id].tsx`, `app/support/[id].tsx`, `app/support/new.tsx`, `src/components/expenses/PayerSelectModal.tsx`, `src/components/expenses/SplitOptionsModal.tsx`, `src/components/search/UniversalSearchModal.tsx`.
+  - **Gesture Handler 3.x Swipeable Migration (`app/notifications/index.tsx`)**:
+    - Replaced deprecated legacy `Swipeable` from `react-native-gesture-handler/Swipeable` with `ReanimatedSwipeable` from `react-native-gesture-handler/ReanimatedSwipeable`.
+    - Typed ref as `useRef<SwipeableMethods | null>(null)`.
+    - Removed legacy JS-thread `Animated.Value` interpolation; simplified swipe action container to clean hardware-accelerated Reanimated container.
+  - **Configuration & Prebuild Clean**:
+    - Migrated splash configuration in `app.json` to the official `expo-splash-screen` config plugin.
+    - Removed deprecated root-level `splash` and `notification` keys from `app.json`.
+    - Removed stale `expo-modules-jsi: 57.1.2` override in `package.json`, allowing `expo-modules-core` to resolve its native matching version `~58.0.20`.
+    - Ran `npx expo prebuild --platform android --clean` for Continuous Native Generation with Gradle 9.4.1.
+  - **Quality Gates**:
+    - `npx expo-doctor`: 20/20 checks passed with zero issues.
+    - `npx tsc --noEmit`: 0 TypeScript errors across the entire codebase.
+    - `npx jest --passWithNoTests`: passed with code 0.
+
 - **Release v1.1.1 & Expo Go Startup Crash Hotfix** 🩹 📌 📱 🛡️ ✨ ✅:
   - **Expo Go Startup Crash Hotfix**:
     - Restored `isRunningInExpoGo() && Platform.OS === 'android'` guard in `src/services/notification.service.ts:getNotificationsModule()` to avoid executing native `expo-notifications` APIs that are stripped from Expo Go on Android.

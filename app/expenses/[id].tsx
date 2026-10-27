@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  type ScrollViewInstance,
   TouchableOpacity,
   TextInput,
   Image,
@@ -134,7 +135,7 @@ export default function ExpenseDetailScreen() {
   // Receipt Modal State
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const fetchExpense = async () => {
     try {

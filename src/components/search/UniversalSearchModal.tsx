@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Modal,
   TextInput,
+  type TextInputInstance,
   TouchableOpacity,
   ScrollView,
   Image,
@@ -73,7 +74,7 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
   const insets = useSafeAreaInsets();
   const { formatCurrency } = useCurrency();
   const { currentAccent } = useAppTheme();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<SearchCategory>('all');

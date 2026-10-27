@@ -8,6 +8,7 @@ import {
   Image,
   Modal,
   ScrollView,
+  type ScrollViewInstance,
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
@@ -69,7 +70,7 @@ export function PayerSelectModal({
   const { currencySymbol } = useCurrency();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const horizontalScrollRef = useRef<ScrollView>(null);
+  const horizontalScrollRef = useRef<ScrollViewInstance>(null);
   const tabUnderlineAnim = useRef(new Animated.Value(0)).current;
 
   const [payerType, setPayerType] = useState<'single' | 'multiple'>(initialPayerType);

@@ -8,6 +8,7 @@ import {
   Image,
   Modal,
   ScrollView,
+  type ScrollViewInstance,
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
@@ -97,7 +98,7 @@ export function SplitOptionsModal({
   const { currencySymbol } = useCurrency();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const horizontalScrollRef = useRef<ScrollView>(null);
+  const horizontalScrollRef = useRef<ScrollViewInstance>(null);
 
   // Normalize legacy 'shares' / 'percentage'
   const normalizedInitialType: SplitType =

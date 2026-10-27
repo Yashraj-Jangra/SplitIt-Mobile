@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  type ScrollViewInstance,
   TouchableOpacity,
   TextInput,
   Image,
@@ -106,7 +107,7 @@ export default function SettlementDetailScreen() {
   const [cachedUserId, setCachedUserId] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   useEffect(() => {
     if (!user?.id) {

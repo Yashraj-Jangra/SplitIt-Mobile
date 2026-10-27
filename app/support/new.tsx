@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
@@ -82,7 +83,7 @@ export default function NewSupportTicketModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { currentAccent } = useAppTheme();
-  const messageInputRef = useRef<TextInput>(null);
+  const messageInputRef = useRef<TextInputInstance>(null);
 
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState<TicketCategory>('billing');

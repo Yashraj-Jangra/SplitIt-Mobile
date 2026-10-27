@@ -8,15 +8,6 @@
     "scheme": "splitit",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#131417",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#131417"
-    },
-    "notification": {
-      "icon": "./assets/android-icon-monochrome.png",
-      "color": "#00C4CC"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.splitit.app",
@@ -100,7 +91,17 @@
           "color": "#00C4CC"
         }
       ],
-      "./plugins/withPredictiveBack"
+      "./plugins/withPredictiveBack",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#131417"
+        }
+      ]
     ],
     "extra": {
       "apiUrl": "https://split.cvweb.qzz.io",

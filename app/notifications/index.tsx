@@ -7,9 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
-  Animated,
 } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
@@ -851,7 +850,7 @@ function NotificationItemRow({
   onPress,
   onMarkRead,
 }: NotificationItemRowProps) {
-  const swipeableRef = useRef<Swipeable | null>(null);
+  const swipeableRef = useRef<SwipeableMethods | null>(null);
   const isRead =
     notification.isRead !== undefined
       ? !!notification.isRead
@@ -867,7 +866,7 @@ function NotificationItemRow({
   const initials = actor ? getInitials(actor.firstName, actor.lastName) : '';
   const messageBody = notification.body || notification.message || '';
 
-  const handleSwipeOpen = (direction: 'left' | 'right') => {
+  const handleSwipeOpen = () => {
     haptics.saveSuccess();
     onMarkRead();
     setTimeout(() => {
@@ -875,22 +874,7 @@ function NotificationItemRow({
     }, 200);
   };
 
-  const renderSwipeAction = (
-    dragX: Animated.AnimatedInterpolation<number>,
-    direction: 'left' | 'right'
-  ) => {
-    const trans = dragX.interpolate({
-      inputRange: direction === 'left' ? [0, 80] : [-80, 0],
-      outputRange: direction === 'left' ? [-16, 0] : [0, 16],
-      extrapolate: 'clamp',
-    });
-
-    const opacity = dragX.interpolate({
-      inputRange: direction === 'left' ? [0, 25, 70] : [-70, -25, 0],
-      outputRange: direction === 'left' ? [0, 0.5, 1] : [1, 0.5, 0],
-      extrapolate: 'clamp',
-    });
-
+  const renderSwipeAction = (direction: 'left' | 'right') => {
     return (
       <View
         style={[
@@ -899,34 +883,26 @@ function NotificationItemRow({
           { backgroundColor: accentColor },
         ]}
       >
-        <Animated.View
-          style={[
-            styles.swipeActionContent,
-            {
-              transform: [{ translateX: trans }],
-              opacity,
-            },
-          ]}
-        >
+        <View style={styles.swipeActionContent}>
           <CheckCheck size={20} color={THEME.colors.primaryForeground} />
           <Text style={[styles.swipeActionText, { color: THEME.colors.primaryForeground }]}>
             Mark Read
           </Text>
-        </Animated.View>
+        </View>
       </View>
     );
   };
 
   return (
-    <Swipeable
+    <ReanimatedSwipeable
       ref={swipeableRef}
       friction={1.5}
       leftThreshold={60}
       rightThreshold={60}
       overshootLeft={false}
       overshootRight={false}
-      renderLeftActions={(_progress, dragX) => renderSwipeAction(dragX, 'left')}
-      renderRightActions={(_progress, dragX) => renderSwipeAction(dragX, 'right')}
+      renderLeftActions={() => renderSwipeAction('left')}
+      renderRightActions={() => renderSwipeAction('right')}
       onSwipeableOpen={handleSwipeOpen}
       containerStyle={styles.swipeableContainer}
     >
@@ -996,7 +972,7 @@ function NotificationItemRow({
           </View>
         )}
       </TouchableOpacity>
-    </Swipeable>
+    </ReanimatedSwipeable>
   );
 }
 
