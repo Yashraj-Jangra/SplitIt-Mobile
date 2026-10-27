@@ -1,5 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Release v1.1.1 & Expo Go Startup Crash Hotfix** 🩹 📌 📱 🛡️ ✨ ✅:
+  - **Expo Go Startup Crash Hotfix**:
+    - Restored `isRunningInExpoGo() && Platform.OS === 'android'` guard in `src/services/notification.service.ts:getNotificationsModule()` to avoid executing native `expo-notifications` APIs that are stripped from Expo Go on Android.
+    - Added null-safe chaining `sub?.remove?.()` for notification subscription teardown in `app/_layout.tsx`.
+  - **Version Bump & Manifest Sync**:
+    - Synchronized version `1.1.1` across `package.json`, `app.json`, and `android/app/build.gradle` (`versionCode 3`).
+    - Updated `CHANGELOG.md` with full `[1.1.1]` release highlights.
+    - Staged standalone release build artifact `SplitIt-v1.1.1.apk` (120.6 MB) in root directory.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with code 0.
+
 - **Screen Transitions, Android 14+ Predictive Back, and In-Group Tab Sliding Redesign** 🎨 📱 ⚡ 🚀 ✅:
   - **Android 14+ Predictive Back Integration**:
     - Created Expo Config Plugin `plugins/withPredictiveBack.js` using `@expo/config-plugins` to automatically inject `android:enableOnBackInvokedCallback="true"` into the AndroidManifest `<application>` during CNG prebuilds.

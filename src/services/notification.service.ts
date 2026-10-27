@@ -16,6 +16,13 @@ function getNotificationsModule(): typeof NotificationsType | null {
   if (cachedNotificationsModule !== undefined) {
     return cachedNotificationsModule;
   }
+  // Expo Go on Android has removed expo-notifications native code since SDK 51/53.
+  // Accessing it in Expo Go causes an immediate fatal crash on launch.
+  // Native development builds (npx expo run:android or standalone APKs) retain full support.
+  if (isRunningInExpoGo() && Platform.OS === 'android') {
+    cachedNotificationsModule = null;
+    return null;
+  }
   try {
     const mod = require('expo-notifications') as typeof NotificationsType;
     cachedNotificationsModule = mod;

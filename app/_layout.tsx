@@ -60,7 +60,7 @@ function NavigationGate() {
       router.push(route as any);
     });
     return () => {
-      sub.remove();
+      sub?.remove?.();
     };
   }, [user, router]);
 

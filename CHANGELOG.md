@@ -4,6 +4,28 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-28
+
+### ✨ Features
+- **Android 14+ Predictive Back Gesture Navigation**:
+  - Injected `android:enableOnBackInvokedCallback="true"` via native manifest and automated Expo Config Plugin (`plugins/withPredictiveBack.js`).
+  - Enables fluid, progressive edge-to-edge predictive back peek views and transitions.
+- **Native Spatial Screen Transitions**:
+  - Replaced legacy Android fade cross-cuts with hardware-accelerated horizontal spatial sliding (`slide_from_right`) across root stack and all content screens.
+  - Upgraded action modals to native bottom-sheet sliding (`slide_from_bottom`) with swipe-to-dismiss gesture support.
+  - Preserved transparent bottom-sheet modal architecture on `expenses/new`.
+- **Directional Horizontal In-Group Tab Sliding**:
+  - Redesigned in-group tab transitions (`Activity`, `Balances`, `Budget`, `Logs`, `Analysis`) with direction-aware horizontal spring translations (`tabSlideAnim`) synchronized with the tab bar pill indicator.
+- **Homepage AI Assistant Quick Access**:
+  - Added dedicated AI Financial Assistant button in the homepage header strip directly adjacent to search.
+- **Android 13+ Categorized Notification Channels**:
+  - Introduced 7 high-priority system channels with custom LED lights, importance levels, and vibration patterns.
+
+### 🐛 Bug Fixes
+- **Expo Go Startup Crash Prevention**:
+  - Restored strict runtime environment guard for `expo-notifications` on Android when executed within Expo Go to prevent fatal native module missing exceptions on app launch.
+  - Hardened notification subscription cleanup with null-safe chaining (`sub?.remove?.()`).
+
 ---
 
 ## [1.1.0] - 2026-10-17
