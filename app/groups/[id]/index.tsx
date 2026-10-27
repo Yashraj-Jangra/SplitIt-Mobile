@@ -353,7 +353,10 @@ export default function GroupDetailScreen() {
     });
   };
 
+  const isArchived = Boolean(group?.archived || (group as any)?.archivedAt);
+
   const handleAddExpense = () => {
+    if (isArchived) return;
     haptics.confirm();
 
     // Spring trigger on FAB: slight scale pulse & 45deg rotation
@@ -1308,29 +1311,37 @@ export default function GroupDetailScreen() {
           </View>
 
           <View style={styles.heroActionButtons}>
-            <TouchableOpacity
-              style={[styles.heroAddBtn, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
-              onPress={handleAddExpense}
-              activeOpacity={0.85}
-            >
-              <Plus size={14} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-              <Text style={styles.heroAddBtnText}>Add</Text>
-            </TouchableOpacity>
+            {isArchived ? (
+              <View style={styles.archivedPill}>
+                <Text style={styles.archivedPillText}>Archived</Text>
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={[styles.heroAddBtn, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
+                  onPress={handleAddExpense}
+                  activeOpacity={0.85}
+                >
+                  <Plus size={14} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
+                  <Text style={styles.heroAddBtnText}>Add</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.heroSettleBtn}
-              onPress={() => {
-                haptics.tap();
-                router.push({
-                  pathname: '/settle/new',
-                  params: { groupId: group.id, defaultDebtorId: 'u2', defaultCreditorId: 'u1' },
-                });
-              }}
-              activeOpacity={0.85}
-            >
-              <Handshake size={14} color={THEME.colors.text} />
-              <Text style={styles.heroSettleBtnText}>Settle</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.heroSettleBtn}
+                  onPress={() => {
+                    haptics.tap();
+                    router.push({
+                      pathname: '/settle/new',
+                      params: { groupId: group.id, defaultDebtorId: 'u2', defaultCreditorId: 'u1' },
+                    });
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Handshake size={14} color={THEME.colors.text} />
+                  <Text style={styles.heroSettleBtnText}>Settle</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </Animated.View>
       </Animated.View>
@@ -1420,68 +1431,70 @@ export default function GroupDetailScreen() {
       </Animated.View>
 
       {/* Floating Add Expense Action Button (Smooth spring fade & scale + app-launch burst) */}
-      <Animated.View
-        pointerEvents={activeTab === 'expenses' ? 'auto' : 'none'}
-        style={[
-          styles.fabContainer,
-          {
-            bottom: Math.max(insets.bottom, 16) + 16,
-            opacity: fabAnim,
-            transform: [{ scale: fabAnim }],
-          },
-        ]}
-      >
-        {/* Expanding emerald pulse aura on tap */}
+      {!isArchived && (
         <Animated.View
-          pointerEvents="none"
+          pointerEvents={activeTab === 'expenses' ? 'auto' : 'none'}
           style={[
-            styles.fabPulseRing,
+            styles.fabContainer,
             {
-              backgroundColor: currentAccent.primary,
-              transform: [
-                {
-                  scale: fabPressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 2.2],
-                  }),
-                },
-              ],
-              opacity: fabPressAnim.interpolate({
-                inputRange: [0, 0.2, 1],
-                outputRange: [0, 0.45, 0],
-              }),
+              bottom: Math.max(insets.bottom, 16) + 16,
+              opacity: fabAnim,
+              transform: [{ scale: fabAnim }],
             },
           ]}
-        />
-        <TouchableOpacity
-          ref={fabButtonRef}
-          onLayout={onFabLayout}
-          style={[styles.fab, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
-          onPress={handleAddExpense}
-          activeOpacity={0.85}
         >
+          {/* Expanding emerald pulse aura on tap */}
           <Animated.View
-            style={{
-              transform: [
-                {
-                  rotate: fabPressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '45deg'],
-                  }),
-                },
-                {
-                  scale: fabPressAnim.interpolate({
-                    inputRange: [0, 0.4, 1],
-                    outputRange: [1, 0.88, 1.05],
-                  }),
-                },
-              ],
-            }}
+            pointerEvents="none"
+            style={[
+              styles.fabPulseRing,
+              {
+                backgroundColor: currentAccent.primary,
+                transform: [
+                  {
+                    scale: fabPressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 2.2],
+                    }),
+                  },
+                ],
+                opacity: fabPressAnim.interpolate({
+                  inputRange: [0, 0.2, 1],
+                  outputRange: [0, 0.45, 0],
+                }),
+              },
+            ]}
+          />
+          <TouchableOpacity
+            ref={fabButtonRef}
+            onLayout={onFabLayout}
+            style={[styles.fab, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
+            onPress={handleAddExpense}
+            activeOpacity={0.85}
           >
-            <Plus size={22} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-          </Animated.View>
-        </TouchableOpacity>
-      </Animated.View>
+            <Animated.View
+              style={{
+                transform: [
+                  {
+                    rotate: fabPressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '45deg'],
+                    }),
+                  },
+                  {
+                    scale: fabPressAnim.interpolate({
+                      inputRange: [0, 0.4, 1],
+                      outputRange: [1, 0.88, 1.05],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <Plus size={22} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
       {/* Change Cover Modal (Admin-configurable presets) */}
       <BottomSheetModal
@@ -1645,6 +1658,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  archivedPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  archivedPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   heroAddBtn: {
     flexDirection: 'row',

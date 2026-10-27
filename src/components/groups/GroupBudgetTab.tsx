@@ -51,6 +51,8 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
     return calculateGroupBudgetStats(group, expenses, selectedDate);
   }, [group, expenses, selectedDate]);
 
+  const isArchived = Boolean(group.archived || group.archivedAt);
+
   const handlePrevMonth = useCallback(() => {
     haptics.tap();
     setSelectedDate((prev) => {
@@ -178,19 +180,21 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
           )}
         </View>
 
-        <TouchableOpacity
-          style={styles.setBudgetBtn}
-          onPress={() => {
-            haptics.tap();
-            setModalVisible(true);
-          }}
-          activeOpacity={0.8}
-        >
-          <Sliders size={13} color={currentAccent.primary} />
-          <Text style={[styles.setBudgetBtnText, { color: currentAccent.primary }]}>
-            {stats.hasBudget ? 'Edit Budget' : 'Set Budget'}
-          </Text>
-        </TouchableOpacity>
+        {!isArchived && (
+          <TouchableOpacity
+            style={styles.setBudgetBtn}
+            onPress={() => {
+              haptics.tap();
+              setModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Sliders size={13} color={currentAccent.primary} />
+            <Text style={[styles.setBudgetBtnText, { color: currentAccent.primary }]}>
+              {stats.hasBudget ? 'Edit Budget' : 'Set Budget'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* STATE 1: No Budget Configured */}
@@ -204,19 +208,27 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
             Set a monthly spending limit for {group.name} to track shared expenditures, safe daily burn rates, and pacing recommendations.
           </Text>
 
-          <TouchableOpacity
-            style={[styles.emptyCtaBtn, { backgroundColor: currentAccent.primary }]}
-            onPress={() => {
-              haptics.confirm();
-              setModalVisible(true);
-            }}
-            activeOpacity={0.85}
-          >
-            <Plus size={15} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-            <Text style={styles.emptyCtaText}>
-              Set {stats.monthName} Budget
-            </Text>
-          </TouchableOpacity>
+          {!isArchived ? (
+            <TouchableOpacity
+              style={[styles.emptyCtaBtn, { backgroundColor: currentAccent.primary }]}
+              onPress={() => {
+                haptics.confirm();
+                setModalVisible(true);
+              }}
+              activeOpacity={0.85}
+            >
+              <Plus size={15} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
+              <Text style={styles.emptyCtaText}>
+                Set {stats.monthName} Budget
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.emptyCtaBtn, { backgroundColor: THEME.colors.surfaceSubtle, borderWidth: 1, borderColor: THEME.colors.border }]}>
+              <Text style={[styles.emptyCtaText, { color: THEME.colors.textMuted }]}>
+                Group is Archived
+              </Text>
+            </View>
+          )}
         </View>
       ) : (
         <>
@@ -521,16 +533,18 @@ export const GroupBudgetTab: React.FC<GroupBudgetTabProps> = ({
       )}
 
       {/* Set/Edit Budget Modal */}
-      <SetBudgetModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        groupId={group.id}
-        groupName={group.name}
-        initialBudget={group.budget}
-        onSuccess={() => {
-          onBudgetUpdated();
-        }}
-      />
+      {!isArchived && (
+        <SetBudgetModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          groupId={group.id}
+          groupName={group.name}
+          initialBudget={group.budget}
+          onSuccess={() => {
+            onBudgetUpdated();
+          }}
+        />
+      )}
     </View>
   );
 };

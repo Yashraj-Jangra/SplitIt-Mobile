@@ -1,5 +1,16 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Ecosystem Logic Hardening, Edge-Case Protection, and Archived Immutability** 🛡️ ⚡ 🗄️ ✨ ✅:
+  - **Shared Core Simplification & Balance Precision (`@splitit/core`)**:
+    - Fixed infinite loop in `simplifyDebts` (`packages/core/src/debts.ts`) on 1-penny (0.01) leftover balances by adjusting threshold to `EPSILON = 0.005`, filtering sub-penny noise, and rounding deductions down to the cent.
+    - Hardened `validateSplit` (`packages/core/src/split.ts`) to strictly reject negative numbers, `NaN`, non-finite amounts, and zero/negative share weights across multi-payer and participant splits.
+  - **Archived Group Immutability & UI Hardening**:
+    - `app/groups/[id]/index.tsx`: Added `isArchived` check. Blocked `handleAddExpense`, replaced hero "Add" and "Settle" action buttons with a clean "Archived" status pill, and hidden the floating action button (FAB) for archived groups.
+    - `src/components/groups/GroupBudgetTab.tsx`: Guarded budget operations for archived groups. Hidden "Set/Edit Budget" buttons, rendered disabled "Group is Archived" card state, and blocked `SetBudgetModal` invocation.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with code 0.
+
 - **Comprehensive Notifications, Audit Trails, and Deep-Link Parser Overhaul** 🔔 📜 🧩 📱 ✨ ✅:
   - **Push & In-App Notification Deep-Link Routing**:
     - Fixed push response listener in `src/services/notification.service.ts:setupResponseListener` which previously dropped `expenseId`, `settlementId`, `tab`, and custom URLs, blindly routing solely to `/groups/${groupId}`.
