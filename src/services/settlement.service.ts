@@ -362,7 +362,7 @@ export const settlementService = {
             if (logs.length === 0) {
               logs.push({
                 id: `log_init_${settlementId}`,
-                type: 'expense_created',
+                type: 'settlement_created',
                 actorName: payerName,
                 timestamp: rawDate.toLocaleDateString('en-IN', {
                   month: 'short',

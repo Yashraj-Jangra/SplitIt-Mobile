@@ -1,5 +1,26 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Comprehensive Notifications, Audit Trails, and Deep-Link Parser Overhaul** 🔔 📜 🧩 📱 ✨ ✅:
+  - **Push & In-App Notification Deep-Link Routing**:
+    - Fixed push response listener in `src/services/notification.service.ts:setupResponseListener` which previously dropped `expenseId`, `settlementId`, `tab`, and custom URLs, blindly routing solely to `/groups/${groupId}`.
+    - Updated `app/notifications/index.tsx:handleTapNotification` to route settlement events (`settlement_added`, `settlement_updated`, `settlement_restored`, `payment_reminder`, `payment_confirmation_request`) directly to `/settlements/${finalSettlementId}?groupId=${finalGroupId}` instead of the group root.
+    - Added deep-link routing for budget events (`budget_updated`, `budget_alert`, `budget_exceeded`) to `/groups/${finalGroupId}?tab=budget`.
+    - Added deep-link routing for monthly summaries (`monthly_summary`) to `/(tabs)/analysis` and custom notification URLs.
+  - **Notification Preferences & Schema Parity**:
+    - Synchronized all 22 notification event types between web (`SplitWise-Clone`) and mobile (`SplitIt-Mobile`) in `src/services/notification.service.ts` (`UserNotificationPreferences`, `DEFAULT_NOTIFICATION_PREFERENCES`). Added missing 5 types: `payment_confirmation_request`, `broadcast_announcement`, `broadcast_critical`, `monthly_summary`, `group_inactivity`.
+    - Hardened `app/notifications/preferences.tsx` against undefined properties on legacy or partial server preference payloads using `getEventPushValue()`. Added toggles for balance reminders, monthly digests, and announcements.
+    - Added explicit visual styling and `Wallet` icon for `balance_reminder` in `getNotificationVisuals`.
+  - **Group Audit Trail & Settlement Navigation**:
+    - Enhanced `src/components/groups/GroupHistoryTab.tsx` with settlement inspection support (`viewableSettlementId`, `onViewSettlement`, `onNavigateToSettlement`). Renders interactive arrow button on `settlement_created`, `settlement_updated`, and `settlement_restored` events.
+    - Fixed fallback audit log event type bug in `src/services/settlement.service.ts:365` and `app/settlements/[id].tsx:96` from `'expense_created'` to `'settlement_created'`.
+    - Wired `onViewSettlement` in `app/groups/[id]/index.tsx`.
+    - Enhanced `app/groups/[id]/index.tsx` to read the `tab` query param (`useLocalSearchParams<{ id: string; tab?: string }>()`), synchronizing initial tab selection, indicator animation, and dynamic updates for `?tab=budget` or `?tab=activity`.
+  - **Receipt OCR & Parser Hardening**:
+    - Hardened `src/services/ai.service.ts:scanReceipt` to accurately parse `title`, `amount` (safe floating number conversion), and automatic master category classification via `settingsService.getMasterCategory`.
+  - **Quality Gates & Discipline**:
+    - `npx tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+    - `npx jest --passWithNoTests` passed with code 0.
+
 - **Full Forensic Scan & Keyboard Avoidance Architecture Overhaul** 📱 ⌨️ 🎨 🛡️ ✨ ✅:
   - **Core Primitives & Synchronization**:
     - Created `src/hooks/useKeyboardHeight.ts`: Synchronizes native keyboard listeners (`keyboardWillShow`/`keyboardWillHide` on iOS; `keyboardDidShow`/`keyboardDidHide` on Android), tracks exact duration and height, and exposes `bottomInsetCompensation` to collapse the 34px home indicator inset when open.

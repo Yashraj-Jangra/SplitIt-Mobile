@@ -84,10 +84,15 @@ export interface UserNotificationPreferences {
     group_updated: NotificationEventPref;
     balance_reminder: NotificationEventPref;
     payment_reminder: NotificationEventPref;
+    payment_confirmation_request: NotificationEventPref;
     support_reply: NotificationEventPref;
     budget_alert: NotificationEventPref;
     budget_exceeded: NotificationEventPref;
     budget_updated: NotificationEventPref;
+    broadcast_announcement: NotificationEventPref;
+    broadcast_critical: NotificationEventPref;
+    monthly_summary: NotificationEventPref;
+    group_inactivity: NotificationEventPref;
   };
 }
 
@@ -109,10 +114,15 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
     group_updated: { inApp: true, push: true, email: false },
     balance_reminder: { inApp: true, push: true, email: true },
     payment_reminder: { inApp: true, push: true, email: true },
+    payment_confirmation_request: { inApp: true, push: true, email: true },
     support_reply: { inApp: true, push: true, email: true },
     budget_alert: { inApp: true, push: true, email: true },
     budget_exceeded: { inApp: true, push: true, email: true },
     budget_updated: { inApp: true, push: true, email: true },
+    broadcast_announcement: { inApp: true, push: true, email: false },
+    broadcast_critical: { inApp: true, push: true, email: true },
+    monthly_summary: { inApp: true, push: false, email: true },
+    group_inactivity: { inApp: true, push: true, email: true },
   },
 };
 
@@ -367,12 +377,60 @@ export const notificationService = {
         const data = response.notification.request.content.data as any;
         if (!data) return;
 
-        if (data.groupId) {
-          navigate(`/groups/${data.groupId}`);
-        } else if (data.ticketId) {
-          navigate(`/support/${data.ticketId}`);
-        } else if (data.url && typeof data.url === 'string') {
-          navigate(data.url);
+        const { type, groupId, expenseId, settlementId, ticketId, url, tab } = data;
+
+        // 1. Direct explicit URL payload
+        if (url && typeof url === 'string') {
+          navigate(url);
+          return;
+        }
+
+        // 2. Expense item view
+        if (expenseId && groupId) {
+          navigate(`/expenses/${expenseId}?groupId=${groupId}`);
+          return;
+        }
+
+        // 3. Settlement item view
+        if (settlementId && groupId) {
+          navigate(`/settlements/${settlementId}?groupId=${groupId}`);
+          return;
+        }
+
+        // 4. Budget tab view
+        if (tab === 'budget' && groupId) {
+          navigate(`/groups/${groupId}?tab=budget`);
+          return;
+        }
+        if (type === 'budget_alert' || type === 'budget_exceeded' || type === 'budget_updated') {
+          if (groupId) {
+            navigate(`/groups/${groupId}?tab=budget`);
+            return;
+          }
+        }
+
+        // 5. Monthly summary analysis
+        if (type === 'monthly_summary') {
+          navigate('/(tabs)/analysis');
+          return;
+        }
+
+        // 6. Support ticket resolution
+        if (ticketId || type === 'support_reply') {
+          navigate(ticketId ? `/support/${ticketId}` : '/support');
+          return;
+        }
+
+        // 7. Group landing view
+        if (groupId) {
+          navigate(`/groups/${groupId}`);
+          return;
+        }
+
+        // 8. System broadcast announcements
+        if (type === 'broadcast_announcement' || type === 'broadcast_critical') {
+          navigate('/notifications');
+          return;
         }
       });
     } catch {

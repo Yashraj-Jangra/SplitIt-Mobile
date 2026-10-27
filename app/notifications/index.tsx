@@ -101,7 +101,14 @@ export default function NotificationsCenterScreen() {
     const { type, groupId, expenseId, settlementId, data } = item;
     const finalGroupId = groupId || data?.groupId;
     const finalExpenseId = expenseId || data?.expenseId;
+    const finalSettlementId = settlementId || data?.settlementId;
     const finalTicketId = data?.ticketId;
+    const finalUrl = data?.url;
+
+    if (finalUrl && typeof finalUrl === 'string') {
+      router.push(finalUrl as any);
+      return;
+    }
 
     switch (type) {
       case 'expense_added':
@@ -115,26 +122,51 @@ export default function NotificationsCenterScreen() {
         break;
 
       case 'expense_deleted':
-      case 'settlement_added':
-      case 'settlement_updated':
-      case 'settlement_deleted':
-      case 'settlement_restored':
-      case 'group_updated':
-      case 'budget_updated':
-      case 'member_added':
-      case 'member_removed':
-      case 'balance_reminder':
-      case 'group_inactivity':
-      case 'budget_alert':
-      case 'budget_exceeded':
         if (finalGroupId) {
           router.push(`/groups/${finalGroupId}`);
         }
         break;
 
+      case 'settlement_added':
+      case 'settlement_updated':
+      case 'settlement_restored':
+        if (finalSettlementId && finalGroupId) {
+          router.push({
+            pathname: '/settlements/[id]',
+            params: { id: finalSettlementId, groupId: finalGroupId },
+          } as any);
+        } else if (finalGroupId) {
+          router.push(`/groups/${finalGroupId}`);
+        }
+        break;
+
+      case 'settlement_deleted':
+      case 'group_updated':
+      case 'member_added':
+      case 'member_removed':
+      case 'balance_reminder':
+      case 'group_inactivity':
+        if (finalGroupId) {
+          router.push(`/groups/${finalGroupId}`);
+        }
+        break;
+
+      case 'budget_updated':
+      case 'budget_alert':
+      case 'budget_exceeded':
+        if (finalGroupId) {
+          router.push(`/groups/${finalGroupId}?tab=budget`);
+        }
+        break;
+
       case 'payment_reminder':
       case 'payment_confirmation_request':
-        if (finalGroupId) {
+        if (finalSettlementId && finalGroupId) {
+          router.push({
+            pathname: '/settlements/[id]',
+            params: { id: finalSettlementId, groupId: finalGroupId },
+          } as any);
+        } else if (finalGroupId) {
           router.push(`/groups/${finalGroupId}`);
         }
         break;
@@ -148,6 +180,9 @@ export default function NotificationsCenterScreen() {
         break;
 
       case 'monthly_summary':
+        router.push('/(tabs)/analysis' as any);
+        break;
+
       case 'broadcast_announcement':
       case 'broadcast_critical':
       default:
@@ -605,6 +640,7 @@ function getNotificationVisuals(type: string, isRead: boolean, accentColor: stri
       accentBorderColor = THEME.colors.notification.member;
       break;
 
+    case 'balance_reminder':
     case 'payment_reminder':
     case 'payment_confirmation_request':
       Icon = Wallet;

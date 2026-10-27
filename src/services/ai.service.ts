@@ -1,6 +1,7 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 import { authService } from './auth.service';
 import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
+import { settingsService } from './settings.service';
 
 export interface BudgetProposalCategoryChange {
   name: string;
@@ -197,15 +198,25 @@ export const aiService = {
 
         if (ocrRes.ok) {
           const result = await ocrRes.json();
+          const parsedAmount =
+            typeof result.amount === 'number' && !isNaN(result.amount)
+              ? result.amount
+              : parseFloat(result.totalAmount || result.amount || '0') || 1850;
+          const detectedTitle =
+            result.title || result.merchantName || result.description || 'Receipt Expense';
+          const detectedSub = result.category || result.subCategory || 'Dining Out';
+          const detectedMaster =
+            result.masterCategory || settingsService.getMasterCategory(detectedSub);
+
           return {
-            amount: result.totalAmount || result.amount || 1850,
-            description: result.merchantName || result.description || 'Receipt Expense',
+            amount: parsedAmount,
+            description: detectedTitle,
             date: result.date || new Date().toISOString().split('T')[0],
             category: {
-              master: result.masterCategory || 'Food and Drink',
-              sub: result.subCategory || 'Dining Out',
+              master: detectedMaster,
+              sub: detectedSub,
             },
-            merchant: result.merchantName,
+            merchant: result.title || result.merchantName,
             imageUrl: url,
           };
         }

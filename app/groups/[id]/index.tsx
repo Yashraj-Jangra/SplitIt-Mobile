@@ -114,8 +114,10 @@ function getTimelineTimestamp(rawDate?: string, dateStr?: string): number {
 
 export default function GroupDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
+  const requestedTab = (tab && TABS.includes(tab as TabType)) ? (tab as TabType) : null;
+  const initialTab: TabType = requestedTab || 'expenses';
 
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, 24);
@@ -129,13 +131,13 @@ export default function GroupDetailScreen() {
   const { currentAccent } = useAppTheme();
   const currentUserId = user?.id || 'u1';
   const [group, setGroup] = useState<GroupDetailData | null>(() => groupService.getInMemoryGroupDetail(targetId));
-  const [activeTab, setActiveTab] = useState<TabType>('expenses');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [visitedTabs, setVisitedTabs] = useState<Record<TabType, boolean>>({
     expenses: true,
-    balances: false,
-    budget: false,
-    activity: false,
-    analysis: false,
+    balances: initialTab === 'balances',
+    budget: initialTab === 'budget',
+    activity: initialTab === 'activity',
+    analysis: initialTab === 'analysis',
   });
   const [isSimplified, setIsSimplified] = useState(false);
   const [loading, setLoading] = useState(!group);
@@ -245,16 +247,16 @@ export default function GroupDetailScreen() {
       setLoading(true);
     }
 
-    setVisitedTabs({
+    const destTab: TabType = requestedTab || 'expenses';
+    const destTabIndex = TABS.indexOf(destTab);
+    setVisitedTabs((prev) => ({
+      ...prev,
       expenses: true,
-      balances: false,
-      budget: false,
-      activity: false,
-      analysis: false,
-    });
-    setActiveTab('expenses');
+      [destTab]: true,
+    }));
+    setActiveTab(destTab);
     setActivityFilter('all');
-    tabIndicatorAnim.setValue(0);
+    tabIndicatorAnim.setValue(destTabIndex >= 0 ? destTabIndex : 0);
     tabContentAnim.setValue(1);
     setVisibleExpenseCount(PAGE_SIZE);
     setVisibleActivityCount(PAGE_SIZE);
@@ -267,7 +269,14 @@ export default function GroupDetailScreen() {
       }
     });
     loadGroup();
-  }, [targetId]);
+  }, [targetId, requestedTab]);
+
+  // Deep-link tab sync if tab parameter changes while screen is focused
+  useEffect(() => {
+    if (requestedTab && requestedTab !== activeTab) {
+      handleTabChange(requestedTab);
+    }
+  }, [requestedTab]);
 
   // Auto-refresh when navigating back to screen (e.g. from Add Expense, Settle Up, Group Settings)
   useFocusEffect(
@@ -1219,6 +1228,12 @@ export default function GroupDetailScreen() {
                 router.push({
                   pathname: '/expenses/[id]',
                   params: { id: expenseId, groupId: targetId },
+                });
+              }}
+              onViewSettlement={(settlementId) => {
+                router.push({
+                  pathname: '/settlements/[id]',
+                  params: { id: settlementId, groupId: targetId },
                 });
               }}
             />

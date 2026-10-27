@@ -93,7 +93,7 @@ export default function SettlementDetailScreen() {
       logs: [
         {
           id: `init_${settlementId}`,
-          type: 'expense_created',
+          type: 'settlement_created',
           actorName: params.payerName || 'Member',
           timestamp: params.date || 'Today',
           timeAgo: 'Recorded',

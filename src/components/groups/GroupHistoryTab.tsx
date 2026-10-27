@@ -45,6 +45,7 @@ interface GroupHistoryTabProps {
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
   onViewExpense?: (expenseId: string) => void;
+  onViewSettlement?: (settlementId: string) => void;
   onRefresh?: () => void;
 }
 
@@ -232,6 +233,7 @@ interface HistoryEventRowProps {
   onRestore: (event: HistoryEventItem) => void;
   onDelete: (event: HistoryEventItem) => void;
   onNavigateToExpense: (expenseId: string) => void;
+  onNavigateToSettlement: (settlementId: string) => void;
 }
 
 const HistoryEventRow = React.memo(function HistoryEventRow({
@@ -246,6 +248,7 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
   onRestore,
   onDelete,
   onNavigateToExpense,
+  onNavigateToSettlement,
 }: HistoryEventRowProps) {
   const { currencySymbol } = useCurrency();
   const isAiBudget =
@@ -267,8 +270,23 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
   } else if (event.eventType === 'expense_restored' && event.data?.newExpenseId) {
     viewableExpenseId = event.data.newExpenseId;
   }
+
+  let viewableSettlementId: string | null = null;
+  if (
+    (event.eventType === 'settlement_created' || event.eventType === 'settlement_updated') &&
+    event.data?.settlementId
+  ) {
+    viewableSettlementId = event.data.settlementId;
+  } else if (
+    event.eventType === 'settlement_restored' &&
+    (event.data?.newSettlementId || event.data?.settlementId)
+  ) {
+    viewableSettlementId = event.data?.newSettlementId || event.data?.settlementId;
+  }
+
   if (isDeleted) {
     viewableExpenseId = null;
+    viewableSettlementId = null;
   }
 
   const canRestore =
@@ -333,6 +351,22 @@ const HistoryEventRow = React.memo(function HistoryEventRow({
               onPress={() => onNavigateToExpense(viewableExpenseId!)}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="View expense details"
+            >
+              <ArrowRight size={15} color={THEME.colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+
+          {/* Take There / View Settlement Button */}
+          {viewableSettlementId && (
+            <TouchableOpacity
+              style={styles.iconActionBtn}
+              onPress={() => onNavigateToSettlement(viewableSettlementId!)}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="View settlement details"
             >
               <ArrowRight size={15} color={THEME.colors.textSecondary} />
             </TouchableOpacity>
@@ -440,6 +474,7 @@ export function GroupHistoryTab({
   isLoadingMore = false,
   onLoadMore,
   onViewExpense,
+  onViewSettlement,
   onRefresh,
 }: GroupHistoryTabProps) {
   const router = useRouter();
@@ -559,6 +594,18 @@ export function GroupHistoryTab({
     }
   }, [onViewExpense, router, groupId]);
 
+  const handleNavigateToSettlement = useCallback((settlementId: string) => {
+    haptics.tap();
+    if (onViewSettlement) {
+      onViewSettlement(settlementId);
+    } else {
+      router.push({
+        pathname: '/settlements/[id]',
+        params: { id: settlementId, groupId },
+      });
+    }
+  }, [onViewSettlement, router, groupId]);
+
   const visibleEvents = useMemo(
     () => history.slice(0, visibleCount ?? history.length),
     [history, visibleCount]
@@ -614,6 +661,7 @@ export function GroupHistoryTab({
                   onRestore={handleRestore}
                   onDelete={handleDelete}
                   onNavigateToExpense={handleNavigateToExpense}
+                  onNavigateToSettlement={handleNavigateToSettlement}
                 />
               );
             })}

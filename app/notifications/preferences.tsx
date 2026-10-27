@@ -56,11 +56,13 @@ export default function NotificationPreferencesScreen() {
   };
 
   const toggleEventPush = (eventKey: keyof UserNotificationPreferences['events']) => {
-    const current = prefs.events[eventKey] || { inApp: true, push: true, email: false };
+    const current =
+      prefs.events?.[eventKey] ||
+      DEFAULT_NOTIFICATION_PREFERENCES.events[eventKey] || { inApp: true, push: true, email: false };
     const updated: UserNotificationPreferences = {
       ...prefs,
       events: {
-        ...prefs.events,
+        ...(prefs.events || DEFAULT_NOTIFICATION_PREFERENCES.events),
         [eventKey]: {
           ...current,
           push: !current.push,
@@ -68,6 +70,14 @@ export default function NotificationPreferencesScreen() {
       },
     };
     triggerSave(updated);
+  };
+
+  const getEventPushValue = (eventKey: keyof UserNotificationPreferences['events']): boolean => {
+    return (
+      prefs.events?.[eventKey]?.push ??
+      DEFAULT_NOTIFICATION_PREFERENCES.events[eventKey]?.push ??
+      true
+    );
   };
 
   return (
@@ -166,7 +176,7 @@ export default function NotificationPreferencesScreen() {
                   <Text style={styles.rowSubtitle}>When someone splits a new bill</Text>
                 </View>
                 <Switch
-                  value={prefs.events.expense_added.push}
+                  value={getEventPushValue('expense_added')}
                   onValueChange={() => toggleEventPush('expense_added')}
                   trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
                   thumbColor={THEME.colors.palette.white}
@@ -179,7 +189,7 @@ export default function NotificationPreferencesScreen() {
                   <Text style={styles.rowSubtitle}>When splits or amounts change</Text>
                 </View>
                 <Switch
-                  value={prefs.events.expense_updated.push}
+                  value={getEventPushValue('expense_updated')}
                   onValueChange={() => toggleEventPush('expense_updated')}
                   trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
                   thumbColor={THEME.colors.palette.white}
@@ -197,7 +207,7 @@ export default function NotificationPreferencesScreen() {
                   <Text style={styles.rowSubtitle}>When a member pays or clears balance</Text>
                 </View>
                 <Switch
-                  value={prefs.events.settlement_added.push}
+                  value={getEventPushValue('settlement_added')}
                   onValueChange={() => toggleEventPush('settlement_added')}
                   trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
                   thumbColor={THEME.colors.palette.white}
@@ -210,8 +220,21 @@ export default function NotificationPreferencesScreen() {
                   <Text style={styles.rowSubtitle}>Friendly reminder for pending debts</Text>
                 </View>
                 <Switch
-                  value={prefs.events.payment_reminder.push}
+                  value={getEventPushValue('payment_reminder')}
                   onValueChange={() => toggleEventPush('payment_reminder')}
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
+                />
+              </View>
+
+              <View style={[styles.row, styles.borderTop]}>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>Balance & Settle-up Requests</Text>
+                  <Text style={styles.rowSubtitle}>Payment confirmations and balance alerts</Text>
+                </View>
+                <Switch
+                  value={getEventPushValue('balance_reminder')}
+                  onValueChange={() => toggleEventPush('balance_reminder')}
                   trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
                   thumbColor={THEME.colors.palette.white}
                 />
@@ -228,7 +251,7 @@ export default function NotificationPreferencesScreen() {
                   <Text style={styles.rowSubtitle}>Alert when spend reaches 70% threshold</Text>
                 </View>
                 <Switch
-                  value={prefs.events.budget_alert.push}
+                  value={getEventPushValue('budget_alert')}
                   onValueChange={() => toggleEventPush('budget_alert')}
                   trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
                   thumbColor={THEME.colors.palette.white}
@@ -241,8 +264,21 @@ export default function NotificationPreferencesScreen() {
                   <Text style={styles.rowSubtitle}>When category limit is breached</Text>
                 </View>
                 <Switch
-                  value={prefs.events.budget_exceeded.push}
+                  value={getEventPushValue('budget_exceeded')}
                   onValueChange={() => toggleEventPush('budget_exceeded')}
+                  trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
+                  thumbColor={THEME.colors.palette.white}
+                />
+              </View>
+
+              <View style={[styles.row, styles.borderTop]}>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>Monthly Spend Summaries</Text>
+                  <Text style={styles.rowSubtitle}>Insights on monthly spending trends</Text>
+                </View>
+                <Switch
+                  value={getEventPushValue('monthly_summary')}
+                  onValueChange={() => toggleEventPush('monthly_summary')}
                   trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
                   thumbColor={THEME.colors.palette.white}
                 />
@@ -254,7 +290,7 @@ export default function NotificationPreferencesScreen() {
                   <Text style={styles.rowSubtitle}>Updates on your support tickets</Text>
                 </View>
                 <Switch
-                  value={prefs.events.support_reply.push}
+                  value={getEventPushValue('support_reply')}
                   onValueChange={() => toggleEventPush('support_reply')}
                   trackColor={{ false: THEME.colors.surfaceElevated, true: THEME.colors.primary }}
                   thumbColor={THEME.colors.palette.white}
