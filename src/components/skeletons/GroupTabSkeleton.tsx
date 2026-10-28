@@ -223,9 +223,8 @@ export function GroupTabSkeleton({
               <Animated.View style={[styles.iconSquareSmall, { opacity: pulse }]} />
               <Animated.View style={[styles.activityTitleLine, { opacity: pulse }]} />
             </View>
-            <Animated.View style={[styles.segmentedTrackSkeleton, { opacity: pulse }]} />
           </View>
-          <View style={styles.ledgerStream}>
+          <View style={styles.activityCard}>
             <ActivityTabSkeleton />
           </View>
         </View>
@@ -456,7 +455,6 @@ const styles = StyleSheet.create({
   // Activity
   activityFilterBarSkeleton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 4,
     marginBottom: 2,
@@ -473,11 +471,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  segmentedTrackSkeleton: {
-    width: 140,
-    height: 28,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  activityCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    overflow: 'hidden',
   },
   activityList: {
     backgroundColor: THEME.colors.surface,
@@ -487,12 +486,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingVertical: 12,
   },
   activityIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 24,
+    height: 24,
+    borderRadius: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   activityTextCol: {

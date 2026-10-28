@@ -1,5 +1,12 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Reverted Audit Logs List Items to Original Style & Removed Type Filters** 🎨 🧹 📱 ✅:
+  - Preserved the clean section header text ("Audit Logs" with active theme accent icon) matching other tabs.
+  - Removed the unnecessary expense and settlement filter segmented track from the logs tab.
+  - Restored list items and icon slots to their exact original design (15px event icons, standard 24px icon slots, compact margins/padding, and original empty state).
+  - Aligned `GroupTabSkeleton` to mirror the simplified header and original card item layout.
+  - Quality Gates: `npx tsc --noEmit` verified with 0 errors across the entire codebase.
+
 - **Software Mansion Native Keyboard Handling Overhaul (`react-native-keyboard-controller`)** ✨ 📱 ⚡ 🚀 ✅:
   - **Root Layout Window Insets Sync (`app/_layout.tsx`)**:
     - Installed `react-native-keyboard-controller: ^1.22.9`.
