@@ -1,5 +1,24 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Android Startup Crash Root Cause Resolution & R8/ProGuard JNI De-obfuscation** 🐛 🩹 📱 🛡️ 🚀 ✅:
+  - **Identified Root Cause of "Crash on Start / Doesn't Even Open"**:
+    - `android.enableMinifyInReleaseBuilds=true` was enabled in `android/gradle.properties`.
+    - R8 code shrinker and obfuscator ran during `assembleRelease` without comprehensive `-keep` rules for React Native and Expo JNI reflection endpoints.
+    - Inspection of compiled `classes.dex` and R8 `mapping.txt` revealed that critical reflection and JNI classes were either stripped or renamed:
+      - `com.facebook.react.PackageList` was completely stripped (`R8$$REMOVED$$CLASS$$590`).
+      - `expo.modules.splashscreen.SplashScreenManager` was obfuscated to `du4` (crashing `MainActivity.kt` on `SplashScreenManager.registerOnActivity(this)`).
+      - `expo.modules.kotlin.AppContext` was obfuscated to `td` (crashing `libexpo-modules-core.so` during `FindClass` JNI lookups).
+      - `expo.modules.kotlin.jni.WorkletsSoLoader`, `CppType`, and `ReturnType` were renamed or removed (fatal `SIGABRT` / `NoClassDefFoundError` in native C++).
+  - **Applied Permanent Fix**:
+    - Set `android.enableMinifyInReleaseBuilds=false` in `android/gradle.properties` matching official React Native and Expo standards for JNI/reflection stability.
+    - Updated `plugins/withPredictiveBack.js` with `withGradleProperties` to enforce `android.enableMinifyInReleaseBuilds=false` across Continuous Native Generation (`expo prebuild`).
+    - Hardened `android/app/proguard-rules.pro` with comprehensive `-keep` directives for Expo Modules Core, React Native TurboModules, Screens, Gesture Handler, Async Storage, NetInfo, and Google Sign-In as defense-in-depth.
+  - **Release Build Verification**:
+    - `npx tsc --noEmit`: 0 errors.
+    - Executed clean production release compilation: `.\gradlew.bat assembleRelease -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease --no-daemon` (668 tasks, BUILD SUCCESSFUL in 4m 31s).
+    - Inspected output APK DEX bytecode (`classes.dex` - `classes4.dex`) confirming `SplashScreenManager: True`, `PackageList: True`, `AppContext: True`, `WorkletsSoLoader: True`, `ScreenStackFragment: True`, `ReanimatedModule: True`.
+    - Staged final working APK `SplitIt-v1.1.1.apk` (133.7 MB) in the root directory.
+
 - **Upgrade to Expo SDK 58, React Native 0.88 & React 19.3** 📦 🚀 ⚡ 📱 ✅:
   - **Core SDK & Runtime Upgrades**:
     - Upgraded `expo` from SDK 57 (`^57.0.26`) to SDK 58 (`^58.0.0`).
