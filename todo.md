@@ -18,6 +18,12 @@
     - Removed deprecated root-level `splash` and `notification` keys from `app.json`.
     - Removed stale `expo-modules-jsi: 57.1.2` override in `package.json`, allowing `expo-modules-core` to resolve its native matching version `~58.0.20`.
     - Ran `npx expo prebuild --platform android --clean` for Continuous Native Generation with Gradle 9.4.1.
+  - **Native Release Build Compilation (Expo SDK 58 & Android SDK 37)**:
+    - Installed official Android SDK Platform 37 (`platforms;android-37.0` / `android-37`) required by Expo 58 AAR dependencies (`compileSdkVersion: 37`).
+    - Upgraded Android SDK CMake Ninja builder from 1.10.2 to **1.12.1** with Windows `longPathAware` manifest support, resolving Ninja `mkdir` MAX_PATH (260 char) errors on deeply nested Reanimated 4 CSS transforms.
+    - Added `set(CMAKE_OBJECT_PATH_MAX 160)` to `react-native-reanimated/android/CMakeLists.txt`.
+    - Executed standalone production release build: `.\gradlew.bat assembleRelease -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease --no-daemon` (667 actionable tasks, BUILD SUCCESSFUL).
+    - Staged final compiled production release APK `SplitIt-v1.1.1.apk` (124.6 MB) in root directory.
   - **Quality Gates**:
     - `npx expo-doctor`: 20/20 checks passed with zero issues.
     - `npx tsc --noEmit`: 0 TypeScript errors across the entire codebase.
