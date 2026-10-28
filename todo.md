@@ -1,5 +1,12 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Fixed Keyboard Vertical Offset & Bottom Clearance in Add Expense and Modals** 🐛 📱 ⚡ ✅:
+  - Identified root cause of content and action buttons being partially obscured behind the software keyboard: nesting <KeyboardAvoidingView> inside <SafeAreaView edges={['top']}> caused relative layout calculations to subtract insets.top (~48px) from bottom padding when keyboardVerticalOffset={0}.
+  - Updated keyboardVerticalOffset to insets.top + (Platform.OS === 'ios' ? 8 : 12) in app/expenses/new.tsx and app/settle/new.tsx, compensating for the parent safe area and adding extra breathing room.
+  - Increased keyboardPaddingBottom in KeyboardStickyBottomBar to Platform.OS === 'ios' ? 12 : 14 (idle 14 : 12), ensuring the Record Expense button floats cleanly above the keyboard with no awkward clipping.
+  - Synchronized keyboardVerticalOffset={insets.top} across AI Chat (app/ai/chat.tsx), Support Ticket (app/support/[id].tsx), Expense Details (app/expenses/[id].tsx), and Settlement Details (app/settlements/[id].tsx).
+  - Quality Gates: tsc --noEmit verified with 0 errors across the entire codebase.
+
 - **Reverted Audit Logs List Items to Original Style & Removed Type Filters** 🎨 🧹 📱 ✅:
   - Preserved the clean section header text ("Audit Logs" with active theme accent icon) matching other tabs.
   - Removed the unnecessary expense and settlement filter segmented track from the logs tab.
