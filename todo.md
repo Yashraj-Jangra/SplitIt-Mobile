@@ -1,5 +1,19 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Buttery Smooth Tab Transitions & Skeleton Loading System** 🎨 ⚡ 📱 ✨ ✅:
+  - **Eliminated Tab Switching Delay & Split-Second Page Freezing (`app/(tabs)/_layout.tsx`)**:
+    - Configured `lazy: false` on the root bottom-tab navigator so all 4 main screens (`Home`, `Groups`, `Activity`, `Settings`) are pre-mounted into the native view hierarchy at startup with `detachInactiveScreens: false`.
+    - Eliminates JS-thread construct/mount stalls when navigating between tabs, ensuring instant responsive switching without frozen prior pages.
+  - **Fluid Native Tab Spatial Transitions (`app/(tabs)/_layout.tsx`)**:
+    - Added `animation: 'shift'` to `<Tabs>` screen options, introducing hardware-accelerated 150ms directional horizontal sliding and opacity cross-fading (`forShift` scene interpolator) between tabs.
+  - **Cinematic Group Card Skeletons (`src/components/skeletons/GroupCardSkeleton.tsx`, `app/(tabs)/groups.tsx`)**:
+    - Built `GroupCardSkeleton` with rhythmic pulsing shimmer matching the exact shape, height (`190px`), border radius (`24px`), top badge pill, title, subtitle, and avatar stack of `cinematicCard`.
+    - Replaced blank spinner view with 3 animated skeleton cards displayed in the native scroll stream.
+  - **Activity Feed Skeletons (`app/(tabs)/activity.tsx`)**:
+    - Replaced blank spinner box with `<TransactionRowSkeleton count={7} />` when activity entries are loading.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+
 - **Android Startup Crash Root Cause Resolution & R8/ProGuard JNI De-obfuscation** 🐛 🩹 📱 🛡️ 🚀 ✅:
   - **Identified Root Cause of "Crash on Start / Doesn't Even Open"**:
     - `android.enableMinifyInReleaseBuilds=true` was enabled in `android/gradle.properties`.

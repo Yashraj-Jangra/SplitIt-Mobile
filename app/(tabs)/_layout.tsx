@@ -14,6 +14,8 @@ export default function TabsLayout() {
       detachInactiveScreens={false}
       screenOptions={{
         headerShown: false,
+        lazy: false,
+        animation: 'shift',
         tabBarStyle: {
           backgroundColor: THEME.colors.background,
           borderTopColor: THEME.colors.hairline,

@@ -42,6 +42,7 @@ import { useCurrency } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { sortGroups, GroupSortOption } from '../../src/utils/group-sort';
+import { GroupCardSkeleton } from '../../src/components/skeletons/GroupCardSkeleton';
 
 type FilterType = 'all' | 'owed' | 'owe' | 'archived';
 
@@ -386,9 +387,12 @@ export default function GroupsScreen() {
 
       {/* Main Groups List */}
       {loading && groups.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <QuantumSpinner size={36} color={THEME.colors.primary} />
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollList}
+          showsVerticalScrollIndicator={false}
+        >
+          <GroupCardSkeleton count={3} />
+        </ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={styles.scrollList}

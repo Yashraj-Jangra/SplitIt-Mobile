@@ -33,6 +33,7 @@ import { ExpenseImpactCol } from '../../src/components/expenses/ExpenseImpactCol
 import { CategoryIcon } from '../../src/utils/category-icons';
 import { haptics } from '../../src/services/haptics.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
+import { TransactionRowSkeleton } from '../../src/components/skeletons/TransactionRowSkeleton';
 import {
   ActivityFilterModal,
   ActivityExpenseRow,
@@ -607,8 +608,8 @@ export default function ActivityScreen() {
         )}
 
         {loading && unifiedActivity.length === 0 ? (
-          <View style={styles.loadingBox}>
-            <QuantumSpinner size={28} color={THEME.colors.primary} />
+          <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+            <TransactionRowSkeleton count={7} />
           </View>
         ) : groupedActivity.length > 0 ? (
           groupedActivity.map((group) => (
