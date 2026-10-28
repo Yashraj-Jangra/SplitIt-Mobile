@@ -126,29 +126,19 @@ export function ActivityTabSkeleton() {
   const pulse = useSkeletonPulse();
 
   return (
-    <View style={styles.activityCard}>
-      <View style={styles.activityHeader}>
-        <View style={styles.activityHeaderTitleRow}>
-          <Animated.View style={[styles.iconSquareSmall, { opacity: pulse }]} />
-          <Animated.View style={[styles.activityTitleLine, { opacity: pulse }]} />
-        </View>
-        <Animated.View style={[styles.activityDescLine, { opacity: pulse }]} />
-      </View>
-
-      <View style={styles.activityList}>
-        {[1, 2, 3, 4].map((idx) => {
-          const isLast = idx === 4;
-          return (
-            <View key={idx} style={[styles.activityRow, !isLast && styles.rowBorder]}>
-              <Animated.View style={[styles.activityIconCircle, { opacity: pulse }]} />
-              <View style={styles.activityTextCol}>
-                <Animated.View style={[styles.activityEventLine, { opacity: pulse }]} />
-                <Animated.View style={[styles.activityTimeLine, { opacity: pulse }]} />
-              </View>
+    <View style={styles.activityList}>
+      {[1, 2, 3, 4].map((idx) => {
+        const isLast = idx === 4;
+        return (
+          <View key={idx} style={[styles.activityRow, !isLast && styles.rowBorder]}>
+            <Animated.View style={[styles.activityIconCircle, { opacity: pulse }]} />
+            <View style={styles.activityTextCol}>
+              <Animated.View style={[styles.activityEventLine, { opacity: pulse }]} />
+              <Animated.View style={[styles.activityTimeLine, { opacity: pulse }]} />
             </View>
-          );
-        })}
-      </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -216,6 +206,8 @@ export function GroupTabSkeleton({
 }: {
   tab: 'expenses' | 'balances' | 'budget' | 'activity' | 'analysis';
 }) {
+  const pulse = useSkeletonPulse();
+
   switch (tab) {
     case 'expenses':
       return <ExpensesTabSkeleton count={4} />;
@@ -224,7 +216,20 @@ export function GroupTabSkeleton({
     case 'budget':
       return <BudgetTabSkeleton />;
     case 'activity':
-      return <ActivityTabSkeleton />;
+      return (
+        <View style={styles.tabSectionGap}>
+          <View style={styles.activityFilterBarSkeleton}>
+            <View style={styles.activityTitleRow}>
+              <Animated.View style={[styles.iconSquareSmall, { opacity: pulse }]} />
+              <Animated.View style={[styles.activityTitleLine, { opacity: pulse }]} />
+            </View>
+            <Animated.View style={[styles.segmentedTrackSkeleton, { opacity: pulse }]} />
+          </View>
+          <View style={styles.ledgerStream}>
+            <ActivityTabSkeleton />
+          </View>
+        </View>
+      );
     case 'analysis':
       return <AnalysisTabSkeleton />;
     default:
@@ -449,48 +454,45 @@ const styles = StyleSheet.create({
   },
 
   // Activity
-  activityCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
-    borderWidth: 1,
-    borderColor: THEME.colors.hairline,
-    padding: 16,
+  activityFilterBarSkeleton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginBottom: 2,
+    marginTop: 2,
   },
-  activityHeader: {
-    marginBottom: 14,
-  },
-  activityHeaderTitleRow: {
+  activityTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 7,
   },
   activityTitleLine: {
-    width: 105,
-    height: 14,
+    width: 90,
+    height: 15,
     borderRadius: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  activityDescLine: {
-    width: 190,
-    height: 10,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  segmentedTrackSkeleton: {
+    width: 140,
+    height: 28,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   activityList: {
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.hairline,
+    backgroundColor: THEME.colors.surface,
   },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
   activityIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   activityTextCol: {

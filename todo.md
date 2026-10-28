@@ -1,5 +1,19 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Logs Tab Header & Feed Stream Redesign Aligned with Activity Tab** 🎨 📱 ✨ ✅:
+  - **Aligned Section Header Design (`src/components/groups/GroupHistoryTab.tsx`)**:
+    - Replaced the boxed card header (`cardContainer` wrapping `cardHeader` with static green icon and verbose subtitle) with an external `activityFilterBar` matching the group Activity and Balances tabs.
+    - Integrated an active theme accent icon (`HistoryIcon size={17} color={currentAccent.primary}`) and clean section title (`Audit Logs`, `fontSize: 15, fontWeight: '800'`).
+    - Added a sleek segmented filter track (`All` | `Expenses` | `Settlements`) powered by `logFilter` state for instantaneous filtering across audit event types.
+  - **Unified Stream Container & Row Glyph Nodes (`src/components/groups/GroupHistoryTab.tsx`)**:
+    - Replaced `cardContainer` with open `ledgerStream` (`borderRadius: 24`, hairline border, `surface` background).
+    - Upgraded event row icon slots to 38px rounded glyph containers (`width: 38, height: 38, borderRadius: 19`) consistent with `ActivityExpenseRow` and `ActivitySettlementRow`.
+    - Aligned empty state layout and typography with the Activity tab.
+  - **Skeleton & Tab Transition Parity (`src/components/skeletons/GroupTabSkeleton.tsx`)**:
+    - Updated `ActivityTabSkeleton` and `GroupTabSkeleton` to mirror the new filter bar and ledger stream container structure during loading and tab switching.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+
 - **Buttery Smooth Tab Transitions & Skeleton Loading System** 🎨 ⚡ 📱 ✨ ✅:
   - **Eliminated Tab Switching Delay & Split-Second Page Freezing (`app/(tabs)/_layout.tsx`)**:
     - Configured `lazy: false` on the root bottom-tab navigator so all 4 main screens (`Home`, `Groups`, `Activity`, `Settings`) are pre-mounted into the native view hierarchy at startup with `detachInactiveScreens: false`.

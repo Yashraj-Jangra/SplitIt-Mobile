@@ -90,35 +90,35 @@ function formatExpenseDate(dateInput: any): string | null {
 function renderEventIcon(event: HistoryEventItem) {
   const isAi = event.eventType === 'budget_updated' && Boolean(event.data?.aiInitiated);
   if (isAi) {
-    return <Bot size={15} color={THEME.colors.ai} />;
+    return <Bot size={17} color={THEME.colors.ai} />;
   }
 
   switch (event.eventType) {
     case 'expense_created':
     case 'group_created':
-      return <Plus size={15} color={THEME.colors.success} />;
+      return <Plus size={17} color={THEME.colors.success} />;
     case 'settlement_created':
-      return <Handshake size={15} color={THEME.colors.success} />;
+      return <Handshake size={17} color={THEME.colors.success} />;
     case 'member_added':
-      return <UserPlus size={15} color={THEME.colors.success} />;
+      return <UserPlus size={17} color={THEME.colors.success} />;
     case 'expense_updated':
     case 'settlement_updated':
     case 'group_updated':
-      return <Pencil size={15} color={THEME.colors.info} />;
+      return <Pencil size={17} color={THEME.colors.info} />;
     case 'budget_updated':
-      return <Wallet size={15} color={THEME.colors.success} />;
+      return <Wallet size={17} color={THEME.colors.success} />;
     case 'expense_deleted':
     case 'settlement_deleted':
-      return <Trash2 size={15} color={THEME.colors.critical} />;
+      return <Trash2 size={17} color={THEME.colors.critical} />;
     case 'member_removed':
-      return <UserMinus size={15} color={THEME.colors.critical} />;
+      return <UserMinus size={17} color={THEME.colors.critical} />;
     case 'member_left':
-      return <UserMinus size={15} color={THEME.colors.warning} />;
+      return <UserMinus size={17} color={THEME.colors.warning} />;
     case 'expense_restored':
     case 'settlement_restored':
-      return <RotateCcw size={15} color={THEME.colors.palette.purple} />;
+      return <RotateCcw size={17} color={THEME.colors.palette.purple} />;
     default:
-      return <Clock size={15} color={THEME.colors.textSecondary} />;
+      return <Clock size={17} color={THEME.colors.textSecondary} />;
   }
 }
 
@@ -484,6 +484,18 @@ export function GroupHistoryTab({
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
+  const [logFilter, setLogFilter] = useState<'all' | 'expenses' | 'settlements'>('all');
+
+  const filteredHistory = useMemo(() => {
+    if (logFilter === 'all') return history;
+    if (logFilter === 'expenses') {
+      return history.filter((e) => e.eventType.startsWith('expense_'));
+    }
+    if (logFilter === 'settlements') {
+      return history.filter((e) => e.eventType.startsWith('settlement_'));
+    }
+    return history;
+  }, [history, logFilter]);
 
   React.useEffect(() => {
     if (user) {
@@ -607,33 +619,106 @@ export function GroupHistoryTab({
   }, [onViewSettlement, router, groupId]);
 
   const visibleEvents = useMemo(
-    () => history.slice(0, visibleCount ?? history.length),
-    [history, visibleCount]
+    () => filteredHistory.slice(0, visibleCount ?? filteredHistory.length),
+    [filteredHistory, visibleCount]
   );
-  const hasMore = (visibleCount ?? history.length) < history.length;
-  const remainingCount = Math.max(0, history.length - (visibleCount ?? history.length));
+  const hasMore = (visibleCount ?? filteredHistory.length) < filteredHistory.length;
+  const remainingCount = Math.max(0, filteredHistory.length - (visibleCount ?? filteredHistory.length));
 
   return (
-    <View style={styles.cardContainer}>
-      {/* Header matching website Group History card header */}
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderTitleRow}>
-          <HistoryIcon size={18} color={THEME.colors.success} />
-          <Text style={styles.cardTitle}>Audit Logs</Text>
+    <View style={styles.container}>
+      {/* Activity Stream Section Header (Activity Title on Left, Segmented Filter on Right) */}
+      <View style={styles.activityFilterBar}>
+        <View style={styles.activityTitleRow}>
+          <HistoryIcon size={17} color={currentAccent.primary} />
+          <Text style={styles.activitySectionTitle}>Audit Logs</Text>
         </View>
-        <Text style={styles.cardDescription}>
-          An audit log of all activities within this group.
-        </Text>
+
+        <View style={styles.segmentedTrack}>
+          <TouchableOpacity
+            style={[
+              styles.segmentBtn,
+              logFilter === 'all' && styles.segmentBtnActive,
+            ]}
+            onPress={() => {
+              haptics.tap();
+              setLogFilter('all');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                logFilter === 'all' && [styles.segmentTextActive, { color: currentAccent.primary }],
+              ]}
+            >
+              All
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentBtn,
+              logFilter === 'expenses' && styles.segmentBtnActive,
+            ]}
+            onPress={() => {
+              haptics.tap();
+              setLogFilter('expenses');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                logFilter === 'expenses' && [styles.segmentTextActive, { color: currentAccent.primary }],
+              ]}
+            >
+              Expenses
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentBtn,
+              logFilter === 'settlements' && styles.segmentBtnActive,
+            ]}
+            onPress={() => {
+              haptics.tap();
+              setLogFilter('settlements');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                logFilter === 'settlements' && [styles.segmentTextActive, { color: currentAccent.primary }],
+              ]}
+            >
+              Settlements
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Hairline Divided Minimal List */}
-      <View style={styles.listContainer}>
-        {loading && history.length === 0 ? (
+      {/* Stream Container matching ledgerStream in Activity Tab */}
+      <View style={styles.ledgerStream}>
+        {loading && filteredHistory.length === 0 ? (
           <ActivityTabSkeleton />
-        ) : history.length === 0 ? (
+        ) : filteredHistory.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <HistoryIcon size={36} color={THEME.colors.textMuted} />
-            <Text style={styles.emptyTitle}>No logs recorded yet for this group.</Text>
+            <HistoryIcon size={32} color={THEME.colors.textMuted} />
+            <Text style={styles.emptyTitle}>
+              {logFilter === 'settlements'
+                ? 'No settlement logs recorded'
+                : logFilter === 'expenses'
+                ? 'No expense logs recorded'
+                : 'No logs recorded yet'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {logFilter === 'all'
+                ? 'Activities and changes within this group will appear here.'
+                : 'Try switching filters to view other audit events.'}
+            </Text>
           </View>
         ) : (
           <>
@@ -685,10 +770,10 @@ export function GroupHistoryTab({
               </TouchableOpacity>
             )}
 
-            {!hasMore && history.length > 10 && (
+            {!hasMore && filteredHistory.length > 10 && (
               <View style={styles.endOfListFooter}>
                 <Text style={styles.endOfListText}>
-                  All {history.length} activity events loaded
+                  • All {filteredHistory.length} activity events loaded •
                 </Text>
               </View>
             )}
@@ -700,53 +785,85 @@ export function GroupHistoryTab({
 }
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    overflow: 'hidden',
+  container: {
+    gap: 10,
     marginBottom: THEME.spacing.xl,
   },
-  cardHeader: {
-    paddingHorizontal: THEME.spacing.lg,
-    paddingTop: THEME.spacing.lg,
-    paddingBottom: THEME.spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: THEME.colors.hairline,
-    gap: 3,
+  activityFilterBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginBottom: 2,
+    marginTop: 2,
   },
-  cardHeaderTitleRow: {
+  activityTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: THEME.spacing.sm,
+    gap: 7,
   },
-  cardTitle: {
-    fontSize: THEME.typography.size.subtitle,
-    fontWeight: THEME.typography.weight.bold,
+  activitySectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
     color: THEME.colors.text,
     letterSpacing: -0.2,
   },
-  cardDescription: {
-    fontSize: THEME.typography.size.caption,
-    color: THEME.colors.textSecondary,
+  segmentedTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 20,
+    padding: 2.5,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
   },
-  listContainer: {
-    paddingVertical: 2,
+  segmentBtn: {
+    paddingHorizontal: 11,
+    paddingVertical: 4.5,
+    borderRadius: 16,
+  },
+  segmentBtnActive: {
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+  },
+  segmentText: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    fontWeight: '600',
+  },
+  segmentTextActive: {
+    color: THEME.colors.primary,
+    fontWeight: '700',
+  },
+  ledgerStream: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    overflow: 'hidden',
   },
   emptyContainer: {
     paddingVertical: 36,
-    paddingHorizontal: THEME.spacing.xl,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 6,
   },
   emptyTitle: {
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
     textAlign: 'center',
   },
   eventRow: {
-    paddingHorizontal: THEME.spacing.lg,
+    paddingHorizontal: 16,
     paddingVertical: 13,
   },
   eventRowBorder: {
@@ -756,12 +873,17 @@ const styles = StyleSheet.create({
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: THEME.spacing.md,
+    gap: 12,
   },
   iconSlot: {
-    width: 24,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: THEME.colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   infoCol: {
     flex: 1,
@@ -848,7 +970,7 @@ const styles = StyleSheet.create({
   },
   detailsContainer: {
     marginTop: 6,
-    paddingLeft: 36,
+    paddingLeft: 50,
   },
   accordionToggleBtn: {
     flexDirection: 'row',
