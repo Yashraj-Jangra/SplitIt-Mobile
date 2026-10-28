@@ -596,7 +596,7 @@ export default function SettleUpModal() {
 
       <KeyboardAvoidingView
         behavior="padding"
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={insets.top + (Platform.OS === 'ios' ? 8 : 12)}
         style={styles.flexOne}
       >
         <ScrollView
@@ -784,7 +784,7 @@ export default function SettleUpModal() {
         <KeyboardStickyBottomBar
           insideKeyboardAvoidingView={true}
           style={styles.bottomDock}
-          keyboardPaddingBottom={8}
+          keyboardPaddingBottom={Platform.OS === 'ios' ? 12 : 14}
           idlePaddingBottom={Platform.OS === 'ios' ? 16 : 14}
         >
           {/* UPI App Checkbox Row */}

@@ -236,7 +236,7 @@ export default function TicketThreadScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior="padding"
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={insets.top}
       >
       {/* Header */}
       <View style={styles.header}>

@@ -951,7 +951,7 @@ export default function NewExpenseModal() {
             <KeyboardAvoidingView
               style={styles.keyboardContainer}
               behavior="padding"
-              keyboardVerticalOffset={0}
+              keyboardVerticalOffset={insets.top + (Platform.OS === 'ios' ? 8 : 12)}
             >
               {/* Sleek Minimal Header */}
               <View style={styles.header}>
@@ -1289,8 +1289,8 @@ export default function NewExpenseModal() {
         <KeyboardStickyBottomBar
           insideKeyboardAvoidingView={true}
           style={styles.bottomBar}
-          keyboardPaddingBottom={Platform.OS === 'ios' ? 4 : 8}
-          idlePaddingBottom={Platform.OS === 'ios' ? 12 : 10}
+          keyboardPaddingBottom={Platform.OS === 'ios' ? 12 : 14}
+          idlePaddingBottom={Platform.OS === 'ios' ? 14 : 12}
         >
           {isEditMode && !hasChanges && (
             <View style={styles.unchangedPillWrap}>

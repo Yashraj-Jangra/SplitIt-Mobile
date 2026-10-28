@@ -397,7 +397,7 @@ export default function AiChatModal() {
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior="padding"
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={insets.top}
       >
         {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
         <View style={styles.modalGrabber} />

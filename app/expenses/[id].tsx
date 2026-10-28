@@ -641,7 +641,7 @@ export default function ExpenseDetailScreen() {
       <KeyboardAvoidingView
         style={styles.flexOne}
         behavior="padding"
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={insets.top}
       >
         <ScrollView
           ref={scrollViewRef}
