@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   type ScrollViewInstance,
-  KeyboardAvoidingView,
   Platform,
   Keyboard,
   Alert,
@@ -39,6 +38,7 @@ import {
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { haptics } from '../../src/services/haptics.service';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
 import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
@@ -179,8 +179,6 @@ export default function AiChatModal() {
 
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamStage, setStreamStage] = useState<string | null>(null);
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [arePillsDismissed, setArePillsDismissed] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
@@ -198,29 +196,15 @@ export default function AiChatModal() {
     }, 200);
   }, []);
 
-  // Synchronized Keyboard Listener for both iOS and Android
+  // Synchronized Keyboard Listener for auto-scrolling
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const onKeyboardShow = (e: any) => {
-      const height = e?.endCoordinates?.height || 0;
-      setKeyboardHeight(height);
-      setIsKeyboardOpen(true);
+    const showSub = Keyboard.addListener(showEvent, () => {
       scrollToEndThrottled();
-    };
-
-    const onKeyboardHide = () => {
-      setKeyboardHeight(0);
-      setIsKeyboardOpen(false);
-    };
-
-    const showSub = Keyboard.addListener(showEvent, onKeyboardShow);
-    const hideSub = Keyboard.addListener(hideEvent, onKeyboardHide);
+    });
 
     return () => {
       showSub.remove();
-      hideSub.remove();
     };
   }, [scrollToEndThrottled]);
 
@@ -409,12 +393,12 @@ export default function AiChatModal() {
     !arePillsDismissed;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
-    >
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
+        style={styles.keyboardContainer}
+        behavior="padding"
+        keyboardVerticalOffset={0}
+      >
         {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
         <View style={styles.modalGrabber} />
 
@@ -474,6 +458,7 @@ export default function AiChatModal() {
           showsVerticalScrollIndicator={false}
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
+          onContentSizeChange={scrollToEndThrottled}
         >
           {/* Welcome State: Full Flagship Hero Starter Cards Grid */}
           {messages.length <= 1 && (
@@ -698,7 +683,6 @@ export default function AiChatModal() {
                 multiline
                 maxLength={800}
                 onFocus={() => {
-                  setIsKeyboardOpen(true);
                   scrollToEndThrottled();
                 }}
               />
@@ -816,8 +800,8 @@ export default function AiChatModal() {
           </View>
         </TouchableOpacity>
       </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
-  </KeyboardAvoidingView>
   );
 }
 

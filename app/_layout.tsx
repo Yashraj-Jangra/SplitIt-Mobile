@@ -1,6 +1,7 @@
 import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, Theme, ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, Text, Platform } from 'react-native';
 import { enableFreeze } from 'react-native-screens';
@@ -375,6 +376,7 @@ export default function RootLayout() {
     <AppErrorBoundary>
       <GestureHandlerRootView style={styles.container}>
         <SafeAreaProvider>
+          <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
           <StatusBar style="light" />
           <HapticsProvider>
             <NetworkProvider>
@@ -388,6 +390,7 @@ export default function RootLayout() {
               </AuthProvider>
             </NetworkProvider>
           </HapticsProvider>
+        </KeyboardProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </AppErrorBoundary>

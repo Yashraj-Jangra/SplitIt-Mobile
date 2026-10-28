@@ -7,7 +7,6 @@ import {
   type ScrollViewInstance,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
   Platform,
   Alert,
   Keyboard,
@@ -15,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import {
   ArrowLeft,
@@ -52,31 +52,20 @@ export default function TicketThreadScreen() {
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
     const onShow = () => {
-      setIsKeyboardOpen(true);
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 60);
     };
 
-    const onHide = () => {
-      setIsKeyboardOpen(false);
-    };
-
     const showSub = Keyboard.addListener(showEvent, onShow);
-    const hideSub = Keyboard.addListener(hideEvent, onHide);
-
     return () => {
       showSub.remove();
-      hideSub.remove();
     };
   }, []);
 
@@ -243,12 +232,12 @@ export default function TicketThreadScreen() {
   const isResolved = ticket.status === 'resolved' || ticket.status === 'closed';
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
-    >
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
+        style={styles.keyboardContainer}
+        behavior="padding"
+        keyboardVerticalOffset={0}
+      >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -445,7 +434,6 @@ export default function TicketThreadScreen() {
                 multiline
                 maxLength={2000}
                 onFocus={() => {
-                  setIsKeyboardOpen(true);
                   setTimeout(() => {
                     scrollViewRef.current?.scrollToEnd({ animated: true });
                   }, 60);
@@ -472,8 +460,8 @@ export default function TicketThreadScreen() {
             </TouchableOpacity>
           </KeyboardStickyBottomBar>
         ) : null}
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

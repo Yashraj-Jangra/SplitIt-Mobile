@@ -10,10 +10,10 @@ import {
   Image,
   Alert,
   Modal,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -640,8 +640,8 @@ export default function ExpenseDetailScreen() {
       {/* ── 2. SCROLLABLE CONTENT BODY ── */}
       <KeyboardAvoidingView
         style={styles.flexOne}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        behavior="padding"
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           ref={scrollViewRef}

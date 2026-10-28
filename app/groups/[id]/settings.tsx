@@ -1,3 +1,4 @@
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -7,7 +8,6 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
@@ -419,7 +419,8 @@ export default function GroupSettingsScreen() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={0}
         style={{ flex: 1 }}
       >
         <ScrollView

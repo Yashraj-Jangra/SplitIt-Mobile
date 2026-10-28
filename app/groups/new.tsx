@@ -1,3 +1,4 @@
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
@@ -6,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
@@ -176,7 +176,8 @@ export default function NewGroupModal() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]}

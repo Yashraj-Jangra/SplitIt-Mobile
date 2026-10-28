@@ -1,22 +1,24 @@
 import React, { ReactNode } from 'react';
 import {
-  View,
   StyleSheet,
   StyleProp,
   ViewStyle,
-  Platform,
-  Animated,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  interpolate,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { THEME } from '../../constants/theme';
-import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 
 export interface KeyboardStickyBottomBarProps {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   /**
    * If true, this component is nested inside a parent KeyboardAvoidingView.
-   * It will only dynamically collapse bottom insets to prevent the iOS 34px void.
-   * If false, it manages its own upward translation or padding when keyboard appears.
+   * It dynamically collapses bottom padding to eliminate the safe area gap.
+   * If false, it manages its own upward translation at 60/120fps via Reanimated.
    * Default: true.
    */
   insideKeyboardAvoidingView?: boolean;
@@ -44,7 +46,8 @@ export interface KeyboardStickyBottomBarProps {
 
 /**
  * Standardized sticky bottom dock for primary action buttons, accessory toolbars,
- * and comment bars. Eliminates the iOS 34px floating gap and ensures Android parity.
+ * and comment bars. Eliminates the safe area void and guarantees 60/120fps native
+ * frame velocity synchronization with the software keyboard on iOS and Android.
  */
 export const KeyboardStickyBottomBar: React.FC<KeyboardStickyBottomBarProps> = ({
   children,
@@ -56,36 +59,45 @@ export const KeyboardStickyBottomBar: React.FC<KeyboardStickyBottomBarProps> = (
   backgroundColor = THEME.colors.background,
   accessibilityLabel,
 }) => {
-  const { isKeyboardOpen, bottomInsetCompensation, keyboardHeight } = useKeyboardHeight({
-    minKeyboardPadding: keyboardPaddingBottom,
-  });
+  const insets = useSafeAreaInsets();
+  const { progress, height } = useReanimatedKeyboardAnimation();
 
-  const effectiveBottomPadding = isKeyboardOpen
-    ? keyboardPaddingBottom
-    : Math.max(bottomInsetCompensation, idlePaddingBottom);
+  const animatedStyle = useAnimatedStyle(() => {
+    const closedPadding = Math.max(insets.bottom, idlePaddingBottom);
 
-  // If standalone on Android or not inside a KeyboardAvoidingView:
-  // Apply additional bottom clearance equal to keyboardHeight on Android when edge-to-edge
-  const standaloneAndroidOffset =
-    !insideKeyboardAvoidingView && Platform.OS === 'android' && isKeyboardOpen
-      ? keyboardHeight
-      : 0;
+    if (insideKeyboardAvoidingView) {
+      const dynamicPadding = interpolate(
+        progress.value,
+        [0, 1],
+        [closedPadding, keyboardPaddingBottom]
+      );
+      return {
+        paddingBottom: dynamicPadding,
+      };
+    } else {
+      const offset = (closedPadding - keyboardPaddingBottom) * progress.value;
+      return {
+        paddingBottom: closedPadding,
+        transform: [{ translateY: height.value + offset }],
+      };
+    }
+  }, [insets.bottom, idlePaddingBottom, keyboardPaddingBottom, insideKeyboardAvoidingView]);
 
   return (
-    <View
+    <Animated.View
       accessibilityLabel={accessibilityLabel}
       style={[
         styles.container,
         {
           backgroundColor,
-          paddingBottom: effectiveBottomPadding + standaloneAndroidOffset,
         },
         bordered && styles.topBorder,
+        animatedStyle,
         style,
       ]}
     >
       {children}
-    </View>
+    </Animated.View>
   );
 };
 

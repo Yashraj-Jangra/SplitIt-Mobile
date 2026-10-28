@@ -1,5 +1,24 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Software Mansion Native Keyboard Handling Overhaul (`react-native-keyboard-controller`)** ✨ 📱 ⚡ 🚀 ✅:
+  - **Root Layout Window Insets Sync (`app/_layout.tsx`)**:
+    - Installed `react-native-keyboard-controller: ^1.22.9`.
+    - Wrapped root component tree with `<KeyboardProvider statusBarTranslucent navigationBarTranslucent>` inside `<SafeAreaProvider>`.
+    - Enables 60/120Hz native velocity tracking via Android `WindowInsetsAnimationCompat` and iOS `CADisplayLink`.
+  - **Autonomous 120fps Hardware-Accelerated Sticky Bottom Dock (`src/components/common/KeyboardStickyBottomBar.tsx`)**:
+    - Rewrote `KeyboardStickyBottomBar` using `useReanimatedKeyboardAnimation()` on the UI thread worklet.
+    - Interpolates `paddingBottom` seamlessly between `insets.bottom` (idle) and `keyboardPaddingBottom` (keyboard open) during keyboard animation progress.
+    - Supports standalone sticky mode with Reanimated `translateY` offset compensation, completely eliminating dead floating space, jumps, and Android 300ms latency.
+  - **Chat & Support Thread Interactive Parity (`app/ai/chat.tsx`, `app/support/[id].tsx`)**:
+    - Replaced broken React Native `KeyboardAvoidingView` with `KeyboardAvoidingView` from `react-native-keyboard-controller` using `behavior="padding"` and `keyboardVerticalOffset={0}`.
+    - Set `SafeAreaView edges={['top']}` as top boundary and `ScrollView` with `keyboardDismissMode="interactive"`, `keyboardShouldPersistTaps="handled"`, and `onContentSizeChange` autoscroll.
+    - Fixed iOS 59px notch clipping and Android edge-to-edge keyboard occlusion.
+  - **Unified Across All Forms & Modals**:
+    - Migrated `app/expenses/new.tsx`, `app/settle/new.tsx`, `app/expenses/[id].tsx`, `app/settlements/[id].tsx`, `src/components/common/BottomSheetModal.tsx`, `src/components/expenses/PayerSelectModal.tsx`, `src/components/expenses/SplitOptionsModal.tsx`, `src/components/groups/SetBudgetModal.tsx`, `src/components/settlements/EditSettlementModal.tsx`, and auth screens (`login`, `signup`, `forgot-password`, `reset-password`).
+  - **Quality Gates & Native Verification**:
+    - `npx tsc --noEmit`: 0 errors across the entire codebase.
+    - Android native build compilation: `./gradlew.bat compileDebugJavaWithJavac compileDebugKotlin` BUILD SUCCESSFUL (220 actionable tasks).
+
 - **Logs Tab Header & Feed Stream Redesign Aligned with Activity Tab** 🎨 📱 ✨ ✅:
   - **Aligned Section Header Design (`src/components/groups/GroupHistoryTab.tsx`)**:
     - Replaced the boxed card header (`cardContainer` wrapping `cardHeader` with static green icon and verbose subtitle) with an external `activityFilterBar` matching the group Activity and Balances tabs.

@@ -1,3 +1,4 @@
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -7,7 +8,6 @@ import {
   type TextInputInstance,
   TouchableOpacity,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
   Image,
   Animated,
@@ -159,8 +159,8 @@ export default function SignupScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        behavior="padding"
+        keyboardVerticalOffset={0}
         style={styles.container}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>

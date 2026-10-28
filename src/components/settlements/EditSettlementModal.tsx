@@ -6,12 +6,12 @@ import {
   Modal,
   TouchableOpacity,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
 import { X, Banknote, Smartphone, Landmark, Check } from 'lucide-react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { THEME } from '../../constants/theme';
 import { QuantumSpinner } from '../brand/QuantumLogo';
 import { SettlementDetailModel, settlementService } from '../../services/settlement.service';
@@ -111,7 +111,8 @@ export const EditSettlementModal: React.FC<EditSettlementModalProps> = ({
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior="padding"
+            keyboardVerticalOffset={0}
             style={styles.avoidingWrap}
           >
             <View style={styles.modalCard}>

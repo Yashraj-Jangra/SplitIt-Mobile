@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
   Alert,
   Switch,
@@ -37,6 +36,7 @@ import { haptics } from '../../services/haptics.service';
 import { MASTER_CATEGORY_ICONS } from '../../utils/category-icons';
 import { useCurrency } from '../../contexts/currency.context';
 import { useAppTheme } from '../../contexts/theme.context';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardStickyBottomBar } from '../common/KeyboardStickyBottomBar';
 
 interface SetBudgetModalProps {

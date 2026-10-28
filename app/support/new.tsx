@@ -1,3 +1,4 @@
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -7,7 +8,6 @@ import {
   type TextInputInstance,
   TouchableOpacity,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
   Switch,
 } from 'react-native';
@@ -166,7 +166,8 @@ export default function NewSupportTicketModal() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           contentContainerStyle={[

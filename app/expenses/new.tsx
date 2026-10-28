@@ -9,7 +9,6 @@ import {
   ScrollView,
   Modal,
   Image,
-  KeyboardAvoidingView,
   Platform,
   Alert,
   Animated,
@@ -46,6 +45,7 @@ import { authService } from '../../src/services/auth.service';
 import { settingsService } from '../../src/services/settings.service';
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { CategoryIcon } from '../../src/utils/category-icons';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { PayerSelectModal, MultiPayerEntry } from '../../src/components/expenses/PayerSelectModal';
 import { PrimaryActionButton } from '@/components/common/PrimaryActionButton';
 import { KeyboardStickyBottomBar } from '@/components/common/KeyboardStickyBottomBar';
@@ -950,8 +950,8 @@ export default function NewExpenseModal() {
           >
             <KeyboardAvoidingView
               style={styles.keyboardContainer}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+              behavior="padding"
+              keyboardVerticalOffset={0}
             >
               {/* Sleek Minimal Header */}
               <View style={styles.header}>

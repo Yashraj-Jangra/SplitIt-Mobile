@@ -11,11 +11,11 @@ import {
   StyleProp,
   ViewStyle,
   Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  interpolate,
   withSpring,
   withTiming,
   runOnJS,
@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { haptics } from '../../services/haptics.service';
-import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
+import { KeyboardAvoidingView, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 
 export interface BottomSheetModalProps {
   visible: boolean;
@@ -52,7 +52,7 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
   children,
 }: BottomSheetModalProps) {
   const insets = useSafeAreaInsets();
-  const { isKeyboardOpen } = useKeyboardHeight();
+  const { progress } = useReanimatedKeyboardAnimation();
   const translateY = useSharedValue(0);
 
   useEffect(() => {
@@ -131,9 +131,19 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
     [onClose, translateY]
   );
 
-  const animatedSheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: Math.max(0, translateY.value) }],
-  }));
+  const animatedSheetStyle = useAnimatedStyle(() => {
+    const closedPadding = Math.max(insets.bottom, 16) + 12;
+    const paddingBottom = interpolate(
+      progress.value,
+      [0, 1],
+      [closedPadding, 12]
+    );
+
+    return {
+      paddingBottom,
+      transform: [{ translateY: Math.max(0, translateY.value) }],
+    };
+  });
 
   if (!visible) return null;
 
@@ -156,7 +166,8 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
         />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
+          keyboardVerticalOffset={0}
           style={styles.keyboardWrap}
         >
           <Animated.View
@@ -164,7 +175,6 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
               styles.sheetContainer,
               {
                 maxHeight,
-                paddingBottom: isKeyboardOpen ? 12 : Math.max(insets.bottom, 16) + 12,
               },
               animatedSheetStyle,
               containerStyle,

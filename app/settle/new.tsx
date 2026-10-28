@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Modal,
   Image,
@@ -30,6 +29,7 @@ import {
   Star,
   User,
 } from 'lucide-react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { THEME } from '../../src/constants/theme';
 import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import { useAuth } from '../../src/contexts/auth.context';
@@ -595,7 +595,8 @@ export default function SettleUpModal() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={0}
         style={styles.flexOne}
       >
         <ScrollView

@@ -9,7 +9,6 @@ import {
   Modal,
   ScrollView,
   type ScrollViewInstance,
-  KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
   NativeSyntheticEvent,
@@ -18,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardStickyBottomBar } from '../common/KeyboardStickyBottomBar';
 import { calculateEqualAmounts } from '@splitit/core';
 import { THEME } from '../../constants/theme';
@@ -339,8 +339,8 @@ export function PayerSelectModal({
       <SafeAreaView style={styles.fullScreen} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+          behavior="padding"
+          keyboardVerticalOffset={0}
         >
           {/* Top Bar: ← Back | Who paid? | ✓ Confirm */}
           <View style={styles.appBar}>
