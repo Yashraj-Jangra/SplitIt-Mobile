@@ -37,6 +37,7 @@ import {
   Cpu,
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { haptics } from '../../src/services/haptics.service';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { THEME } from '../../src/constants/theme';
@@ -59,6 +60,9 @@ interface ChatMessage {
 
 
 
+const MAX_USER_CHATS = 30;
+const getStorageKey = (groupId?: string) => `splitit_ai_chat_session_${groupId || 'global'}`;
+
 // ── Main Flagship AI Chat Screen ────────────────────────────────────────────
 export default function AiChatModal() {
   const insets = useSafeAreaInsets();
@@ -72,10 +76,51 @@ export default function AiChatModal() {
     {
       id: 'welcome',
       sender: 'assistant',
-      text: `Hello! I am your **SplitIt AI Financial Assistant**.\n\nI have real-time ledger grounding on your groups, spending velocity, debts, and budgets with zero math hallucinations. How can I help you today?`,
+      text: `Hello! I am your **SplitIt AI Financial Assistant**.\n\nI have real-time ledger grounding on your groups, spending velocity, debts, and budgets. How can I help you today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
+  const [isSessionLoaded, setIsSessionLoaded] = useState(false);
+
+  // Restore persistent session from AsyncStorage when backed or reopened
+  useEffect(() => {
+    let isMounted = true;
+    const loadSavedSession = async () => {
+      try {
+        const key = getStorageKey(groupId);
+        const saved = await AsyncStorage.getItem(key);
+        if (saved && isMounted) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+          }
+        }
+      } catch {
+        // Storage fallback
+      } finally {
+        if (isMounted) setIsSessionLoaded(true);
+      }
+    };
+    loadSavedSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [groupId]);
+
+  // Persist session changes to AsyncStorage
+  useEffect(() => {
+    if (!isSessionLoaded) return;
+    const key = getStorageKey(groupId);
+    if (messages.length > 0) {
+      AsyncStorage.setItem(key, JSON.stringify(messages)).catch(() => {});
+    }
+  }, [messages, isSessionLoaded, groupId]);
+
+  const userChatCount = useMemo(
+    () => messages.filter((m) => m.sender === 'user').length,
+    [messages]
+  );
+  const isSessionLimitReached = userChatCount >= MAX_USER_CHATS;
 
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamStage, setStreamStage] = useState<string | null>(null);
@@ -176,6 +221,19 @@ export default function AiChatModal() {
     const text = (promptToSend || input).trim();
     if (!text || isStreaming) return;
 
+    if (isSessionLimitReached) {
+      haptics.warning();
+      Alert.alert(
+        'Session Limit Reached',
+        'You have reached the maximum session length of 30 chats. Please clear this conversation to start a new session.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Start New Session', onPress: handleStartNewSession },
+        ]
+      );
+      return;
+    }
+
     haptics.tap();
     setInput('');
 
@@ -255,27 +313,47 @@ export default function AiChatModal() {
     setTimeout(() => setCopiedMsgId(null), 2000);
   };
 
+  const handleStartNewSession = async () => {
+    haptics.confirm();
+    handleStop();
+    const resetMessages: ChatMessage[] = [
+      {
+        id: `welcome_${Date.now()}`,
+        sender: 'assistant',
+        text: 'New session started. How can I assist your ledger or budgets today?',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ];
+    setMessages(resetMessages);
+    setArePillsDismissed(false);
+    const key = getStorageKey(groupId);
+    await AsyncStorage.removeItem(key).catch(() => {});
+  };
+
   const handleClearHistory = () => {
     Alert.alert(
       'Clear Conversation',
-      'Are you sure you want to clear your AI chat history?',
+      'Are you sure you want to clear this conversation and start a fresh session?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Clear',
+          text: 'Clear & Restart',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             haptics.destructive();
             handleStop();
-            setMessages([
+            const resetMessages: ChatMessage[] = [
               {
-                id: 'welcome_reset',
+                id: `welcome_${Date.now()}`,
                 sender: 'assistant',
                 text: 'Chat history cleared. How can I assist your ledger or budgets today?',
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               },
-            ]);
+            ];
+            setMessages(resetMessages);
             setArePillsDismissed(false);
+            const key = getStorageKey(groupId);
+            await AsyncStorage.removeItem(key).catch(() => {});
           },
         },
       ]
@@ -290,7 +368,8 @@ export default function AiChatModal() {
   const showFollowUpChips =
     messages.length > 1 &&
     !isStreaming &&
-    !arePillsDismissed;
+    !arePillsDismissed &&
+    !isSessionLimitReached;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -299,10 +378,7 @@ export default function AiChatModal() {
         behavior="padding"
         keyboardVerticalOffset={insets.top}
       >
-        {/* ── Top Modal Grab Notch ────────────────────────────────────────── */}
-        <View style={styles.modalGrabber} />
-
-        {/* ── Flagship Header ────────────────────────────────────────────── */}
+        {/* ── Flagship Header (Dragger removed, clean elevated branding) ─── */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
@@ -318,17 +394,25 @@ export default function AiChatModal() {
 
           <View style={styles.headerCenter}>
             <View style={styles.headerTitleRow}>
-              <QuantumLogo size={18} color={THEME.colors.aiLight} glowColor={currentAccent.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.headerTitle}>SplitIt Financial AI</Text>
-            </View>
-            <View style={styles.headerStatusRow}>
-              <Text style={styles.headerSubtitle}>
-                {groupName ? `Scoped to ${groupName}` : 'Zero Math Hallucinations · RAG Ledger'}
-              </Text>
+              <QuantumLogo size={20} color={THEME.colors.aiLight} glowColor={currentAccent.primary} style={{ marginRight: 8 }} />
+              <Text style={styles.headerTitle}>SplitIt AI</Text>
+              {groupName ? (
+                <View style={styles.headerGroupBadge}>
+                  <Text style={styles.headerGroupBadgeText} numberOfLines={1}>in {groupName}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
           <View style={styles.headerRightActions}>
+            {userChatCount > 0 && (
+              <View style={[styles.sessionBadge, isSessionLimitReached && styles.sessionBadgeLimit]}>
+                <Text style={[styles.sessionBadgeText, isSessionLimitReached && styles.sessionBadgeTextLimit]}>
+                  {userChatCount}/{MAX_USER_CHATS}
+                </Text>
+              </View>
+            )}
+
             <TouchableOpacity
               onPress={() => {
                 haptics.tap();
@@ -337,7 +421,7 @@ export default function AiChatModal() {
               style={styles.headerIconButton}
               accessibilityLabel="Assistant Info"
             >
-              <Info size={18} color={THEME.colors.textSecondary} />
+              <Info size={17} color={THEME.colors.textSecondary} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -345,7 +429,7 @@ export default function AiChatModal() {
               style={styles.headerIconButton}
               accessibilityLabel="Clear history"
             >
-              <Trash2 size={17} color={THEME.colors.textMuted} />
+              <Trash2 size={16} color={THEME.colors.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -562,7 +646,7 @@ export default function AiChatModal() {
             )}
           </ScrollView>
 
-          {/* ── Input Bar Capsule ─────────────────────────────────────────── */}
+          {/* ── Input Bar Capsule / Session Limit Card ────────────────────── */}
           <KeyboardStickyBottomBar
             insideKeyboardAvoidingView
             bordered
@@ -570,6 +654,29 @@ export default function AiChatModal() {
             keyboardPaddingBottom={10}
             style={styles.inputContainer}
           >
+            {isSessionLimitReached ? (
+              <View style={styles.sessionLimitCard}>
+                <View style={styles.sessionLimitHeader}>
+                  <View style={styles.sessionLimitIcon}>
+                    <Sparkles size={16} color={THEME.colors.warning} />
+                  </View>
+                  <View style={styles.sessionLimitTextCol}>
+                    <Text style={styles.sessionLimitTitle}>Session limit reached (30/30)</Text>
+                    <Text style={styles.sessionLimitDesc}>
+                      Clear this conversation to start a fresh AI session with full ledger grounding.
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.startNewSessionBtn, { backgroundColor: currentAccent.primary }]}
+                  onPress={handleStartNewSession}
+                  activeOpacity={0.85}
+                >
+                  <Trash2 size={13} color={THEME.colors.primaryForeground} />
+                  <Text style={styles.startNewSessionBtnText}>Start New Session</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
             <View style={styles.inputCapsule}>
               <TextInput
                 style={styles.textInput}
@@ -622,6 +729,7 @@ export default function AiChatModal() {
                 </TouchableOpacity>
               )}
             </View>
+            )}
           </KeyboardStickyBottomBar>
 
       {/* ── Financial Assistant Info Modal ─────────────────────────────── */}
@@ -708,15 +816,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  modalGrabber: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignSelf: 'center',
-    marginTop: 6,
-    marginBottom: 4,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -760,20 +859,93 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '800',
     color: THEME.colors.text,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
-  headerStatusRow: {
+  headerGroupBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerGroupBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+    maxWidth: 120,
+  },
+  sessionBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  sessionBadgeLimit: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  sessionBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+  },
+  sessionBadgeTextLimit: {
+    color: THEME.colors.warning,
+  },
+  sessionLimitCard: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    padding: 12,
+    gap: 10,
+  },
+  sessionLimitHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    gap: 10,
   },
-  headerSubtitle: {
-    fontSize: 10,
+  sessionLimitIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sessionLimitTextCol: {
+    flex: 1,
+  },
+  sessionLimitTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  sessionLimitDesc: {
+    fontSize: 11,
     color: THEME.colors.textMuted,
-    fontWeight: '500',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  startNewSessionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 36,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+  },
+  startNewSessionBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: THEME.colors.primaryForeground,
   },
   headerRightActions: {
     flexDirection: 'row',

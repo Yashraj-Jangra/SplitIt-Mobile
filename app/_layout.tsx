@@ -194,11 +194,11 @@ function NavigationGate() {
           <Stack.Screen
             name="ai/chat"
             options={{
-              headerShown: false,
-              animation: 'slide_from_right',
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
-              animationMatchesGesture: true,
+              gestureDirection: 'vertical',
+              headerShown: false,
             }}
           />
           <Stack.Screen

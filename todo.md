@@ -1,5 +1,25 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Mobile AI Chat Slide Modal Animation, Header Refinement & Persistent 30-Chat Session** ✨ 🎨 📱 ⚡ ✅:
+  - **Bottom-to-Top Modal Spatial Transitions (`app/_layout.tsx`)**:
+    - Replaced horizontal right-sliding animation with native `presentation: 'modal'`, `animation: 'slide_from_bottom'`, and `gestureDirection: 'vertical'`.
+    - AI chat now opens smoothly upwards from bottom to top and dismisses top to bottom on close/back, matching website modal behavior.
+  - **Header Cleanup & Space Reclaim (`app/ai/chat.tsx`)**:
+    - Completely removed the top grab notch bar (`modalGrabber`).
+    - Stripped redundant 'Zero Math Hallucinations · RAG Ledger' subtitle text.
+    - Enlarged brand logo and title to 17px bold with active group pill (`in GroupName`), reclaiming header space.
+    - Integrated real-time session counter badge (`{userChatCount}/30`) on the header right actions.
+  - **Persistent Session Memory via AsyncStorage (`app/ai/chat.tsx`)**:
+    - AI conversation state persists across screen navigations, app minimizes, and back actions using `@react-native-async-storage/async-storage`.
+    - Automatically restores session history on mount unless explicitly cleared or reset by user.
+  - **30 User Chats Maximum Session Length Enforcement (`app/ai/chat.tsx`)**:
+    - Added hard cap of 30 user messages (`MAX_USER_CHATS = 30`).
+    - Once limit is reached, input bar transforms into a glass-pane **Session Limit Card** prompting users to clear and start a new session.
+    - Added 1-tap **Start New Session** button that cleanly resets the session and clears AsyncStorage.
+    - Blocked send actions and follow-up suggestion chips once session cap is reached.
+  - **Quality Gates**:
+    - `tsc --noEmit` passed with 0 errors across `SplitIt-Mobile`.
+
 - **Mobile AI Chat Flagship Markdown & In-Bubble Shining Thinking State** ✨ 🎨 📱 ⚡ ✅:
   - **Flagship In-Bubble Shining Thinking State (`src/components/ai/AiThinkingShine.tsx`)**:
     - Relocated thinking/reasoning status indicator from an awkward detached external pill below the chatbox into the AI response bubble itself.
