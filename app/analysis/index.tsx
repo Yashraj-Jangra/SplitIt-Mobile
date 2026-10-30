@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
@@ -29,6 +29,7 @@ import { groupService, GroupListItem } from '../../src/services/group.service';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { CategoryIcon, getCategoryColor } from '../../src/utils/category-icons';
 import { haptics } from '../../src/services/haptics.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 import {
   DateRangePickerModal,
   DateRange,
@@ -105,6 +106,26 @@ export default function AnalysisScreen() {
 
   useEffect(() => {
     loadData(false);
+  }, [loadData]);
+
+  const lastAnalysisFetchRef = useRef<number>(Date.now());
+
+  useFocusEffect(
+    useCallback(() => {
+      const now = Date.now();
+      if (now - lastAnalysisFetchRef.current < 2500) return;
+      lastAnalysisFetchRef.current = now;
+      requestAnimationFrame(() => {
+        loadData(true);
+      });
+    }, [loadData])
+  );
+
+  useEffect(() => {
+    const unsub = appEventEmitter.on('data-changed', () => {
+      loadData(true);
+    });
+    return unsub;
   }, [loadData]);
 
   const onRefresh = useCallback(() => {

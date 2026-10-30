@@ -191,7 +191,7 @@ export default function HomeScreen() {
 
   const lastFetchRef = useRef<number>(Date.now());
 
-  // Screen focus: background refresh when returning to HomeScreen from any modal/flow
+  // Screen focus: background SWR refresh when returning to HomeScreen from any modal/flow
   useFocusEffect(
     useCallback(() => {
       if (!authUser) return;
@@ -199,11 +199,11 @@ export default function HomeScreen() {
         if (saved) setGroupSortBy(saved);
       });
       const now = Date.now();
-      if (now - lastFetchRef.current < 45_000) return;
+      if (now - lastFetchRef.current < 2500) return;
       lastFetchRef.current = now;
       requestAnimationFrame(() => {
         refreshNotificationCount();
-        loadData(false);
+        loadData(true);
       });
     }, [authUser, refreshNotificationCount])
   );

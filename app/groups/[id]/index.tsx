@@ -270,7 +270,7 @@ export default function GroupDetailScreen() {
         setLoading(false);
       }
     });
-    loadGroup();
+    loadGroup(true);
   }, [targetId, requestedTab]);
 
   // Deep-link tab sync if tab parameter changes while screen is focused
@@ -280,8 +280,6 @@ export default function GroupDetailScreen() {
     }
   }, [requestedTab]);
 
-// Screen focus handled with stale gate below
-
   // Real-time event listener when any mutation occurs in this group or globally
   useEffect(() => {
     const unsubscribe = appEventEmitter.on('data-changed', (event) => {
@@ -289,7 +287,14 @@ export default function GroupDetailScreen() {
         setGroup(null);
         return;
       }
-      if (!event?.groupId || event.groupId === targetId) {
+      if (
+        !event?.groupId ||
+        event.groupId === targetId ||
+        event.type === 'app_resumed' ||
+        event.type === 'network_reconnected' ||
+        event.type === 'history_restored' ||
+        event.type === 'history_deleted'
+      ) {
         loadGroup(true);
       }
     });
@@ -401,7 +406,7 @@ export default function GroupDetailScreen() {
       }).start();
 
       const now = Date.now();
-      if (now - lastGroupFetchRef.current < 30_000) return;
+      if (now - lastGroupFetchRef.current < 2500) return;
       lastGroupFetchRef.current = now;
       requestAnimationFrame(() => {
         loadGroup(true);
@@ -1236,7 +1241,7 @@ export default function GroupDetailScreen() {
               visibleCount={visibleActivityCount}
               isLoadingMore={isLoadingMoreActivities}
               onLoadMore={loadMoreActivities}
-              onRefresh={loadGroup}
+              onRefresh={() => loadGroup(true)}
               onViewExpense={(expenseId) => {
                 router.push({
                   pathname: '/expenses/[id]',

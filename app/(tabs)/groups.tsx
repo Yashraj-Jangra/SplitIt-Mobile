@@ -200,15 +200,15 @@ export default function GroupsScreen() {
 
   const lastFetchRef = useRef<number>(Date.now());
 
-  // Screen focus: background refresh when navigating back to Groups tab
+  // Screen focus: background SWR refresh when navigating back to Groups tab
   useFocusEffect(
     useCallback(() => {
       if (!authUser) return;
       const now = Date.now();
-      if (now - lastFetchRef.current < 45_000) return;
+      if (now - lastFetchRef.current < 2500) return;
       lastFetchRef.current = now;
       requestAnimationFrame(() => {
-        loadGroups(false);
+        loadGroups(true);
       });
     }, [authUser])
   );

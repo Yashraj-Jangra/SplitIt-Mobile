@@ -140,15 +140,15 @@ export default function ActivityScreen() {
   }, [authUser]);
 
   const lastFetchRef = useRef<number>(Date.now());
-  // Screen focus: background refresh when navigating to Activity screen
+  // Screen focus: background SWR refresh when navigating to Activity screen
   useFocusEffect(
     useCallback(() => {
       if (!authUser) return;
       const now = Date.now();
-      if (now - lastFetchRef.current < 45_000) return;
+      if (now - lastFetchRef.current < 2500) return;
       lastFetchRef.current = now;
       requestAnimationFrame(() => {
-        loadData(false);
+        loadData(true);
       });
     }, [authUser])
   );

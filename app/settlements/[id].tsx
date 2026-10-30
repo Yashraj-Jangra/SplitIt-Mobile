@@ -35,6 +35,7 @@ import { EditSettlementModal } from '../../src/components/settlements/EditSettle
 import { authService } from '../../src/services/auth.service';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { haptics } from '../../src/services/haptics.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency, getActiveCurrencySymbol } from '../../src/contexts/currency.context';
@@ -147,11 +148,35 @@ export default function SettlementDetailScreen() {
     };
   }, [settlementId, fetchSettlement]);
 
+  const lastSettlementFetchRef = useRef<number>(Date.now());
+
   useFocusEffect(
     useCallback(() => {
-      fetchSettlement();
+      const now = Date.now();
+      if (now - lastSettlementFetchRef.current < 2000) return;
+      lastSettlementFetchRef.current = now;
+      requestAnimationFrame(() => {
+        fetchSettlement();
+      });
     }, [fetchSettlement])
   );
+
+  useEffect(() => {
+    const unsub = appEventEmitter.on('data-changed', (event) => {
+      if (
+        !event ||
+        event.settlementId === settlementId ||
+        event.groupId === groupId ||
+        event.type === 'app_resumed' ||
+        event.type === 'network_reconnected' ||
+        event.type === 'settlement_updated' ||
+        event.type === 'comment_added'
+      ) {
+        fetchSettlement();
+      }
+    });
+    return unsub;
+  }, [settlementId, groupId, fetchSettlement]);
 
   const handleDelete = () => {
     if (!requireOnline('delete a settlement')) return;

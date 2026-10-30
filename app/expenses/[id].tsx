@@ -46,6 +46,7 @@ import {
   areParticipantsValid,
 } from '@splitit/core';
 import { haptics } from '../../src/services/haptics.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 import { useNetwork } from '../../src/contexts/network.context';
 import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
@@ -190,11 +191,35 @@ export default function ExpenseDetailScreen() {
     };
   }, [expenseId, groupId]);
 
+  const lastExpenseFetchRef = useRef<number>(Date.now());
+
   useFocusEffect(
     useCallback(() => {
-      fetchExpense();
+      const now = Date.now();
+      if (now - lastExpenseFetchRef.current < 2000) return;
+      lastExpenseFetchRef.current = now;
+      requestAnimationFrame(() => {
+        fetchExpense();
+      });
     }, [expenseId, groupId])
   );
+
+  useEffect(() => {
+    const unsub = appEventEmitter.on('data-changed', (event) => {
+      if (
+        !event ||
+        event.expenseId === expenseId ||
+        event.groupId === groupId ||
+        event.type === 'app_resumed' ||
+        event.type === 'network_reconnected' ||
+        event.type === 'expense_updated' ||
+        event.type === 'comment_added'
+      ) {
+        fetchExpense();
+      }
+    });
+    return unsub;
+  }, [expenseId, groupId]);
 
   const handleDelete = () => {
     if (!requireOnline('delete an expense')) return;
@@ -243,7 +268,7 @@ export default function ExpenseDetailScreen() {
     setIsSendingComment(true);
     haptics.tap();
 
-    const newLog = await expenseService.addExpenseComment(expenseId, text);
+    const newLog = await expenseService.addExpenseComment(expenseId, text, groupId || expense?.groupId);
     setExpense((prev) => (prev ? { ...prev, logs: [...prev.logs, newLog] } : prev));
     setCommentInput('');
     setIsSendingComment(false);
