@@ -1408,6 +1408,8 @@ export const groupService = {
       });
       if (res.ok) {
         const data = await res.json();
+        this.invalidateCache();
+        appEventEmitter.emit('data-changed', { type: 'history_restored' });
         return data.id || null;
       }
       const errData = await res.json().catch(() => ({}));
@@ -1432,6 +1434,7 @@ export const groupService = {
             const currentUser = await authService.getCachedUser();
             const currentUserId = currentUser?.id || '';
             await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId, currentUserId), detail);
+            appEventEmitter.emit('data-changed', { groupId: gId, type: 'history_restored' });
             return event.data?.expenseId || 'restored_ok';
           }
         }
@@ -1461,6 +1464,8 @@ export const groupService = {
       });
       if (res.ok) {
         const data = await res.json();
+        this.invalidateCache();
+        appEventEmitter.emit('data-changed', { type: 'history_restored' });
         return data.id || null;
       }
       const errData = await res.json().catch(() => ({}));
@@ -1485,6 +1490,7 @@ export const groupService = {
               restored: false,
             });
             await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId, currentUserId), detail);
+            appEventEmitter.emit('data-changed', { groupId: gId, type: 'history_restored' });
             return 'restored_settlement_ok';
           }
         }
@@ -1519,6 +1525,8 @@ export const groupService = {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || 'Failed to delete history event');
       }
+      this.invalidateCache();
+      appEventEmitter.emit('data-changed', { type: 'history_deleted' });
     } catch (err: any) {
       if (err.message?.includes('Unauthorized')) throw err;
       // Optimistic offline update if server unreachable
@@ -1526,6 +1534,7 @@ export const groupService = {
         if (detail.history) {
           detail.history = detail.history.filter((e) => e.id !== historyEventId);
           await storageService.setItem(STORAGE_KEYS.GROUP_DETAIL(gId, currentUser?.id || ''), detail);
+          appEventEmitter.emit('data-changed', { groupId: gId, type: 'history_deleted' });
         }
       }
     }
@@ -1598,9 +1607,20 @@ export const groupService = {
     } else {
       _groupDetailsMap.clear();
     }
+    authService.getCachedUser().then((user) => {
+      if (!user?.id) return;
+      storageService.removeItem(STORAGE_KEYS.GROUPS(user.id)).catch(() => {});
+      if (groupId) {
+        storageService.removeItem(STORAGE_KEYS.GROUP_DETAIL(groupId, user.id)).catch(() => {});
+      }
+    }).catch(() => {});
   },
   clearCache(): void {
     _cachedGroups = [];
     _groupDetailsMap.clear();
+    authService.getCachedUser().then((user) => {
+      if (!user?.id) return;
+      storageService.removeItem(STORAGE_KEYS.GROUPS(user.id)).catch(() => {});
+    }).catch(() => {});
   },
 };

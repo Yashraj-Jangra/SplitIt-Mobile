@@ -8,11 +8,14 @@ type Listener<T = any> = (data: T) => void;
 
 export interface AppDataChangedEvent {
   groupId?: string;
+  expenseId?: string;
+  settlementId?: string;
   type?:
     | 'expense_created'
     | 'expense_updated'
     | 'expense_deleted'
     | 'settlement_recorded'
+    | 'settlement_updated'
     | 'settlement_deleted'
     | 'group_created'
     | 'group_updated'
@@ -21,7 +24,12 @@ export interface AppDataChangedEvent {
     | 'budget_updated'
     | 'members_updated'
     | 'auth_logout'
-    | 'notifications_updated';
+    | 'notifications_updated'
+    | 'app_resumed'
+    | 'network_reconnected'
+    | 'comment_added'
+    | 'history_restored'
+    | 'history_deleted';
 }
 
 class AppEventEmitter {

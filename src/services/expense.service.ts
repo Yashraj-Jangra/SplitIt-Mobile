@@ -835,7 +835,7 @@ export const expenseService = {
   /**
    * Add a comment to an expense log timeline.
    */
-  async addExpenseComment(expenseId: string, commentText: string): Promise<ExpenseHistoryLog> {
+  async addExpenseComment(expenseId: string, commentText: string, groupId?: string): Promise<ExpenseHistoryLog> {
     const currentUser = await authService.getCachedUser();
     const now = new Date();
 
@@ -852,6 +852,20 @@ export const expenseService = {
     const existing = _commentsCache.get(expenseId) || [];
     existing.push(newLog);
     _commentsCache.set(expenseId, existing);
+
+    const cached = _cachedExpenseDetailsMap.get(expenseId);
+    if (cached) {
+      cached.logs = deduplicateExpenseLogs([...(cached.logs || []), newLog]);
+      if (currentUser?.id) {
+        storageService.setItem(STORAGE_KEYS.EXPENSE_DETAIL(expenseId, currentUser.id), cached).catch(() => {});
+      }
+    }
+
+    appEventEmitter.emit('data-changed', {
+      groupId: groupId || cached?.groupId,
+      expenseId,
+      type: 'comment_added',
+    });
 
     return newLog;
   },
@@ -972,5 +986,9 @@ export const expenseService = {
     _cachedUserExpenses = [];
     _cachedExpenseDetailsMap.clear();
     _commentsCache.clear();
+    authService.getCachedUser().then((user) => {
+      if (!user?.id) return;
+      storageService.removeItem(STORAGE_KEYS.USER_TRANSACTIONS(user.id)).catch(() => {});
+    }).catch(() => {});
   },
 };

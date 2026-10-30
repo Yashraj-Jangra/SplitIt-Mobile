@@ -1,7 +1,7 @@
 import { authService, API_BASE_URL } from './auth.service';
 import { storageService, STORAGE_KEYS } from './storage.service';
 import { groupService } from './group.service';
-import { expenseService, ExpenseHistoryLog } from './expense.service';
+import { expenseService, ExpenseHistoryLog, deduplicateExpenseLogs } from './expense.service';
 import { balanceService } from './balance.service';
 import { getActiveCurrencySymbol } from '../contexts/currency.context';
 import { appEventEmitter } from './event-emitter';
@@ -529,7 +529,7 @@ export const settlementService = {
     return { success: true };
   },
 
-  async addSettlementComment(settlementId: string, commentText: string): Promise<ExpenseHistoryLog> {
+  async addSettlementComment(settlementId: string, commentText: string, groupId?: string): Promise<ExpenseHistoryLog> {
     const currentUser = await authService.getCachedUser();
     const userName = currentUser?.name || 'You';
     const newLog: ExpenseHistoryLog = {
@@ -543,6 +543,21 @@ export const settlementService = {
     };
     const existing = _settlementCommentsCache.get(settlementId) || [];
     _settlementCommentsCache.set(settlementId, [...existing, newLog]);
+
+    const cached = _cachedSettlementDetailsMap.get(settlementId);
+    if (cached) {
+      cached.logs = deduplicateExpenseLogs([...(cached.logs || []), newLog]);
+      if (currentUser?.id) {
+        storageService.setItem(STORAGE_KEYS.SETTLEMENT_DETAIL(settlementId, currentUser.id), cached).catch(() => {});
+      }
+    }
+
+    appEventEmitter.emit('data-changed', {
+      groupId: groupId || cached?.groupId,
+      settlementId,
+      type: 'comment_added',
+    });
+
     return newLog;
   },
 
@@ -659,5 +674,9 @@ export const settlementService = {
   clearCache(): void {
     _cachedSettlementDetailsMap.clear();
     _settlementCommentsCache.clear();
+    authService.getCachedUser().then((user) => {
+      if (!user?.id) return;
+      storageService.removeItem(STORAGE_KEYS.USER_SETTLEMENTS(user.id)).catch(() => {});
+    }).catch(() => {});
   },
 };
