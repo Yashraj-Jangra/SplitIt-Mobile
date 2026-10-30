@@ -1,5 +1,22 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Flagship Markdown Formatting Fixes: Synchronized Tables, Task Checkboxes & Recursive Lists** 🎨 📱 ⚡ 🚀 ✅:
+  - **Synchronized Column Widths & Table Alignment (`src/components/ai/AiMarkdownView.tsx`)**:
+    - Built dynamic column width synchronization across header and all data rows (`colWidths`), eliminating table column misalignment.
+    - Set proportional cell widths with boundary constraints (`Math.max(90, Math.min(240, Math.ceil(maxChars * 8.5) + 32))`), preventing right-side text clipping (e.g. "Amount" truncated as "Amoun", clipped numbers).
+    - Added horizontal scroll with right-padding (`contentContainerStyle={{ paddingRight: 16 }}`) and vertical cell dividers (`borderRightWidth`).
+    - Supported GFM column alignments (`align === 'right' | 'center' | 'left'`) with container and text alignment matching.
+  - **Recursive Inlines & Raw Asterisk Fix (`src/components/ai/AiMarkdownView.tsx`)**:
+    - Unpacked `textToken.tokens` and `paragraph.tokens` recursively in `renderInlineTokens`, resolving the root cause where marked parsed bold/italic child nodes inside list items were discarded.
+    - Added secondary fallback formatting parser (`parseInlineFormattingFallback`) to catch any un-tokenized `**bold**` or `*italic*` strings.
+    - Ensured strong/em tags fall back to text content if child tokens array is empty, preventing blank text.
+  - **Native Task List Checkboxes & Sub-List Hierarchy (`src/components/ai/AiMarkdownView.tsx`)**:
+    - Separated nested lists (`type: 'list'`) from inline tokens in `renderList`, rendering recursive indented sub-lists with hollow bullets instead of dumping raw asterisks.
+    - Added native styled checkbox UI with `Check` checkmark icon and active accent fill for completed tasks (`[x]`), replacing raw text `• [x]`.
+    - Added preprocessor regex normalization for unicode bullets (`•`), GFM tables, and lists.
+  - **Quality Gates**:
+    - `tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+
 - **App-Wide Hardware Acceleration, 120fps Tab Transitions & Progressive Virtualization** ⚡ 🚀 📱 ✨ ✅:
   - **Progressive Virtualization of Activity Screen (`app/(tabs)/activity.tsx`)**:
     - Replaced unvirtualized `<ScrollView>` with high-performance `FlatList` with `windowSize={5}`, `maxToRenderPerBatch={8}`, `initialNumToRender={10}`, and `removeClippedSubviews`.

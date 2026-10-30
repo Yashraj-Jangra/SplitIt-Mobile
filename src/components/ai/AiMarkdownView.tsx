@@ -9,7 +9,6 @@ import {
   Platform,
   StyleProp,
   ViewStyle,
-  TextStyle,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { marked, Token, Tokens } from 'marked';
@@ -78,7 +77,7 @@ function FencedCodeBlock({ text, lang }: { text: string; lang?: string }) {
 }
 
 /**
- * Markdown Table Renderer with Horizontal Scrolling
+ * Markdown Table Renderer with Column Width Synchronization & Alignment
  */
 function MarkdownTable({ token, isUser, accentColor, currencyRegex }: {
   token: Tokens.Table;
@@ -86,18 +85,61 @@ function MarkdownTable({ token, isUser, accentColor, currencyRegex }: {
   accentColor: string;
   currencyRegex: RegExp;
 }) {
+  const numCols = token.header.length;
+  const colAlignments = token.align || [];
+
+  // Calculate synchronized column widths across header and all data rows
+  const colWidths = useMemo(() => {
+    const widths: number[] = [];
+    for (let c = 0; c < numCols; c++) {
+      let maxChars = (token.header[c]?.text || '').length;
+      for (const row of token.rows) {
+        if (row[c]) {
+          maxChars = Math.max(maxChars, (row[c]?.text || '').length);
+        }
+      }
+      // Proportional width calculation ensuring clean vertical alignment without text clipping
+      widths.push(Math.max(90, Math.min(240, Math.ceil(maxChars * 8.5) + 32)));
+    }
+    return widths;
+  }, [token, numCols]);
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tableScroll}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.tableScroll}
+      contentContainerStyle={styles.tableScrollContent}
+    >
       <View style={styles.tableContainer}>
         {/* Header Row */}
         <View style={styles.tableHeaderRow}>
-          {token.header.map((cell, colIdx) => (
-            <View key={colIdx} style={[styles.tableCell, styles.tableHeaderCell]}>
-              <Text style={styles.tableHeaderText}>
-                {renderInlineTokens(cell.tokens, isUser, accentColor, currencyRegex)}
-              </Text>
-            </View>
-          ))}
+          {token.header.map((cell, colIdx) => {
+            const align = colAlignments[colIdx];
+            return (
+              <View
+                key={colIdx}
+                style={[
+                  styles.tableCell,
+                  styles.tableHeaderCell,
+                  { width: colWidths[colIdx] },
+                  align === 'right' && styles.cellAlignRight,
+                  align === 'center' && styles.cellAlignCenter,
+                  colIdx === numCols - 1 && styles.tableCellLastCol,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.tableHeaderText,
+                    align === 'right' && styles.textAlignRight,
+                    align === 'center' && styles.textAlignCenter,
+                  ]}
+                >
+                  {renderInlineTokens(cell.tokens, isUser, accentColor, currencyRegex)}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* Data Rows */}
@@ -110,18 +152,139 @@ function MarkdownTable({ token, isUser, accentColor, currencyRegex }: {
               rowIdx === token.rows.length - 1 && styles.tableRowLast,
             ]}
           >
-            {row.map((cell, colIdx) => (
-              <View key={colIdx} style={styles.tableCell}>
-                <Text style={styles.tableCellText}>
-                  {renderInlineTokens(cell.tokens, isUser, accentColor, currencyRegex)}
-                </Text>
-              </View>
-            ))}
+            {row.map((cell, colIdx) => {
+              const align = colAlignments[colIdx];
+              return (
+                <View
+                  key={colIdx}
+                  style={[
+                    styles.tableCell,
+                    { width: colWidths[colIdx] },
+                    align === 'right' && styles.cellAlignRight,
+                    align === 'center' && styles.cellAlignCenter,
+                    colIdx === numCols - 1 && styles.tableCellLastCol,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tableCellText,
+                      align === 'right' && styles.textAlignRight,
+                      align === 'center' && styles.textAlignCenter,
+                    ]}
+                  >
+                    {renderInlineTokens(cell.tokens, isUser, accentColor, currencyRegex)}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         ))}
       </View>
     </ScrollView>
   );
+}
+
+/**
+ * Renders raw text with currency symbol detection & highlighting
+ */
+function renderTextWithCurrency(
+  text: string,
+  key: string,
+  accentColor: string,
+  currencyRegex: RegExp
+): React.ReactNode {
+  if (!text) return null;
+  const parts: Array<{ type: 'currency' | 'text'; content: string }> = [];
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+
+  currencyRegex.lastIndex = 0;
+  while ((match = currencyRegex.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push({ type: 'text', content: text.substring(lastIdx, match.index) });
+    }
+    parts.push({ type: 'currency', content: match[0] });
+    lastIdx = currencyRegex.lastIndex;
+  }
+  if (lastIdx < text.length) {
+    parts.push({ type: 'text', content: text.substring(lastIdx) });
+  }
+
+  if (parts.length <= 1 && parts[0]?.type === 'text') {
+    return <Text key={key}>{text}</Text>;
+  }
+
+  return (
+    <Text key={key}>
+      {parts.map((p, idx) =>
+        p.type === 'currency' ? (
+          <Text key={idx} style={[styles.currencyHighlight, { color: accentColor }]}>
+            {p.content}
+          </Text>
+        ) : (
+          <Text key={idx}>{p.content}</Text>
+        )
+      )}
+    </Text>
+  );
+}
+
+/**
+ * Secondary fallback parser: extracts **bold** and *italic* from raw un-tokenized strings
+ */
+function parseInlineFormattingFallback(
+  rawText: string,
+  keyPrefix: string,
+  isUser: boolean | undefined,
+  accentColor: string,
+  currencyRegex: RegExp
+): React.ReactNode {
+  const formatRegex = /(\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
+  const elements: React.ReactNode[] = [];
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = formatRegex.exec(rawText)) !== null) {
+    if (match.index > lastIdx) {
+      elements.push(
+        renderTextWithCurrency(
+          rawText.substring(lastIdx, match.index),
+          `${keyPrefix}_t_${lastIdx}`,
+          accentColor,
+          currencyRegex
+        )
+      );
+    }
+    if (match[2]) {
+      // Bold
+      elements.push(
+        <Text key={`${keyPrefix}_b_${match.index}`} style={[styles.strong, isUser && styles.userStrong]}>
+          {renderTextWithCurrency(match[2], `${keyPrefix}_bi_${match.index}`, accentColor, currencyRegex)}
+        </Text>
+      );
+    } else if (match[3]) {
+      // Italic
+      elements.push(
+        <Text key={`${keyPrefix}_i_${match.index}`} style={[styles.em, isUser && styles.userEm]}>
+          {renderTextWithCurrency(match[3], `${keyPrefix}_ii_${match.index}`, accentColor, currencyRegex)}
+        </Text>
+      );
+    }
+    lastIdx = formatRegex.lastIndex;
+  }
+
+  if (lastIdx < rawText.length) {
+    elements.push(
+      renderTextWithCurrency(
+        rawText.substring(lastIdx),
+        `${keyPrefix}_t_${lastIdx}`,
+        accentColor,
+        currencyRegex
+      )
+    );
+  }
+
+  return elements.length > 0 ? elements : null;
 }
 
 /**
@@ -141,15 +304,26 @@ function renderInlineTokens(
       case 'strong':
         return (
           <Text key={i} style={[styles.strong, isUser && styles.userStrong]}>
-            {renderInlineTokens(token.tokens, isUser, accentColor, currencyRegex)}
+            {token.tokens && token.tokens.length > 0
+              ? renderInlineTokens(token.tokens, isUser, accentColor, currencyRegex)
+              : renderTextWithCurrency(token.text, `str_${i}`, accentColor, currencyRegex)}
           </Text>
         );
 
       case 'em':
         return (
           <Text key={i} style={[styles.em, isUser && styles.userEm]}>
-            {renderInlineTokens(token.tokens, isUser, accentColor, currencyRegex)}
+            {token.tokens && token.tokens.length > 0
+              ? renderInlineTokens(token.tokens, isUser, accentColor, currencyRegex)
+              : renderTextWithCurrency(token.text, `em_${i}`, accentColor, currencyRegex)}
           </Text>
+        );
+
+      case 'paragraph':
+        return (
+          <React.Fragment key={i}>
+            {renderInlineTokens((token as Tokens.Paragraph).tokens, isUser, accentColor, currencyRegex)}
+          </React.Fragment>
         );
 
       case 'codespan':
@@ -187,53 +361,144 @@ function renderInlineTokens(
       case 'br':
         return <Text key={i}>{'\n'}</Text>;
 
+      case 'checkbox':
+        return null;
+
       case 'text':
       default: {
-        const rawText = ('text' in token && typeof (token as any).text === 'string' ? (token as any).text : token.raw) || '';
-        // High-precision financial entity matcher: highlight amounts with accent color
-        const parts: Array<{ type: 'currency' | 'text'; content: string }> = [];
-        let lastIdx = 0;
-        let match: RegExpExecArray | null;
+        const textToken = token as Tokens.Text;
 
-        // Reset regex state
-        currencyRegex.lastIndex = 0;
-        while ((match = currencyRegex.exec(rawText)) !== null) {
-          if (match.index > lastIdx) {
-            parts.push({ type: 'text', content: rawText.substring(lastIdx, match.index) });
+        // 1. Recursive evaluation if marked tokenized nested inline tokens (strong, em, etc.)
+        if (textToken.tokens && textToken.tokens.length > 0) {
+          return (
+            <React.Fragment key={i}>
+              {renderInlineTokens(textToken.tokens, isUser, accentColor, currencyRegex)}
+            </React.Fragment>
+          );
+        }
+
+        const rawText =
+          ('text' in token && typeof (token as any).text === 'string'
+            ? (token as any).text
+            : token.raw) || '';
+
+        // 2. Secondary fallback parser: if raw text still contains unparsed **bold** or *italic*
+        if (rawText.includes('**') || (rawText.includes('*') && !rawText.includes(' * '))) {
+          const fallbackNodes = parseInlineFormattingFallback(
+            rawText,
+            `fb_${i}`,
+            isUser,
+            accentColor,
+            currencyRegex
+          );
+          if (fallbackNodes) {
+            return <React.Fragment key={i}>{fallbackNodes}</React.Fragment>;
           }
-          parts.push({ type: 'currency', content: match[0] });
-          lastIdx = currencyRegex.lastIndex;
-        }
-        if (lastIdx < rawText.length) {
-          parts.push({ type: 'text', content: rawText.substring(lastIdx) });
         }
 
-        if (parts.length <= 1 && parts[0]?.type === 'text') {
-          return <Text key={i}>{rawText}</Text>;
-        }
-
-        return (
-          <Text key={i}>
-            {parts.map((p, idx) =>
-              p.type === 'currency' ? (
-                <Text key={idx} style={[styles.currencyHighlight, { color: accentColor }]}>
-                  {p.content}
-                </Text>
-              ) : (
-                <Text key={idx}>{p.content}</Text>
-              )
-            )}
-          </Text>
-        );
+        // 3. Currency highlighting
+        return renderTextWithCurrency(rawText, `txt_${i}`, accentColor, currencyRegex);
       }
     }
   });
 }
 
 /**
+ * Recursive List & Nested List Renderer with Checkbox / Task Support
+ */
+function renderList(
+  listToken: Tokens.List,
+  depth: number,
+  isUser: boolean,
+  accentColor: string,
+  currencyRegex: RegExp
+): React.ReactNode {
+  return (
+    <View
+      key={`list_${depth}_${listToken.start || 0}`}
+      style={[styles.listContainer, depth > 0 && styles.nestedListContainer]}
+    >
+      {listToken.items.map((item, itemIdx) => {
+        const isTask = Boolean(item.task);
+        const numberLabel = listToken.ordered
+          ? `${(typeof listToken.start === 'number' ? listToken.start : 1) + itemIdx}.`
+          : null;
+
+        // Separate inline tokens from block tokens (nested lists)
+        const inlineTokens: Token[] = [];
+        const nestedLists: Tokens.List[] = [];
+
+        item.tokens.forEach((t) => {
+          if (t.type === 'list') {
+            nestedLists.push(t as Tokens.List);
+          } else if (t.type === 'checkbox') {
+            // Handled at item level by the task checkbox slot
+          } else if (t.type === 'paragraph' && (t as Tokens.Paragraph).tokens) {
+            (t as Tokens.Paragraph).tokens.forEach((pt) => {
+              if (pt.type !== 'checkbox') inlineTokens.push(pt);
+            });
+          } else {
+            inlineTokens.push(t);
+          }
+        });
+
+        return (
+          <View key={itemIdx} style={[styles.listItemRow, isTask && styles.taskItemRow]}>
+            {isTask ? (
+              <View style={styles.taskCheckboxSlot}>
+                <View
+                  style={[
+                    styles.taskCheckbox,
+                    item.checked && {
+                      backgroundColor: accentColor,
+                      borderColor: accentColor,
+                    },
+                  ]}
+                >
+                  {item.checked && <Check size={10} color="#0D1117" strokeWidth={3} />}
+                </View>
+              </View>
+            ) : numberLabel ? (
+              <Text style={[styles.listNumber, { color: accentColor }]}>
+                {numberLabel}
+              </Text>
+            ) : (
+              <View style={styles.bulletDotSlot}>
+                <View
+                  style={[
+                    depth === 0 ? styles.bulletDot : styles.bulletHollow,
+                    {
+                      backgroundColor: depth === 0 ? accentColor : 'transparent',
+                      borderColor: accentColor,
+                    },
+                  ]}
+                />
+              </View>
+            )}
+
+            <View style={styles.listContentSlot}>
+              {inlineTokens.length > 0 && (
+                <Text style={[styles.baseText, isUser && styles.userText]}>
+                  {renderInlineTokens(inlineTokens, isUser, accentColor, currencyRegex)}
+                </Text>
+              )}
+
+              {/* Recursive Nested Sub-Lists */}
+              {nestedLists.map((nestedList, nIdx) =>
+                renderList(nestedList, depth + 1, isUser, accentColor, currencyRegex)
+              )}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
  * Flagship AST Markdown View for Mobile AI Chat
  * Renders complete GitHub Flavored Markdown (bold, italic, code blocks, lists,
- * tables, blockquotes, headings, currency highlights, and streaming caret).
+ * nested lists, checklists, tables, blockquotes, headings, currency highlights, and streaming caret).
  */
 export function AiMarkdownView({
   content,
@@ -250,11 +515,17 @@ export function AiMarkdownView({
     return new RegExp(`(?:${escapedSym}|[₹$€£¥])[0-9,]+(?:\\.[0-9]{1,2})?`, 'g');
   }, []);
 
-  // Parse markdown AST with marked.lexer
+  // Parse markdown AST with marked.lexer and bullet / task list normalization
   const tokens = useMemo(() => {
     if (!content) return [];
-    // Defensively normalize literal \r\n and \n sequences
-    const normalized = content.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
+    const normalized = content
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/^[ \t]*•[ \t]*\[([ xX])\]/gm, '- [$1]')
+      .replace(/^[ \t]*•[ \t]+/gm, '* ')
+      .replace(/([^\n])\n(\|[^\n]+\|\n\|[-: |]+\|)/g, '$1\n\n$2')
+      .replace(/([^\n])\n([ \t]*[-*]\s+)/g, '$1\n\n$2')
+      .replace(/([^\n])\n([ \t]*[0-9]+\.\s+)/g, '$1\n\n$2');
     try {
       return marked.lexer(normalized);
     } catch {
@@ -296,38 +567,9 @@ export function AiMarkdownView({
           case 'list': {
             const listToken = token as Tokens.List;
             return (
-              <View key={idx} style={styles.listContainer}>
-                {listToken.items.map((item, itemIdx) => {
-                  const numberLabel = listToken.ordered
-                    ? `${(typeof listToken.start === 'number' ? listToken.start : 1) + itemIdx}.`
-                    : null;
-
-                  return (
-                    <View key={itemIdx} style={styles.listItemRow}>
-                      {numberLabel ? (
-                        <Text style={[styles.listNumber, { color: currentAccent.primary }]}>
-                          {numberLabel}
-                        </Text>
-                      ) : (
-                        <View style={styles.bulletDotSlot}>
-                          <View
-                            style={[
-                              styles.bulletDot,
-                              { backgroundColor: currentAccent.primary },
-                            ]}
-                          />
-                        </View>
-                      )}
-
-                      <View style={styles.listContentSlot}>
-                        <Text style={[styles.baseText, isUser && styles.userText]}>
-                          {renderInlineTokens(item.tokens, isUser, currentAccent.primary, currencyRegex)}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
+              <React.Fragment key={idx}>
+                {renderList(listToken, 0, isUser, currentAccent.primary, currencyRegex)}
+              </React.Fragment>
             );
           }
 
@@ -389,54 +631,26 @@ export function AiMarkdownView({
 
 const styles = StyleSheet.create({
   rootContainer: {
-    gap: 4,
-    maxWidth: '100%',
+    width: '100%',
   },
-  paragraphWrap: {
-    marginVertical: 1,
-  },
+
+  /* Base Typography */
   baseText: {
-    fontSize: 13.5,
-    lineHeight: 20.5,
-    color: THEME.colors.text,
-    letterSpacing: 0.1,
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#F1F5F9',
+    letterSpacing: -0.1,
   },
   userText: {
     color: '#FFFFFF',
   },
-  spacer: {
-    height: 4,
-  },
-
-  /* Typography Hierarchies */
-  h1: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: THEME.colors.text,
-    marginTop: 8,
-    marginBottom: 4,
-    letterSpacing: -0.2,
-  },
-  h2: {
-    fontSize: 15.5,
-    fontWeight: '700',
-    color: THEME.colors.text,
-    marginTop: 6,
-    marginBottom: 3,
-    letterSpacing: -0.15,
-  },
-  h3: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: THEME.colors.text,
-    marginTop: 5,
-    marginBottom: 2,
-    letterSpacing: -0.1,
+  paragraphWrap: {
+    marginVertical: 3,
   },
 
   /* Inline Styling */
   strong: {
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   userStrong: {
@@ -445,62 +659,119 @@ const styles = StyleSheet.create({
   },
   em: {
     fontStyle: 'italic',
-    color: THEME.colors.textSecondary,
+    color: '#CBD5E1',
   },
   userEm: {
     fontStyle: 'italic',
     color: 'rgba(255, 255, 255, 0.9)',
   },
+  inlineCode: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 12.5,
+    color: '#38BDF8',
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+  },
   del: {
     textDecorationLine: 'line-through',
     color: THEME.colors.textMuted,
   },
-  inlineCode: {
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 12,
-    color: THEME.colors.aiLight,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
+  link: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   currencyHighlight: {
-    fontWeight: '700',
-    letterSpacing: 0.15,
+    fontWeight: '800',
   },
-  link: {
-    textDecorationLine: 'underline',
-    fontWeight: '600',
+
+  /* Headings */
+  h1: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  h2: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+    marginTop: 8,
+    marginBottom: 3,
+  },
+  h3: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    letterSpacing: -0.1,
+    marginTop: 6,
+    marginBottom: 2,
   },
 
   /* Lists */
   listContainer: {
-    gap: 4,
-    marginVertical: 2,
+    marginVertical: 4,
+  },
+  nestedListContainer: {
+    marginTop: 4,
+    marginLeft: 6,
   },
   listItemRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    marginVertical: 2.5,
+  },
+  taskItemRow: {
+    marginVertical: 3.5,
   },
   bulletDotSlot: {
-    width: 14,
+    width: 16,
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 6,
   },
   bulletDot: {
     width: 5,
     height: 5,
     borderRadius: 2.5,
   },
+  bulletHollow: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    borderWidth: 1.5,
+  },
+  taskCheckboxSlot: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    marginTop: 1,
+  },
+  taskCheckbox: {
+    width: 15,
+    height: 15,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
   listNumber: {
     fontSize: 13,
     fontWeight: '700',
-    minWidth: 16,
+    minWidth: 20,
     lineHeight: 20,
+    marginRight: 4,
   },
   listContentSlot: {
     flex: 1,
@@ -573,10 +844,13 @@ const styles = StyleSheet.create({
 
   /* Table */
   tableScroll: {
-    marginVertical: 6,
+    marginVertical: 8,
+  },
+  tableScrollContent: {
+    paddingRight: 16,
   },
   tableContainer: {
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: THEME.colors.hairline,
     overflow: 'hidden',
@@ -601,21 +875,39 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 80,
+    paddingVertical: 9,
     justifyContent: 'center',
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: THEME.colors.hairline,
+  },
+  tableCellLastCol: {
+    borderRightWidth: 0,
   },
   tableHeaderCell: {
-    paddingVertical: 9,
+    paddingVertical: 10,
+    backgroundColor: THEME.colors.surfaceElevated,
+  },
+  cellAlignRight: {
+    alignItems: 'flex-end',
+  },
+  cellAlignCenter: {
+    alignItems: 'center',
+  },
+  textAlignRight: {
+    textAlign: 'right',
+  },
+  textAlignCenter: {
+    textAlign: 'center',
   },
   tableHeaderText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: THEME.colors.text,
   },
   tableCellText: {
     fontSize: 12.5,
     color: THEME.colors.textSecondary,
+    lineHeight: 18,
   },
 
   /* Separator & Caret */
@@ -623,6 +915,9 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginVertical: 8,
+  },
+  spacer: {
+    height: 6,
   },
   typewriterCursor: {
     fontSize: 13.5,
