@@ -280,12 +280,7 @@ export default function GroupDetailScreen() {
     }
   }, [requestedTab]);
 
-  // Auto-refresh when navigating back to screen (e.g. from Add Expense, Settle Up, Group Settings)
-  useFocusEffect(
-    useCallback(() => {
-      loadGroup(true);
-    }, [targetId])
-  );
+// Screen focus handled with stale gate below
 
   // Real-time event listener when any mutation occurs in this group or globally
   useEffect(() => {
@@ -316,31 +311,31 @@ export default function GroupDetailScreen() {
     const tabIndex = TABS.indexOf(tab);
     const isMovingRight = tabIndex > prevIndex;
 
-    // 1. Snappy native spring sliding indicator pill
+    // 1. Snappy 120Hz native spring sliding indicator pill
     Animated.spring(tabIndicatorAnim, {
       toValue: tabIndex,
       useNativeDriver: true,
-      damping: 26,
-      stiffness: 340,
-      mass: 0.6,
+      damping: 28,
+      stiffness: 380,
+      mass: 0.5,
     }).start();
 
-    // 2. Hardware-accelerated directional horizontal slide transition
-    const slideOffset = isMovingRight ? 54 : -54;
+    // 2. Hardware-accelerated directional subtle horizontal slide (zero black flash)
+    const slideOffset = isMovingRight ? 28 : -28;
     tabSlideAnim.setValue(slideOffset);
-    tabContentAnim.setValue(0.25);
+    tabContentAnim.setValue(0.88);
 
     Animated.parallel([
       Animated.spring(tabSlideAnim, {
         toValue: 0,
-        damping: 24,
-        stiffness: 300,
-        mass: 0.7,
+        damping: 28,
+        stiffness: 350,
+        mass: 0.5,
         useNativeDriver: true,
       }),
       Animated.timing(tabContentAnim, {
         toValue: 1,
-        duration: 180,
+        duration: 140,
         useNativeDriver: true,
       }),
     ]).start();
@@ -394,6 +389,7 @@ export default function GroupDetailScreen() {
     });
   };
 
+  const lastGroupFetchRef = useRef<number>(Date.now());
   useFocusEffect(
     useCallback(() => {
       // Smoothly reset FAB press animation when returning
@@ -403,7 +399,13 @@ export default function GroupDetailScreen() {
         friction: 7,
         useNativeDriver: true,
       }).start();
-      loadGroup();
+
+      const now = Date.now();
+      if (now - lastGroupFetchRef.current < 30_000) return;
+      lastGroupFetchRef.current = now;
+      requestAnimationFrame(() => {
+        loadGroup(true);
+      });
     }, [targetId])
   );
 
@@ -565,6 +567,44 @@ export default function GroupDetailScreen() {
     }
     return activityStream;
   }, [activityStream, activityFilter]);
+
+  const handlePressGroupExpense = useCallback((exp: GroupExpense) => {
+    haptics.tap();
+    router.push({
+      pathname: '/expenses/[id]',
+      params: {
+        id: exp.id,
+        groupId: targetId,
+        title: exp.title,
+        amount: String(exp.amount),
+        paidByName: exp.paidByName || 'Member',
+        date: exp.date,
+        category:
+          exp.category?.sub ||
+          exp.category?.master ||
+          (typeof exp.category === 'string' ? exp.category : 'Other'),
+      },
+    });
+  }, [router, targetId]);
+
+  const handlePressGroupSettlement = useCallback((set: GroupSettlementItem) => {
+    haptics.tap();
+    router.push({
+      pathname: '/settlements/[id]',
+      params: {
+        id: set.id,
+        groupId: targetId,
+        amount: String(set.amount),
+        payerName: set.payerName,
+        payeeName: set.payeeName,
+        payerId: set.payerId,
+        payeeId: set.payeeId,
+        date: set.date,
+        method: set.method || 'cash',
+        notes: set.notes || '',
+      },
+    });
+  }, [router, targetId]);
 
   // Progressive infinite scroll data & loader (Called unconditionally before any early returns)
   const visibleActivities = useMemo(
@@ -892,30 +932,10 @@ export default function GroupDetailScreen() {
                         return (
                           <ActivityExpenseRow
                             key={entry.id}
-                            expense={{
-                              ...exp,
-                              groupName: undefined,
-                            }}
+                            expense={exp}
                             currentUserId={currentUserId}
                             isLast={isLast}
-                            onPress={() => {
-                              haptics.tap();
-                              router.push({
-                                pathname: '/expenses/[id]',
-                                params: {
-                                  id: exp.id,
-                                  groupId: targetId,
-                                  title: exp.title,
-                                  amount: String(exp.amount),
-                                  paidByName: exp.paidByName || 'Member',
-                                  date: exp.date,
-                                  category:
-                                    exp.category?.sub ||
-                                    exp.category?.master ||
-                                    (typeof exp.category === 'string' ? exp.category : 'Other'),
-                                },
-                              });
-                            }}
+                            onPress={() => handlePressGroupExpense(exp)}
                           />
                         );
                       }
@@ -926,30 +946,10 @@ export default function GroupDetailScreen() {
                       return (
                         <ActivitySettlementRow
                           key={entry.id}
-                          settlement={{
-                            ...set,
-                            groupName: undefined,
-                          }}
+                          settlement={set}
                           currentUserId={currentUserId}
                           isLast={isLast}
-                          onPress={() => {
-                            haptics.tap();
-                            router.push({
-                              pathname: '/settlements/[id]',
-                              params: {
-                                id: set.id,
-                                groupId: targetId,
-                                amount: String(set.amount),
-                                payerName: set.payerName,
-                                payeeName: set.payeeName,
-                                payerId: set.payerId,
-                                payeeId: set.payeeId,
-                                date: set.date,
-                                method: set.method || 'cash',
-                                notes: set.notes || '',
-                              },
-                            });
-                          }}
+                          onPress={() => handlePressGroupSettlement(set)}
                         />
                       );
                     })}
@@ -1834,7 +1834,13 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   tabHidden: {
-    display: 'none',
+    position: 'absolute',
+    top: 0,
+    left: 10,
+    right: 10,
+    opacity: 0,
+    pointerEvents: 'none',
+    zIndex: -1,
   },
   activityFilterBar: {
     flexDirection: 'row',

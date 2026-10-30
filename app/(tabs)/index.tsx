@@ -189,6 +189,8 @@ export default function HomeScreen() {
     loadData(false);
   }, [authUser, refreshNotificationCount]);
 
+  const lastFetchRef = useRef<number>(Date.now());
+
   // Screen focus: background refresh when returning to HomeScreen from any modal/flow
   useFocusEffect(
     useCallback(() => {
@@ -196,8 +198,13 @@ export default function HomeScreen() {
       storageService.getItem<GroupSortOption>(STORAGE_KEYS.GROUPS_SORT_PREFERENCE).then((saved) => {
         if (saved) setGroupSortBy(saved);
       });
-      refreshNotificationCount();
-      loadData(false);
+      const now = Date.now();
+      if (now - lastFetchRef.current < 45_000) return;
+      lastFetchRef.current = now;
+      requestAnimationFrame(() => {
+        refreshNotificationCount();
+        loadData(false);
+      });
     }, [authUser, refreshNotificationCount])
   );
 

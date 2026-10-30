@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  FlatList,
+  Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -137,11 +139,17 @@ export default function ActivityScreen() {
     loadData(false);
   }, [authUser]);
 
+  const lastFetchRef = useRef<number>(Date.now());
   // Screen focus: background refresh when navigating to Activity screen
   useFocusEffect(
     useCallback(() => {
       if (!authUser) return;
-      loadData(false);
+      const now = Date.now();
+      if (now - lastFetchRef.current < 45_000) return;
+      lastFetchRef.current = now;
+      requestAnimationFrame(() => {
+        loadData(false);
+      });
     }, [authUser])
   );
 

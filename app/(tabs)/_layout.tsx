@@ -11,11 +11,11 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      detachInactiveScreens={false}
+      detachInactiveScreens={true}
       screenOptions={{
         headerShown: false,
-        lazy: false,
-        animation: 'shift',
+        lazy: true,
+        animation: 'none',
         tabBarStyle: {
           backgroundColor: THEME.colors.background,
           borderTopColor: THEME.colors.hairline,

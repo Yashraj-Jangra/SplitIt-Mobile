@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -198,11 +198,18 @@ export default function GroupsScreen() {
     };
   }, [authUser]);
 
+  const lastFetchRef = useRef<number>(Date.now());
+
   // Screen focus: background refresh when navigating back to Groups tab
   useFocusEffect(
     useCallback(() => {
       if (!authUser) return;
-      loadGroups(false);
+      const now = Date.now();
+      if (now - lastFetchRef.current < 45_000) return;
+      lastFetchRef.current = now;
+      requestAnimationFrame(() => {
+        loadGroups(false);
+      });
     }, [authUser])
   );
 
