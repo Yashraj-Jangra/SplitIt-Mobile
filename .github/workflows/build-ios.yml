@@ -90,12 +90,12 @@ jobs:
           echo "Found app at: $APP_PATH"
           mkdir -p Payload
           cp -r "$APP_PATH" Payload/
-          zip -r SplitIt-v1.1.0.ipa Payload
+          zip -r SplitIt-v1.2.0.ipa Payload
           rm -rf Payload
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SplitIt-v1.1.0-iOS-IPA
-          path: SplitIt-v1.1.0.ipa
+          name: SplitIt-v1.2.0-iOS-IPA
+          path: SplitIt-v1.2.0.ipa
           retention-days: 14
