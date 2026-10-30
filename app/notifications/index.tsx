@@ -15,7 +15,6 @@ import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import {
   ArrowLeft,
   Settings,
-  Check,
   CheckCheck,
   Receipt,
   Handshake,
@@ -29,9 +28,7 @@ import {
   Megaphone,
   ShieldAlert,
   Bell,
-  BellRing,
   BellOff,
-  ChevronRight,
   RotateCcw,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
@@ -39,6 +36,7 @@ import {
   notificationService,
   InAppNotification,
 } from '../../src/services/notification.service';
+import { appEventEmitter } from '../../src/services/event-emitter';
 import { haptics } from '../../src/services/haptics.service';
 import { useAppTheme } from '../../src/contexts/theme.context';
 
@@ -70,22 +68,32 @@ export default function NotificationsCenterScreen() {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      checkPermission();
-    }, [checkPermission])
-  );
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     const list = await notificationService.getInAppNotifications();
     setNotifications(list);
     setLoading(false);
     setRefreshing(false);
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPermission();
+      loadNotifications();
+    }, [checkPermission, loadNotifications])
+  );
 
   useEffect(() => {
     loadNotifications();
-  }, []);
+    const unsub = appEventEmitter.on('data-changed', (event) => {
+      if (event?.type === 'notifications_updated') {
+        const cached = notificationService.getInMemoryNotifications();
+        if (cached && cached.length > 0) {
+          setNotifications(cached);
+        }
+      }
+    });
+    return unsub;
+  }, [loadNotifications]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -396,71 +404,48 @@ export default function NotificationsCenterScreen() {
         </View>
       </View>
 
-      {/* Real-time System Push Notification Status */}
-      {permissionStatus && (
+      {/* System Push Notification Disabled Warning (only shown if alerts are disabled) */}
+      {permissionStatus && !permissionStatus.granted && (
         <View style={styles.systemStatusContainer}>
-          {permissionStatus.granted ? (
-            <View style={styles.grantedBanner}>
-              <View style={styles.grantedStatusLeft}>
-                <View style={styles.livePulseDot} />
-                <BellRing size={13} color={THEME.colors.success} />
-                <Text style={styles.grantedStatusText}>Push Alerts Active</Text>
+          <View style={styles.disabledBanner}>
+            <View style={styles.disabledLeft}>
+              <View style={styles.disabledIconBadge}>
+                <BellOff size={16} color={THEME.colors.warning} />
               </View>
-              <TouchableOpacity
-                onPress={() => {
-                  haptics.tap();
-                  router.push('/notifications/preferences');
-                }}
-                style={styles.channelsLinkButton}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="Notification channel preferences"
-              >
-                <Text style={styles.channelsLinkText}>Channels</Text>
-                <ChevronRight size={12} color={THEME.colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.disabledBanner}>
-              <View style={styles.disabledLeft}>
-                <View style={styles.disabledIconBadge}>
-                  <BellOff size={16} color={THEME.colors.warning} />
-                </View>
-                <View style={styles.disabledTextCol}>
-                  <Text style={styles.disabledTitle}>Push Alerts Disabled</Text>
-                  <Text style={styles.disabledSubtitle} numberOfLines={2}>
-                    {permissionStatus.status === 'denied'
-                      ? 'Enable in system settings to receive bill & settlement alerts.'
-                      : 'Allow notifications to get instant alerts on expense splits.'}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={async () => {
-                  haptics.tap();
-                  if (permissionStatus.status === 'undetermined' && permissionStatus.canAskAgain) {
-                    await notificationService.requestPermission();
-                    await checkPermission();
-                  } else {
-                    await notificationService.openSystemSettings();
-                  }
-                }}
-                style={[
-                  styles.disabledActionButton,
-                  { backgroundColor: currentAccent.primary },
-                ]}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Enable push notifications"
-              >
-                <Text style={styles.disabledActionText}>
-                  {permissionStatus.status === 'undetermined' && permissionStatus.canAskAgain
-                    ? 'Enable'
-                    : 'Settings'}
+              <View style={styles.disabledTextCol}>
+                <Text style={styles.disabledTitle}>Push Alerts Disabled</Text>
+                <Text style={styles.disabledSubtitle} numberOfLines={2}>
+                  {permissionStatus.status === 'denied'
+                    ? 'Enable in system settings to receive bill & settlement alerts.'
+                    : 'Allow notifications to get instant alerts on expense splits.'}
                 </Text>
-              </TouchableOpacity>
+              </View>
             </View>
-          )}
+            <TouchableOpacity
+              onPress={async () => {
+                haptics.tap();
+                if (permissionStatus.status === 'undetermined' && permissionStatus.canAskAgain) {
+                  await notificationService.requestPermission();
+                  await checkPermission();
+                } else {
+                  await notificationService.openSystemSettings();
+                }
+              }}
+              style={[
+                styles.disabledActionButton,
+                { backgroundColor: currentAccent.primary },
+              ]}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Enable push notifications"
+            >
+              <Text style={styles.disabledActionText}>
+                {permissionStatus.status === 'undetermined' && permissionStatus.canAskAgain
+                  ? 'Enable'
+                  : 'Settings'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -874,17 +859,11 @@ function NotificationItemRow({
     }, 200);
   };
 
-  const renderSwipeAction = (direction: 'left' | 'right') => {
+  const renderRightAction = () => {
     return (
-      <View
-        style={[
-          styles.swipeActionContainer,
-          direction === 'left' ? styles.swipeActionLeft : styles.swipeActionRight,
-          { backgroundColor: accentColor },
-        ]}
-      >
+      <View style={[styles.swipeActionContainer, { backgroundColor: accentColor }]}>
         <View style={styles.swipeActionContent}>
-          <CheckCheck size={20} color={THEME.colors.primaryForeground} />
+          <CheckCheck size={18} color={THEME.colors.primaryForeground} />
           <Text style={[styles.swipeActionText, { color: THEME.colors.primaryForeground }]}>
             Mark Read
           </Text>
@@ -893,85 +872,81 @@ function NotificationItemRow({
     );
   };
 
+  const rowContent = (
+    <TouchableOpacity
+      style={[
+        styles.itemRow,
+        !isRead && styles.itemRowUnread,
+        { borderLeftColor: leftBorderColor },
+        isLast && styles.itemRowLast,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.88}
+    >
+      {/* Avatar or Icon Badge */}
+      {actor?.avatarUrl ? (
+        <Image source={{ uri: actor.avatarUrl }} style={styles.avatarImg} />
+      ) : actor ? (
+        <View style={styles.avatarFallback}>
+          <Text style={styles.avatarInitialText}>{initials}</Text>
+        </View>
+      ) : (
+        <View style={[styles.iconBadge, { backgroundColor: iconBg }]}>
+          <Icon size={19} color={iconColor} />
+        </View>
+      )}
+
+      {/* Main Text Content */}
+      <View style={styles.itemTextContainer}>
+        <Text
+          style={[
+            styles.itemTitle,
+            !isRead && styles.itemTitleUnread,
+          ]}
+          numberOfLines={1}
+        >
+          {notification.title}
+        </Text>
+
+        {messageBody ? (
+          <Text style={styles.itemBody} numberOfLines={2}>
+            {messageBody}
+          </Text>
+        ) : null}
+
+        <View style={styles.itemTimeRow}>
+          <History size={11} color={THEME.colors.textMuted} />
+          <Text style={styles.itemTimeText}>
+            {formatTimeAgo(notification.createdAt)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Unread Indicator Dot Only (removed duplicate check tick mark) */}
+      {!isRead && (
+        <View style={styles.itemRightActions}>
+          <View style={[styles.unreadDot, { backgroundColor: accentColor }]} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
+  // Read items require no swipe-to-read gesture handler
+  if (isRead) {
+    return rowContent;
+  }
+
   return (
     <ReanimatedSwipeable
       ref={swipeableRef}
-      friction={1.5}
-      leftThreshold={60}
-      rightThreshold={60}
-      overshootLeft={false}
+      friction={2}
+      rightThreshold={45}
       overshootRight={false}
-      renderLeftActions={() => renderSwipeAction('left')}
-      renderRightActions={() => renderSwipeAction('right')}
+      renderRightActions={renderRightAction}
       onSwipeableOpen={handleSwipeOpen}
       containerStyle={styles.swipeableContainer}
     >
-      <TouchableOpacity
-        style={[
-          styles.itemRow,
-          !isRead && styles.itemRowUnread,
-          { borderLeftColor: leftBorderColor },
-          isLast && styles.itemRowLast,
-        ]}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        {/* Avatar or Icon Badge */}
-        {actor?.avatarUrl ? (
-          <Image source={{ uri: actor.avatarUrl }} style={styles.avatarImg} />
-        ) : actor ? (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.avatarInitialText}>{initials}</Text>
-          </View>
-        ) : (
-          <View style={[styles.iconBadge, { backgroundColor: iconBg }]}>
-            <Icon size={19} color={iconColor} />
-          </View>
-        )}
-
-        {/* Main Text Content */}
-        <View style={styles.itemTextContainer}>
-          <Text
-            style={[
-              styles.itemTitle,
-              !isRead && styles.itemTitleUnread,
-            ]}
-            numberOfLines={1}
-          >
-            {notification.title}
-          </Text>
-
-          {messageBody ? (
-            <Text style={styles.itemBody} numberOfLines={2}>
-              {messageBody}
-            </Text>
-          ) : null}
-
-          <View style={styles.itemTimeRow}>
-            <History size={11} color={THEME.colors.textMuted} />
-            <Text style={styles.itemTimeText}>
-              {formatTimeAgo(notification.createdAt)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Unread Action Buttons: Checkmark Mark-Read + Pulsing Dot */}
-        {!isRead && (
-          <View style={styles.itemRightActions}>
-            <TouchableOpacity
-              style={styles.checkButton}
-              onPress={(e) => {
-                onMarkRead();
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.6}
-            >
-              <Check size={14} color={THEME.colors.textSecondary} />
-            </TouchableOpacity>
-            <View style={[styles.unreadDot, { backgroundColor: accentColor }]} />
-          </View>
-        )}
-      </TouchableOpacity>
+      {rowContent}
     </ReanimatedSwipeable>
   );
 }
@@ -1117,16 +1092,9 @@ const styles = StyleSheet.create({
   },
   swipeActionContainer: {
     justifyContent: 'center',
-    width: 110,
+    alignItems: 'center',
+    width: 96,
     height: '100%',
-  },
-  swipeActionLeft: {
-    alignItems: 'flex-start',
-    paddingLeft: 20,
-  },
-  swipeActionRight: {
-    alignItems: 'flex-end',
-    paddingRight: 20,
   },
   swipeActionContent: {
     alignItems: 'center',
@@ -1150,7 +1118,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   itemRowUnread: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: '#18191E',
   },
   itemRowLast: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -1225,14 +1193,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginLeft: 4,
   },
-  checkButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-  },
+
   unreadDot: {
     width: 8,
     height: 8,
@@ -1275,45 +1236,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
   },
-  grantedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.22)',
-  },
-  grantedStatusLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  livePulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: THEME.colors.success,
-  },
-  grantedStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.success,
-  },
-  channelsLinkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-  },
-  channelsLinkText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: THEME.colors.textMuted,
-  },
+
   disabledBanner: {
     flexDirection: 'row',
     alignItems: 'center',

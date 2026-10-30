@@ -1,5 +1,22 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Notifications Center Fix: Solid Opaque Row, Single Swipe & Tick Mark Cleanup** 🐛 🎨 📱 ⚡ ✅:
+  - **Eliminated Row Transparency & Underlying Leak (`app/notifications/index.tsx`)**:
+    - Replaced translucent `rgba(255, 255, 255, 0.03)` on unread items with solid, matte charcoal `#18191E`.
+    - Resolved the issue where touching the unread notification turned the card transparent and revealed the underlying action views.
+    - Set `activeOpacity={0.88}` ensuring touches and drags remain solid with zero transparency reveal.
+  - **Removed Duplicate Swipe Gesture Code & Redundant Left Action**:
+    - Removed duplicate left swipe action and redundant directional code; swipe-to-read now operates purely on standard right-to-left swipe.
+    - Disabled/bypassed `ReanimatedSwipeable` on already-read items (`if (isRead) return rowContent`), eliminating unnecessary gesture overhead.
+  - **Removed Redundant Tick Mark Button**:
+    - Removed the inline circular checkmark button (`checkButton`) from each row, leaving only the clean, elegant unread indicator dot.
+  - **Completely Removed "Push Alerts Active" Banner**:
+    - Removed the persistent green `Push Alerts Active` / `Channels >` banner from the top of the screen when push notifications are enabled, reclaiming vertical space.
+  - **Cross-Screen Event Reactivity**:
+    - Subscribed to `appEventEmitter` for `notifications_updated` events and added `loadNotifications` to `useFocusEffect`.
+  - **Quality Gates**:
+    - `tsc --noEmit` verified with 0 errors across `SplitIt-Mobile`.
+
 - **Flagship Markdown Formatting Fixes: Synchronized Tables, Task Checkboxes & Recursive Lists** 🎨 📱 ⚡ 🚀 ✅:
   - **Synchronized Column Widths & Table Alignment (`src/components/ai/AiMarkdownView.tsx`)**:
     - Built dynamic column width synchronization across header and all data rows (`colWidths`), eliminating table column misalignment.
