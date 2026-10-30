@@ -1,5 +1,24 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Mobile AI Chat Flagship Markdown & In-Bubble Shining Thinking State** ✨ 🎨 📱 ⚡ ✅:
+  - **Flagship In-Bubble Shining Thinking State (`src/components/ai/AiThinkingShine.tsx`)**:
+    - Relocated thinking/reasoning status indicator from an awkward detached external pill below the chatbox into the AI response bubble itself.
+    - Built a 60/120fps UI-thread shining wave animation with `react-native-reanimated` that sweeps organically across normal-sized status text from left to right.
+    - Paired with a gently breathing celestial `Sparkles` emblem and realtime status messages (`Analyzing ledger records...`, `Searching expenses...`, `Thinking...`).
+    - Hid timestamp and copy button during thinking phase for a minimalist presentation, automatically morphing into streamed markdown once initial tokens arrive.
+  - **Full AST-Based Markdown Formatting Engine (`src/components/ai/AiMarkdownView.tsx`)**:
+    - Replaced buggy custom regex that broke on bold tags (`**text**`) with a robust AST parser powered by `marked.lexer`.
+    - Supports full Markdown syntax: **bold**, *italics*, ***bold italic***, ~~strikethrough~~, inline code pills, blockquotes with accent border, and H1/H2/H3 headings.
+    - Built native horizontal scrollable **Markdown Tables** with styled header rows and cell dividers.
+    - Built syntax-styled **Fenced Code Blocks** with language chips and 1-tap **Copy Code** button with haptics.
+    - Built ordered and unordered lists with colored bullet glyphs and active accent number labels.
+    - Integrated automated currency number detection (`₹`, `$`, `€`, `£`) styled with `currentAccent.primary`.
+  - **Data Stream & SSE Clean-Up (`src/services/ai.service.ts`, `app/ai/chat.tsx`)**:
+    - Fixed escaped literal double-newlines (`\\n\\n`) in AI service fallbacks and stream chunks.
+    - Completely removed obsolete external `thinkingContainer` and old regex styles from `app/ai/chat.tsx`.
+  - **Quality Gates**:
+    - `tsc --noEmit` passed with 0 errors across the entire codebase.
+
 - **Fixed Keyboard Vertical Offset & Bottom Clearance in Add Expense and Modals** 🐛 📱 ⚡ ✅:
   - Identified root cause of content and action buttons being partially obscured behind the software keyboard: nesting <KeyboardAvoidingView> inside <SafeAreaView edges={['top']}> caused relative layout calculations to subtract insets.top (~48px) from bottom padding when keyboardVerticalOffset={0}.
   - Updated keyboardVerticalOffset to insets.top + (Platform.OS === 'ios' ? 8 : 12) in app/expenses/new.tsx and app/settle/new.tsx, compensating for the parent safe area and adding extra breathing room.

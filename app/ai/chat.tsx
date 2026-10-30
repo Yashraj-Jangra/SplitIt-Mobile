@@ -41,7 +41,9 @@ import { haptics } from '../../src/services/haptics.service';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { THEME } from '../../src/constants/theme';
 import { aiService, BudgetActionProposal } from '../../src/services/ai.service';
-import { QuantumLogo, QuantumSpinner } from '../../src/components/brand/QuantumLogo';
+import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
+import { AiMarkdownView } from '../../src/components/ai/AiMarkdownView';
+import { AiThinkingShine } from '../../src/components/ai/AiThinkingShine';
 import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
 import { useCurrency, getActiveCurrencySymbol } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
@@ -55,109 +57,7 @@ interface ChatMessage {
   statusLabel?: string;
 }
 
-// ── Rich Markdown & Financial Entity Renderer ───────────────────────────────
-function FormattedInlineText({ text }: { text: string }) {
-  const { currentAccent } = useAppTheme();
-  const parts: Array<{ type: 'text' | 'bold' | 'currency'; content: string }> = [];
-  const sym = getActiveCurrencySymbol();
-  const escapedSym = sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(\\*\\*[^*]+\\*\\*|(?:${escapedSym}|[₹$€£¥])[0-9,]+(?:\\.[0-9]{2})?)`, 'g');
-  let lastIdx = 0;
-  let match: RegExpExecArray | null;
 
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIdx) {
-      parts.push({
-        type: 'text',
-        content: text.substring(lastIdx, match.index),
-      });
-    }
-    const token = match[0];
-    if (token.startsWith('**') && token.endsWith('**')) {
-      parts.push({
-        type: 'bold',
-        content: token.slice(2, -2),
-      });
-    } else {
-      parts.push({
-        type: 'currency',
-        content: token,
-      });
-    }
-    lastIdx = regex.lastIndex;
-  }
-  if (lastIdx < text.length) {
-    parts.push({
-      type: 'text',
-      content: text.substring(lastIdx),
-    });
-  }
-
-  return (
-    <Text style={styles.messageText}>
-      {parts.map((p, i) => {
-        if (p.type === 'bold') {
-          return (
-            <Text key={i} style={styles.boldText}>
-              {p.content}
-            </Text>
-          );
-        }
-        if (p.type === 'currency') {
-          return (
-            <Text key={i} style={[styles.currencyHighlight, { color: currentAccent.primary }]}>
-              {p.content}
-            </Text>
-          );
-        }
-        return <Text key={i}>{p.content}</Text>;
-      })}
-    </Text>
-  );
-}
-
-function RichMessageContent({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
-  const paragraphs = text.split('\n');
-
-  return (
-    <View style={styles.richContentContainer}>
-      {paragraphs.map((line, idx) => {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          return <View key={idx} style={styles.paragraphSpacer} />;
-        }
-
-        if (trimmed.startsWith('• ') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-          const bulletContent = trimmed.replace(/^[•\-\*]\s*/, '');
-          return (
-            <View key={idx} style={styles.bulletRow}>
-              <View style={styles.bulletDot} />
-              <View style={styles.bulletTextContainer}>
-                <FormattedInlineText text={bulletContent} />
-              </View>
-            </View>
-          );
-        }
-
-        if (trimmed.startsWith('### ') || trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
-          const headingContent = trimmed.replace(/^#+\s*/, '');
-          return (
-            <Text key={idx} style={styles.messageHeading}>
-              {headingContent}
-            </Text>
-          );
-        }
-
-        return (
-          <View key={idx} style={styles.paragraphRow}>
-            <FormattedInlineText text={line} />
-          </View>
-        );
-      })}
-      {isStreaming && <Text style={styles.typewriterCursor}>▋</Text>}
-    </View>
-  );
-}
 
 // ── Main Flagship AI Chat Screen ────────────────────────────────────────────
 export default function AiChatModal() {
@@ -522,11 +422,16 @@ export default function AiChatModal() {
                       isUser ? styles.bubbleUser : styles.bubbleAssistant,
                     ]}
                   >
-                    {/* Rich Text Formatter */}
-                    <RichMessageContent
-                      text={msg.text}
-                      isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id}
-                    />
+                    {/* In-Bubble Flagship Shining Thinking or Rich AST Markdown */}
+                    {!isUser && !msg.text.trim() && isStreaming && msg.id === messages[messages.length - 1]?.id ? (
+                      <AiThinkingShine stage={streamStage} />
+                    ) : (
+                      <AiMarkdownView
+                        content={msg.text}
+                        isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id}
+                        isUser={isUser}
+                      />
+                    )}
 
                     {/* Interactive Budget Action Proposal Card */}
                     {msg.proposal && (
@@ -584,26 +489,28 @@ export default function AiChatModal() {
                       </View>
                     )}
 
-                    {/* Message Footer / Copy Action */}
-                    <View style={styles.bubbleFooter}>
-                      <Text style={styles.timestampText}>{msg.timestamp}</Text>
-                      {!isUser && msg.text.trim().length > 0 && (
-                        <TouchableOpacity
-                          onPress={() => handleCopyMessage(msg.id, msg.text)}
-                          style={styles.copyAction}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          {copiedMsgId === msg.id ? (
-                            <View style={styles.copiedBadge}>
-                              <Check size={11} color={currentAccent.primary} />
-                              <Text style={styles.copiedText}>Copied</Text>
-                            </View>
-                          ) : (
-                            <Copy size={12} color={THEME.colors.textMuted} />
-                          )}
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    {/* Message Footer / Copy Action (Hidden during thinking phase) */}
+                    {(msg.text.trim().length > 0 || isUser) && (
+                      <View style={styles.bubbleFooter}>
+                        <Text style={styles.timestampText}>{msg.timestamp}</Text>
+                        {!isUser && msg.text.trim().length > 0 && (
+                          <TouchableOpacity
+                            onPress={() => handleCopyMessage(msg.id, msg.text)}
+                            style={styles.copyAction}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            {copiedMsgId === msg.id ? (
+                              <View style={styles.copiedBadge}>
+                                <Check size={11} color={currentAccent.primary} />
+                                <Text style={styles.copiedText}>Copied</Text>
+                              </View>
+                            ) : (
+                              <Copy size={12} color={THEME.colors.textMuted} />
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
                   </View>
 
                   {isUser && (
@@ -615,17 +522,7 @@ export default function AiChatModal() {
               );
             })}
 
-            {/* Thinking / Streaming Indicator */}
-            {isStreaming && (
-              <View style={styles.thinkingContainer}>
-                <View style={styles.thinkingPill}>
-                  <QuantumSpinner size={14} color={THEME.colors.aiLight} />
-                  <Text style={styles.thinkingText}>
-                    {streamStage || 'Analyzing ledger records...'}
-                  </Text>
-                </View>
-              </View>
-            )}
+
 
             {/* ── Follow-Up Suggestion Chips (Inside Feed) ───────────────── */}
             {showFollowUpChips && (

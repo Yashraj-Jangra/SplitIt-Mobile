@@ -109,15 +109,15 @@ export const aiService = {
     if (lower.includes('budget') || lower.includes('reduce') || lower.includes('cut')) {
       onStatus?.({ stage: 'calculating', message: 'Analyzing spending velocity & category caps...' });
       reply =
-        'I am analyzing your group spending velocity. Category allocations and spending caps can be configured in group budget settings.\\n\\nKeep recording regular circle expenses to unlock tailored auto-balancing proposals and category recommendations.';
+        `I am analyzing your group spending velocity. Category allocations and spending caps can be configured in group budget settings.\n\nKeep recording regular circle expenses to unlock tailored auto-balancing proposals and category recommendations.`;
     } else if (lower.includes('owe') || lower.includes('balance') || lower.includes('who')) {
       onStatus?.({ stage: 'ledger', message: 'Checking active debt graph...' });
       reply =
-        'All your active groups are currently settled up, or no pending balances are recorded.\\n\\nWhen new expenses are added, SplitIt automatically simplifies debts using `@splitit/core` to minimize total transactions across your circles.';
+        `All your active groups are currently settled up, or no pending balances are recorded.\n\nWhen new expenses are added, SplitIt automatically simplifies debts using \`@splitit/core\` to minimize total transactions across your circles.`;
     } else {
       onStatus?.({ stage: 'thinking', message: 'Synthesizing financial advice...' });
       reply =
-        `I am your **SplitIt AI Financial Assistant**.\\n\\nI can help you audit group expenses, calculate safe daily burn rates, detect category spending spikes, and formulate 1-tap budget proposals. Try asking: *"How much do I owe?"* or *"Analyze our group budget"*!`;
+        `I am your **SplitIt AI Financial Assistant**.\n\nI can help you audit group expenses, calculate safe daily burn rates, detect category spending spikes, and formulate 1-tap budget proposals. Try asking: *"How much do I owe?"* or *"Analyze our group budget"*!`;
     }
 
     await new Promise((r) => setTimeout(r, 350));
