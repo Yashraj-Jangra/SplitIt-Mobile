@@ -914,6 +914,7 @@ export const notificationService = {
         await saveAlertedIds(this._alertedNotificationIds);
 
         appEventEmitter.emit('data-changed', { type: 'notifications_updated' });
+        appEventEmitter.emit('data-changed', { type: 'app_resumed' });
         return brandNewNotifs.length;
       }
 

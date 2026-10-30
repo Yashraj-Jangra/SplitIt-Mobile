@@ -15,6 +15,7 @@ import { AppThemeProvider, useAppTheme } from '../src/contexts/theme.context';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { ErrorBoundary as AppErrorBoundary, ErrorFallbackView } from '../src/components/common/ErrorBoundary';
 import { notificationService } from '../src/services/notification.service';
+import { useAppSync } from '../src/hooks/useAppSync';
 import { useEffect, useMemo, useRef } from 'react';
 
 // Expo Router route error boundary export
@@ -26,6 +27,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 enableFreeze(false);
 
 function NavigationGate() {
+  useAppSync();
   const { user, isLoading } = useAuth();
   const { currentAccent } = useAppTheme();
   const segments = useSegments();
