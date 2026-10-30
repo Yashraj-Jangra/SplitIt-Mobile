@@ -1,7 +1,8 @@
 import type * as NotificationsType from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { Platform, AppState, type AppStateStatus } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
+import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { authService } from './auth.service';
 import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
@@ -130,6 +131,16 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
 
 let _cachedNotifications: InAppNotification[] = [];
 
+
+export function getChannelIdForType(type: string): string {
+  if (type.includes('expense')) return 'expenses';
+  if (type.includes('settlement')) return 'settlements';
+  if (type.includes('reminder') || type.includes('confirmation')) return 'reminders';
+  if (type.includes('budget')) return 'budgets';
+  if (type.includes('group') || type.includes('member')) return 'groups';
+  if (type.includes('broadcast') || type.includes('announcement') || type.includes('support')) return 'announcements';
+  return 'default';
+}
 export const notificationService = {
   /**
    * Synchronous accessor for in-memory cached notifications (prevents screen blanking).
@@ -148,6 +159,7 @@ export const notificationService = {
     try {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
+          shouldShowAlert: true,
           shouldShowBanner: true,
           shouldShowList: true,
           shouldPlaySound: true,
@@ -355,14 +367,40 @@ export const notificationService = {
       }
 
       if (isRunningInExpoGo() && Platform.OS === 'android') {
-        // Expo Go on Android does not support remote push tokens (requires development build)
         return null;
       }
 
-      const tokenData = await Notifications.getExpoPushTokenAsync();
-      const expoPushToken = tokenData.data;
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        Constants.easConfig?.projectId ??
+        '564133e2-dfca-4435-b76a-9fad3532cd14';
+
+      let expoPushToken: string | null = null;
+      try {
+        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+        expoPushToken = tokenData.data;
+      } catch (err) {
+        // Fallback for standalone builds without EAS context
+      }
+
+      if (!expoPushToken) {
+        try {
+          const deviceToken = await Notifications.getDevicePushTokenAsync();
+          if (deviceToken?.data) {
+            expoPushToken = typeof deviceToken.data === 'string' ? deviceToken.data : JSON.stringify(deviceToken.data);
+          }
+        } catch {
+          // Fallback
+        }
+      }
+
+      if (!expoPushToken) {
+        return null;
+      }
+
       const deviceId = await this.getDeviceId();
       const token = await authService.getToken();
+      if (!token) return expoPushToken;
 
       // Post to backend
       await fetch(`${API_BASE_URL}/api/push/subscribe`, {
@@ -641,6 +679,186 @@ export const notificationService = {
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e?.message || 'Network error' };
+    }
+  },
+
+
+  _isLiveSyncRunning: false,
+  _liveSyncTimer: null as any,
+  _appStateSubscription: null as any,
+  _knownNotificationIds: new Set<string>(),
+
+  /**
+   * Starts real-time notification sync and local notification dispatch engine.
+   * Periodically checks for new in-app alerts and presents native system notifications
+   * whenever new transactions, settlements, or alerts occur.
+   */
+  async startLiveSync(): Promise<void> {
+    if (this._isLiveSyncRunning) return;
+    this._isLiveSyncRunning = true;
+
+    // Seed existing notification IDs so we don't spam old history
+    try {
+      const existing = await this.getInAppNotifications();
+      existing.forEach((n) => this._knownNotificationIds.add(n.id));
+    } catch {
+      // Ignored
+    }
+
+    // AppState change listener: sync immediately when returning to foreground
+    this._appStateSubscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        this.syncAndPresentNewNotifications().catch(() => {});
+      }
+    });
+
+    // Background/foreground periodic poller (every 12 seconds)
+    this._liveSyncTimer = setInterval(() => {
+      this.syncAndPresentNewNotifications().catch(() => {});
+    }, 12000);
+  },
+
+  /**
+   * Stop the live sync poller and detach listeners (e.g. on logout)
+   */
+  stopLiveSync(): void {
+    this._isLiveSyncRunning = false;
+    if (this._liveSyncTimer) {
+      clearInterval(this._liveSyncTimer);
+      this._liveSyncTimer = null;
+    }
+    if (this._appStateSubscription) {
+      this._appStateSubscription.remove();
+      this._appStateSubscription = null;
+    }
+    this._knownNotificationIds.clear();
+  },
+
+  /**
+   * Checks for new incoming notifications from server and presents native system alerts
+   */
+  async syncAndPresentNewNotifications(): Promise<void> {
+    try {
+      const token = await authService.getToken();
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/api/notifications?limit=20`, {
+        headers: getAuthenticatedHeaders(token),
+      });
+
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!Array.isArray(data)) return;
+
+      const normalized: InAppNotification[] = data.map((item: any) => ({
+        ...item,
+        body: item.body || item.message || '',
+        message: item.message || item.body || '',
+        isRead: item.isRead !== undefined ? !!item.isRead : !!item.read,
+        read: item.isRead !== undefined ? !!item.isRead : !!item.read,
+        groupId: item.groupId || item.data?.groupId,
+        expenseId: item.expenseId || item.data?.expenseId,
+        settlementId: item.settlementId || item.data?.settlementId,
+      }));
+
+      // Find unread notifications that haven't been alerted locally yet
+      const brandNewNotifs = normalized.filter((n) => {
+        const isUnread = n.isRead !== undefined ? !n.isRead : !n.read;
+        return isUnread && !this._knownNotificationIds.has(n.id);
+      });
+
+      // Update known IDs
+      normalized.forEach((n) => this._knownNotificationIds.add(n.id));
+      _cachedNotifications = normalized;
+
+      if (brandNewNotifs.length > 0) {
+        // Fetch user preferences to respect user's push toggles
+        const prefs = await this.getPreferences().catch(() => null);
+        const pushEnabled = prefs ? prefs.pushEnabled : true;
+
+        for (const notif of brandNewNotifs) {
+          const eventPref = prefs?.events?.[notif.type as keyof typeof prefs.events];
+          const shouldPush = pushEnabled && (eventPref ? eventPref.push : true);
+
+          if (shouldPush) {
+            await this.presentLocalNotification(notif);
+          }
+        }
+
+        appEventEmitter.emit('data-changed', { type: 'notifications_updated' });
+      }
+    } catch {
+      // Safe catch for network fluctuations
+    }
+  },
+
+  /**
+   * Present an immediate native system notification banner on the device
+   */
+  async presentLocalNotification(notification: InAppNotification): Promise<void> {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) return;
+
+    try {
+      const channelId = getChannelIdForType(notification.type);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notification.title,
+          body: notification.body || notification.message || '',
+          sound: 'default',
+          badge: 1,
+          data: {
+            type: notification.type,
+            groupId: notification.groupId || notification.data?.groupId || '',
+            expenseId: notification.expenseId || notification.data?.expenseId || '',
+            settlementId: notification.settlementId || notification.data?.settlementId || '',
+            ticketId: notification.data?.ticketId || '',
+            url: notification.data?.url || '',
+            channelId,
+          },
+        },
+        trigger: null,
+      });
+    } catch (err) {
+      // Ignored
+    }
+  },
+
+  /**
+   * Check if app was launched via clicking a notification (cold start)
+   */
+  async checkColdStartNotification(navigate: (route: string) => void): Promise<void> {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) return;
+    try {
+      const response = await Notifications.getLastNotificationResponseAsync();
+      if (response) {
+        const data = response.notification?.request?.content?.data as any;
+        if (!data) return;
+        const { type, groupId, expenseId, settlementId, ticketId, url } = data;
+        if (url && typeof url === 'string') {
+          navigate(url);
+          return;
+        }
+        if (expenseId && groupId) {
+          navigate(`/expenses/${expenseId}?groupId=${groupId}`);
+          return;
+        }
+        if (settlementId && groupId) {
+          navigate(`/settlements/${settlementId}?groupId=${groupId}`);
+          return;
+        }
+        if (ticketId || type === 'support_reply') {
+          navigate(ticketId ? `/support/${ticketId}` : '/support');
+          return;
+        }
+        if (groupId) {
+          navigate(`/groups/${groupId}`);
+          return;
+        }
+      }
+    } catch {
+      // Ignored
     }
   },
 

@@ -1,5 +1,24 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Mobile Push Notification Engine & Real-Time Sync Delivery** ✨ 📱 🔔 ⚡ 🚀 ✅:
+  - **Identified Root Cause of Missing Mobile Notifications**:
+    - In standalone/bare builds without EAS CLI, `Notifications.getExpoPushTokenAsync()` was called without explicit `projectId`, throwing `ERR_NOTIFICATIONS_NO_EXPERIENCE_ID` and silently returning `null`, resulting in zero push tokens being registered with the backend.
+    - `NotificationBehavior` lacked `shouldShowAlert: true`, causing foreground notifications to be suppressed on Android.
+    - Android standalone APKs without FCM credentials cannot receive cloud-relayed push from remote servers without an on-device sync & present engine.
+  - **Implemented Real-Time Live Notification Sync & Native Presenter (`src/services/notification.service.ts`)**:
+    - Built `startLiveSync()` and `stopLiveSync()` polling every 12 seconds with AppState active listener to immediately detect new notifications.
+    - Added `presentLocalNotification(notification)` calling `Notifications.scheduleNotificationAsync({ trigger: null })` with categorised high-importance Android channels (`expenses`, `settlements`, `reminders`, etc.), sound, vibration, and badge.
+    - Filtered against `_knownNotificationIds` and user preferences, preventing duplicate alerts.
+    - Added `checkColdStartNotification()` to navigate directly to target routes when launched from closed state.
+  - **Fixed Remote Push Token Registration (`src/services/notification.service.ts`)**:
+    - Passed explicit `projectId: 564133e2-dfca-4435-b76a-9fad3532cd14` to `getExpoPushTokenAsync`.
+    - Added device push token fallback and uploaded subscription payload to `/api/push/subscribe`.
+    - Enabled `shouldShowAlert: true` and `shouldShowBanner: true` in `setNotificationHandler`.
+  - **Lifecycle Integration (`app/_layout.tsx`, `src/contexts/auth.context.tsx`)**:
+    - Wired `startLiveSync()` upon authenticated user state and `stopLiveSync()` on unmount or logout.
+  - **Quality Gates**:
+    - `tsc --noEmit` passed with 0 errors on both `SplitIt-Mobile` and `SplitWise-Clone`.
+
 - **Notifications Center Fix: Solid Opaque Row, Single Swipe & Tick Mark Cleanup** 🐛 🎨 📱 ⚡ ✅:
   - **Eliminated Row Transparency & Underlying Leak (`app/notifications/index.tsx`)**:
     - Replaced translucent `rgba(255, 255, 255, 0.03)` on unread items with solid, matte charcoal `#18191E`.

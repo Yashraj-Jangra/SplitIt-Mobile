@@ -47,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     expenseService.clearCache();
     balanceService.clearCache();
     notificationService.clearCache();
+    notificationService.stopLiveSync();
     settlementService.clearCache();
     supportService.clearCache();
     demoService.clearCache();

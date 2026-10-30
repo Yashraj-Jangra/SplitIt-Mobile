@@ -46,6 +46,11 @@ function NavigationGate() {
   useEffect(() => {
     notificationService.initNotifications();
 
+    // Cold-start notification routing
+    notificationService.checkColdStartNotification((route) => {
+      router.push(route as any);
+    });
+
     // Proactively prompt for notification permission on initial install/launch if undetermined
     notificationService.getPermissionStatus().then((status) => {
       if (status.status === 'undetermined' && status.canAskAgain) {
@@ -55,6 +60,9 @@ function NavigationGate() {
 
     if (user) {
       notificationService.registerForPushNotifications().catch(() => {});
+      notificationService.startLiveSync().catch(() => {});
+    } else {
+      notificationService.stopLiveSync();
     }
 
     const sub = notificationService.setupResponseListener((route) => {
@@ -62,6 +70,7 @@ function NavigationGate() {
     });
     return () => {
       sub?.remove?.();
+      notificationService.stopLiveSync();
     };
   }, [user, router]);
 
