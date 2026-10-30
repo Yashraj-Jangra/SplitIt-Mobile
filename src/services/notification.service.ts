@@ -1,5 +1,9 @@
 import type * as NotificationsType from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as TaskManager from 'expo-task-manager';
+import * as BackgroundFetch from 'expo-background-fetch';
+import NetInfo from '@react-native-community/netinfo';
 import { Platform, AppState, type AppStateStatus } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
 import Constants from 'expo-constants';
@@ -10,6 +14,10 @@ import { THEME } from '../constants/theme';
 import { appEventEmitter } from './event-emitter';
 
 const DEVICE_ID_KEY = 'splitit_device_id';
+const ALERTED_IDS_STORAGE_KEY = '@splitit:alerted_notification_ids';
+const MAX_ALERTED_IDS_HISTORY = 500;
+
+export const BACKGROUND_NOTIFICATION_TASK = 'SPLITIT_BACKGROUND_NOTIFICATION_SYNC';
 
 let cachedNotificationsModule: typeof NotificationsType | null | undefined = undefined;
 
@@ -18,8 +26,6 @@ function getNotificationsModule(): typeof NotificationsType | null {
     return cachedNotificationsModule;
   }
   // Expo Go on Android has removed expo-notifications native code since SDK 51/53.
-  // Accessing it in Expo Go causes an immediate fatal crash on launch.
-  // Native development builds (npx expo run:android or standalone APKs) retain full support.
   if (isRunningInExpoGo() && Platform.OS === 'android') {
     cachedNotificationsModule = null;
     return null;
@@ -32,6 +38,24 @@ function getNotificationsModule(): typeof NotificationsType | null {
     cachedNotificationsModule = null;
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Background Task Definition (Registered at module level for native Headless JS)
+// ---------------------------------------------------------------------------
+try {
+  TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async () => {
+    try {
+      const alertedCount = await notificationService.syncAndPresentNewNotifications();
+      return alertedCount > 0
+        ? BackgroundFetch.BackgroundFetchResult.NewData
+        : BackgroundFetch.BackgroundFetchResult.NoData;
+    } catch {
+      return BackgroundFetch.BackgroundFetchResult.Failed;
+    }
+  });
+} catch {
+  // Ignored in environments where TaskManager is unavailable
 }
 
 export interface InAppNotification {
@@ -131,7 +155,6 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
 
 let _cachedNotifications: InAppNotification[] = [];
 
-
 export function getChannelIdForType(type: string): string {
   if (type.includes('expense')) return 'expenses';
   if (type.includes('settlement')) return 'settlements';
@@ -141,7 +164,40 @@ export function getChannelIdForType(type: string): string {
   if (type.includes('broadcast') || type.includes('announcement') || type.includes('support')) return 'announcements';
   return 'default';
 }
+
+// Persistent Storage Helpers for Alert History
+async function loadAlertedIds(): Promise<Set<string>> {
+  try {
+    const raw = await AsyncStorage.getItem(ALERTED_IDS_STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        return new Set(arr);
+      }
+    }
+  } catch {
+    // Fallback
+  }
+  return new Set();
+}
+
+async function saveAlertedIds(ids: Set<string>): Promise<void> {
+  try {
+    const arr = Array.from(ids).slice(-MAX_ALERTED_IDS_HISTORY);
+    await AsyncStorage.setItem(ALERTED_IDS_STORAGE_KEY, JSON.stringify(arr));
+  } catch {
+    // Fallback
+  }
+}
+
 export const notificationService = {
+  _isLiveSyncRunning: false,
+  _liveSyncTimer: null as any,
+  _appStateSubscription: null as any,
+  _netInfoSubscription: null as any,
+  _alertedNotificationIds: new Set<string>(),
+  _isInitialized: false,
+
   /**
    * Synchronous accessor for in-memory cached notifications (prevents screen blanking).
    */
@@ -150,7 +206,7 @@ export const notificationService = {
   },
 
   /**
-    * Configure notification handlers and modern categorized Android notification channels
+   * Configure notification handlers and modern categorized Android notification channels
    */
   async initNotifications(): Promise<void> {
     const Notifications = getNotificationsModule();
@@ -168,7 +224,7 @@ export const notificationService = {
       });
 
       if (Platform.OS === 'android') {
-        // 1. Expenses & Splits Channel (High Importance, Cyan)
+        // 1. Expenses & Splits Channel (Max Importance, Cyan)
         await Notifications.setNotificationChannelAsync('expenses', {
           name: 'Expenses & Splits',
           description: 'Alerts when someone adds, updates, or deletes expenses in your groups',
@@ -181,7 +237,7 @@ export const notificationService = {
           showBadge: true,
         });
 
-        // 2. Settlements & Payments Channel (High Importance, Emerald)
+        // 2. Settlements & Payments Channel (Max Importance, Emerald)
         await Notifications.setNotificationChannelAsync('settlements', {
           name: 'Settlements & Payments',
           description: 'Alerts when settlements are recorded, paid, or cleared',
@@ -240,17 +296,19 @@ export const notificationService = {
           showBadge: true,
         });
 
-        // 7. Default Fallback Channel
+        // 7. Default Fallback Channel (High Importance)
         await Notifications.setNotificationChannelAsync('default', {
           name: 'General Notifications',
           description: 'General account alerts and fallback notifications',
-          importance: Notifications.AndroidImportance.DEFAULT,
+          importance: Notifications.AndroidImportance.HIGH,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: THEME.colors.primary,
           sound: 'default',
           showBadge: true,
         });
       }
+
+      this._isInitialized = true;
     } catch {
       // Ignored for environments without native notification channels
     }
@@ -379,8 +437,8 @@ export const notificationService = {
       try {
         const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         expoPushToken = tokenData.data;
-      } catch (err) {
-        // Fallback for standalone builds without EAS context
+      } catch {
+        // Fallback for standalone builds without Google Services
       }
 
       if (!expoPushToken) {
@@ -567,25 +625,21 @@ export const notificationService = {
 
         const { type, groupId, expenseId, settlementId, ticketId, url, tab } = data;
 
-        // 1. Direct explicit URL payload
         if (url && typeof url === 'string') {
           navigate(url);
           return;
         }
 
-        // 2. Expense item view
         if (expenseId && groupId) {
           navigate(`/expenses/${expenseId}?groupId=${groupId}`);
           return;
         }
 
-        // 3. Settlement item view
         if (settlementId && groupId) {
           navigate(`/settlements/${settlementId}?groupId=${groupId}`);
           return;
         }
 
-        // 4. Budget tab view
         if (tab === 'budget' && groupId) {
           navigate(`/groups/${groupId}?tab=budget`);
           return;
@@ -597,25 +651,21 @@ export const notificationService = {
           }
         }
 
-        // 5. Monthly summary analysis
         if (type === 'monthly_summary') {
           navigate('/(tabs)/analysis');
           return;
         }
 
-        // 6. Support ticket resolution
         if (ticketId || type === 'support_reply') {
           navigate(ticketId ? `/support/${ticketId}` : '/support');
           return;
         }
 
-        // 7. Group landing view
         if (groupId) {
           navigate(`/groups/${groupId}`);
           return;
         }
 
-        // 8. System broadcast announcements
         if (type === 'broadcast_announcement' || type === 'broadcast_critical') {
           navigate('/notifications');
           return;
@@ -682,40 +732,107 @@ export const notificationService = {
     }
   },
 
+  /**
+   * Register native background task for WorkManager (Android) and BGAppRefresh (iOS)
+   */
+  async registerBackgroundTask(): Promise<void> {
+    try {
+      const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK);
+      if (!isRegistered) {
+        await BackgroundFetch.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK, {
+          minimumInterval: 15 * 60, // 15 minutes minimum interval
+          stopOnTerminate: false,   // Continue running when app is closed / killed
+          startOnBoot: true,        // Automatically re-register on device boot
+        });
+      }
+    } catch {
+      // Background fetch registration handled gracefully
+    }
+  },
 
-  _isLiveSyncRunning: false,
-  _liveSyncTimer: null as any,
-  _appStateSubscription: null as any,
-  _knownNotificationIds: new Set<string>(),
+  /**
+   * Unregister native background task (e.g. on logout)
+   */
+  async unregisterBackgroundTask(): Promise<void> {
+    try {
+      const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK);
+      if (isRegistered) {
+        await BackgroundFetch.unregisterTaskAsync(BACKGROUND_NOTIFICATION_TASK);
+      }
+    } catch {
+      // Fallback
+    }
+  },
 
   /**
    * Starts real-time notification sync and local notification dispatch engine.
-   * Periodically checks for new in-app alerts and presents native system notifications
-   * whenever new transactions, settlements, or alerts occur.
+   * Multi-trigger redundancy:
+   * 1. Immediate sync on start
+   * 2. Instant sync when app returns to 'active' (screen unlock or app switch)
+   * 3. Instant sync on network reconnection (Wi-Fi / Cellular restored)
+   * 4. 10s foreground active poller while screen is focused
+   * 5. OS-level background WorkManager / BackgroundFetch when app is closed
    */
   async startLiveSync(): Promise<void> {
     if (this._isLiveSyncRunning) return;
     this._isLiveSyncRunning = true;
 
-    // Seed existing notification IDs so we don't spam old history
+    // Load persistent alerted IDs from AsyncStorage
     try {
-      const existing = await this.getInAppNotifications();
-      existing.forEach((n) => this._knownNotificationIds.add(n.id));
+      const stored = await loadAlertedIds();
+      if (stored.size === 0) {
+        // First run on this installation: mark existing notifications as already alerted
+        // so we only trigger alerts for future incoming events
+        const existing = await this.getInAppNotifications();
+        existing.forEach((n) => stored.add(n.id));
+        await saveAlertedIds(stored);
+      }
+      this._alertedNotificationIds = stored;
     } catch {
-      // Ignored
+      // Fallback
     }
 
-    // AppState change listener: sync immediately when returning to foreground
+    // Register OS native background task
+    this.registerBackgroundTask().catch(() => {});
+
+    // Trigger 1: AppState listener (immediate sync upon unlocking or opening app)
     this._appStateSubscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'active') {
+        this.syncAndPresentNewNotifications().catch(() => {});
+        this._startForegroundPoller();
+      } else if (nextState === 'background' || nextState === 'inactive') {
+        this._stopForegroundPoller();
+      }
+    });
+
+    // Trigger 2: NetInfo listener (immediate sync when internet connection is restored)
+    this._netInfoSubscription = NetInfo.addEventListener((state) => {
+      if (state.isConnected && state.isInternetReachable !== false) {
         this.syncAndPresentNewNotifications().catch(() => {});
       }
     });
 
-    // Background/foreground periodic poller (every 12 seconds)
+    // Trigger 3: Active foreground poller (every 10s while active)
+    this._startForegroundPoller();
+
+    // Trigger 4: Immediate sync upon call
+    this.syncAndPresentNewNotifications().catch(() => {});
+  },
+
+  _startForegroundPoller(): void {
+    if (this._liveSyncTimer) return;
     this._liveSyncTimer = setInterval(() => {
-      this.syncAndPresentNewNotifications().catch(() => {});
-    }, 12000);
+      if (AppState.currentState === 'active') {
+        this.syncAndPresentNewNotifications().catch(() => {});
+      }
+    }, 10000);
+  },
+
+  _stopForegroundPoller(): void {
+    if (this._liveSyncTimer) {
+      clearInterval(this._liveSyncTimer);
+      this._liveSyncTimer = null;
+    }
   },
 
   /**
@@ -723,32 +840,36 @@ export const notificationService = {
    */
   stopLiveSync(): void {
     this._isLiveSyncRunning = false;
-    if (this._liveSyncTimer) {
-      clearInterval(this._liveSyncTimer);
-      this._liveSyncTimer = null;
-    }
+    this._stopForegroundPoller();
+
     if (this._appStateSubscription) {
       this._appStateSubscription.remove();
       this._appStateSubscription = null;
     }
-    this._knownNotificationIds.clear();
+    if (this._netInfoSubscription) {
+      this._netInfoSubscription();
+      this._netInfoSubscription = null;
+    }
+
+    this.unregisterBackgroundTask().catch(() => {});
   },
 
   /**
    * Checks for new incoming notifications from server and presents native system alerts
+   * Returns the count of newly alerted notifications.
    */
-  async syncAndPresentNewNotifications(): Promise<void> {
+  async syncAndPresentNewNotifications(): Promise<number> {
     try {
       const token = await authService.getToken();
-      if (!token) return;
+      if (!token) return 0;
 
-      const res = await fetch(`${API_BASE_URL}/api/notifications?limit=20`, {
+      const res = await fetch(`${API_BASE_URL}/api/notifications?limit=25`, {
         headers: getAuthenticatedHeaders(token),
       });
 
-      if (!res.ok) return;
+      if (!res.ok) return 0;
       const data = await res.json();
-      if (!Array.isArray(data)) return;
+      if (!Array.isArray(data)) return 0;
 
       const normalized: InAppNotification[] = data.map((item: any) => ({
         ...item,
@@ -761,18 +882,21 @@ export const notificationService = {
         settlementId: item.settlementId || item.data?.settlementId,
       }));
 
+      // Ensure persistent alerted cache is loaded
+      if (this._alertedNotificationIds.size === 0) {
+        const stored = await loadAlertedIds();
+        this._alertedNotificationIds = stored;
+      }
+
       // Find unread notifications that haven't been alerted locally yet
       const brandNewNotifs = normalized.filter((n) => {
         const isUnread = n.isRead !== undefined ? !n.isRead : !n.read;
-        return isUnread && !this._knownNotificationIds.has(n.id);
+        return isUnread && !this._alertedNotificationIds.has(n.id);
       });
 
-      // Update known IDs
-      normalized.forEach((n) => this._knownNotificationIds.add(n.id));
       _cachedNotifications = normalized;
 
       if (brandNewNotifs.length > 0) {
-        // Fetch user preferences to respect user's push toggles
         const prefs = await this.getPreferences().catch(() => null);
         const pushEnabled = prefs ? prefs.pushEnabled : true;
 
@@ -783,12 +907,19 @@ export const notificationService = {
           if (shouldPush) {
             await this.presentLocalNotification(notif);
           }
+          this._alertedNotificationIds.add(notif.id);
         }
 
+        // Persist updated alerted IDs to disk
+        await saveAlertedIds(this._alertedNotificationIds);
+
         appEventEmitter.emit('data-changed', { type: 'notifications_updated' });
+        return brandNewNotifs.length;
       }
+
+      return 0;
     } catch {
-      // Safe catch for network fluctuations
+      return 0;
     }
   },
 
@@ -800,6 +931,10 @@ export const notificationService = {
     if (!Notifications) return;
 
     try {
+      if (!this._isInitialized) {
+        await this.initNotifications();
+      }
+
       const channelId = getChannelIdForType(notification.type);
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -819,7 +954,7 @@ export const notificationService = {
         },
         trigger: null,
       });
-    } catch (err) {
+    } catch {
       // Ignored
     }
   },

@@ -1,5 +1,25 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Mobile Notification Hardening & Native Background Sync Overhaul** 🛡️ 📱 🔔 ⚡ 🚀 ✅:
+  - **Comprehensive Forensic Audit & Root Cause Diagnosis**:
+    - Discovered standalone APK lacked `google-services.json`, causing native FCM SDK to throw unhandled `IllegalStateException` on Android and leaving 0 mobile push subscriptions in backend database.
+    - Discovered Android Doze mode froze JavaScript `setInterval` poller in background within seconds.
+    - Discovered volatile in-memory `_knownNotificationIds` was wiping on screen navigation and swallowing unread notifications.
+    - Discovered layout `useEffect` was bound to `router`, constantly tearing down and restarting the poller during navigation.
+  - **Native Background Task (`expo-background-fetch` + `expo-task-manager`)**:
+    - Registered `SPLITIT_BACKGROUND_NOTIFICATION_SYNC` task with `stopOnTerminate: false` and `startOnBoot: true`.
+    - Added `RECEIVE_BOOT_COMPLETED` and `WAKE_LOCK` permissions in `AndroidManifest.xml` and `app.json`.
+  - **Persistent Alert Deduplication (`AsyncStorage`)**:
+    - Backed alerted notification IDs by disk storage (`@splitit:alerted_notification_ids`, capped at 500 IDs).
+    - Prevents both duplicate alerts and missed alerts across app reloads, reboots, and network reconnects.
+  - **Multi-Trigger Immediate Sync**:
+    - AppState listener triggers immediate sync upon phone unlock / app resume.
+    - NetInfo listener triggers immediate sync upon internet connection restoration.
+    - Decoupled `_layout.tsx` lifecycle using `routerRef` and `user?.id` dependency.
+  - **Backend High-Priority Dispatch**:
+    - In `SplitWise-Clone/src/lib/services/dispatch.service.ts`: added `priority: 'high'` and `ttl: 86400` to Expo push messages.
+    - Added automatic pruning of dead push tokens on `DeviceNotRegistered` error.
+
 - **Milestone v1.2.0 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ ✅:
   - **Version Manifests Bumped to 1.2.0**:
     - `package.json`: `"version": "1.2.0"`

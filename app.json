@@ -24,7 +24,11 @@
         ],
         "NSCameraUsageDescription": "SplitIt needs camera access to scan physical receipts and bills for automatic expense splitting.",
         "NSPhotoLibraryUsageDescription": "SplitIt needs photo library access to upload receipt images from your photo gallery.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -36,7 +40,10 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK",
+        "android.permission.VIBRATE"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#131417",

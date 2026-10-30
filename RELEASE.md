@@ -14,7 +14,7 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 | File | Type | Size | SHA256 Checksum |
 | :--- | :--- | :--- | :--- |
-| **`SplitIt-v1.2.0.apk`** | Android Release APK | `129.3 MB` (`135,617,649 bytes`) | `587c375af2e5723f8159f3755a762d94591683cb859943b9128fc1f1542ecb2e` |
+| **`SplitIt-v1.2.0.apk`** | Android Release APK | `129.4 MB` (`135,671,901 bytes`) | `7cd7a6bc36c2a3fe1994afe6f2380e5c64db8279b1142d98e59f91b92fc3f0aa` |
 
 ```bash
 # Verify checksum on Windows (PowerShell)
@@ -27,6 +27,12 @@ sha256sum SplitIt-v1.2.0.apk
 ---
 
 ### 🚀 Highlights & Changelog
+
+#### 🛡️ Background Push Notification Architecture & WorkManager Integration
+- **Native WorkManager Background Fetch**: Integrated `expo-background-fetch` and `expo-task-manager` (`SPLITIT_BACKGROUND_NOTIFICATION_SYNC`) configured with `stopOnTerminate: false` and `startOnBoot: true`, enabling the Android OS Job Scheduler to periodically poll for and present unread notification alerts even when the application is completely killed or after device reboots.
+- **Persistent Storage Alert Deduplication**: Backed alerted notification IDs in persistent `AsyncStorage` (`@splitit:alerted_notification_ids`, rolling 500-ID window), eliminating duplicate alert sounds while ensuring notifications arriving while closed or sleeping are never swallowed or lost.
+- **Multi-Trigger Instant Catch-up**: Paired background fetch with immediate `AppState: 'active'` resume listener and `NetInfo` network reconnection hooks, guaranteeing zero delay when unlocking the phone or regaining cellular/Wi-Fi coverage.
+- **High-Priority Expo Dispatch & Auto-Pruning**: Configured backend Expo dispatch with `priority: 'high'` and `ttl: 86400` to penetrate Android Doze mode, paired with automatic pruning of obsolete tokens on `DeviceNotRegistered` responses.
 
 #### ✨ Real-Time Push Notification Engine & Live Sync Presenter
 - **Live On-Device Poller & Presenter**: Implemented continuous background sync (`startLiveSync`) with 12s polling and immediate `AppState` active listener for instantaneous notification detection.
@@ -66,3 +72,4 @@ sha256sum SplitIt-v1.2.0.apk
 1. Download **`SplitIt-v1.2.0.apk`** from repository root or GitHub Releases.
 2. If prompted on Android, allow *“Install from unknown sources”* for your browser or file manager.
 3. Tap the file to install or update from previous versions (`v1.1.1` or `v1.1.0`). All local data and sessions will be preserved.
+

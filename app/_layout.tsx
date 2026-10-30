@@ -15,7 +15,7 @@ import { AppThemeProvider, useAppTheme } from '../src/contexts/theme.context';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { ErrorBoundary as AppErrorBoundary, ErrorFallbackView } from '../src/components/common/ErrorBoundary';
 import { notificationService } from '../src/services/notification.service';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 // Expo Router route error boundary export
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
@@ -43,12 +43,15 @@ function NavigationGate() {
     },
   }), [currentAccent]);
 
+  const routerRef = useRef(router);
+  routerRef.current = router;
+
   useEffect(() => {
     notificationService.initNotifications();
 
     // Cold-start notification routing
     notificationService.checkColdStartNotification((route) => {
-      router.push(route as any);
+      routerRef.current.push(route as any);
     });
 
     // Proactively prompt for notification permission on initial install/launch if undetermined
@@ -58,7 +61,7 @@ function NavigationGate() {
       }
     }).catch(() => {});
 
-    if (user) {
+    if (user?.id) {
       notificationService.registerForPushNotifications().catch(() => {});
       notificationService.startLiveSync().catch(() => {});
     } else {
@@ -66,13 +69,12 @@ function NavigationGate() {
     }
 
     const sub = notificationService.setupResponseListener((route) => {
-      router.push(route as any);
+      routerRef.current.push(route as any);
     });
     return () => {
       sub?.remove?.();
-      notificationService.stopLiveSync();
     };
-  }, [user, router]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (isLoading) return;
