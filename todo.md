@@ -1,5 +1,34 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Automatic Cross-Screen Data Revalidation & Real-Time Sync Engine** 🔄 ⚡ ✨ 🛡️ 🚀 ✅:
+  - **Forensic Diagnosis of Stale Mobile State**:
+    - Discovered core tabs (`HomeScreen`, `GroupsScreen`, `ActivityScreen`) used a rigid 45-second lock (`now - lastFetchRef.current < 45_000`) that blocked all revalidation on tab switching, back-navigation, and modal returns.
+    - Discovered that even after 45 seconds, focus hooks invoked `loadData(false)` which returned in-memory/storage cached data without pinging the backend API.
+    - Discovered app lacked an `AppState` resume listener in data services, causing app reopen/unlock to remain completely frozen on stale data.
+    - Discovered `GroupDetailScreen` had an aggressive 30s gate, `appEventEmitter` ignored global events, and `onRefresh` called without `forceRefresh: true`.
+    - Discovered `ExpenseDetailScreen` and `SettlementDetailScreen` were not subscribed to `appEventEmitter`, leaving audit logs and timeline out of sync after edits.
+    - Discovered service layer cleared in-memory caches on mutations but left persistent storage keys (`STORAGE_KEYS.GROUP_DETAIL`, `STORAGE_KEYS.USER_SETTLEMENTS`) stale.
+  - **Service Layer & Event Bus Hardening**:
+    - Extended `AppDataChangedEvent` with `'app_resumed'`, `'network_reconnected'`, `'comment_added'`, `'history_restored'`, and `'history_deleted'`.
+    - In `expenseService`, `groupService`, and `settlementService`: hardened `clearCache()` and `invalidateCache(groupId)` to asynchronously evict both in-memory maps and disk storage keys (`AsyncStorage`).
+    - Made `restoreExpense`, `restoreSettlement`, `deleteHistoryEvent`, `addExpenseComment`, and `addSettlementComment` emit `data-changed` events across the bus.
+  - **Centralized Lifecycle & Connectivity Revalidation (`useAppSync`)**:
+    - Built and mounted `src/hooks/useAppSync.ts` in root `_layout.tsx`:
+      - Detects `background`/`inactive` -> `active` app resume and triggers silent background revalidation with a 3s cooldown.
+      - Detects network recovery (`isOnline: false -> true`) and triggers automatic silent sync.
+      - Linked background live notification delivery to trigger active screen data revalidation.
+  - **Screen Focus SWR Refactoring**:
+    - `app/(tabs)/index.tsx`: Replaced 45s gate with 2.5s SWR background revalidation calling `loadData(true)`.
+    - `app/(tabs)/groups.tsx`: Replaced 45s gate with 2.5s SWR background revalidation calling `loadGroups(true)`.
+    - `app/(tabs)/activity.tsx`: Replaced 45s gate with 2.5s SWR background revalidation calling `loadData(true)`.
+    - `app/groups/[id]/index.tsx`: Replaced 30s gate with 2.5s SWR background revalidation, wired `onRefresh={() => loadGroup(true)}`, and expanded event listener to sync on resume and history restore/delete.
+    - `app/expenses/[id].tsx`: Subscribed to `appEventEmitter`, passed `groupId` to `addExpenseComment`, and added 2s debounced focus revalidation for instant comment and audit log timeline updates.
+    - `app/settlements/[id].tsx`: Subscribed to `appEventEmitter` and added 2s debounced focus revalidation.
+    - `app/analysis/index.tsx`: Added `useFocusEffect` and `data-changed` event listener.
+  - **Quality Gates Passed**:
+    - `tsc --noEmit` verified with 0 errors.
+    - `jest --passWithNoTests` passed with 0 failures.
+
 - **Mobile Notification Hardening & Native Background Sync Overhaul** 🛡️ 📱 🔔 ⚡ 🚀 ✅:
   - **Comprehensive Forensic Audit & Root Cause Diagnosis**:
     - Discovered standalone APK lacked `google-services.json`, causing native FCM SDK to throw unhandled `IllegalStateException` on Android and leaving 0 mobile push subscriptions in backend database.
