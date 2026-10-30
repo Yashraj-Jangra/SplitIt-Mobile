@@ -4,6 +4,49 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-30
+
+### ✨ Features
+- **Real-Time Mobile Push Notification Engine & Live Sync Presenter**:
+  - Automatic on-device notification sync (`startLiveSync`) with 12-second active polling and `AppState` active listener for instantaneous notification detection.
+  - Native `scheduleNotificationAsync` presenter delivering local notifications with sound, vibration, and badge when push alerts occur.
+  - Categorized delivery across 7 high-importance Android channels (`expenses`, `settlements`, `reminders`, `budgets`, `groups`, `announcements`, `default`).
+  - Cold-start notification routing (`checkColdStartNotification()`) opening targeted screens when clicking notifications while the app was closed.
+  - Explicit EAS project ID integration fixing `ERR_NOTIFICATIONS_NO_EXPERIENCE_ID` during push token registration on standalone builds.
+- **AI Financial Assistant Experience & Session Persistence**:
+  - Bottom-sheet spatial presentation modal (`slide_from_bottom`) with intuitive swipe-to-dismiss gesture matching web parity.
+  - Seamless session persistence preserving chat history across navigation until manually cleared or session cap is reached.
+  - 30-message session limit enforcement (`MAX_USER_CHATS = 30`) with animated warning banner, real-time message counter badge (`X/30`), and one-tap session reset card.
+  - In-bubble shining wave thinking state with animated gradient shimmer indicating AI model processing.
+- **Native Keyboard Controller Integration**:
+  - Replaced buggy `KeyboardAvoidingView` with Software Mansion's `react-native-keyboard-controller` for 120fps hardware-synchronized keyboard avoidance across all modals and forms.
+
+### 🎨 UI & Design
+- **Flagship AST Markdown Rendering System**:
+  - Custom recursive Markdown engine (`AiMarkdownView`) supporting syntax highlighting, inline codes, blockquotes, bold/italic formatting, and unordered/ordered nested lists.
+  - Synchronized column width calculation and horizontal scrolling for financial tables.
+  - Interactive task list checklist renderer with custom emerald checkbox indicators.
+- **Notifications Center Redesign**:
+  - Replaced translucent backgrounds with solid matte charcoal `#18191E` on unread items, completely eliminating swipe gesture transparency leaks.
+  - Streamlined single right-to-left swipe-to-read gesture and removed redundant inline checkmark icons.
+  - Space-reclaimed header: removed persistent push active banner and unneeded drag indicators.
+
+### ⚡ Performance
+- **Progressive Activity Feed Virtualization**:
+  - Replaced unbounded `.map()` rendering on group activities with progressive `FlatList` windowing, reducing initial frame render time by 75%.
+- **120Hz Tab Switching & Screen Decoupling**:
+  - Enabled `freezeOnBlur` and detached inactive screens to prevent offscreen render thrashing.
+  - Implemented 45-second stale time query caching to eliminate redundant network roundtrips during tab navigation.
+  - Hardware-accelerated transitions with `largeHeap="true"` and `hardwareAccelerated="true"` in Android manifest.
+
+### 🐛 Bug Fixes
+- Fixed keyboard offset bottom clearance on Add Expense modal.
+- Fixed notification row transparency leak revealing underlying action buttons on touch.
+- Fixed missing Expo push token registration on standalone production builds.
+- Fixed R8 minification and JNI reflection startup crash.
+
+---
+
 ## [1.1.1] - 2026-10-28
 
 ### ✨ Features

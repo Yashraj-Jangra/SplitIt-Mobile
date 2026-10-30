@@ -1,5 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Milestone v1.2.0 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ ✅:
+  - **Version Manifests Bumped to 1.2.0**:
+    - `package.json`: `"version": "1.2.0"`
+    - `app.json`: `"version": "1.2.0"`, `"versionCode": 4`, `"buildNumber": "4"`
+    - `android/app/build.gradle`: `versionCode 4`, `versionName "1.2.0"`
+  - **Release Artifacts Generated**:
+    - Compiled standalone production release APK (`app-release.apk` with `versionCode 4`, `versionName 1.2.0`).
+    - Staged `SplitIt-v1.2.0.apk` at root for distribution.
+  - **Changelog & Documentation**:
+    - Updated `CHANGELOG.md` with full categorized breakdown for v1.2.0 (Features, UI & Design, Performance, Bug Fixes).
+  - **Remote Synchronization**:
+    - Pushed `dev` branch to remote `origin/dev` across `SplitIt-Mobile` and `SplitWise-Clone`.
+  - **Quality Gates**:
+    - `tsc --noEmit` verified with 0 errors across both repositories.
+
 - **Mobile Push Notification Engine & Real-Time Sync Delivery** ✨ 📱 🔔 ⚡ 🚀 ✅:
   - **Identified Root Cause of Missing Mobile Notifications**:
     - In standalone/bare builds without EAS CLI, `Notifications.getExpoPushTokenAsync()` was called without explicit `projectId`, throwing `ERR_NOTIFICATIONS_NO_EXPERIENCE_ID` and silently returning `null`, resulting in zero push tokens being registered with the backend.

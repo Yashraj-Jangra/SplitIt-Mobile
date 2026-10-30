@@ -2,7 +2,7 @@
   "expo": {
     "name": "SplitIt",
     "slug": "splitit",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "splitit",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.splitit.app",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "upi",
@@ -29,7 +29,7 @@
     },
     "android": {
       "package": "com.splitit.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "backgroundColor": "#131417",
       "permissions": [
         "android.permission.INTERNET",
