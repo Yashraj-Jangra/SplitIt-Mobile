@@ -4,6 +4,46 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 ---
 
+## [v1.3.2] - 2026-10-31
+
+> **Target OS**: Android 10+ (API 29+) & iOS 15+  
+> **Build Number**: `8`  
+> **Package**: `com.splitit.app`
+
+### 📦 Artifacts & Downloads
+
+| File | Type | Size | SHA256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **`SplitIt-v1.3.2.apk`** | Android Release APK | `129.4 MB` (`135,712,465 bytes`) | `fef3ce0939547a3bd4f0a409233e7cb4300b547a7e0ff5ebb765349f99ac0da8` |
+
+```bash
+# Verify checksum on Windows (PowerShell)
+Get-FileHash -Algorithm SHA256 .\SplitIt-v1.3.2.apk
+
+# Verify checksum on Linux / macOS
+sha256sum SplitIt-v1.3.2.apk
+```
+
+---
+
+### 🚀 Highlights & Changelog
+
+#### 🎨 In-App Update UI Overhaul & Open Editorial Layout
+- **Abolished Card Soup & Div Nesting**:
+  - Eliminated boxed card containers (`headerCard`, `securityTrustCard`, `guaranteeBox`, `trustHeroCard`, `stepsCard`) in favor of an open editorial layout.
+  - Enforced width parity (`paddingHorizontal: 0` inside modal content) restoring 25-30% of usable mobile viewport width.
+  - Replaced boxed step cards with an open vertical timeline using circular status nodes and continuous hairline stem lines.
+- **Banished Magic Sparkles from Updates**:
+  - Replaced `Sparkles` with purposeful `ArrowUpCircle` across all software update entrypoints (`HomeScreen` update banner, `UpdateModal` version pills, `AboutScreen`, `PreferencesScreen`, and `ProfileScreen`).
+- **Modal Locking & Zero-Residue Cancellation**:
+  - Added `dismissible={false}` locking during active downloads and package installer handover: intercepts swipe gestures, backdrop taps, and Android back button to prevent accidental termination.
+  - Fixed download abort race condition via `isCancelledRef` to prevent error alerts on deliberate cancellation.
+  - Aggressive immediate cache purge ensuring 0 leftover APK chunks on cancel.
+- **Architectural Rules Standardized**:
+  - Codified Section 6 in `design.md` and `.agents/rules/theming.md` covering modal width parity, no-div layout, stem-line timelines, zero marketing fluff, and semantic icon discipline.
+
+---
+
 ## [v1.3.1] - 2026-10-31
 
 > **Target OS**: Android 10+ (API 29+) & iOS 15+  

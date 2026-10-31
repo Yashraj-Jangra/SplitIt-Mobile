@@ -38,7 +38,7 @@ export default function AboutScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
 
-  const currentVersion = Constants.expoConfig?.version || '1.3.0';
+  const currentVersion = Constants.expoConfig?.version || '1.3.2';
   const buildCode = Constants.expoConfig?.android?.versionCode || '6';
 
   const handleNav = (path: string) => {

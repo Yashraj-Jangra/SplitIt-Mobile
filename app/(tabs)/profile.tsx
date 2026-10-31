@@ -45,7 +45,7 @@ export default function ProfileScreen() {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
 
-  const appVersion = Constants.expoConfig?.version || '1.3.1';
+  const appVersion = Constants.expoConfig?.version || '1.3.2';
 
   const handleCheckForUpdates = useCallback(async () => {
     if (checkingUpdate) return;

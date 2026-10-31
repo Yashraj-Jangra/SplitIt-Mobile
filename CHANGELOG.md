@@ -4,6 +4,24 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-10-31
+
+### 🎨 In-App Update UI Overhaul & Open Editorial Layout
+- **Abolished Card Soup & Div Nesting**:
+  - Eliminated boxed card containers (`headerCard`, `securityTrustCard`, `guaranteeBox`, `trustHeroCard`, `stepsCard`) in favor of an open editorial layout.
+  - Enforced width parity (`paddingHorizontal: 0` inside modal content) to restore 25-30% of usable mobile viewport width.
+  - Replaced boxed step cards with an open vertical timeline using circular status nodes and continuous hairline stem lines.
+- **Banished Magic Sparkles from Updates**:
+  - Replaced `Sparkles` with purposeful `ArrowUpCircle` across all software update entrypoints (`HomeScreen` update banner, `UpdateModal` version pills, `AboutScreen`, `PreferencesScreen`, and `ProfileScreen`).
+- **Modal Locking & Zero-Residue Cancellation**:
+  - Added `dismissible={false}` locking during active downloads and package installer handover: intercepts swipe gestures, backdrop taps, and Android back button to prevent accidental termination.
+  - Fixed download abort race condition via `isCancelledRef` to prevent error alerts on deliberate cancellation.
+  - Aggressive immediate cache purge ensuring 0 leftover APK chunks on cancel.
+- **Architectural Rules Standardized**:
+  - Codified Section 6 in `design.md` and `.agents/rules/theming.md` covering modal width parity, no-div layout, stem-line timelines, zero marketing fluff, and semantic icon discipline.
+
+---
+
 ## [1.3.1] - 2026-10-31
 
 ### ✨ Features & Push Engine Upgrades
