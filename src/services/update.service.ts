@@ -97,7 +97,7 @@ class UpdateService {
    * Caches response in AsyncStorage for 4 hours unless force === true.
    */
   public async checkForUpdate(force = false): Promise<UpdateInfo> {
-    const currentVersion = Constants.expoConfig?.version || '1.2.1';
+    const currentVersion = Constants.expoConfig?.version || '1.3.0';
 
     // 1. Check cached release info if not forced
     if (!force) {
@@ -266,7 +266,7 @@ class UpdateService {
    */
   public async openInstallPermissionSettings(): Promise<void> {
     if (Platform.OS !== 'android') return;
-    const packageName = Constants.expoConfig?.android?.package || 'com.splitit.mobile';
+    const packageName = Constants.expoConfig?.android?.package || 'com.splitit.app';
     try {
       await IntentLauncher.startActivityAsync(
         IntentLauncher.ActivityAction.MANAGE_UNKNOWN_APP_SOURCES,

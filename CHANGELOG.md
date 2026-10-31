@@ -4,6 +4,33 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-10-31
+
+### ✨ Features
+- **In-App Direct Release Updates via GitHub API**:
+  - Live query against GitHub Releases API (`https://api.github.com/repos/Yashraj-Jangra/SplitIt-Mobile/releases/latest`) with semver comparator and 4-hour `AsyncStorage` response caching.
+  - Native Android package installer invocation using `REQUEST_INSTALL_PACKAGES` permission via `expo-file-system/legacy` and `expo-intent-launcher`.
+  - Resumable download progress bar with live byte transfer stats and "Auto-cleaned after install" indicator.
+  - One-tap "Download via Browser" fallback link to official GitHub release page.
+- **Interactive Trust & Installation Authorization Guide (`UpdateModal.tsx`)**:
+  - Transparent security education sheet explaining why Android labels non-Play-Store apps as "unknown sources".
+  - Verified GitHub Release provenance badge (`Yashraj-Jangra/SplitIt-Mobile`), cryptographic keystore signature verification, and zero storage residue guarantee.
+  - 3-step numbered walkthrough and direct deep-link button opening SplitIt's "Install unknown apps" toggle in Android System Settings (`MANAGE_UNKNOWN_APP_SOURCES`).
+  - Automatic `AppState` return detection: immediately starts download and installer upon user returning from Settings.
+- **4-Tier Zero-Residue Storage Lifecycle Guarantee**:
+  - Eliminates orphaned or residual `.apk` chunks from user storage through a 4-tier sweep system:
+    1. *Tier 1 (Pre-download)*: Completely purges `${FileSystem.cacheDirectory}updates/` before starting new downloads.
+    2. *Tier 2 (Abort & Error)*: Unlinks partial download chunks immediately on cancellations or network failures.
+    3. *Tier 3 (Post-intent)*: Purges temporary APK immediately on installer dialog return with a 60-second watchdog timer.
+    4. *Tier 4 (Cold-start sweep)*: Mounted in `useAppSync.ts` to sweep any potential orphaned residue every time app is launched.
+- **System Settings & Dashboard Integration**:
+  - **About SplitIt Screen**: Live "SplitIt Release Channel" card with "Check Now" button, dynamic version badge (`Version 1.3.0`), and build details.
+  - **Profile / Settings Screen**: "Check for Updates" action row in Settings under Support & Legal with live feedback alerts.
+  - **Preferences Screen**: Dedicated "SYSTEM & UPDATES" section with instant update check.
+  - **Home Dashboard**: Non-intrusive release alert banner prompting users to review and install whenever a new release is available.
+
+---
+
 ## [1.2.1] - 2026-10-31
 
 ### ✨ Features
