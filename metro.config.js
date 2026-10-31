@@ -4,7 +4,8 @@ const fs = require('fs');
 
 const projectRoot = __dirname;
 const localCoreRoot = path.resolve(projectRoot, 'packages/core');
-const externalCoreRoot = path.resolve(projectRoot, '../SplitWise-Clone/packages/core');
+const externalCoreRoot = path.resolve(projectRoot, '../SplitIt-Web/packages/core');
+const legacyCoreRoot = path.resolve(projectRoot, '../SplitWise-Clone/packages/core');
 
 const config = getDefaultConfig(projectRoot);
 
@@ -14,6 +15,8 @@ if (fs.existsSync(localCoreRoot)) {
   watchFolders.push(localCoreRoot);
 } else if (fs.existsSync(externalCoreRoot)) {
   watchFolders.push(externalCoreRoot);
+} else if (fs.existsSync(legacyCoreRoot)) {
+  watchFolders.push(legacyCoreRoot);
 }
 config.watchFolders = watchFolders;
 

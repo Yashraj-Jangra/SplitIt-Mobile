@@ -4,6 +4,29 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-10-31
+
+### ✨ Features
+- **Automatic Cross-Screen Data Revalidation & SWR Architecture**:
+  - Replaced rigid 45-second cache locks across core tabs (`HomeScreen`, `GroupsScreen`, `ActivityScreen`) with high-performance Stale-While-Revalidate (SWR) background revalidation with a lightweight 2.5-second cooldown.
+  - Eliminated full-screen loading spinners on back navigation by instantly displaying cached state while revalidating data in the background.
+  - Added real-time event subscriptions across `ExpenseDetailScreen`, `SettlementDetailScreen`, and `GroupDetailScreen` to immediately sync transactions, audit logs, comments, and balances when mutations occur.
+- **Centralized AppState Lifecycle & Network Recovery Sync**:
+  - Built `useAppSync` global lifecycle hook mounted in root layout to automatically trigger background revalidation upon app resume, unlock, or foregrounding (`background`/`inactive` -> `active`).
+  - Integrated automatic data synchronization when recovering from offline mode (`isOnline: false -> true`).
+  - Linked background push notification and live sync presenter arrivals to trigger active view data revalidation.
+- **Group Activity & History Audit Trail Real-Time Sync**:
+  - Synchronized Group Detail **Activity** tab (expenses/settlements stream) and **Logs** tab (`GroupHistoryTab`) to auto-refresh upon actions, tab changes, and pulls.
+  - Added instant event emission and cache invalidation when restoring deleted expenses or settlements and deleting audit log items.
+
+### 🐛 Bug Fixes & Hardening
+- **Multi-Tier Cache Invalidation Consistency**:
+  - Hardened cache purging across `expenseService`, `groupService`, and `settlementService` to asynchronously clear both in-memory maps and disk storage (`AsyncStorage`) keys (`STORAGE_KEYS.GROUP_DETAIL`, `STORAGE_KEYS.USER_TRANSACTIONS`, `STORAGE_KEYS.USER_SETTLEMENTS`).
+  - Fixed issue where expense and settlement comments only updated local arrays without broadcasting update events or updating persistent offline details.
+  - Fixed missing group ID scoping when recording expense comments.
+
+---
+
 ## [1.2.0] - 2026-10-30
 
 ### ✨ Features
