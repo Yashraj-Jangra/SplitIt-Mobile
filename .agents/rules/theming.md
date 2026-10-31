@@ -210,3 +210,48 @@ Use `expo-haptics` consistently. Never trigger haptics arbitrarily.
   - Child tab components (e.g. `GroupAnalysisTab.tsx`) **must never add additional internal horizontal padding** (`paddingHorizontal: 0`).
   - Child tabs must never wrap their content in a redundant nested `<ScrollView>` if the parent screen already scrolls.
 - **Parity Guarantee**: Tab switching must be 100% fluid with zero horizontal jumping or shrinking.
+
+---
+
+## 🪟 Modal, Popup & BottomSheet Architecture Standard
+
+### 1. Strict Width Parity & Zero Nested Padding (The Width Squeeze Fix)
+- **Universal Rule**: `BottomSheetModal` already enforces standard screen edge padding (`paddingHorizontal: 16`).
+- **Child Components Must Use `paddingHorizontal: 0`**:
+  - Any component, container, or list rendered as children of a modal **must never add its own horizontal padding**.
+  - `paddingHorizontal: 20` inside `BottomSheetModal` creates compound padding (`16px + 20px = 36px` on both sides), squeezing usable content width down to ~270px on mobile screens and creating cramped, claustrophobic designs.
+  - Content, dividers, and action rows must stretch edge-to-edge across the modal canvas with standard 16px screen parity.
+
+### 2. Abolish Card Soup Inside Modals
+- **No Boxes Inside Sheets**: The modal sheet itself is already an elevated container (`THEME.colors.surface`). Wrapping every internal section in an additional rounded card box (`backgroundColor: surfaceElevated`, `borderWidth: 1`, `borderRadius: 12`) creates "card soup".
+- **Hairlines Over Boxes**: Structure modal sections using continuous hairlines (`height: StyleSheet.hairlineWidth`, `backgroundColor: THEME.colors.hairline`) and vertical spacing (`THEME.spacing`), never stacked card rectangles.
+- **Scroll Areas**: Long text blocks (such as changelogs, terms, or lists) must scroll directly on the sheet canvas with natural typography (`AiMarkdownView`), not inside an inset recessed sub-box with its own borders.
+
+### 3. Step-by-Step Walkthroughs: Stem Lines & Nodes
+- **Forbid Boxed Step Cards**: Never display 1-2-3 steps or instructions inside separate bordered rectangles or card containers.
+- **Open Timeline Layout**: Use a vertical timeline featuring:
+  - Circular step nodes (`width: 24`, `height: 24`, `borderRadius: 12`) with number/icon.
+  - Continuous vertical stem line (`width: StyleSheet.hairlineWidth`, `backgroundColor: THEME.colors.hairlineLight`).
+  - Bold step title and concise 1-line description aligned cleanly to the right of the stem.
+
+### 4. Zero Text Clutter & Boilerplate Purge
+- **No Marketing Fluff in Functional Popups**: Never include defensive marketing text, fake guarantees, or technical disclaimers (e.g. *"Zero Residue Guarantee"*, *"Downloaded files are automatically deleted after installation"*, *"Cryptographically Signed APK verified"*).
+- **Punchy & Direct**: Communicate the core message in one or two clear sentences. Let UI status pills and icons convey security and state rather than text paragraphs.
+
+### 5. Modal Locking During In-Progress Async Workflows
+- **Lock During Active Processing**: When a modal is executing an active, uninterrupted operation (file downloading, package installation, ledger balance settlement, account sync):
+  - Pass `dismissible={false}` to `BottomSheetModal`.
+  - Disable PanResponder drag-to-dismiss gestures on handle and header.
+  - Disable backdrop tap dismissal.
+  - Intercept Android's hardware and gesture back button (`onRequestClose`).
+  - Hide the top close `[X]` button and drag handle.
+- **Explicit Cancellation with Zero Residue**: If cancellation is supported, provide a clear, dedicated secondary button (`Cancel Download` / `Stop`). The cancellation handler must immediately abort active network streams, aggressively purge all temporary storage artifacts (`.apk`, `.tmp`), and reset state smoothly without error popups.
+
+### 6. Semantic Icon Discipline (No Magic Sparkles on Non-AI Popups)
+- **Sparkles Exclusivity**: The `Sparkles` icon is reserved strictly for AI/LLM features (AI Chat Assistant, AI Receipt Scanner, Smart Category Predictor).
+- **Never Use Sparkles for System & CRUD Features**: Software updates, release changelogs, preferences, filters, and standard utilities must use purpose-built semantic icons:
+  - Software updates / upgrades: `ArrowUpCircle` or `ArrowDownToLine`
+  - System settings / configurations: `Settings` or `Sliders`
+  - Cloud / sync operations: `Cloud` or `RefreshCw`
+  - Verifications / completions: `CheckCircle2` or `ShieldCheck`
+

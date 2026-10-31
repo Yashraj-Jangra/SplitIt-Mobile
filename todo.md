@@ -1,5 +1,14 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Modal & Popup Architecture Standards in `design.md` and `theming.md`** 📝 🎨 📐 ✅:
+  - Added Section 6 to `design.md` and corresponding standard to `.agents/rules/theming.md`:
+    - **Width Parity & Zero Nested Padding**: Child modal views must enforce `paddingHorizontal: 0` to preserve the outer 16px sheet margin without compound nesting.
+    - **Anti-Card-Soup**: Banned nested boxes, bordered sub-containers, and recessed scroll areas inside popups; required continuous single hairlines (`THEME.colors.hairline`).
+    - **Open Timeline Guides**: Enforced circular step nodes and vertical stem lines for setup/permission guides instead of stacked card rectangles.
+    - **Zero Marketing Fluff**: Banned defensive guarantee badges and boilerplate text clutter.
+    - **Modal Locking**: Mandated `dismissible={false}` and gesture/backdrop interception during in-progress async operations.
+    - **Semantic Icon Discipline**: Restricted `Sparkles` strictly to AI features; mandated purpose-specific icons (`ArrowUpCircle`, `Settings`, etc.) for utilities and popups.
+
 - **In-App Update UI Overhaul, Modal Locking & Zero-Residue Cancellation** 🎨 ✨ 📱 ⚡ 🛡️ ✅:
   - **Locked Modal During Updating & Downloading**:
     - Enhanced `BottomSheetModal` with `dismissible?: boolean`. When `false`, disables drag handle and header PanResponders, backdrop touch dismissal, and Android hardware back button.
