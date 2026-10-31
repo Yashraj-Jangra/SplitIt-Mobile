@@ -1,5 +1,33 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **In-App Direct Release Updates Engine with Zero-Residue Storage Lifecycle** ✨ 🚀 📱 🛡️ ⚡ ✅:
+  - **Native Android APK Installer & Intent Bridge**:
+    - Added `REQUEST_INSTALL_PACKAGES` permission in `app.json` and `android/app/src/main/AndroidManifest.xml` for seamless API 26+ package installer invocation.
+    - Integrated `expo-file-system/legacy` and `expo-intent-launcher` to support direct chunked resumable download and launching `android.intent.action.VIEW` with `FLAG_GRANT_READ_URI_PERMISSION`.
+  - **4-Tier Zero-Residue Storage Cleanup Architecture (`updateService`)**:
+    - Guarantees zero residual `.apk` chunks or orphaned files left on user device:
+      1. *Tier 1 (Pre-Download)*: Completely purges `${FileSystem.cacheDirectory}updates/` before starting a new download.
+      2. *Tier 2 (Abort / Error)*: Purges temporary update folder immediately upon user cancellation or download failure in `catch`/`finally`.
+      3. *Tier 3 (Post-Intent)*: Purges temporary APK immediately once Android Package Installer intent resolves, plus a 60-second background watchdog timer.
+      4. *Tier 4 (Cold-Start Sweep)*: Mounted in `useAppSync.ts` to sweep any potential orphaned residue every time app is launched.
+  - **GitHub Releases API & SemVer Comparator (`src/services/update.service.ts`)**:
+    - Direct integration with `https://api.github.com/repos/Yashraj-Jangra/SplitIt-Mobile/releases/latest`.
+    - Robust semver comparator parsing `MAJOR.MINOR.PATCH` with leading `v` stripping and 4-hour caching in `AsyncStorage`.
+    - Fallback to browser release page if APK asset is missing or non-Android environment.
+  - **Fluid Modal & UI Presentation (`src/components/common/UpdateModal.tsx`)**:
+    - Built interactive bottom sheet modal matching dark theme design tokens (`THEME.colors.*`).
+    - Displays current version vs. target version pills, release name, formatted APK size, and published date.
+    - Markdown-rendered changelog notes via `AiMarkdownView`.
+    - Reanimated progress bar with live byte transfer stats and "Auto-cleaned after install" indicator.
+    - Haptic feedback on all interactions (`confirm`, `saveSuccess`, `warning`, `tap`).
+  - **Cross-Screen Integration**:
+    - `app/info/about.tsx`: Added dynamic version badge (`Version 1.2.1`), updated stack description to Expo SDK 58, and built a dedicated "SOFTWARE UPDATES" card with "Check Now" button and status feedback.
+    - `app/(tabs)/profile.tsx`: Added "Check for Updates" action row in Settings under Support & Legal with live feedback alerts.
+    - `app/settings/preferences.tsx`: Added "SYSTEM & UPDATES" settings section with "Check for Updates" row.
+    - `app/(tabs)/index.tsx`: Background silent update check that displays a sleek, non-intrusive "SplitIt vX.X.X Available" alert banner above balance card.
+  - **Quality Gates Passed**:
+    - `tsc --noEmit` verified with 0 errors.
+
 - **Automatic Cross-Screen Data Revalidation & Real-Time Sync Engine** 🔄 ⚡ ✨ 🛡️ 🚀 ✅:
   - **Forensic Diagnosis of Stale Mobile State**:
     - Discovered core tabs (`HomeScreen`, `GroupsScreen`, `ActivityScreen`) used a rigid 45-second lock (`now - lastFetchRef.current < 45_000`) that blocked all revalidation on tab switching, back-navigation, and modal returns.

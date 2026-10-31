@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import Constants from 'expo-constants';
 import {
   User,
   Shield,
@@ -23,6 +24,8 @@ import { useAppTheme } from '../../src/contexts/theme.context';
 import { storageService } from '../../src/services/storage.service';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { haptics } from '../../src/services/haptics.service';
+import { updateService, type UpdateInfo } from '../../src/services/update.service';
+import { UpdateModal } from '../../src/components/common/UpdateModal';
 
 interface SettingsItem {
   icon: React.ElementType;
@@ -37,6 +40,36 @@ export default function ProfileScreen() {
   const { currencyCode, currencySymbol, isCustom } = useCurrency();
   const { currentAccent } = useAppTheme();
   const [imageError, setImageError] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [updateModalVisible, setUpdateModalVisible] = useState(false);
+
+  const appVersion = Constants.expoConfig?.version || '1.2.1';
+
+  const handleCheckForUpdates = useCallback(async () => {
+    if (checkingUpdate) return;
+    haptics.tap();
+    setCheckingUpdate(true);
+    try {
+      const info = await updateService.checkForUpdate(true);
+      setUpdateInfo(info);
+      if (info.available) {
+        haptics.saveSuccess();
+        setUpdateModalVisible(true);
+      } else {
+        haptics.tap();
+        Alert.alert('Up to Date', `SplitIt v${appVersion} is the latest version available.`);
+      }
+    } catch {
+      haptics.warning();
+      Alert.alert(
+        'Check Failed',
+        'Unable to check for updates right now. Please check your network connection.'
+      );
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }, [checkingUpdate, appVersion]);
 
   useFocusEffect(
     useCallback(() => {
@@ -144,6 +177,14 @@ export default function ProfileScreen() {
       onPress: () => router.push('/support'),
     },
     {
+      icon: Sparkles,
+      title: 'Check for Updates',
+      subtitle: checkingUpdate
+        ? 'Checking GitHub Releases...'
+        : `SplitIt v${appVersion} · Tap to check updates`,
+      onPress: handleCheckForUpdates,
+    },
+    {
       icon: Shield,
       title: 'Privacy Policy',
       subtitle: 'Zero tracking & data protection',
@@ -158,7 +199,7 @@ export default function ProfileScreen() {
     {
       icon: Info,
       title: 'About SplitIt',
-      subtitle: 'Version 1.0.0 · Architecture & credits',
+      subtitle: `Version ${appVersion} · Architecture & credits`,
       onPress: () => router.push('/info/about'),
     },
   ];
@@ -259,9 +300,16 @@ export default function ProfileScreen() {
           <QuantumLogo size={60} />
           <Text style={styles.brandTitle}>SplitIt</Text>
           <Text style={styles.brandTagline}>Shared expenses, settled simply.</Text>
-          <Text style={styles.brandVersion}>v1.0.0 · Mobile & Web Synchronized</Text>
+          <Text style={styles.brandVersion}>v{appVersion} · Mobile & Web Synchronized</Text>
         </View>
       </ScrollView>
+
+      {/* In-App Update Modal */}
+      <UpdateModal
+        visible={updateModalVisible}
+        onClose={() => setUpdateModalVisible(false)}
+        updateInfo={updateInfo}
+      />
     </SafeAreaView>
   );
 }

@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,7 +17,9 @@ import {
   Users,
   Palette,
   Receipt,
+  Sparkles,
 } from 'lucide-react-native';
+import Constants from 'expo-constants';
 import { THEME } from '../../src/constants/theme';
 import { groupService, GroupListItem } from '../../src/services/group.service';
 import { haptics } from '../../src/services/haptics.service';
@@ -28,6 +31,8 @@ import { SettingsSection } from '../../src/components/settings/SettingsSection';
 import { SettingsRow } from '../../src/components/settings/SettingsRow';
 import { CurrencyPickerModal } from '../../src/components/common/CurrencyPickerModal';
 import { GroupPickerModal } from '../../src/components/common/GroupPickerModal';
+import { updateService, type UpdateInfo } from '../../src/services/update.service';
+import { UpdateModal } from '../../src/components/common/UpdateModal';
 
 export default function PreferencesScreen() {
   const router = useRouter();
@@ -39,6 +44,36 @@ export default function PreferencesScreen() {
   // Modals state
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  const appVersion = Constants.expoConfig?.version || '1.2.1';
+
+  const handleCheckForUpdates = async () => {
+    if (checkingUpdate) return;
+    haptics.tap();
+    setCheckingUpdate(true);
+    try {
+      const info = await updateService.checkForUpdate(true);
+      setUpdateInfo(info);
+      if (info.available) {
+        haptics.saveSuccess();
+        setShowUpdateModal(true);
+      } else {
+        haptics.tap();
+        Alert.alert('Up to Date', `SplitIt v${appVersion} is the latest version available.`);
+      }
+    } catch {
+      haptics.warning();
+      Alert.alert(
+        'Check Failed',
+        'Unable to check for updates right now. Please check your network connection.'
+      );
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   // Groups and Default Group
   const [userGroups, setUserGroups] = useState<GroupListItem[]>([]);
@@ -260,6 +295,20 @@ export default function PreferencesScreen() {
             isLast
           />
         </SettingsSection>
+
+        {/* ── SECTION 4: SYSTEM & UPDATES ── */}
+        <SettingsSection title="SYSTEM & UPDATES">
+          <SettingsRow
+            icon={Sparkles}
+            iconColor={currentAccent.primary}
+            iconBg={currentAccent.primaryMuted}
+            title="Check for Updates"
+            subtitle={checkingUpdate ? 'Checking GitHub Releases...' : `Installed: v${appVersion} · GitHub Releases`}
+            value={checkingUpdate ? 'Checking...' : `v${appVersion}`}
+            onPress={handleCheckForUpdates}
+            isLast
+          />
+        </SettingsSection>
       </ScrollView>
 
       {/* ── MODULAR POPUP PICKERS (WIDE & NO-DIV) ── */}
@@ -283,6 +332,12 @@ export default function PreferencesScreen() {
         allowNoneOption
         title="Default Group"
         subtitle="Choose which group is pre-selected when creating expenses"
+      />
+
+      <UpdateModal
+        visible={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        updateInfo={updateInfo}
       />
     </SafeAreaView>
   );

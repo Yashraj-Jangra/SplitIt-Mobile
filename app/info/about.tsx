@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import {
   ArrowLeft,
   Shield,
@@ -19,18 +21,53 @@ import {
   Lock,
   Layers,
   Heart,
+  RefreshCw,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { haptics } from '../../src/services/haptics.service';
+import { updateService, type UpdateInfo } from '../../src/services/update.service';
+import { UpdateModal } from '../../src/components/common/UpdateModal';
 
 export default function AboutScreen() {
   const router = useRouter();
+  const [checking, setChecking] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
+
+  const currentVersion = Constants.expoConfig?.version || '1.2.1';
+  const buildCode = Constants.expoConfig?.android?.versionCode || '5';
 
   const handleNav = (path: string) => {
     haptics.tap();
     router.push(path as any);
   };
+
+  const handleCheckForUpdates = useCallback(async () => {
+    haptics.tap();
+    setChecking(true);
+    setStatusText(null);
+    try {
+      const info = await updateService.checkForUpdate(true);
+      setUpdateInfo(info);
+      if (info.available) {
+        haptics.saveSuccess();
+        setModalVisible(true);
+        setStatusText(`Update available: v${info.latestVersion}`);
+      } else {
+        haptics.tap();
+        setStatusText(`You're up to date (v${currentVersion})`);
+      }
+    } catch {
+      haptics.warning();
+      setStatusText('Unable to reach GitHub. Check your internet connection.');
+    } finally {
+      setChecking(false);
+    }
+  }, [currentVersion]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -43,6 +80,8 @@ export default function AboutScreen() {
           }}
           style={styles.headerButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back to previous screen"
         >
           <ArrowLeft size={20} color={THEME.colors.text} />
         </TouchableOpacity>
@@ -58,11 +97,52 @@ export default function AboutScreen() {
           <QuantumLogo size={64} />
           <Text style={styles.brandTitle}>SplitIt Mobile</Text>
           <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>Version 1.0.0 (Build 2026.10)</Text>
+            <Text style={styles.versionText}>
+              Version {currentVersion} (Build {buildCode})
+            </Text>
           </View>
           <Text style={styles.brandSubtitle}>
             Next-generation shared expense engine with AI OCR, instant settlement parity, and zero-lag financial coordination.
           </Text>
+        </View>
+
+        {/* Software Updates Card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>SOFTWARE UPDATES</Text>
+
+          <View style={styles.updateRow}>
+            <View style={styles.updateIconWrap}>
+              {statusText?.includes('up to date') ? (
+                <CheckCircle2 size={18} color={THEME.colors.success} />
+              ) : statusText?.includes('Update available') ? (
+                <Sparkles size={18} color={THEME.colors.primary} />
+              ) : (
+                <RefreshCw size={18} color={THEME.colors.primary} />
+              )}
+            </View>
+
+            <View style={styles.updateInfo}>
+              <Text style={styles.updateTitle}>SplitIt Release Channel</Text>
+              <Text style={styles.updateDesc}>
+                {statusText || `Installed version v${currentVersion} via GitHub Releases`}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.checkButton, checking && styles.checkButtonDisabled]}
+              onPress={handleCheckForUpdates}
+              disabled={checking}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Check for app updates"
+            >
+              {checking ? (
+                <ActivityIndicator size="small" color={THEME.colors.primaryForeground} />
+              ) : (
+                <Text style={styles.checkButtonText}>Check Now</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Engineering Highlights */}
@@ -74,7 +154,7 @@ export default function AboutScreen() {
               <Cpu size={16} color={THEME.colors.primary} />
             </View>
             <View style={styles.techInfo}>
-              <Text style={styles.techTitle}>Expo SDK 57 & React Native 0.86</Text>
+              <Text style={styles.techTitle}>Expo SDK 58 & React Native 0.84</Text>
               <Text style={styles.techDesc}>Modern declarative architecture with continuous native generation</Text>
             </View>
           </View>
@@ -118,6 +198,8 @@ export default function AboutScreen() {
             style={styles.linkRow}
             onPress={() => handleNav('/legal/privacy')}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="View Privacy Policy"
           >
             <Shield size={18} color={THEME.colors.textMuted} />
             <Text style={styles.linkText}>Privacy Policy</Text>
@@ -130,6 +212,8 @@ export default function AboutScreen() {
             style={styles.linkRow}
             onPress={() => handleNav('/legal/terms')}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="View Terms of Service"
           >
             <FileText size={18} color={THEME.colors.textMuted} />
             <Text style={styles.linkText}>Terms of Service</Text>
@@ -142,6 +226,8 @@ export default function AboutScreen() {
             style={styles.linkRow}
             onPress={() => handleNav('/legal/delete-account')}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="View Account Data and Deletion instructions"
           >
             <Trash2 size={18} color={THEME.colors.danger} />
             <Text style={[styles.linkText, { color: THEME.colors.danger }]}>
@@ -160,6 +246,13 @@ export default function AboutScreen() {
           <Text style={styles.copyrightText}>© 2026 SplitIt Inc. All rights reserved.</Text>
         </View>
       </ScrollView>
+
+      {/* In-App Update Modal */}
+      <UpdateModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        updateInfo={updateInfo}
+      />
     </SafeAreaView>
   );
 }
@@ -247,6 +340,53 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: THEME.colors.textMuted,
     letterSpacing: 0.8,
+  },
+  updateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  updateIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+  },
+  updateInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  updateTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  updateDesc: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: THEME.colors.textSecondary,
+    lineHeight: 15,
+  },
+  checkButton: {
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkButtonDisabled: {
+    opacity: 0.6,
+  },
+  checkButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primaryForeground,
   },
   techRow: {
     flexDirection: 'row',

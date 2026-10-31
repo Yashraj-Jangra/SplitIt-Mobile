@@ -46,6 +46,8 @@ import { appEventEmitter } from '../../src/services/event-emitter';
 import { ObligationsModal } from '../../src/components/dashboard/ObligationsModal';
 import { sortGroups, GroupSortOption } from '../../src/utils/group-sort';
 import { notificationService } from '../../src/services/notification.service';
+import { updateService, type UpdateInfo } from '../../src/services/update.service';
+import { UpdateModal } from '../../src/components/common/UpdateModal';
 
 interface HomeActivityEntry {
   type: 'expense' | 'settlement';
@@ -85,6 +87,20 @@ export default function HomeScreen() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [isDemoDismissed, setIsDemoDismissed] = useState(() => demoService.isDemoDismissedSync(currentUser?.id || authUser?.id));
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  // Background update check (reads from 4h cache or performs silent check)
+  useEffect(() => {
+    updateService
+      .checkForUpdate(false)
+      .then((info) => {
+        if (info.available) {
+          setUpdateInfo(info);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Surface interactive sample data indicator
   const isDemoActive =
@@ -389,6 +405,35 @@ export default function HomeScreen() {
             onRemove={handleDismissDemo}
             onCreateGroup={() => router.push('/groups/new')}
           />
+        )}
+
+        {/* In-App Release Update Alert Banner */}
+        {updateInfo?.available && (
+          <TouchableOpacity
+            style={styles.updateBanner}
+            onPress={() => {
+              haptics.tap();
+              setShowUpdateModal(true);
+            }}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Update available: version ${updateInfo.latestVersion}`}
+          >
+            <View style={styles.updateBannerIconWrap}>
+              <Sparkles size={16} color={currentAccent.primary} />
+            </View>
+            <View style={styles.updateBannerTextCol}>
+              <Text style={styles.updateBannerTitle}>
+                SplitIt v{updateInfo.latestVersion} Available
+              </Text>
+              <Text style={styles.updateBannerSubtitle}>
+                Tap to review changelog & install
+              </Text>
+            </View>
+            <View style={[styles.updateBannerActionBtn, { backgroundColor: currentAccent.primary }]}>
+              <Text style={styles.updateBannerActionText}>Update</Text>
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Modern Fintech Balance Widget with Dedicated Non-Overlapping Sparkline Track */}
@@ -800,6 +845,12 @@ export default function HomeScreen() {
         visible={showSearchModal}
         onClose={() => setShowSearchModal(false)}
       />
+
+      <UpdateModal
+        visible={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        updateInfo={updateInfo}
+      />
     </SafeAreaView>
   );
 }
@@ -814,6 +865,52 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 32,
     gap: 16,
+  },
+  updateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderFocus,
+    gap: 12,
+  },
+  updateBannerIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+  },
+  updateBannerTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  updateBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  updateBannerSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: THEME.colors.textSecondary,
+  },
+  updateBannerActionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updateBannerActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primaryForeground,
   },
   header: {
     flexDirection: 'row',
