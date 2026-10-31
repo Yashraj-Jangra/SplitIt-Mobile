@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 import { appEventEmitter } from '../services/event-emitter';
+import { updateService } from '../services/update.service';
 
 const RESUME_COOLDOWN_MS = 3000;
 
@@ -57,5 +58,10 @@ export function useAppSync() {
     return () => {
       unsubscribe();
     };
+  }, []);
+
+  // 3. Cold-start sweep: Zero-residue update cache purge
+  useEffect(() => {
+    updateService.purgeUpdateCache().catch(() => {});
   }, []);
 }
