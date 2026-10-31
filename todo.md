@@ -5,11 +5,11 @@
     - `package.json`: `"version": "1.3.2"`
     - `app.json`: `"version": "1.3.2"`, `"versionCode": 8`, `"buildNumber": "8"`
     - Synchronized fallback version in `update.service.ts`, `profile.tsx`, `about.tsx`, and `preferences.tsx`.
-  - **Production Release Artifact Compiled**:
+  - **Production Release Artifact Compiled & Published**:
     - Ran `gradlew.bat assembleRelease` (BUILD SUCCESSFUL in 7m 18s).
     - Generated `app-release.apk` (`135,712,465 bytes` / `129.4 MB`).
-    - Staged `SplitIt-v1.3.2.apk` at root.
     - Verified SHA256: `fef3ce0939547a3bd4f0a409233e7cb4300b547a7e0ff5ebb765349f99ac0da8`.
+    - Published official GitHub Release `v1.3.2`: [SplitIt Mobile v1.3.2](https://github.com/Yashraj-Jangra/SplitIt-Mobile/releases/tag/v1.3.2) with `SplitIt-v1.3.2.apk` attached.
   - **Changelog & Documentation**:
     - Updated `CHANGELOG.md` with full breakdown of v1.3.2 changes.
     - Updated `RELEASE.md` with binary size and SHA256 checksums.
