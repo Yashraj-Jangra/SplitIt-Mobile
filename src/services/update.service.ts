@@ -81,11 +81,20 @@ class UpdateService {
         this.cleanupTimeoutId = null;
       }
       const updateDir = this.getUpdateDir();
-      if (!updateDir) return;
+      if (updateDir) {
+        const dirInfo = await FileSystem.getInfoAsync(updateDir);
+        if (dirInfo.exists) {
+          await FileSystem.deleteAsync(updateDir, { idempotent: true });
+        }
+      }
 
-      const dirInfo = await FileSystem.getInfoAsync(updateDir);
-      if (dirInfo.exists) {
-        await FileSystem.deleteAsync(updateDir, { idempotent: true });
+      // Check root cache directory for any stray APK files
+      if (FileSystem.cacheDirectory) {
+        const rootApk = `${FileSystem.cacheDirectory}SplitIt-update.apk`;
+        const rootInfo = await FileSystem.getInfoAsync(rootApk);
+        if (rootInfo.exists) {
+          await FileSystem.deleteAsync(rootApk, { idempotent: true });
+        }
       }
     } catch {
       // Defensive: zero throw on cleanup
@@ -251,12 +260,17 @@ class UpdateService {
   public async cancelDownload(): Promise<void> {
     try {
       if (this.currentDownload) {
-        await this.currentDownload.pauseAsync();
+        try {
+          await this.currentDownload.pauseAsync();
+        } catch {
+          // Pause could fail if already finished or terminated
+        }
         this.currentDownload = null;
       }
     } catch {
       // Ignore pause failure during abort
     } finally {
+      // Aggressive immediate purge to guarantee zero storage residue
       await this.purgeUpdateCache();
     }
   }

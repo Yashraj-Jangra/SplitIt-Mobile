@@ -36,6 +36,7 @@ export interface BottomSheetModalProps {
   headerRight?: React.ReactNode;
   showHandle?: boolean;
   showCloseButton?: boolean;
+  dismissible?: boolean;
   children: React.ReactNode;
 }
 
@@ -49,6 +50,7 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
   headerRight,
   showHandle = true,
   showCloseButton = true,
+  dismissible = true,
   children,
 }: BottomSheetModalProps) {
   const insets = useSafeAreaInsets();
@@ -62,6 +64,7 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
   }, [visible, translateY]);
 
   const handleClose = () => {
+    if (!dismissible) return;
     Keyboard.dismiss();
     haptics.tap();
     onClose();
@@ -71,14 +74,16 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
   const handlePanResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponder: () => dismissible,
+        onMoveShouldSetPanResponder: () => dismissible,
         onPanResponderMove: (_, gestureState) => {
+          if (!dismissible) return;
           if (gestureState.dy > 0) {
             translateY.value = gestureState.dy;
           }
         },
         onPanResponderRelease: (_, gestureState) => {
+          if (!dismissible) return;
           if (gestureState.dy > 60 || gestureState.vy > 0.5) {
             Keyboard.dismiss();
             haptics.tap();
@@ -95,7 +100,7 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
           translateY.value = withSpring(0, { damping: 24, stiffness: 260 });
         },
       }),
-    [onClose, translateY]
+    [dismissible, onClose, translateY]
   );
 
   // PanResponder for header row (only claims on actual downward drag, letting taps reach buttons)
@@ -104,14 +109,17 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
       PanResponder.create({
         onStartShouldSetPanResponder: () => false,
         onMoveShouldSetPanResponder: (_, gestureState) => {
+          if (!dismissible) return false;
           return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.2;
         },
         onPanResponderMove: (_, gestureState) => {
+          if (!dismissible) return;
           if (gestureState.dy > 0) {
             translateY.value = gestureState.dy;
           }
         },
         onPanResponderRelease: (_, gestureState) => {
+          if (!dismissible) return;
           if (gestureState.dy > 60 || gestureState.vy > 0.5) {
             Keyboard.dismiss();
             haptics.tap();
@@ -128,7 +136,7 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
           translateY.value = withSpring(0, { damping: 24, stiffness: 260 });
         },
       }),
-    [onClose, translateY]
+    [dismissible, onClose, translateY]
   );
 
   const animatedSheetStyle = useAnimatedStyle(() => {
@@ -153,16 +161,17 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
       transparent
       animationType="slide"
       statusBarTranslucent
-      onRequestClose={handleClose}
+      onRequestClose={dismissible ? handleClose : undefined}
     >
       <View style={styles.modalOverlay}>
         {/* Full-screen backdrop touchable to dismiss */}
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
-          onPress={handleClose}
-          accessibilityRole="button"
-          accessibilityLabel="Dismiss sheet"
+          onPress={dismissible ? handleClose : undefined}
+          disabled={!dismissible}
+          accessibilityRole={dismissible ? 'button' : 'none'}
+          accessibilityLabel={dismissible ? 'Dismiss sheet' : undefined}
         />
 
         <KeyboardAvoidingView

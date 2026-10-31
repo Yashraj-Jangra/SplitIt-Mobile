@@ -29,6 +29,7 @@ import {
   Settings,
   ArrowRight,
   ChevronRight,
+  Lock,
 } from 'lucide-react-native';
 import { BottomSheetModal } from './BottomSheetModal';
 import { AiMarkdownView } from '../ai/AiMarkdownView';
@@ -83,6 +84,10 @@ export const UpdateModal = React.memo(function UpdateModal({
   // Tracks if user went to Android settings to authorize package install
   const waitingForSettingsReturnRef = useRef(false);
 
+  // Cancellation and lock tracking
+  const isCancelledRef = useRef(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
   // Animated progress bar width
   const progressAnim = useSharedValue(0);
 
@@ -94,6 +99,8 @@ export const UpdateModal = React.memo(function UpdateModal({
       setErrorMessage(null);
       progressAnim.value = 0;
       waitingForSettingsReturnRef.current = false;
+      isCancelledRef.current = false;
+      setIsCancelling(false);
     }
   }, [visible, updateInfo, progressAnim]);
 
@@ -106,6 +113,8 @@ export const UpdateModal = React.memo(function UpdateModal({
       return;
     }
 
+    isCancelledRef.current = false;
+    setIsCancelling(false);
     haptics.confirm();
     setStep('DOWNLOADING');
     setErrorMessage(null);
@@ -115,6 +124,7 @@ export const UpdateModal = React.memo(function UpdateModal({
       await updateService.downloadAndInstallUpdate(
         updateInfo.downloadUrl,
         (p) => {
+          if (isCancelledRef.current) return;
           setProgress(p);
           progressAnim.value = withTiming(p.percentage, {
             duration: 100,
@@ -123,10 +133,13 @@ export const UpdateModal = React.memo(function UpdateModal({
         }
       );
 
+      if (isCancelledRef.current) return;
+
       // Installer opened
       setStep('INSTALLING');
       haptics.saveSuccess();
     } catch (err: unknown) {
+      if (isCancelledRef.current) return;
       const msg = err instanceof Error ? err.message : 'Update installation failed.';
       setErrorMessage(msg);
       setStep('ERROR');
@@ -184,11 +197,24 @@ export const UpdateModal = React.memo(function UpdateModal({
     };
   }, [executeDownloadAndInstall]);
 
+  // Zero-Residue safe cancellation handler
   const handleCancel = useCallback(async () => {
+    if (isCancelling) return;
+    isCancelledRef.current = true;
+    setIsCancelling(true);
     haptics.tap();
-    await updateService.cancelDownload();
-    setStep('IDLE');
-  }, []);
+
+    try {
+      await updateService.cancelDownload();
+    } catch {
+      // Defensive
+    } finally {
+      progressAnim.value = 0;
+      setProgress({ percentage: 0, totalBytes: updateInfo?.apkSize || 0, writtenBytes: 0 });
+      setIsCancelling(false);
+      setStep('IDLE');
+    }
+  }, [isCancelling, updateInfo, progressAnim]);
 
   const handleBrowserFallback = useCallback(() => {
     haptics.tap();
@@ -205,18 +231,30 @@ export const UpdateModal = React.memo(function UpdateModal({
 
   if (!updateInfo) return null;
 
+  const isUpdating = step === 'DOWNLOADING' || step === 'INSTALLING';
+
   return (
     <BottomSheetModal
       visible={visible}
-      onClose={step === 'DOWNLOADING' ? handleCancel : onClose}
+      onClose={isUpdating ? handleCancel : onClose}
       maxHeight={step === 'PERMISSION_GUIDE' ? '88%' : '88%'}
-      title={step === 'PERMISSION_GUIDE' ? 'Install Authorization' : 'Update Available'}
+      title={
+        step === 'PERMISSION_GUIDE'
+          ? 'Install Authorization'
+          : isUpdating
+          ? 'Updating SplitIt'
+          : 'Update Available'
+      }
       subtitle={
         step === 'PERMISSION_GUIDE'
           ? 'One-time permission for direct updates'
+          : isUpdating
+          ? 'Download in progress'
           : `SplitIt v${updateInfo.latestVersion}`
       }
-      showCloseButton={step !== 'DOWNLOADING'}
+      showCloseButton={!isUpdating}
+      showHandle={!isUpdating}
+      dismissible={!isUpdating}
     >
       <View style={styles.container}>
         {/* ── STEP 1: OPEN EDITORIAL PERMISSION GUIDE (NO-DIV DESIGN) ── */}
@@ -464,22 +502,43 @@ export const UpdateModal = React.memo(function UpdateModal({
           </View>
         )}
 
-        {/* ── STEP 3: DOWNLOADING PROGRESS (FULL-WIDTH) ── */}
+        {/* ── STEP 3: DOWNLOADING PROGRESS (LOCKED EDITORIAL VIEW) ── */}
         {step === 'DOWNLOADING' && (
           <View style={styles.downloadWrapper}>
-            <View style={styles.downloadInfoRow}>
-              <View style={styles.downloadTextCol}>
-                <Text style={styles.downloadTitle}>Downloading Update</Text>
-                <Text style={styles.downloadSubtitle}>
-                  SplitIt v{updateInfo.latestVersion} · {formatBytes(progress.writtenBytes)} of{' '}
-                  {formatBytes(progress.totalBytes || updateInfo.apkSize)}
+            {/* Lock / Active Status Pill */}
+            <View style={styles.downloadStatusRow}>
+              <View
+                style={[
+                  styles.downloadLockPill,
+                  {
+                    backgroundColor: currentAccent.primaryMuted,
+                    borderColor: currentAccent.borderFocus,
+                  },
+                ]}
+              >
+                <Lock size={11} color={currentAccent.primary} />
+                <Text style={[styles.downloadLockPillText, { color: currentAccent.primary }]}>
+                  DOWNLOADING · LOCKED
                 </Text>
               </View>
+
               <Text style={[styles.downloadPercentage, { color: currentAccent.primary }]}>
                 {Math.round(progress.percentage * 100)}%
               </Text>
             </View>
 
+            {/* Version Meta Headline */}
+            <View style={styles.downloadHeadlineCol}>
+              <Text style={styles.downloadTitle}>
+                SplitIt v{updateInfo.latestVersion}
+              </Text>
+              <Text style={styles.downloadSubtitle}>
+                {formatBytes(progress.writtenBytes)} of{' '}
+                {formatBytes(progress.totalBytes || updateInfo.apkSize)}
+              </Text>
+            </View>
+
+            {/* Hardware-Accelerated Glowing Progress Track */}
             <View style={styles.progressBarTrack}>
               <Animated.View
                 style={[
@@ -490,20 +549,40 @@ export const UpdateModal = React.memo(function UpdateModal({
               />
             </View>
 
+            {/* Reassurance Note */}
+            <View style={styles.downloadNoticeRow}>
+              <Text style={styles.downloadNoticeText}>
+                Please stay on this screen while the update package downloads.
+              </Text>
+            </View>
+
+            <View style={styles.hairlineDivider} />
+
+            {/* Cancel Action */}
             <TouchableOpacity
               style={styles.cancelDownloadBtn}
               onPress={handleCancel}
+              disabled={isCancelling}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Cancel update download"
             >
-              <X size={15} color={THEME.colors.textSecondary} />
-              <Text style={styles.cancelDownloadText}>Cancel Download</Text>
+              {isCancelling ? (
+                <>
+                  <ActivityIndicator size="small" color={THEME.colors.textSecondary} />
+                  <Text style={styles.cancelDownloadText}>Cancelling & cleaning up...</Text>
+                </>
+              ) : (
+                <>
+                  <X size={15} color={THEME.colors.textSecondary} />
+                  <Text style={styles.cancelDownloadText}>Cancel Download</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         )}
 
-        {/* ── STEP 4: INSTALLING / PACKAGE LAUNCH ── */}
+        {/* ── STEP 4: INSTALLING / PACKAGE LAUNCH (LOCKED) ── */}
         {step === 'INSTALLING' && (
           <View style={styles.installWrapper}>
             <View style={styles.installRow}>
@@ -777,51 +856,74 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
 
-  /* ── DOWNLOADING ── */
+  /* ── DOWNLOADING (LOCKED) ── */
   downloadWrapper: {
     gap: 14,
     paddingVertical: 8,
   },
-  downloadInfoRow: {
+  downloadStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  downloadTextCol: {
-    flex: 1,
+  downloadLockPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  downloadLockPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  downloadPercentage: {
+    fontSize: 20,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  downloadHeadlineCol: {
     gap: 2,
   },
   downloadTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: THEME.colors.text,
   },
   downloadSubtitle: {
     fontSize: 12,
     color: THEME.colors.textSecondary,
-  },
-  downloadPercentage: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
   progressBarTrack: {
-    height: 6,
+    height: 8,
     backgroundColor: THEME.colors.surfaceSubtle,
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: THEME.colors.border,
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 4,
+  },
+  downloadNoticeRow: {
+    paddingVertical: 2,
+  },
+  downloadNoticeText: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    lineHeight: 16,
   },
   cancelDownloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    gap: 6,
+    gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
     minHeight: 44,

@@ -1,6 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
-- **In-App Update UI Overhaul & No-Div Design Refactor** 🎨 ✨ 📱 ⚡ ✅:
+- **In-App Update UI Overhaul, Modal Locking & Zero-Residue Cancellation** 🎨 ✨ 📱 ⚡ 🛡️ ✅:
+  - **Locked Modal During Updating & Downloading**:
+    - Enhanced `BottomSheetModal` with `dismissible?: boolean`. When `false`, disables drag handle and header PanResponders, backdrop touch dismissal, and Android hardware back button.
+    - Locked `UpdateModal` during `DOWNLOADING` and `INSTALLING` states to prevent accidental cancellation from stray taps, swipes, or back button events.
+  - **Zero-Residue Handling on Cancellation**:
+    - Fixed race condition in download cancellation via `isCancelledRef`: prevented download stream aborts from triggering the error screen.
+    - Enhanced `purgeUpdateCache()` in `update.service.ts` to aggressively scrub the updates directory and any stray `.apk` files in cache immediately upon cancellation.
+    - Added loading feedback (`Cancelling & cleaning up...`) during active cancellation.
+  - **Refined Progress Bar & Updating State Design**:
+    - High-visibility locked status pill with live percentage and tabular numerals (`Math.round(progress.percentage * 100)%`).
+    - Accurate byte progress counter (`formatBytes(written) of formatBytes(total)`).
+    - 8px sleek hardware-accelerated animated progress bar in primary accent color.
   - **Replaced Magic Sparkles Icon Everywhere with `ArrowUpCircle`**:
     - `app/(tabs)/index.tsx`: Updated `updateBanner` to use `<ArrowUpCircle size={18} color={currentAccent.primary} />` with themed background tinting and accent border.
     - `src/components/common/UpdateModal.tsx`: Updated version pill from `Sparkles` to `<ArrowUpCircle size={13} color={currentAccent.primary} />`.
