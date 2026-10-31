@@ -25,6 +25,13 @@
     - `app/(tabs)/profile.tsx`: Added "Check for Updates" action row in Settings under Support & Legal with live feedback alerts.
     - `app/settings/preferences.tsx`: Added "SYSTEM & UPDATES" settings section with "Check for Updates" row.
     - `app/(tabs)/index.tsx`: Background silent update check that displays a sleek, non-intrusive "SplitIt vX.X.X Available" alert banner above balance card.
+  - **Interactive User Trust & Install Permission Architecture (`UpdateModal.tsx` + `updateService`)**:
+    - **Proactive Trust Education**: Intercepts the first-time update flow before Android's system "Unknown Apps" security alert can startle the user.
+    - **Security & Transparency Badges**: Highlights Verified GitHub Release (`Yashraj-Jangra/SplitIt-Mobile`), cryptographic keystore signature verification, and zero storage residue guarantee.
+    - **Step-by-Step Interactive Walkthrough**: Educates the user on why Android asks for permission, with a 3-step numbered guide.
+    - **Direct Android Settings Deep-Link**: Launches `IntentLauncher.ActivityAction.MANAGE_UNKNOWN_APP_SOURCES` targeting `package:com.splitit.mobile` directly.
+    - **Seamless AppState Resume Re-trigger**: Detects when the user toggles the switch and presses Back to return to SplitIt, automatically launching the download & package installer without friction.
+    - **Error Recovery Assistance**: If installation is cancelled or blocked, displays an actionable "Open Install Permissions" recovery button.
   - **Quality Gates Passed**:
     - `tsc --noEmit` verified with 0 errors.
 
@@ -53,6 +60,13 @@
     - `app/expenses/[id].tsx`: Subscribed to `appEventEmitter`, passed `groupId` to `addExpenseComment`, and added 2s debounced focus revalidation for instant comment and audit log timeline updates.
     - `app/settlements/[id].tsx`: Subscribed to `appEventEmitter` and added 2s debounced focus revalidation.
     - `app/analysis/index.tsx`: Added `useFocusEffect` and `data-changed` event listener.
+  - **Interactive User Trust & Install Permission Architecture (`UpdateModal.tsx` + `updateService`)**:
+    - **Proactive Trust Education**: Intercepts the first-time update flow before Android's system "Unknown Apps" security alert can startle the user.
+    - **Security & Transparency Badges**: Highlights Verified GitHub Release (`Yashraj-Jangra/SplitIt-Mobile`), cryptographic keystore signature verification, and zero storage residue guarantee.
+    - **Step-by-Step Interactive Walkthrough**: Educates the user on why Android asks for permission, with a 3-step numbered guide.
+    - **Direct Android Settings Deep-Link**: Launches `IntentLauncher.ActivityAction.MANAGE_UNKNOWN_APP_SOURCES` targeting `package:com.splitit.mobile` directly.
+    - **Seamless AppState Resume Re-trigger**: Detects when the user toggles the switch and presses Back to return to SplitIt, automatically launching the download & package installer without friction.
+    - **Error Recovery Assistance**: If installation is cancelled or blocked, displays an actionable "Open Install Permissions" recovery button.
   - **Quality Gates Passed**:
     - `tsc --noEmit` verified with 0 errors.
     - `jest --passWithNoTests` passed with 0 failures.

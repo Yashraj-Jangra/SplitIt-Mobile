@@ -30,6 +30,7 @@ interface CachedUpdateEnvelope {
 
 const GITHUB_RELEASE_API = 'https://api.github.com/repos/Yashraj-Jangra/SplitIt-Mobile/releases/latest';
 const UPDATE_CACHE_KEY = 'splitit_cached_update_check';
+const PERMISSION_GUIDE_STORAGE_KEY = 'splitit_install_permission_guide_seen';
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 const POST_INSTALL_CLEANUP_DELAY_MS = 60 * 1000; // 60 seconds backup sweep
 
@@ -257,6 +258,57 @@ class UpdateService {
       // Ignore pause failure during abort
     } finally {
       await this.purgeUpdateCache();
+    }
+  }
+
+  /**
+   * Opens the Android system settings page directly to allow SplitIt to install unknown apps.
+   */
+  public async openInstallPermissionSettings(): Promise<void> {
+    if (Platform.OS !== 'android') return;
+    const packageName = Constants.expoConfig?.android?.package || 'com.splitit.mobile';
+    try {
+      await IntentLauncher.startActivityAsync(
+        IntentLauncher.ActivityAction.MANAGE_UNKNOWN_APP_SOURCES,
+        { data: `package:${packageName}` }
+      );
+    } catch {
+      // Fallback if specific intent is not supported on certain OEM Android skins
+      try {
+        await IntentLauncher.startActivityAsync(
+          IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+          { data: `package:${packageName}` }
+        );
+      } catch {
+        // Safe fallback
+      }
+    }
+  }
+
+  /**
+   * Checks whether the user has previously viewed the install permission explanation guide.
+   */
+  public async isPermissionGuideAcknowledged(): Promise<boolean> {
+    try {
+      const val = await AsyncStorage.getItem(PERMISSION_GUIDE_STORAGE_KEY);
+      return val === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Sets whether the user has acknowledged the permission guide.
+   */
+  public async setPermissionGuideAcknowledged(acknowledged = true): Promise<void> {
+    try {
+      if (acknowledged) {
+        await AsyncStorage.setItem(PERMISSION_GUIDE_STORAGE_KEY, 'true');
+      } else {
+        await AsyncStorage.removeItem(PERMISSION_GUIDE_STORAGE_KEY);
+      }
+    } catch {
+      // Non-fatal cache failure
     }
   }
 }
