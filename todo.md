@@ -1,5 +1,22 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Milestone v1.3.1 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
+  - **Version Manifests Synchronized to 1.3.1 (Build 7)**:
+    - `package.json`: `"version": "1.3.1"`
+    - `app.json`: `"version": "1.3.1"`, `"versionCode": 7`, `"buildNumber": "7"`
+    - `android/app/build.gradle`: `versionCode 7`, `versionName "1.3.1"`
+  - **Production Release Artifact Compiled**:
+    - Ran `gradlew.bat assembleRelease` (BUILD SUCCESSFUL in 6m 53s).
+    - Generated `app-release.apk` (`135,717,181 bytes` / `129.4 MB`).
+    - Staged `SplitIt-v1.3.1.apk` at root.
+    - Verified SHA256: `364748372734be9a17470bbacbcf8560551e15b870af6b724fd55b8776762c80`.
+  - **Changelog & Documentation**:
+    - Updated `CHANGELOG.md` with full breakdown of v1.3.1 changes.
+    - Updated `RELEASE.md` with binary size and SHA256 checksums.
+  - **Quality Gates**:
+    - `tsc --noEmit` verified with 0 errors.
+
+
 - **Self-Hosted Direct Native FCM v1 Push Engine & Poller Pruning** ✨ 🚀 📱 🛡️ ⚡ ✅:
   - **Direct FCM HTTP v1 Dispatch & Registration Migration**:
     - Replaced reliance on Expo cloud push servers (`exp.host`) and polling workarounds with direct native Firebase Cloud Messaging v1.

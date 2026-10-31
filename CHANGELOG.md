@@ -4,6 +4,26 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-10-31
+
+### ✨ Features & Push Engine Upgrades
+- **Self-Hosted Direct Native Firebase Cloud Messaging (FCM HTTP v1) Engine**:
+  - Replaced dependence on Expo push relay servers with 100% self-hosted direct Google FCM v1 delivery.
+  - Native Google Play Services token acquisition via `Notifications.getDevicePushTokenAsync()`.
+  - Instant background and screen-locked notification delivery on Android with high priority (`android.priority = "high"`).
+  - Categorized system notification channel routing (`expenses`, `settlements`, `reminders`, `budgets`, `groups`, `announcements`) with `#00C4CC` cyan brand accent.
+- **Google Services Plugin Integration**:
+  - Registered `google-services.json` in native Android configuration (`app.json` and `android/app/`).
+  - Integrated `com.google.gms.google-services` Gradle plugin in release compilation pipeline.
+
+### 🧹 Dead Code Pruning & Performance Optimizations
+- **Abolished Polling Workarounds**:
+  - Removed obsolete packages `expo-background-fetch` and `expo-task-manager`.
+  - Removed 188 lines of redundant polling infrastructure: eliminated 10-second active foreground poller, 500-ID alert history cache, module-level `TaskManager.defineTask`, and background fetch schedulers.
+  - Cleaned up root `_layout.tsx` to eliminate foreground/background poller loops.
+
+---
+
 ## [1.3.0] - 2026-10-31
 
 ### ✨ Features

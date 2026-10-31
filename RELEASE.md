@@ -4,6 +4,42 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 ---
 
+## [v1.3.1] - 2026-10-31
+
+> **Target OS**: Android 10+ (API 29+) & iOS 15+  
+> **Build Number**: `7`  
+> **Package**: `com.splitit.app`
+
+### 📦 Artifacts & Downloads
+
+| File | Type | Size | SHA256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **`SplitIt-v1.3.1.apk`** | Android Release APK | `129.4 MB` (`135,717,181 bytes`) | `364748372734be9a17470bbacbcf8560551e15b870af6b724fd55b8776762c80` |
+
+```bash
+# Verify checksum on Windows (PowerShell)
+Get-FileHash -Algorithm SHA256 .\SplitIt-v1.3.1.apk
+
+# Verify checksum on Linux / macOS
+sha256sum SplitIt-v1.3.1.apk
+```
+
+---
+
+### 🚀 Highlights & Changelog
+
+#### 🔔 Self-Hosted Direct Firebase Cloud Messaging (FCM HTTP v1) Engine
+- **Direct FCM Push Infrastructure**: Migrated entirely from Expo push servers to direct native Google FCM HTTP v1 dispatch for instant, guaranteed background and locked-screen delivery.
+- **Native Device Token Acquisition**: Direct integration with Google Play Services via `Notifications.getDevicePushTokenAsync()`.
+- **System Notification Channel Routing**: Full support for Android 8.0 through Android 15 categorized notification channels (`expenses`, `settlements`, `reminders`, `budgets`, `groups`, `announcements`) with `#00C4CC` cyan theme tinting.
+- **Google Services Plugin Integration**: Native `google-services.json` registered in `app.json` and compiled with the official Gradle Google Services plugin.
+
+#### 🧹 Poller Pruning & Memory Optimization
+- **Eliminated Obsolete Polling Infrastructure**: Completely removed `expo-background-fetch`, `expo-task-manager`, 10-second active interval poller, and 500-ID alert history cache.
+- **Clean Lifecycle**: Decoupled push delivery from app foreground/background state.
+
+---
+
 ## [v1.3.0] - 2026-10-31
 
 > **Target OS**: Android 10+ (API 29+) & iOS 15+  
