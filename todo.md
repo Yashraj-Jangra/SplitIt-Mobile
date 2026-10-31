@@ -1,5 +1,22 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Self-Hosted Direct Native FCM v1 Push Engine & Poller Pruning** ✨ 🚀 📱 🛡️ ⚡ ✅:
+  - **Direct FCM HTTP v1 Dispatch & Registration Migration**:
+    - Replaced reliance on Expo cloud push servers (`exp.host`) and polling workarounds with direct native Firebase Cloud Messaging v1.
+    - Added `google-services.json` (`project_id: 'splitit-cvweb'`, `package_name: 'com.splitit.app'`) with automatic Gradle Google Services plugin integration.
+    - Updated `app.json` with `"googleServicesFile": "./google-services.json"`.
+    - Secured credentials by ignoring `google-services.json`, `service-account*.json`, and `*.keystore` in `.gitignore`.
+    - Refactored `registerForPushNotifications()` in `src/services/notification.service.ts` to fetch native device push tokens via `Notifications.getDevicePushTokenAsync()`.
+    - Wired device registration to post `{ platform: 'fcm', deviceId, fcmToken, deviceName }` directly to backend `/api/push/subscribe`.
+  - **Pruned Dead Code & Obsolete Workarounds**:
+    - Removed `expo-background-fetch` and `expo-task-manager` dependencies from `package.json` and synchronized `package-lock.json`.
+    - Removed 188 lines of obsolete polling infrastructure from `notification.service.ts`: eliminated 10s foreground interval poller, 500-ID alert history cache, module-level `TaskManager.defineTask`, and native `BackgroundFetch` task registrations.
+    - Cleaned up `app/_layout.tsx` to eliminate poller start/stop loops.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 type errors.
+    - `npx jest --passWithNoTests` verified with 0 failures.
+
+
 - **Milestone v1.3.0 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
   - **Version Manifests Synchronized to 1.3.0 (Build 6)**:
     - `package.json`: `"version": "1.3.0"`

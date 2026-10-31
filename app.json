@@ -34,6 +34,7 @@
     "android": {
       "package": "com.splitit.app",
       "versionCode": 6,
+      "googleServicesFile": "./google-services.json",
       "backgroundColor": "#131417",
       "permissions": [
         "android.permission.INTERNET",

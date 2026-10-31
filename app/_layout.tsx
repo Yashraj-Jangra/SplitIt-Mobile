@@ -65,9 +65,6 @@ function NavigationGate() {
 
     if (user?.id) {
       notificationService.registerForPushNotifications().catch(() => {});
-      notificationService.startLiveSync().catch(() => {});
-    } else {
-      notificationService.stopLiveSync();
     }
 
     const sub = notificationService.setupResponseListener((route) => {

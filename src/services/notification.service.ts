@@ -1,10 +1,6 @@
 import type * as NotificationsType from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as TaskManager from 'expo-task-manager';
-import * as BackgroundFetch from 'expo-background-fetch';
-import NetInfo from '@react-native-community/netinfo';
-import { Platform, AppState, type AppStateStatus } from 'react-native';
+import { Platform } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
@@ -14,9 +10,6 @@ import { THEME } from '../constants/theme';
 import { appEventEmitter } from './event-emitter';
 
 const DEVICE_ID_KEY = 'splitit_device_id';
-const ALERTED_IDS_STORAGE_KEY = '@splitit:alerted_notification_ids';
-const MAX_ALERTED_IDS_HISTORY = 500;
-
 export const BACKGROUND_NOTIFICATION_TASK = 'SPLITIT_BACKGROUND_NOTIFICATION_SYNC';
 
 let cachedNotificationsModule: typeof NotificationsType | null | undefined = undefined;
@@ -38,24 +31,6 @@ function getNotificationsModule(): typeof NotificationsType | null {
     cachedNotificationsModule = null;
     return null;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Background Task Definition (Registered at module level for native Headless JS)
-// ---------------------------------------------------------------------------
-try {
-  TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async () => {
-    try {
-      const alertedCount = await notificationService.syncAndPresentNewNotifications();
-      return alertedCount > 0
-        ? BackgroundFetch.BackgroundFetchResult.NewData
-        : BackgroundFetch.BackgroundFetchResult.NoData;
-    } catch {
-      return BackgroundFetch.BackgroundFetchResult.Failed;
-    }
-  });
-} catch {
-  // Ignored in environments where TaskManager is unavailable
 }
 
 export interface InAppNotification {
@@ -165,37 +140,7 @@ export function getChannelIdForType(type: string): string {
   return 'default';
 }
 
-// Persistent Storage Helpers for Alert History
-async function loadAlertedIds(): Promise<Set<string>> {
-  try {
-    const raw = await AsyncStorage.getItem(ALERTED_IDS_STORAGE_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) {
-        return new Set(arr);
-      }
-    }
-  } catch {
-    // Fallback
-  }
-  return new Set();
-}
-
-async function saveAlertedIds(ids: Set<string>): Promise<void> {
-  try {
-    const arr = Array.from(ids).slice(-MAX_ALERTED_IDS_HISTORY);
-    await AsyncStorage.setItem(ALERTED_IDS_STORAGE_KEY, JSON.stringify(arr));
-  } catch {
-    // Fallback
-  }
-}
-
 export const notificationService = {
-  _isLiveSyncRunning: false,
-  _liveSyncTimer: null as any,
-  _appStateSubscription: null as any,
-  _netInfoSubscription: null as any,
-  _alertedNotificationIds: new Set<string>(),
   _isInitialized: false,
 
   /**
@@ -397,7 +342,7 @@ export const notificationService = {
   },
 
   /**
-   * Registers for Expo push notifications and uploads token to backend
+   * Registers for native FCM (or Expo fallback) push notifications and uploads token to backend
    */
   async registerForPushNotifications(): Promise<string | null> {
     const Notifications = getNotificationsModule();
@@ -428,51 +373,59 @@ export const notificationService = {
         return null;
       }
 
-      const projectId =
-        Constants.expoConfig?.extra?.eas?.projectId ??
-        Constants.easConfig?.projectId ??
-        '564133e2-dfca-4435-b76a-9fad3532cd14';
+      let activeToken: string | null = null;
+      let platformType: 'fcm' | 'expo' = 'fcm';
 
-      let expoPushToken: string | null = null;
+      // 1. Direct native FCM token via Google Play Services / Firebase
       try {
-        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-        expoPushToken = tokenData.data;
+        const deviceToken = await Notifications.getDevicePushTokenAsync();
+        if (deviceToken?.data) {
+          activeToken = typeof deviceToken.data === 'string' ? deviceToken.data : String(deviceToken.data);
+          platformType = 'fcm';
+        }
       } catch {
-        // Fallback for standalone builds without Google Services
+        // Fallback for environments where device token is unavailable
       }
 
-      if (!expoPushToken) {
+      // 2. Fallback to Expo push token if native device token could not be obtained
+      if (!activeToken) {
         try {
-          const deviceToken = await Notifications.getDevicePushTokenAsync();
-          if (deviceToken?.data) {
-            expoPushToken = typeof deviceToken.data === 'string' ? deviceToken.data : JSON.stringify(deviceToken.data);
+          const projectId =
+            Constants.expoConfig?.extra?.eas?.projectId ??
+            Constants.easConfig?.projectId ??
+            '564133e2-dfca-4435-b76a-9fad3532cd14';
+          const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+          if (tokenData?.data) {
+            activeToken = tokenData.data;
+            platformType = 'expo';
           }
         } catch {
-          // Fallback
+          // Expo push token fallback failed
         }
       }
 
-      if (!expoPushToken) {
+      if (!activeToken) {
         return null;
       }
 
       const deviceId = await this.getDeviceId();
       const token = await authService.getToken();
-      if (!token) return expoPushToken;
+      if (!token) return activeToken;
 
       // Post to backend
       await fetch(`${API_BASE_URL}/api/push/subscribe`, {
         method: 'POST',
         headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          platform: 'expo',
+          platform: platformType,
           deviceId,
-          expoPushToken,
+          fcmToken: platformType === 'fcm' ? activeToken : undefined,
+          expoPushToken: platformType === 'expo' ? activeToken : undefined,
           deviceName: Platform.OS === 'ios' ? 'Apple iPhone' : 'Android Smartphone',
         }),
       });
 
-      return expoPushToken;
+      return activeToken;
     } catch {
       return null;
     }
@@ -733,196 +686,26 @@ export const notificationService = {
   },
 
   /**
-   * Register native background task for WorkManager (Android) and BGAppRefresh (iOS)
+   * Background task registration stub (native FCM delivers notifications directly in background).
    */
-  async registerBackgroundTask(): Promise<void> {
-    try {
-      const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK);
-      if (!isRegistered) {
-        await BackgroundFetch.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK, {
-          minimumInterval: 15 * 60, // 15 minutes minimum interval
-          stopOnTerminate: false,   // Continue running when app is closed / killed
-          startOnBoot: true,        // Automatically re-register on device boot
-        });
-      }
-    } catch {
-      // Background fetch registration handled gracefully
-    }
-  },
+  async registerBackgroundTask(): Promise<void> {},
 
   /**
-   * Unregister native background task (e.g. on logout)
+   * Background task unregistration stub.
    */
-  async unregisterBackgroundTask(): Promise<void> {
-    try {
-      const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK);
-      if (isRegistered) {
-        await BackgroundFetch.unregisterTaskAsync(BACKGROUND_NOTIFICATION_TASK);
-      }
-    } catch {
-      // Fallback
-    }
-  },
+  async unregisterBackgroundTask(): Promise<void> {},
 
   /**
-   * Starts real-time notification sync and local notification dispatch engine.
-   * Multi-trigger redundancy:
-   * 1. Immediate sync on start
-   * 2. Instant sync when app returns to 'active' (screen unlock or app switch)
-   * 3. Instant sync on network reconnection (Wi-Fi / Cellular restored)
-   * 4. 10s foreground active poller while screen is focused
-   * 5. OS-level background WorkManager / BackgroundFetch when app is closed
+   * Starts notification sync on app launch / resume to populate local in-app cache.
    */
   async startLiveSync(): Promise<void> {
-    if (this._isLiveSyncRunning) return;
-    this._isLiveSyncRunning = true;
-
-    // Load persistent alerted IDs from AsyncStorage
-    try {
-      const stored = await loadAlertedIds();
-      if (stored.size === 0) {
-        // First run on this installation: mark existing notifications as already alerted
-        // so we only trigger alerts for future incoming events
-        const existing = await this.getInAppNotifications();
-        existing.forEach((n) => stored.add(n.id));
-        await saveAlertedIds(stored);
-      }
-      this._alertedNotificationIds = stored;
-    } catch {
-      // Fallback
-    }
-
-    // Register OS native background task
-    this.registerBackgroundTask().catch(() => {});
-
-    // Trigger 1: AppState listener (immediate sync upon unlocking or opening app)
-    this._appStateSubscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
-      if (nextState === 'active') {
-        this.syncAndPresentNewNotifications().catch(() => {});
-        this._startForegroundPoller();
-      } else if (nextState === 'background' || nextState === 'inactive') {
-        this._stopForegroundPoller();
-      }
-    });
-
-    // Trigger 2: NetInfo listener (immediate sync when internet connection is restored)
-    this._netInfoSubscription = NetInfo.addEventListener((state) => {
-      if (state.isConnected && state.isInternetReachable !== false) {
-        this.syncAndPresentNewNotifications().catch(() => {});
-      }
-    });
-
-    // Trigger 3: Active foreground poller (every 10s while active)
-    this._startForegroundPoller();
-
-    // Trigger 4: Immediate sync upon call
-    this.syncAndPresentNewNotifications().catch(() => {});
-  },
-
-  _startForegroundPoller(): void {
-    if (this._liveSyncTimer) return;
-    this._liveSyncTimer = setInterval(() => {
-      if (AppState.currentState === 'active') {
-        this.syncAndPresentNewNotifications().catch(() => {});
-      }
-    }, 10000);
-  },
-
-  _stopForegroundPoller(): void {
-    if (this._liveSyncTimer) {
-      clearInterval(this._liveSyncTimer);
-      this._liveSyncTimer = null;
-    }
+    this.getInAppNotifications().catch(() => {});
   },
 
   /**
-   * Stop the live sync poller and detach listeners (e.g. on logout)
+   * Stop notification sync (stub maintained for backward compatibility).
    */
-  stopLiveSync(): void {
-    this._isLiveSyncRunning = false;
-    this._stopForegroundPoller();
-
-    if (this._appStateSubscription) {
-      this._appStateSubscription.remove();
-      this._appStateSubscription = null;
-    }
-    if (this._netInfoSubscription) {
-      this._netInfoSubscription();
-      this._netInfoSubscription = null;
-    }
-
-    this.unregisterBackgroundTask().catch(() => {});
-  },
-
-  /**
-   * Checks for new incoming notifications from server and presents native system alerts
-   * Returns the count of newly alerted notifications.
-   */
-  async syncAndPresentNewNotifications(): Promise<number> {
-    try {
-      const token = await authService.getToken();
-      if (!token) return 0;
-
-      const res = await fetch(`${API_BASE_URL}/api/notifications?limit=25`, {
-        headers: getAuthenticatedHeaders(token),
-      });
-
-      if (!res.ok) return 0;
-      const data = await res.json();
-      if (!Array.isArray(data)) return 0;
-
-      const normalized: InAppNotification[] = data.map((item: any) => ({
-        ...item,
-        body: item.body || item.message || '',
-        message: item.message || item.body || '',
-        isRead: item.isRead !== undefined ? !!item.isRead : !!item.read,
-        read: item.isRead !== undefined ? !!item.isRead : !!item.read,
-        groupId: item.groupId || item.data?.groupId,
-        expenseId: item.expenseId || item.data?.expenseId,
-        settlementId: item.settlementId || item.data?.settlementId,
-      }));
-
-      // Ensure persistent alerted cache is loaded
-      if (this._alertedNotificationIds.size === 0) {
-        const stored = await loadAlertedIds();
-        this._alertedNotificationIds = stored;
-      }
-
-      // Find unread notifications that haven't been alerted locally yet
-      const brandNewNotifs = normalized.filter((n) => {
-        const isUnread = n.isRead !== undefined ? !n.isRead : !n.read;
-        return isUnread && !this._alertedNotificationIds.has(n.id);
-      });
-
-      _cachedNotifications = normalized;
-
-      if (brandNewNotifs.length > 0) {
-        const prefs = await this.getPreferences().catch(() => null);
-        const pushEnabled = prefs ? prefs.pushEnabled : true;
-
-        for (const notif of brandNewNotifs) {
-          const eventPref = prefs?.events?.[notif.type as keyof typeof prefs.events];
-          const shouldPush = pushEnabled && (eventPref ? eventPref.push : true);
-
-          if (shouldPush) {
-            await this.presentLocalNotification(notif);
-          }
-          this._alertedNotificationIds.add(notif.id);
-        }
-
-        // Persist updated alerted IDs to disk
-        await saveAlertedIds(this._alertedNotificationIds);
-
-        appEventEmitter.emit('data-changed', { type: 'notifications_updated' });
-        appEventEmitter.emit('data-changed', { type: 'app_resumed' });
-        return brandNewNotifs.length;
-      }
-
-      return 0;
-    } catch {
-      return 0;
-    }
-  },
+  stopLiveSync(): void {},
 
   /**
    * Present an immediate native system notification banner on the device
