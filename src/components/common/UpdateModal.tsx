@@ -18,7 +18,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import {
-  Sparkles,
+  ArrowUpCircle,
   Download,
   ExternalLink,
   AlertCircle,
@@ -28,12 +28,12 @@ import {
   ShieldCheck,
   Settings,
   ArrowRight,
-  Lock,
   ChevronRight,
 } from 'lucide-react-native';
 import { BottomSheetModal } from './BottomSheetModal';
 import { AiMarkdownView } from '../ai/AiMarkdownView';
 import { THEME } from '../../constants/theme';
+import { useAppTheme } from '../../contexts/theme.context';
 import { haptics } from '../../services/haptics.service';
 import { updateService, type UpdateInfo, type DownloadProgress } from '../../services/update.service';
 
@@ -71,6 +71,7 @@ export const UpdateModal = React.memo(function UpdateModal({
   onClose,
   updateInfo,
 }: UpdateModalProps) {
+  const { currentAccent } = useAppTheme();
   const [step, setStep] = useState<UpdateStep>('IDLE');
   const [progress, setProgress] = useState<DownloadProgress>({
     percentage: 0,
@@ -174,7 +175,6 @@ export const UpdateModal = React.memo(function UpdateModal({
       if (nextState === 'active' && waitingForSettingsReturnRef.current) {
         waitingForSettingsReturnRef.current = false;
         haptics.saveSuccess();
-        // User returned from Settings, immediately proceed to download & install
         executeDownloadAndInstall();
       }
     });
@@ -209,185 +209,202 @@ export const UpdateModal = React.memo(function UpdateModal({
     <BottomSheetModal
       visible={visible}
       onClose={step === 'DOWNLOADING' ? handleCancel : onClose}
-      maxHeight={step === 'PERMISSION_GUIDE' ? '92%' : '86%'}
+      maxHeight={step === 'PERMISSION_GUIDE' ? '88%' : '88%'}
       title={step === 'PERMISSION_GUIDE' ? 'Install Authorization' : 'Update Available'}
-      subtitle={`SplitIt v${updateInfo.latestVersion}`}
+      subtitle={
+        step === 'PERMISSION_GUIDE'
+          ? 'One-time permission for direct updates'
+          : `SplitIt v${updateInfo.latestVersion}`
+      }
       showCloseButton={step !== 'DOWNLOADING'}
     >
       <View style={styles.container}>
-        {/* ── STEP 1: PERMISSION & TRUST GUIDE ── */}
+        {/* ── STEP 1: OPEN EDITORIAL PERMISSION GUIDE (NO-DIV DESIGN) ── */}
         {step === 'PERMISSION_GUIDE' && (
-          <View style={styles.guideContainer}>
-            {/* Trust Hero Card */}
-            <View style={styles.trustHeroCard}>
-              <View style={styles.shieldIconRing}>
-                <ShieldCheck size={28} color={THEME.colors.primary} />
+          <View style={styles.guideWrapper}>
+            <View style={styles.guideHeader}>
+              <View
+                style={[
+                  styles.guideIconWrap,
+                  {
+                    backgroundColor: currentAccent.primaryMuted,
+                    borderColor: currentAccent.borderFocus,
+                  },
+                ]}
+              >
+                <ShieldCheck size={24} color={currentAccent.primary} />
               </View>
-              <Text style={styles.trustHeroTitle}>One-Time Installation Permission</Text>
-              <Text style={styles.trustHeroSubtitle}>
-                Android requires authorization to let SplitIt install updates directly from our official repository.
-              </Text>
-            </View>
-
-            {/* Verification Guarantee Badges */}
-            <View style={styles.guaranteeBox}>
-              <View style={styles.guaranteeRow}>
-                <CheckCircle2 size={15} color={THEME.colors.success} style={styles.guaranteeIcon} />
-                <View style={styles.guaranteeTextCol}>
-                  <Text style={styles.guaranteeTitle}>Official Open-Source Release</Text>
-                  <Text style={styles.guaranteeSub}>
-                    Directly from github.com/Yashraj-Jangra/SplitIt-Mobile
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.guaranteeDivider} />
-
-              <View style={styles.guaranteeRow}>
-                <Lock size={15} color={THEME.colors.info} style={styles.guaranteeIcon} />
-                <View style={styles.guaranteeTextCol}>
-                  <Text style={styles.guaranteeTitle}>Cryptographically Signed APK</Text>
-                  <Text style={styles.guaranteeSub}>
-                    Verified against original SplitIt keystore signatures
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.guaranteeDivider} />
-
-              <View style={styles.guaranteeRow}>
-                <HardDrive size={15} color={THEME.colors.warning} style={styles.guaranteeIcon} />
-                <View style={styles.guaranteeTextCol}>
-                  <Text style={styles.guaranteeTitle}>Zero Residue Guarantee</Text>
-                  <Text style={styles.guaranteeSub}>
-                    Downloaded files are automatically deleted after installation
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Quick 3-Step Walkthrough */}
-            <View style={styles.stepsCard}>
-              <Text style={styles.stepsHeader}>HOW TO ENABLE (10 SECONDS):</Text>
-              
-              <View style={styles.stepItem}>
-                <View style={styles.stepNumberBadge}>
-                  <Text style={styles.stepNumberText}>1</Text>
-                </View>
-                <Text style={styles.stepItemText}>
-                  Tap <Text style={styles.stepHighlight}>"Open System Settings"</Text> below.
-                </Text>
-              </View>
-
-              <View style={styles.stepItem}>
-                <View style={styles.stepNumberBadge}>
-                  <Text style={styles.stepNumberText}>2</Text>
-                </View>
-                <Text style={styles.stepItemText}>
-                  Switch ON <Text style={styles.stepHighlight}>"Allow from this source"</Text> for SplitIt.
-                </Text>
-              </View>
-
-              <View style={styles.stepItem}>
-                <View style={styles.stepNumberBadge}>
-                  <Text style={styles.stepNumberText}>3</Text>
-                </View>
-                <Text style={styles.stepItemText}>
-                  Press <Text style={styles.stepHighlight}>Back</Text> to return and start the installation immediately.
+              <View style={styles.guideHeaderTextCol}>
+                <Text style={styles.guideHeaderSub}>
+                  Android requires permission to install APK packages outside Google Play. Authorize SplitIt to enable seamless in-app updates.
                 </Text>
               </View>
             </View>
 
-            {/* Guide Actions */}
-            <View style={styles.guideActionCol}>
+            <View style={styles.hairlineDivider} />
+
+            {/* Connecting Timeline Nodes (No Div / Editorial Stem Lines) */}
+            <View style={styles.timelineList}>
+              <View style={styles.timelineItem}>
+                <View style={styles.nodeColumn}>
+                  <View
+                    style={[
+                      styles.nodeCircle,
+                      {
+                        backgroundColor: currentAccent.primaryMuted,
+                        borderColor: currentAccent.primary,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.nodeNumber, { color: currentAccent.primary }]}>1</Text>
+                  </View>
+                  <View style={styles.nodeStem} />
+                </View>
+                <View style={styles.timelineTextCol}>
+                  <Text style={styles.timelineTitle}>Open System Settings</Text>
+                  <Text style={styles.timelineDesc}>
+                    Tap below to go to Android's app install permissions.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.timelineItem}>
+                <View style={styles.nodeColumn}>
+                  <View
+                    style={[
+                      styles.nodeCircle,
+                      {
+                        backgroundColor: currentAccent.primaryMuted,
+                        borderColor: currentAccent.primary,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.nodeNumber, { color: currentAccent.primary }]}>2</Text>
+                  </View>
+                  <View style={styles.nodeStem} />
+                </View>
+                <View style={styles.timelineTextCol}>
+                  <Text style={styles.timelineTitle}>Turn on "Allow from this source"</Text>
+                  <Text style={styles.timelineDesc}>
+                    Toggle the switch on for SplitIt.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.timelineItem}>
+                <View style={styles.nodeColumn}>
+                  <View
+                    style={[
+                      styles.nodeCircle,
+                      {
+                        backgroundColor: currentAccent.primaryMuted,
+                        borderColor: currentAccent.primary,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.nodeNumber, { color: currentAccent.primary }]}>3</Text>
+                  </View>
+                </View>
+                <View style={styles.timelineTextCol}>
+                  <Text style={styles.timelineTitle}>Return & Install</Text>
+                  <Text style={styles.timelineDesc}>
+                    Press Back to return to SplitIt — the update begins immediately.
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.hairlineDivider} />
+
+            {/* Action Bar */}
+            <View style={styles.actionsCol}>
               <TouchableOpacity
-                style={styles.openSettingsButton}
+                style={[styles.primaryBtn, { backgroundColor: currentAccent.primary }]}
                 onPress={handleOpenSettings}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Open Android System Settings for SplitIt install permission"
               >
                 <Settings size={18} color={THEME.colors.primaryForeground} />
-                <Text style={styles.openSettingsButtonText}>Open System Settings</Text>
+                <Text style={styles.primaryBtnText}>Open System Settings</Text>
               </TouchableOpacity>
 
-              <View style={styles.guideSecondaryRow}>
+              <View style={styles.secondaryRow}>
                 <TouchableOpacity
-                  style={styles.skipButton}
+                  style={styles.secondaryTextBtn}
                   onPress={handleSkipGuideAndProceed}
                   activeOpacity={0.7}
                   accessibilityRole="button"
                   accessibilityLabel="I already allowed this, proceed with update"
                 >
-                  <Text style={styles.skipButtonText}>Already Enabled / Proceed</Text>
+                  <Text style={styles.secondaryTextBtnText}>Already Allowed / Continue</Text>
                   <ArrowRight size={13} color={THEME.colors.textSecondary} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.guideBrowserBtn}
+                  style={styles.secondaryTextBtn}
                   onPress={handleBrowserFallback}
                   activeOpacity={0.7}
                   accessibilityRole="button"
                   accessibilityLabel="Download update via browser instead"
                 >
                   <ExternalLink size={13} color={THEME.colors.textMuted} />
-                  <Text style={styles.guideBrowserText}>Download via Browser</Text>
+                  <Text style={[styles.secondaryTextBtnText, { color: THEME.colors.textMuted }]}>
+                    Download via Browser
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         )}
 
-        {/* ── STEP 2: IDLE OVERVIEW WITH TRUST BADGES ── */}
+        {/* ── STEP 2: IDLE OVERVIEW (WIDE EDITORIAL LAYOUT) ── */}
         {step === 'IDLE' && (
-          <>
-            {/* Version Comparison Header */}
-            <View style={styles.headerCard}>
-              <View style={styles.badgeRow}>
-                <View style={styles.versionPillCurrent}>
-                  <Text style={styles.versionLabel}>Current</Text>
-                  <Text style={styles.versionVal}>v{updateInfo.currentVersion}</Text>
+          <View style={styles.idleWrapper}>
+            {/* Version Meta Bar */}
+            <View style={styles.versionBar}>
+              <View style={styles.versionPillsRow}>
+                <View style={styles.versionCurrentPill}>
+                  <Text style={styles.versionCurrentLabel}>Installed</Text>
+                  <Text style={styles.versionCurrentVal}>v{updateInfo.currentVersion}</Text>
                 </View>
 
-                <View style={styles.arrowContainer}>
-                  <Text style={styles.arrowText}>→</Text>
-                </View>
+                <ArrowRight size={12} color={THEME.colors.textMuted} />
 
-                <View style={styles.versionPillNew}>
-                  <Sparkles size={13} color={THEME.colors.primary} style={styles.pillIcon} />
-                  <Text style={styles.versionLabelNew}>Latest</Text>
-                  <Text style={styles.versionValNew}>v{updateInfo.latestVersion}</Text>
-                </View>
-              </View>
-
-              <View style={styles.metaRow}>
-                <Text style={styles.releaseName} numberOfLines={1}>
-                  {updateInfo.releaseName}
-                </Text>
-                <View style={styles.metaRight}>
-                  <HardDrive size={12} color={THEME.colors.textMuted} />
-                  <Text style={styles.sizeText}>
-                    {updateInfo.apkSize > 0 ? formatBytes(updateInfo.apkSize) : 'Direct APK'}
+                <View
+                  style={[
+                    styles.versionNewPill,
+                    {
+                      backgroundColor: currentAccent.primaryMuted,
+                      borderColor: currentAccent.borderFocus,
+                    },
+                  ]}
+                >
+                  <ArrowUpCircle size={13} color={currentAccent.primary} />
+                  <Text style={[styles.versionNewVal, { color: currentAccent.primary }]}>
+                    v{updateInfo.latestVersion}
                   </Text>
-                  <Text style={styles.dateDot}>•</Text>
-                  <Text style={styles.dateText}>{formatDate(updateInfo.publishedAt)}</Text>
                 </View>
               </View>
-            </View>
 
-            {/* Provenance & Security Pill */}
-            <View style={styles.securityTrustCard}>
-              <View style={styles.securityTrustRow}>
-                <ShieldCheck size={14} color={THEME.colors.primary} />
-                <Text style={styles.securityTrustText}>
-                  Verified GitHub Release • Auto-purged after install
+              <View style={styles.metaBadgeRow}>
+                <HardDrive size={12} color={THEME.colors.textMuted} />
+                <Text style={styles.metaBadgeText}>
+                  {updateInfo.apkSize > 0 ? formatBytes(updateInfo.apkSize) : 'Direct APK'}
                 </Text>
+                <Text style={styles.metaDot}>•</Text>
+                <Text style={styles.metaBadgeText}>{formatDate(updateInfo.publishedAt)}</Text>
               </View>
             </View>
 
-            {/* Release Notes */}
+            <View style={styles.hairlineDivider} />
+
+            {/* Release Changelog Section */}
             <View style={styles.notesSection}>
-              <Text style={styles.notesSectionTitle}>What's New</Text>
+              <View style={styles.notesHeaderRow}>
+                <Text style={styles.notesSectionLabel}>WHAT'S NEW IN V{updateInfo.latestVersion}</Text>
+              </View>
+
               <ScrollView
                 style={styles.notesScroll}
                 contentContainerStyle={styles.notesContent}
@@ -397,36 +414,40 @@ export const UpdateModal = React.memo(function UpdateModal({
                 {updateInfo.releaseNotes.trim() ? (
                   <AiMarkdownView content={updateInfo.releaseNotes} />
                 ) : (
-                  <Text style={styles.emptyNotes}>Bug fixes and performance improvements.</Text>
+                  <Text style={styles.emptyNotes}>Performance improvements and bug fixes.</Text>
                 )}
               </ScrollView>
             </View>
 
-            {/* Footer Actions */}
-            <View style={styles.footer}>
+            <View style={styles.hairlineDivider} />
+
+            {/* Footer Action Controls */}
+            <View style={styles.actionsCol}>
               {updateInfo.downloadUrl && Platform.OS === 'android' ? (
                 <TouchableOpacity
-                  style={styles.primaryActionButton}
+                  style={[styles.primaryBtn, { backgroundColor: currentAccent.primary }]}
                   onPress={handleStartUpdate}
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel="Download and install update"
                 >
                   <Download size={18} color={THEME.colors.primaryForeground} />
-                  <Text style={styles.primaryActionText}>Update & Install</Text>
+                  <Text style={styles.primaryBtnText}>
+                    Update to v{updateInfo.latestVersion}
+                  </Text>
                 </TouchableOpacity>
               ) : null}
 
-              <View style={styles.secondaryActionsRow}>
+              <View style={styles.secondaryRow}>
                 <TouchableOpacity
-                  style={styles.browserButton}
+                  style={styles.secondaryTextBtn}
                   onPress={handleBrowserFallback}
                   activeOpacity={0.7}
                   accessibilityRole="button"
-                  accessibilityLabel="Download APK via web browser"
+                  accessibilityLabel="View release on GitHub"
                 >
-                  <ExternalLink size={14} color={THEME.colors.textSecondary} />
-                  <Text style={styles.browserButtonText}>Download via Browser</Text>
+                  <ExternalLink size={13} color={THEME.colors.textSecondary} />
+                  <Text style={styles.secondaryTextBtnText}>View on GitHub</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -440,125 +461,123 @@ export const UpdateModal = React.memo(function UpdateModal({
                 </TouchableOpacity>
               </View>
             </View>
-          </>
+          </View>
         )}
 
-        {/* ── STEP 3: DOWNLOADING PROGRESS ── */}
+        {/* ── STEP 3: DOWNLOADING PROGRESS (FULL-WIDTH) ── */}
         {step === 'DOWNLOADING' && (
-          <View style={styles.progressSection}>
-            <View style={styles.progressContainer}>
-              <View style={styles.progressHeader}>
-                <Text style={styles.progressTitle}>Downloading update package...</Text>
-                <Text style={styles.progressPercent}>
-                  {Math.round(progress.percentage * 100)}%
+          <View style={styles.downloadWrapper}>
+            <View style={styles.downloadInfoRow}>
+              <View style={styles.downloadTextCol}>
+                <Text style={styles.downloadTitle}>Downloading Update</Text>
+                <Text style={styles.downloadSubtitle}>
+                  SplitIt v{updateInfo.latestVersion} · {formatBytes(progress.writtenBytes)} of{' '}
+                  {formatBytes(progress.totalBytes || updateInfo.apkSize)}
                 </Text>
               </View>
+              <Text style={[styles.downloadPercentage, { color: currentAccent.primary }]}>
+                {Math.round(progress.percentage * 100)}%
+              </Text>
+            </View>
 
-              <View style={styles.progressBarTrack}>
-                <Animated.View style={[styles.progressBarFill, progressStyle]} />
-              </View>
-
-              <View style={styles.progressDetailsRow}>
-                <Text style={styles.progressBytes}>
-                  {formatBytes(progress.writtenBytes)} / {formatBytes(progress.totalBytes || updateInfo.apkSize)}
-                </Text>
-                <Text style={styles.zeroResidueHint}>Auto-cleaned after install</Text>
-              </View>
+            <View style={styles.progressBarTrack}>
+              <Animated.View
+                style={[
+                  styles.progressBarFill,
+                  { backgroundColor: currentAccent.primary },
+                  progressStyle,
+                ]}
+              />
             </View>
 
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={styles.cancelDownloadBtn}
               onPress={handleCancel}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Cancel update download"
             >
-              <X size={16} color={THEME.colors.textSecondary} />
-              <Text style={styles.cancelButtonText}>Cancel Download</Text>
+              <X size={15} color={THEME.colors.textSecondary} />
+              <Text style={styles.cancelDownloadText}>Cancel Download</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* ── STEP 4: INSTALLING / PACKAGE LAUNCH ── */}
         {step === 'INSTALLING' && (
-          <View style={styles.installingSection}>
-            <View style={styles.installingCard}>
-              <ActivityIndicator size="small" color={THEME.colors.primary} />
-              <View style={styles.installingTextCol}>
-                <Text style={styles.installingTitle}>Opening Android Installer...</Text>
-                <Text style={styles.installingSub}>
-                  Confirm the prompt on your screen to complete the update.
+          <View style={styles.installWrapper}>
+            <View style={styles.installRow}>
+              <ActivityIndicator size="small" color={currentAccent.primary} />
+              <View style={styles.installTextCol}>
+                <Text style={styles.installTitle}>Opening Android Installer...</Text>
+                <Text style={styles.installSubtitle}>
+                  Confirm the prompt on your screen to complete installation.
                 </Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={styles.doneButton}
+              style={[styles.primaryBtn, { backgroundColor: currentAccent.primary, marginTop: 8 }]}
               onPress={onClose}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel="Close installer dialog"
+              accessibilityLabel="Done"
             >
               <CheckCircle2 size={16} color={THEME.colors.primaryForeground} />
-              <Text style={styles.doneButtonText}>Done</Text>
+              <Text style={styles.primaryBtnText}>Done</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* ── STEP 5: ERROR STATE WITH SETTINGS RECOVERY ── */}
         {step === 'ERROR' && (
-          <View style={styles.errorSection}>
-            <View style={styles.errorCard}>
+          <View style={styles.errorWrapper}>
+            <View style={styles.errorBanner}>
               <AlertCircle size={20} color={THEME.colors.danger} />
               <View style={styles.errorTextCol}>
                 <Text style={styles.errorTitle}>Installation Interrupted</Text>
-                <Text style={styles.errorText}>
+                <Text style={styles.errorSubtitle}>
                   {errorMessage || 'Failed to complete update installation.'}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.errorRecoveryCard}>
-              <Text style={styles.errorRecoveryTitle}>Did Android block the install?</Text>
-              <Text style={styles.errorRecoverySub}>
-                If Android prompted "For your security, your phone is not allowed to install unknown apps", authorize SplitIt in Settings.
+            <TouchableOpacity
+              style={styles.errorSettingsBtn}
+              onPress={handleOpenSettings}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Open settings to allow SplitIt installs"
+            >
+              <Settings size={15} color={currentAccent.primary} />
+              <Text style={[styles.errorSettingsText, { color: currentAccent.primary }]}>
+                Authorize SplitIt in Install Unknown Apps Settings
               </Text>
+              <ChevronRight size={14} color={currentAccent.primary} />
+            </TouchableOpacity>
 
+            <View style={styles.actionsCol}>
               <TouchableOpacity
-                style={styles.errorSettingsBtn}
-                onPress={handleOpenSettings}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Open settings to allow SplitIt installs"
-              >
-                <Settings size={16} color={THEME.colors.primary} />
-                <Text style={styles.errorSettingsBtnText}>Open Install Permissions</Text>
-                <ChevronRight size={14} color={THEME.colors.primary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={styles.primaryActionButton}
+                style={[styles.primaryBtn, { backgroundColor: currentAccent.primary }]}
                 onPress={executeDownloadAndInstall}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Retry downloading update"
               >
                 <Download size={18} color={THEME.colors.primaryForeground} />
-                <Text style={styles.primaryActionText}>Retry Update</Text>
+                <Text style={styles.primaryBtnText}>Retry Update</Text>
               </TouchableOpacity>
 
-              <View style={styles.secondaryActionsRow}>
+              <View style={styles.secondaryRow}>
                 <TouchableOpacity
-                  style={styles.browserButton}
+                  style={styles.secondaryTextBtn}
                   onPress={handleBrowserFallback}
                   activeOpacity={0.7}
                   accessibilityRole="button"
                   accessibilityLabel="Download APK via web browser"
                 >
-                  <ExternalLink size={14} color={THEME.colors.textSecondary} />
-                  <Text style={styles.browserButtonText}>Download via Browser</Text>
+                  <ExternalLink size={13} color={THEME.colors.textSecondary} />
+                  <Text style={styles.secondaryTextBtnText}>Download via Browser</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -581,318 +600,209 @@ export const UpdateModal = React.memo(function UpdateModal({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    gap: 14,
+    paddingHorizontal: 0,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  hairlineDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: THEME.colors.hairline,
+    marginVertical: 4,
   },
 
-  /* ── PERMISSION GUIDE STYLES ── */
-  guideContainer: {
-    gap: 14,
+  /* ── PERMISSION GUIDE ── */
+  guideWrapper: {
+    gap: 12,
   },
-  trustHeroCard: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 16,
-    padding: 16,
+  guideHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    textAlign: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-    gap: 8,
+    gap: 14,
+    paddingVertical: 4,
   },
-  shieldIconRing: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: THEME.colors.primaryMuted,
+  guideIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: THEME.colors.borderFocus,
-    marginBottom: 4,
   },
-  trustHeroTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: THEME.colors.text,
-    textAlign: 'center',
-    letterSpacing: -0.2,
-  },
-  trustHeroSubtitle: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: 8,
-  },
-  guaranteeBox: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-    gap: 10,
-  },
-  guaranteeRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  guaranteeIcon: {
-    marginTop: 2,
-  },
-  guaranteeTextCol: {
+  guideHeaderTextCol: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
-  guaranteeTitle: {
-    fontSize: 13,
+  guideHeaderTitle: {
+    fontSize: 16,
     fontWeight: '700',
     color: THEME.colors.text,
+    letterSpacing: -0.2,
   },
-  guaranteeSub: {
+  guideHeaderSub: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    lineHeight: 17,
+  },
+  timelineList: {
+    paddingVertical: 4,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  nodeColumn: {
+    alignItems: 'center',
+    width: 26,
+  },
+  nodeCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  nodeNumber: {
     fontSize: 11,
+    fontWeight: '700',
+  },
+  nodeStem: {
+    width: StyleSheet.hairlineWidth,
+    height: 28,
+    backgroundColor: THEME.colors.hairlineLight,
+    marginVertical: 2,
+  },
+  timelineTextCol: {
+    flex: 1,
+    paddingTop: 2,
+    gap: 2,
+  },
+  timelineTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  timelineDesc: {
+    fontSize: 12,
     color: THEME.colors.textMuted,
-    lineHeight: 15,
+    lineHeight: 16,
   },
-  guaranteeDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: THEME.colors.hairline,
+
+  /* ── IDLE / OVERVIEW ── */
+  idleWrapper: {
+    gap: 12,
   },
-  stepsCard: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 14,
-    padding: 14,
+  versionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  versionPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  versionCurrentPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceSubtle,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 5,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: THEME.colors.border,
-    gap: 10,
   },
-  stepsHeader: {
+  versionCurrentLabel: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
+  },
+  versionCurrentVal: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    fontWeight: '600',
+  },
+  versionNewPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 5,
+    borderWidth: 1,
+  },
+  versionNewVal: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  metaBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  metaBadgeText: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
+  },
+  metaDot: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  notesSection: {
+    gap: 6,
+  },
+  notesHeaderRow: {
+    paddingVertical: 2,
+  },
+  notesSectionLabel: {
     fontSize: 10,
     fontWeight: '800',
     color: THEME.colors.textMuted,
     letterSpacing: 0.8,
   },
-  stepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  notesScroll: {
+    maxHeight: 260,
   },
-  stepNumberBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: THEME.colors.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.borderFocus,
+  notesContent: {
+    paddingVertical: 6,
   },
-  stepNumberText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.primary,
-  },
-  stepItemText: {
-    flex: 1,
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    lineHeight: 17,
-  },
-  stepHighlight: {
-    color: THEME.colors.text,
-    fontWeight: '700',
-  },
-  guideActionCol: {
-    gap: 10,
-    marginTop: 4,
-  },
-  openSettingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.colors.primary,
-    height: 48,
-    borderRadius: 12,
-    gap: 8,
-  },
-  openSettingsButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: THEME.colors.primaryForeground,
-  },
-  guideSecondaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-  },
-  skipButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 10,
-    minHeight: 44,
-  },
-  skipButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
-  },
-  guideBrowserBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 10,
-    minHeight: 44,
-  },
-  guideBrowserText: {
-    fontSize: 12,
+  emptyNotes: {
+    fontSize: 13,
     color: THEME.colors.textMuted,
-  },
-
-  /* ── OVERVIEW & HEADER STYLES ── */
-  headerCard: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-    gap: 12,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  versionPillCurrent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceSubtle,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-  },
-  versionLabel: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    fontWeight: '500',
-  },
-  versionVal: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    fontWeight: '600',
-  },
-  arrowContainer: {
-    paddingHorizontal: 2,
-  },
-  arrowText: {
-    color: THEME.colors.textMuted,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  versionPillNew: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.primaryMuted,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 5,
-    borderWidth: 1,
-    borderColor: THEME.colors.borderFocus,
-  },
-  pillIcon: {
-    marginRight: 1,
-  },
-  versionLabelNew: {
-    fontSize: 11,
-    color: THEME.colors.primaryLight,
-    fontWeight: '500',
-  },
-  versionValNew: {
-    fontSize: 12,
-    color: THEME.colors.primary,
-    fontWeight: '700',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 2,
-  },
-  releaseName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    flex: 1,
-    marginRight: 8,
-  },
-  metaRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  sizeText: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    fontWeight: '500',
-  },
-  dateDot: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-  },
-  dateText: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-  },
-  securityTrustCard: {
-    backgroundColor: THEME.colors.surfaceSubtle,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-  },
-  securityTrustRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  securityTrustText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
-  },
-  progressSection: {
-    gap: 14,
+    fontStyle: 'italic',
     paddingVertical: 12,
   },
-  progressContainer: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-    gap: 10,
+
+  /* ── DOWNLOADING ── */
+  downloadWrapper: {
+    gap: 14,
+    paddingVertical: 8,
   },
-  progressHeader: {
+  downloadInfoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  progressTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+  downloadTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  downloadTitle: {
+    fontSize: 14,
+    fontWeight: '700',
     color: THEME.colors.text,
   },
-  progressPercent: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.primary,
+  downloadSubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+  },
+  downloadPercentage: {
+    fontSize: 16,
+    fontWeight: '800',
   },
   progressBarTrack: {
     height: 6,
@@ -904,181 +814,124 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: THEME.colors.primary,
     borderRadius: 3,
   },
-  progressDetailsRow: {
+  cancelDownloadBtn: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minHeight: 44,
   },
-  progressBytes: {
-    fontSize: 11,
+  cancelDownloadText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: THEME.colors.textSecondary,
-    fontWeight: '500',
   },
-  zeroResidueHint: {
-    fontSize: 11,
-    color: THEME.colors.successLight,
-    fontWeight: '500',
-  },
-  installingSection: {
+
+  /* ── INSTALLING ── */
+  installWrapper: {
     gap: 14,
     paddingVertical: 12,
   },
-  installingCard: {
+  installRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.borderFocus,
+    gap: 12,
+    paddingVertical: 6,
   },
-  installingTextCol: {
+  installTextCol: {
     flex: 1,
     gap: 2,
   },
-  installingTitle: {
-    fontSize: 13,
+  installTitle: {
+    fontSize: 14,
     fontWeight: '600',
     color: THEME.colors.text,
   },
-  installingSub: {
-    fontSize: 11,
+  installSubtitle: {
+    fontSize: 12,
     color: THEME.colors.textSecondary,
     lineHeight: 16,
   },
-  errorSection: {
+
+  /* ── ERROR ── */
+  errorWrapper: {
     gap: 12,
   },
-  errorCard: {
+  errorBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: THEME.colors.dangerMuted,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: THEME.colors.danger,
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 6,
   },
   errorTextCol: {
     flex: 1,
     gap: 2,
   },
   errorTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.danger,
   },
-  errorText: {
-    fontSize: 11,
+  errorSubtitle: {
+    fontSize: 12,
     color: THEME.colors.dangerLight,
-    fontWeight: '500',
-    lineHeight: 15,
-  },
-  errorRecoveryCard: {
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-    gap: 8,
-  },
-  errorRecoveryTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  errorRecoverySub: {
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
     lineHeight: 16,
   },
   errorSettingsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: THEME.colors.primaryMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
     gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.borderFocus,
-    marginTop: 2,
+    paddingVertical: 8,
   },
-  errorSettingsBtnText: {
+  errorSettingsText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.primary,
+    fontWeight: '600',
+    flex: 1,
   },
-  notesSection: {
+
+  /* ── COMMON ACTIONS ── */
+  actionsCol: {
     gap: 8,
-  },
-  notesSectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  notesScroll: {
-    maxHeight: 180,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-  },
-  notesContent: {
-    padding: 14,
-  },
-  emptyNotes: {
-    fontSize: 13,
-    color: THEME.colors.textMuted,
-    fontStyle: 'italic',
-  },
-  footer: {
-    gap: 10,
     marginTop: 4,
   },
-  primaryActionButton: {
+  primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.primary,
     height: 48,
     borderRadius: 12,
     gap: 8,
   },
-  primaryActionText: {
+  primaryBtnText: {
     fontSize: 15,
     fontWeight: '700',
     color: THEME.colors.primaryForeground,
   },
-  secondaryActionsRow: {
+  secondaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
   },
-  browserButton: {
+  secondaryTextBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     paddingVertical: 10,
-    paddingHorizontal: 8,
     minHeight: 44,
   },
-  browserButtonText: {
+  secondaryTextBtnText: {
     fontSize: 13,
-    color: THEME.colors.textSecondary,
     fontWeight: '500',
+    color: THEME.colors.textSecondary,
   },
   laterButton: {
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     minHeight: 44,
     justifyContent: 'center',
   },
@@ -1086,35 +939,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: THEME.colors.textMuted,
     fontWeight: '500',
-  },
-  cancelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.colors.surfaceElevated,
-    height: 48,
-    borderRadius: 12,
-    gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: THEME.colors.border,
-  },
-  cancelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
-  },
-  doneButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.colors.primary,
-    height: 48,
-    borderRadius: 12,
-    gap: 8,
-  },
-  doneButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: THEME.colors.primaryForeground,
   },
 });

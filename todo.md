@@ -1,5 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **In-App Update UI Overhaul & No-Div Design Refactor** 🎨 ✨ 📱 ⚡ ✅:
+  - **Replaced Magic Sparkles Icon Everywhere with `ArrowUpCircle`**:
+    - `app/(tabs)/index.tsx`: Updated `updateBanner` to use `<ArrowUpCircle size={18} color={currentAccent.primary} />` with themed background tinting and accent border.
+    - `src/components/common/UpdateModal.tsx`: Updated version pill from `Sparkles` to `<ArrowUpCircle size={13} color={currentAccent.primary} />`.
+    - `app/info/about.tsx`: Replaced `Sparkles` update icon with `ArrowUpCircle`.
+    - `app/settings/preferences.tsx`: Replaced `Sparkles` icon with `ArrowUpCircle` for the "Check for Updates" row.
+    - `app/(tabs)/profile.tsx`: Replaced `Sparkles` with `ArrowUpCircle` for the "Check for Updates" item.
+  - **Abolished Card Soup & Implemented No-Div Editorial Layout**:
+    - Removed nested card boxes (`headerCard`, `securityTrustCard`, `guaranteeBox`, `trustHeroCard`, `stepsCard`).
+    - Purged useless text clutter: removed "Zero Residue Guarantee", "Downloaded files are automatically deleted after installation", "Auto-purged after install", and "Auto-cleaned after install".
+    - Adopted continuous hairlines, full 16px width parity (removed nested 20px padding), and open editorial typography.
+  - **Install Authorization Screen Redesign**:
+    - Designed open timeline with visual connecting stem lines and numbered step nodes (1. Open System Settings -> 2. Turn on "Allow from this source" -> 3. Return & Install).
+    - Added high-contrast primary CTA "Open System Settings" with clean secondary navigation ("Already Allowed / Continue" and "Download via Browser").
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed.
+
 - **Milestone v1.3.1 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
   - **Version Manifests Synchronized to 1.3.1 (Build 7)**:
     - `package.json`: `"version": "1.3.1"`

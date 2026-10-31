@@ -17,7 +17,7 @@ import {
   Users,
   Palette,
   Receipt,
-  Sparkles,
+  ArrowUpCircle,
 } from 'lucide-react-native';
 import Constants from 'expo-constants';
 import { THEME } from '../../src/constants/theme';
@@ -299,7 +299,7 @@ export default function PreferencesScreen() {
         {/* ── SECTION 4: SYSTEM & UPDATES ── */}
         <SettingsSection title="SYSTEM & UPDATES">
           <SettingsRow
-            icon={Sparkles}
+            icon={ArrowUpCircle}
             iconColor={currentAccent.primary}
             iconBg={currentAccent.primaryMuted}
             title="Check for Updates"

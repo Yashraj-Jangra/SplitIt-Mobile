@@ -23,7 +23,7 @@ import {
   Heart,
   RefreshCw,
   CheckCircle2,
-  Sparkles,
+  ArrowUpCircle,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
@@ -115,7 +115,7 @@ export default function AboutScreen() {
               {statusText?.includes('up to date') ? (
                 <CheckCircle2 size={18} color={THEME.colors.success} />
               ) : statusText?.includes('Update available') ? (
-                <Sparkles size={18} color={THEME.colors.primary} />
+                <ArrowUpCircle size={18} color={THEME.colors.primary} />
               ) : (
                 <RefreshCw size={18} color={THEME.colors.primary} />
               )}

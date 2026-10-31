@@ -5,6 +5,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import {
   Plus,
   Sparkles,
+  ArrowUpCircle,
   Bell,
   Handshake,
   ChevronRight,
@@ -410,7 +411,10 @@ export default function HomeScreen() {
         {/* In-App Release Update Alert Banner */}
         {updateInfo?.available && (
           <TouchableOpacity
-            style={styles.updateBanner}
+            style={[
+              styles.updateBanner,
+              { borderColor: currentAccent.borderFocus || THEME.colors.borderFocus },
+            ]}
             onPress={() => {
               haptics.tap();
               setShowUpdateModal(true);
@@ -419,8 +423,16 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Update available: version ${updateInfo.latestVersion}`}
           >
-            <View style={styles.updateBannerIconWrap}>
-              <Sparkles size={16} color={currentAccent.primary} />
+            <View
+              style={[
+                styles.updateBannerIconWrap,
+                {
+                  backgroundColor: currentAccent.primaryMuted,
+                  borderColor: currentAccent.borderFocus,
+                },
+              ]}
+            >
+              <ArrowUpCircle size={18} color={currentAccent.primary} />
             </View>
             <View style={styles.updateBannerTextCol}>
               <Text style={styles.updateBannerTitle}>

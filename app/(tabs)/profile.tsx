@@ -10,6 +10,7 @@ import {
   Bell,
   HelpCircle,
   Sparkles,
+  ArrowUpCircle,
   FileText,
   LogOut,
   ChevronRight,
@@ -44,7 +45,7 @@ export default function ProfileScreen() {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
 
-  const appVersion = Constants.expoConfig?.version || '1.3.0';
+  const appVersion = Constants.expoConfig?.version || '1.3.1';
 
   const handleCheckForUpdates = useCallback(async () => {
     if (checkingUpdate) return;
@@ -177,7 +178,7 @@ export default function ProfileScreen() {
       onPress: () => router.push('/support'),
     },
     {
-      icon: Sparkles,
+      icon: ArrowUpCircle,
       title: 'Check for Updates',
       subtitle: checkingUpdate
         ? 'Checking GitHub Releases...'
