@@ -4,6 +4,50 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 ---
 
+## [v1.2.1] - 2026-10-31
+
+> **Target OS**: Android 10+ (API 29+) & iOS 15+  
+> **Build Number**: `5`  
+> **Package**: `com.splitit.app`
+
+### 📦 Artifacts & Downloads
+
+| File | Type | Size | SHA256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **`SplitIt-v1.2.1.apk`** | Android Release APK | `129.4 MB` (`135,676,597 bytes`) | `8dbd00fcd52f1aa150472598767c026d496848cd39b030eef9cd20e2d82fabd8` |
+
+```bash
+# Verify checksum on Windows (PowerShell)
+Get-FileHash -Algorithm SHA256 .\SplitIt-v1.2.1.apk
+
+# Verify checksum on Linux / macOS
+sha256sum SplitIt-v1.2.1.apk
+```
+
+---
+
+### 🚀 Highlights & Changelog
+
+#### 🔄 Automatic Cross-Screen Data Revalidation & SWR Architecture
+- **Stale-While-Revalidate (SWR) Engine**: Replaced rigid 45-second cache locks across core tabs (`HomeScreen`, `GroupsScreen`, `ActivityScreen`) with high-performance Stale-While-Revalidate (SWR) background revalidation with a lightweight 2.5-second cooldown.
+- **Zero-Flicker Screen Navigation**: Instant 0ms cached rendering on back navigation and tab switching without blank screens or full-screen skeleton spinners, seamlessly updating UI when fresh server data arrives.
+- **Real-Time Cross-Screen Event Bus**: Subscribed `ExpenseDetailScreen`, `SettlementDetailScreen`, and `GroupDetailScreen` to real-time data events, immediately updating transaction breakdown trees, audit logs, and balances upon any user mutation.
+
+#### ⚡ Centralized AppState Lifecycle & Network Recovery Sync
+- **App Foreground / Unlock Revalidation (`useAppSync`)**: Automatically catches up and refreshes active view data whenever the application is resumed, brought to foreground, or unlocked from sleep (`AppState: 'active'`).
+- **Offline-to-Online Recovery Catch-up**: Listens to `NetInfo` connectivity transitions and triggers silent background synchronization the moment network connectivity is restored.
+- **Live Sync & Push Dispatch Reactivity**: Paired incoming push notification catches with active screen revalidation.
+
+#### 📋 Group Activity Stream & Audit Logs Synchronization
+- **Real-Time Feed & Logs Alignment**: Synchronized Group Detail **Activity** tab (expenses/settlements stream) and **Logs** tab (`GroupHistoryTab`) to auto-refresh upon actions, tab changes, and pull-to-refresh.
+- **Audit Restoration & Deletion Events**: Dispatches typed events when restoring deleted expenses or settlements and deleting audit events.
+
+#### 🛡️ Multi-Tier Cache Invalidation Consistency
+- **Unified Cache Eviction**: Purges both in-memory maps and disk storage (`AsyncStorage`) keys (`STORAGE_KEYS.GROUP_DETAIL`, `STORAGE_KEYS.USER_TRANSACTIONS`, `STORAGE_KEYS.USER_SETTLEMENTS`) across `expenseService`, `groupService`, and `settlementService`.
+- **Comment Persistence & Scoping**: Fixed local comment updates to persist offline details and emit cross-screen events.
+
+---
+
 ## [v1.2.0] - 2026-10-30
 
 > **Target OS**: Android 10+ (API 29+) & iOS 15+  
