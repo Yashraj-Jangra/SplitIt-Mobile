@@ -4,6 +4,59 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 ---
 
+## [v1.3.0] - 2026-10-31
+
+> **Target OS**: Android 10+ (API 29+) & iOS 15+  
+> **Build Number**: `6`  
+> **Package**: `com.splitit.app`
+
+### 📦 Artifacts & Downloads
+
+| File | Type | Size | SHA256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **`SplitIt-v1.3.0.apk`** | Android Release APK | `129.5 MB` (`135,753,929 bytes`) | `3d6d3330dc39adf82c19c38463b18629d06997a63d1c703728fb94ae863df44a` |
+
+```bash
+# Verify checksum on Windows (PowerShell)
+Get-FileHash -Algorithm SHA256 .\SplitIt-v1.3.0.apk
+
+# Verify checksum on Linux / macOS
+sha256sum SplitIt-v1.3.0.apk
+```
+
+---
+
+### 🚀 Highlights & Changelog
+
+#### 🔄 In-App Direct Release Updates via GitHub API
+- **Live GitHub Releases Integration**: Direct background and manual checking against GitHub Releases API (`https://api.github.com/repos/Yashraj-Jangra/SplitIt-Mobile/releases/latest`) with semver comparator and 4-hour `AsyncStorage` caching.
+- **Native Android APK Installer**: Downloads and executes the native Android Package Installer using `REQUEST_INSTALL_PACKAGES` permission via `expo-file-system/legacy` and `expo-intent-launcher`.
+- **Live Progress & Streaming Stats**: Animated bottom-sheet download progress with downloaded MB / total MB and percentage indicators.
+- **Fallback Browser Channel**: 1-tap fallback link to download directly from the official web browser release page.
+
+#### 🛡️ Interactive User Trust & Install Permission Architecture
+- **Proactive Trust Education**: Intercepts the first-time update flow before Android's system "Unknown Apps" security alert can startle the user.
+- **Security & Transparency Badges**: Highlights Verified GitHub Release (`Yashraj-Jangra/SplitIt-Mobile`), cryptographic keystore signature verification, and zero storage residue guarantee.
+- **Step-by-Step Interactive Walkthrough**: Educates the user on why Android asks for permission, with a 3-step numbered guide.
+- **Direct Android Settings Deep-Link**: Launches `IntentLauncher.ActivityAction.MANAGE_UNKNOWN_APP_SOURCES` targeting `package:com.splitit.app` directly.
+- **Seamless AppState Resume Re-trigger**: Detects when the user toggles the switch and presses Back to return to SplitIt, automatically launching the download & package installer without friction.
+- **Error Recovery Assistance**: If installation is cancelled or blocked, displays an actionable "Open Install Permissions" recovery button.
+
+#### 🧹 4-Tier Zero-Residue Storage Lifecycle Guarantee
+- **Clean Slate Guarantee**: Guarantees no residual `.apk` chunks or orphaned files are left on user devices:
+  1. *Tier 1 (Pre-Download)*: Completely purges `${FileSystem.cacheDirectory}updates/` before starting a new download.
+  2. *Tier 2 (Abort / Error)*: Purges temporary update folder immediately upon user cancellation or download failure in `catch`/`finally`.
+  3. *Tier 3 (Post-Intent)*: Purges temporary APK immediately once Android Package Installer intent resolves, plus a 60-second background watchdog timer.
+  4. *Tier 4 (Cold-Start Sweep)*: Mounted in `useAppSync.ts` to sweep any potential orphaned residue every time app is launched.
+
+#### ⚙️ Settings, Preferences & Dashboard Alignment
+- **About SplitIt Screen**: Dedicated "SOFTWARE UPDATES" card with "Check Now" button, real-time status feedback, and dynamic build metadata (`Version 1.3.0 (Build 6)`).
+- **Settings / Profile Screen**: "Check for Updates" action row in Settings under Support & Legal with live feedback alerts.
+- **Preferences Screen**: Added "SYSTEM & UPDATES" settings section with one-tap update check.
+- **Home Dashboard**: Non-intrusive release alert banner prompting users to review and install whenever a new release is available.
+
+---
+
 ## [v1.2.1] - 2026-10-31
 
 > **Target OS**: Android 10+ (API 29+) & iOS 15+  

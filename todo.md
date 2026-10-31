@@ -1,5 +1,21 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Milestone v1.3.0 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
+  - **Version Manifests Synchronized to 1.3.0 (Build 6)**:
+    - `package.json`: `"version": "1.3.0"`
+    - `app.json`: `"version": "1.3.0"`, `"versionCode": 6`, `"buildNumber": "6"`
+    - `android/app/build.gradle`: `versionCode 6`, `versionName "1.3.0"`
+  - **Production Release Artifact Compiled**:
+    - Ran `gradlew.bat assembleRelease` (BUILD SUCCESSFUL in 7m 38s).
+    - Generated `app-release.apk` (`135,753,929 bytes` / `129.5 MB`).
+    - Staged `SplitIt-v1.3.0.apk` at root.
+    - Verified SHA256: `3d6d3330dc39adf82c19c38463b18629d06997a63d1c703728fb94ae863df44a`.
+  - **Changelog & Documentation**:
+    - Updated `CHANGELOG.md` with full breakdown of v1.3.0 changes.
+    - Updated `RELEASE.md` with binary size and SHA256 checksums.
+  - **Quality Gates**:
+    - `tsc --noEmit` verified with 0 errors.
+
 - **In-App Direct Release Updates Engine with Zero-Residue Storage Lifecycle** ✨ 🚀 📱 🛡️ ⚡ ✅:
   - **Native Android APK Installer & Intent Bridge**:
     - Added `REQUEST_INSTALL_PACKAGES` permission in `app.json` and `android/app/src/main/AndroidManifest.xml` for seamless API 26+ package installer invocation.
