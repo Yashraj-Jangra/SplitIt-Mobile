@@ -1,5 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Notification Page Editorial Header Overhaul & Reanimated Swipe Gesture Rewrite** 🎨 ✨ 📱 ⚡ 🛡️ ✅:
+  - **Two-Tier Editorial Header Layout**:
+    - Eliminated horizontal collision on narrow viewports (≤ 390px) by decoupling navigation and title hierarchy.
+    - **Tier 1 (Navigation Bar)**: Clean `topNavRow` with Back circle button on the left, and streamlined action buttons on the right: sleek `[✓✓ Mark all read]` pill (rendered conditionally only when `unreadCount > 0`) + circular Settings button.
+    - **Tier 2 (Hero Editorial Header)**: Open `heroHeader` with bold "Notifications" title (`fontSize: 24`, `fontWeight: '800'`), context subtitle, and modern status pill (`[ • {unreadCount} new ]` with live accent pulse dot when unread, or `[ ✓ All caught up ]` when 0 unread).
+  - **Hardware-Accelerated Smooth Reanimated Swipe-to-Read Gesture**:
+    - Created `SwipeActionRight` sub-component utilizing `useAnimatedStyle` with worklet-interpolated scale (`0.45 -> 1.06`), opacity (`0 -> 1.0`), and elastic translateX (`20 -> 0`) linked to `progress.value`.
+    - Maintained continuous mounting of `ReanimatedSwipeable` using `enabled={!isRead}` — completely eliminating the jarring unmount/remount tearing on status change.
+    - Added spring-finish delayed dismissal: `onSwipeableOpen` triggers `haptics.saveSuccess()`, glides closed via `swipeableRef.current?.close()`, and waits 220ms before updating read state.
+    - Added tactile drag haptic feedback on `onSwipeableWillOpen` via `haptics.swipe()`.
+    - Calibrated swipe gesture parameters: `friction={1.1}`, `rightThreshold={36}`, `overshootRight={false}`, `dragOffsetFromRight={-8}` for fluid thumb flick action without vertical scroll interference.
+  - **Design & Theme Compliance**:
+    - Replaced hardcoded `#18191E` with `THEME.colors.surfaceSubtle`.
+    - High-contrast obsidian drawer styling with accent squircle icon badge and uppercase action caption.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` verified with 0 errors.
+
 - **Milestone v1.3.2 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
   - **Version Manifests Synchronized to 1.3.2 (Build 8)**:
     - `package.json`: `"version": "1.3.2"`
