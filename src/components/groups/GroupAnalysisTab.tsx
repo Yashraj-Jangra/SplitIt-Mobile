@@ -31,6 +31,7 @@ interface GroupAnalysisTabProps {
   group: GroupDetailData | null;
   expenses: GroupExpense[];
   members: GroupMember[];
+  onScrubbingChange?: (isScrubbing: boolean) => void;
 }
 
 const CHART_PALETTE = [
@@ -51,6 +52,7 @@ export const GroupAnalysisTab: React.FC<GroupAnalysisTabProps> = ({
   group,
   expenses,
   members,
+  onScrubbingChange,
 }) => {
   const { currentAccent } = useAppTheme();
   const { formatCurrency } = useCurrency();
@@ -384,6 +386,7 @@ export const GroupAnalysisTab: React.FC<GroupAnalysisTabProps> = ({
           onChangeFrequency={setFrequency}
           height={165}
           title="SPENDING OVER TIME"
+          onScrubbingChange={onScrubbingChange}
         />
       </View>
 
@@ -415,6 +418,7 @@ export const GroupAnalysisTab: React.FC<GroupAnalysisTabProps> = ({
                   centerLabel="Total"
                   selectedSliceId={selectedMemberSlice}
                   onSelectSlice={(s) => setSelectedMemberSlice(s ? s.id : null)}
+                  onScrubbingChange={onScrubbingChange}
                 />
               </View>
 

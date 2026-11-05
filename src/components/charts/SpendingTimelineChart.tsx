@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -61,6 +61,15 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
   const { formatCurrency } = useCurrency();
   const [chartWidth, setChartWidth] = useState<number>(340);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dismissTimerRef.current) {
+        clearTimeout(dismissTimerRef.current);
+      }
+    };
+  }, []);
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
@@ -113,17 +122,18 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
     return `${smoothLine} L ${last.x.toFixed(1)} ${baselineY} L ${first.x.toFixed(1)} ${baselineY} Z`;
   }, [coordinates, paddingTop, plotHeight]);
 
-  // Touch Scrubber Handler
+  // Touch Scrubber Handler — Clamped horizontally across plot width
   const handleTouch = useCallback(
     (e: GestureResponderEvent) => {
       if (coordinates.length === 0) return;
-      const touchX = e.nativeEvent.locationX;
+      const rawX = e.nativeEvent.locationX;
+      const clampedX = Math.max(paddingLeft, Math.min(chartWidth - paddingRight, rawX));
 
       let closestIdx = 0;
       let minDistance = Infinity;
 
       coordinates.forEach((pt, idx) => {
-        const dist = Math.abs(pt.x - touchX);
+        const dist = Math.abs(pt.x - clampedX);
         if (dist < minDistance) {
           minDistance = dist;
           closestIdx = idx;
@@ -135,7 +145,7 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
         setSelectedIndex(closestIdx);
       }
     },
-    [coordinates, selectedIndex]
+    [coordinates, selectedIndex, paddingLeft, chartWidth, paddingRight]
   );
 
   const selectedPoint = selectedIndex !== null && coordinates[selectedIndex] ? coordinates[selectedIndex] : null;
@@ -203,17 +213,24 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
         onStartShouldSetResponderCapture={() => true}
         onMoveShouldSetResponderCapture={() => true}
         onResponderGrant={(e) => {
+          if (dismissTimerRef.current) {
+            clearTimeout(dismissTimerRef.current);
+          }
           onScrubbingChange?.(true);
           handleTouch(e);
         }}
         onResponderMove={handleTouch}
         onResponderRelease={() => {
           onScrubbingChange?.(false);
-          setTimeout(() => setSelectedIndex(null), 3500);
+          if (dismissTimerRef.current) {
+            clearTimeout(dismissTimerRef.current);
+          }
+          dismissTimerRef.current = setTimeout(() => {
+            setSelectedIndex(null);
+          }, 6000);
         }}
         onResponderTerminate={() => {
           onScrubbingChange?.(false);
-          setSelectedIndex(null);
         }}
         onResponderTerminationRequest={() => false}
       >
@@ -222,7 +239,7 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
             <Text style={styles.emptyText}>No spending timeline in selected range</Text>
           </View>
         ) : (
-          <Svg width={chartWidth} height={height}>
+          <Svg width={chartWidth} height={height} pointerEvents="none">
             <Defs>
               <LinearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">
                 <Stop offset="0%" stopColor={currentAccent.primary} stopOpacity={0.35} />
@@ -298,7 +315,7 @@ export const SpendingTimelineChart: React.FC<SpendingTimelineChartProps> = ({
 
         {/* X-Axis Date Labels Row */}
         {coordinates.length > 0 && (
-          <View style={styles.xAxisRow}>
+          <View style={styles.xAxisRow} pointerEvents="none">
             {coordinates
               .filter((_, i) => {
                 if (coordinates.length <= 5) return true;

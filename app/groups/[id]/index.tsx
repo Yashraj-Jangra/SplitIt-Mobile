@@ -201,6 +201,7 @@ export default function GroupDetailScreen() {
 
   const initialTabBarWidth = Dimensions.get('window').width - 20;
   const [tabBarWidth, setTabBarWidth] = useState(initialTabBarWidth);
+  const [isScrubbingChart, setIsScrubbingChart] = useState(false);
 
   const scrollViewRef = useRef<any>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -736,6 +737,7 @@ export default function GroupDetailScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
+        scrollEnabled={!isScrubbingChart}
         keyboardShouldPersistTaps="handled"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -1268,6 +1270,7 @@ export default function GroupDetailScreen() {
                 group={group}
                 expenses={group?.expenses || []}
                 members={group?.members || []}
+                onScrubbingChange={setIsScrubbingChart}
               />
             )}
           </View>

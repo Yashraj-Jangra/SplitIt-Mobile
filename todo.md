@@ -1,5 +1,21 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Analytics Charts Vertical Scroll-Lock & Pure Horizontal Scrubbing System** ⚡ 📱 🎨 🛡️ ✅:
+  - **Group Analytics Scroll-Lock Integration**:
+    - Wired `onScrubbingChange` through `GroupAnalysisTab` and connected it to `app/groups/[id]/index.tsx`'s parent `Animated.ScrollView` (`scrollEnabled={!isScrubbingChart}`).
+    - Eliminated vertical gesture hijacking where natural vertical finger drift would scroll the group screen and instantly lose the chart hover effect.
+  - **Spending Timeline Chart Hardening**:
+    - Added `pointerEvents="none"` to `<Svg>` canvas and X-axis date row, preventing child element target-switching from corrupting `e.nativeEvent.locationX`.
+    - Clamped horizontal coordinate tracking to plot boundaries (`paddingLeft` to `chartWidth - paddingRight`), ensuring continuous thumb tracking across the timeline.
+    - Set `onResponderTerminationRequest={() => false}` to strictly refuse termination while the user's finger is on the chart.
+    - Added auto-dismiss timeout (6s) on finger release instead of abruptly wiping hover data.
+  - **Interactive Donut Chart Scrubbing & Scroll-Lock**:
+    - Added circular angular scrub detection ($\text{atan2}(dy, dx)$ clockwise from 12 o'clock) with `onScrubbingChange` support to `DonutChart`.
+    - Allows users to drag and scrub through member spending shares with crisp `haptics.chartScrub()` detents without triggering vertical page scrolling.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
 - **Notification Page Editorial Header Overhaul & Reanimated Swipe Gesture Rewrite** 🎨 ✨ 📱 ⚡ 🛡️ ✅:
   - **Two-Tier Editorial Header Layout**:
     - Eliminated horizontal collision on narrow viewports (≤ 390px) by decoupling navigation and title hierarchy.
