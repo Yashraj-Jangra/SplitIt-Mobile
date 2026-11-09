@@ -236,7 +236,7 @@ export default function TicketThreadScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior="padding"
-        keyboardVerticalOffset={insets.top}
+        keyboardVerticalOffset={0}
       >
       {/* Header */}
       <View style={styles.header}>
@@ -420,8 +420,8 @@ export default function TicketThreadScreen() {
           <KeyboardStickyBottomBar
             insideKeyboardAvoidingView
             bordered
-            idlePaddingBottom={12}
-            keyboardPaddingBottom={10}
+            idlePaddingBottom={8}
+            keyboardPaddingBottom={8}
             style={styles.inputBar}
           >
             <View style={styles.inputContainer}>
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 8,
     gap: 10,
   },
   inputContainer: {

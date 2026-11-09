@@ -305,7 +305,7 @@ export default function SettlementDetailScreen() {
       <KeyboardAvoidingView
         style={styles.flexOne}
         behavior="padding"
-        keyboardVerticalOffset={insets.top}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -543,7 +543,7 @@ export default function SettlementDetailScreen() {
         <KeyboardStickyBottomBar
           insideKeyboardAvoidingView
           bordered
-          idlePaddingBottom={10}
+          idlePaddingBottom={8}
           keyboardPaddingBottom={8}
           style={styles.bottomCommentDock}
         >

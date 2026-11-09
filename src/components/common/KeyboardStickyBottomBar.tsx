@@ -54,7 +54,7 @@ export const KeyboardStickyBottomBar: React.FC<KeyboardStickyBottomBarProps> = (
   style,
   insideKeyboardAvoidingView = true,
   keyboardPaddingBottom = 8,
-  idlePaddingBottom = 12,
+  idlePaddingBottom = 8,
   bordered = false,
   backgroundColor = THEME.colors.background,
   accessibilityLabel,
@@ -92,8 +92,8 @@ export const KeyboardStickyBottomBar: React.FC<KeyboardStickyBottomBarProps> = (
           backgroundColor,
         },
         bordered && styles.topBorder,
-        animatedStyle,
         style,
+        animatedStyle,
       ]}
     >
       {children}

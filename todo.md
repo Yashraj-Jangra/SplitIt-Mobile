@@ -1,5 +1,20 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Sticky Chat & Accessory Bar Vertical Spacing Harmonization Across Closed/Open States** 🎨 ⌨️ 📱 ⚡ 🛡️ ✅:
+  - **Ghost Vertical Offset Elimination**:
+    - Fixed ghost gap in `app/ai/chat.tsx`, `app/support/[id].tsx`, `app/expenses/[id].tsx`, and `app/settlements/[id].tsx` by resetting `keyboardVerticalOffset={0}` (was erroneously set to `insets.top`).
+    - In `react-native-keyboard-controller`, `relativeKeyboardHeight` calculates `screenHeight - keyboardHeight - keyboardVerticalOffset`; passing `insets.top` had caused an extra 47-59px void to be appended to the bottom padding whenever the keyboard was opened.
+  - **Symmetrical Vertical Padding Rhythm**:
+    - Updated `KeyboardStickyBottomBar` (`src/components/common/KeyboardStickyBottomBar.tsx`):
+      - Defaulted `idlePaddingBottom = 8` and `keyboardPaddingBottom = 8` to match `paddingTop: 8`.
+      - Ensured `animatedStyle` is applied last in the `style` array so external container styles cannot inadvertently override dynamic `paddingBottom` transitions.
+    - Symmetrized `app/ai/chat.tsx`: input capsule now has exact 8px top spacing and 8px bottom spacing flush above the keyboard when open, and clean safe-area anchoring when closed.
+    - Symmetrized `app/support/[id].tsx`: updated `styles.inputBar` to `paddingTop: 8` and set `keyboardPaddingBottom={8}`, `idlePaddingBottom={8}`.
+    - Symmetrized comment docks in `app/expenses/[id].tsx` and `app/settlements/[id].tsx`.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
 - **Analytics Charts Vertical Scroll-Lock & Pure Horizontal Scrubbing System** ⚡ 📱 🎨 🛡️ ✅:
   - **Group Analytics Scroll-Lock Integration**:
     - Wired `onScrubbingChange` through `GroupAnalysisTab` and connected it to `app/groups/[id]/index.tsx`'s parent `Animated.ScrollView` (`scrollEnabled={!isScrubbingChart}`).
