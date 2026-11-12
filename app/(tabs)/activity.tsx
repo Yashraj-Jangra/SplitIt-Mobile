@@ -48,6 +48,24 @@ export type ActivityEntry =
 
 export default function ActivityScreen() {
   const router = useRouter();
+  const isNavigatingRef = useRef(false);
+
+  const handleOpenExpense = useCallback((params: any) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => { isNavigatingRef.current = false; }, 600);
+    haptics.tap();
+    router.push({ pathname: '/expenses/[id]', params });
+  }, [router]);
+
+  const handleOpenSettlement = useCallback((params: any) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => { isNavigatingRef.current = false; }, 600);
+    haptics.tap();
+    router.push({ pathname: '/settlements/[id]', params });
+  }, [router]);
+
   const { user: authUser } = useAuth();
   const { formatCurrency } = useCurrency();
   const { currentAccent } = useAppTheme();
@@ -644,18 +662,14 @@ export default function ActivityScreen() {
                         currentUserId={authUser?.id}
                         isLast={isLast}
                         onPress={() => {
-                          haptics.tap();
-                          router.push({
-                            pathname: '/expenses/[id]',
-                            params: {
-                              id: tx.id,
-                              groupId: tx.groupId,
-                              title: tx.title,
-                              amount: String(tx.amount),
-                              paidByName: tx.paidByName,
-                              date: tx.date,
-                              category: tx.category,
-                            },
+                          handleOpenExpense({
+                            id: tx.id,
+                            groupId: tx.groupId,
+                            title: tx.title,
+                            amount: String(tx.amount),
+                            paidByName: tx.paidByName,
+                            date: tx.date,
+                            category: tx.category,
                           });
                         }}
                       />
@@ -671,13 +685,9 @@ export default function ActivityScreen() {
                       currentUserId={authUser?.id}
                       isLast={isLast}
                       onPress={() => {
-                        haptics.tap();
-                        router.push({
-                          pathname: '/settlements/[id]',
-                          params: {
-                            id: stl.id,
-                            groupId: stl.groupId,
-                          },
+                        handleOpenSettlement({
+                          id: stl.id,
+                          groupId: stl.groupId,
                         });
                       }}
                     />

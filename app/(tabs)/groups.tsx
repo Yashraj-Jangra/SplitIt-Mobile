@@ -107,6 +107,7 @@ const SORT_OPTIONS: SortOptionItem[] = [
 
 export default function GroupsScreen() {
   const router = useRouter();
+  const isNavigatingRef = useRef(false);
   const { user: authUser } = useAuth();
   const { currencySymbol } = useCurrency();
   const { currentAccent } = useAppTheme();
@@ -123,6 +124,16 @@ export default function GroupsScreen() {
     !isDemoDismissed &&
     !demoService.isDemoDismissedSync(authUser?.id) &&
     groups.some((g) => g.id.startsWith('demo_'));
+
+  const handleOpenGroup = useCallback((groupId: string) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+    haptics.tap();
+    router.push(`/groups/${groupId}`);
+  }, [router]);
 
   const handleDismissDemo = async () => {
     haptics.saveSuccess();
@@ -457,10 +468,7 @@ export default function GroupsScreen() {
                   key={group.id}
                   style={styles.cinematicCard}
                   activeOpacity={0.9}
-                  onPress={() => {
-                    haptics.tap();
-                    router.push(`/groups/${group.id}`);
-                  }}
+                  onPress={() => handleOpenGroup(group.id)}
                 >
                   {/* Photo Cover Backdrop */}
                   <Image

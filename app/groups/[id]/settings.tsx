@@ -36,6 +36,7 @@ import { useAppTheme } from '../../../src/contexts/theme.context';
 import { haptics } from '../../../src/services/haptics.service';
 import { BottomSheetModal } from '../../../src/components/common/BottomSheetModal';
 import { SetBudgetModal } from '../../../src/components/groups/SetBudgetModal';
+import { useSafeBack } from '../../../src/hooks/useSafeBack';
 
 export default function GroupSettingsScreen() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function GroupSettingsScreen() {
   const { currentAccent } = useAppTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
+  const { handleBack } = useSafeBack({ fallbackRoute: `/groups/${targetId}` });
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [group, setGroup] = useState<GroupDetailData | null>(() =>
@@ -224,7 +226,7 @@ export default function GroupSettingsScreen() {
       });
       haptics.saveSuccess();
       await refreshGroup();
-      router.back();
+      handleBack();
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to save changes.');
     } finally {
@@ -386,10 +388,7 @@ export default function GroupSettingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => {
-            haptics.tap();
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.iconButton}
           accessibilityLabel="Back"
           accessibilityRole="button"

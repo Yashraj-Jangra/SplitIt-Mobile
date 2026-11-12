@@ -25,6 +25,7 @@ import { useAuth } from '../../../src/contexts/auth.context';
 import { useCurrency } from '../../../src/contexts/currency.context';
 import { ActivityExpenseRow, ActivitySettlementRow } from '../../../src/components/activity';
 import { haptics } from '../../../src/services/haptics.service';
+import { useSafeBack } from '../../../src/hooks/useSafeBack';
 
 type SearchFilterType = 'all' | 'expenses' | 'settlements';
 
@@ -84,6 +85,7 @@ export default function GroupSearchScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
+  const { handleBack } = useSafeBack({ fallbackRoute: `/groups/${targetId}` });
 
   const { user } = useAuth();
   const { formatCurrency } = useCurrency();
@@ -175,10 +177,7 @@ export default function GroupSearchScreen() {
         {/* Sleek Top Search Bar Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => {
-              haptics.tap();
-              router.back();
-            }}
+            onPress={handleBack}
             style={styles.backBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="Go back"

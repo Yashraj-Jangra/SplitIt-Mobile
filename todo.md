@@ -1,5 +1,23 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **State-Aware Seamless Navigation & Notification Deduplication** 🛡️ 📱 ⚡ 🚀 ✅:
+  - **Notification Click Deduplication & Dual-Dispatch Elimination**:
+    - Guarded against native OS dual-firing (`getLastNotificationResponseAsync` + `addNotificationResponseReceivedListener`) via `shouldHandleNotificationResponse` with a 4000ms unique identifier deduplication window in `src/services/notification.service.ts`.
+    - Consolidated route resolution in `resolveNotificationRoute` for all push payload variants.
+  - **Active Route Duplicate Suppression**:
+    - In `app/_layout.tsx`, added `navigateFromNotification` which verifies active `usePathname()` against the target route, suppressing duplicate `/groups/[id]` or `/expenses/[id]` pushes when already viewing that screen, and switching tabs cleanly with `router.replace` when query params change.
+  - **State-Aware Safe Back Hook (`src/hooks/useSafeBack.ts`)**:
+    - Created `useSafeBack` hook with `router.canGoBack()` detection, automatic fallback routing (`/(tabs)/groups` or parent `/groups/[id]`), and 500ms multi-tap throttling.
+    - Synchronized Android `hardwareBackPress` listener with the exact same state-aware back logic, preventing accidental app minimization or dead-end button traps.
+  - **Integrated into All Key Detail Screens**:
+    - `app/groups/[id]/index.tsx`, `app/expenses/[id].tsx`, `app/settlements/[id].tsx`, `app/groups/[id]/search.tsx`, `app/groups/[id]/settings.tsx`, `app/notifications/index.tsx`.
+    - Parent group fallback on expense/settlement deletion and back navigation.
+  - **Touch-Debounced Navigation Across Cards**:
+    - Added 600ms navigation lock on card clicks in `app/(tabs)/groups.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/activity.tsx`, and `app/notifications/index.tsx` to eliminate double-tap stack duplication.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
 - **Sticky Chat & Accessory Bar Vertical Spacing Harmonization Across Closed/Open States** 🎨 ⌨️ 📱 ⚡ 🛡️ ✅:
   - **Ghost Vertical Offset Elimination**:
     - Fixed ghost gap in `app/ai/chat.tsx`, `app/support/[id].tsx`, `app/expenses/[id].tsx`, and `app/settlements/[id].tsx` by resetting `keyboardVerticalOffset={0}` (was erroneously set to `insets.top`).

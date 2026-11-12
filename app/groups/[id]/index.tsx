@@ -57,6 +57,7 @@ import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../../src/servi
 import { haptics } from '../../../src/services/haptics.service';
 import { appEventEmitter } from '../../../src/services/event-emitter';
 import { ActivityExpenseRow, ActivitySettlementRow } from '../../../src/components/activity';
+import { useSafeBack } from '../../../src/hooks/useSafeBack';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity', 'analysis'] as const;
 type TabType = typeof TABS[number];
@@ -114,6 +115,7 @@ function getTimelineTimestamp(rawDate?: string, dateStr?: string): number {
 
 export default function GroupDetailScreen() {
   const router = useRouter();
+  const { handleBack } = useSafeBack({ fallbackRoute: '/(tabs)/groups' });
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
   const requestedTab = (tab && TABS.includes(tab as TabType)) ? (tab as TabType) : null;
@@ -1367,12 +1369,11 @@ export default function GroupDetailScreen() {
       {/* Floating Glass Top Bar (Pinned at topInset, sits above collapsingHeader) */}
       <View style={[styles.heroTopBarFixed, { top: topInset }]}>
         <TouchableOpacity
-          onPress={() => {
-            haptics.tap();
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.heroGlassBtn}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <ArrowLeft size={18} color={THEME.colors.text} />
         </TouchableOpacity>

@@ -61,6 +61,18 @@ interface HomeActivityEntry {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const isNavigatingRef = useRef(false);
+
+  const handleOpenGroup = useCallback((groupId: string) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+    haptics.tap();
+    router.push(`/groups/${groupId}`);
+  }, [router]);
+
   const { isOnline, requireOnline } = useNetwork();
   const { user: authUser } = useAuth();
   const { formatCurrency, currencySymbol } = useCurrency();
@@ -678,10 +690,7 @@ export default function HomeScreen() {
                     key={group.id}
                     style={styles.groupPebble}
                     activeOpacity={0.8}
-                    onPress={() => {
-                      haptics.tap();
-                      router.push(`/groups/${group.id}`);
-                    }}
+                    onPress={() => handleOpenGroup(group.id)}
                   >
                     <View style={styles.pebbleIconBox}>
                       {group.coverImageUrl ? (

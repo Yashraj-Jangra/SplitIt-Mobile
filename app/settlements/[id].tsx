@@ -14,6 +14,7 @@ import {
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
+import { useSafeBack } from '../../src/hooks/useSafeBack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -110,6 +111,11 @@ export default function SettlementDetailScreen() {
   const [isSendingComment, setIsSendingComment] = useState(false);
   const scrollViewRef = useRef<ScrollViewInstance>(null);
 
+  const activeGroupId = settlement?.groupId || groupId || rawGroupId;
+  const { handleBack } = useSafeBack({
+    fallbackRoute: activeGroupId ? `/groups/${activeGroupId}` : '/(tabs)/groups',
+  });
+
   useEffect(() => {
     if (!user?.id) {
       authService.getCachedUser().then((u) => {
@@ -194,7 +200,11 @@ export default function SettlementDetailScreen() {
             const res = await settlementService.deleteSettlement(settlementId, targetGroupId);
             if (res.success) {
               haptics.destructive();
-              router.back();
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace(targetGroupId ? `/groups/${targetGroupId}` : '/(tabs)/groups');
+              }
             } else {
               haptics.error();
               Alert.alert('Error', res.error || 'Failed to delete settlement.');
@@ -257,10 +267,7 @@ export default function SettlementDetailScreen() {
       {/* ── 1. PINNED FIXED NAVIGATION BAR ── */}
       <View style={styles.pinnedHeader}>
         <TouchableOpacity
-          onPress={() => {
-            haptics.tap();
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.frostedIconButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"

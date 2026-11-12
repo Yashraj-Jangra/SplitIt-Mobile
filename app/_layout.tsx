@@ -1,4 +1,4 @@
-import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, Theme, ErrorBoundaryProps } from 'expo-router';
+import { Stack, useRouter, useSegments, usePathname, ThemeProvider, DarkTheme, Theme, ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -16,7 +16,7 @@ import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { ErrorBoundary as AppErrorBoundary, ErrorFallbackView } from '../src/components/common/ErrorBoundary';
 import { notificationService } from '../src/services/notification.service';
 import { useAppSync } from '../src/hooks/useAppSync';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useCallback } from 'react';
 
 // Expo Router route error boundary export
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
@@ -31,6 +31,7 @@ function NavigationGate() {
   const { user, isLoading } = useAuth();
   const { currentAccent } = useAppTheme();
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
 
   const splitItNavTheme = useMemo<Theme>(() => ({
@@ -47,14 +48,41 @@ function NavigationGate() {
 
   const routerRef = useRef(router);
   routerRef.current = router;
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+  const lastNavigatedRouteRef = useRef<{ route: string; timestamp: number }>({ route: '', timestamp: 0 });
+
+  const navigateFromNotification = useCallback((targetRoute: string) => {
+    const now = Date.now();
+    // Throttle duplicate navigation attempts within 800ms
+    if (
+      lastNavigatedRouteRef.current.route === targetRoute &&
+      now - lastNavigatedRouteRef.current.timestamp < 800
+    ) {
+      return;
+    }
+    lastNavigatedRouteRef.current = { route: targetRoute, timestamp: now };
+
+    const currentPath = pathnameRef.current;
+    const targetBase = targetRoute.split('?')[0];
+    const currentBase = currentPath?.split('?')[0];
+
+    // If user is already on the exact target screen, do not stack a duplicate!
+    if (currentBase && targetBase && currentBase === targetBase) {
+      if (targetRoute.includes('?')) {
+        routerRef.current.replace(targetRoute as any);
+      }
+      return;
+    }
+
+    routerRef.current.push(targetRoute as any);
+  }, []);
 
   useEffect(() => {
     notificationService.initNotifications();
 
     // Cold-start notification routing
-    notificationService.checkColdStartNotification((route) => {
-      routerRef.current.push(route as any);
-    });
+    notificationService.checkColdStartNotification(navigateFromNotification);
 
     // Proactively prompt for notification permission on initial install/launch if undetermined
     notificationService.getPermissionStatus().then((status) => {
@@ -67,13 +95,11 @@ function NavigationGate() {
       notificationService.registerForPushNotifications().catch(() => {});
     }
 
-    const sub = notificationService.setupResponseListener((route) => {
-      routerRef.current.push(route as any);
-    });
+    const sub = notificationService.setupResponseListener(navigateFromNotification);
     return () => {
       sub?.remove?.();
     };
-  }, [user?.id]);
+  }, [user?.id, navigateFromNotification]);
 
   useEffect(() => {
     if (isLoading) return;

@@ -45,11 +45,14 @@ import {
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { haptics } from '../../src/services/haptics.service';
 import { useAppTheme } from '../../src/contexts/theme.context';
+import { useSafeBack } from '../../src/hooks/useSafeBack';
 
 type NotificationCategoryTab = 'all' | 'expenses' | 'settlements' | 'reminders' | 'other';
 
 export default function NotificationsCenterScreen() {
   const router = useRouter();
+  const { handleBack } = useSafeBack({ fallbackRoute: '/(tabs)' });
+  const isNavigatingRef = useRef(false);
   const { currentAccent } = useAppTheme();
   const [notifications, setNotifications] = useState<InAppNotification[]>(() =>
     notificationService.getInMemoryNotifications()
@@ -124,6 +127,12 @@ export default function NotificationsCenterScreen() {
   };
 
   const handleTapNotification = async (item: InAppNotification) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+
     haptics.tap();
     const isUnread = item.isRead !== undefined ? !item.isRead : !item.read;
     if (isUnread) {
@@ -333,10 +342,7 @@ export default function NotificationsCenterScreen() {
       {/* Top Navigation Bar */}
       <View style={styles.topNavRow}>
         <TouchableOpacity
-          onPress={() => {
-            haptics.tap();
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.circleButton}
           activeOpacity={0.7}
           accessibilityRole="button"
