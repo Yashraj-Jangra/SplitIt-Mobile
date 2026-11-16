@@ -38,6 +38,7 @@ import { useAuth } from '../../src/contexts/auth.context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../src/services/settings.service';
 import { haptics } from '../../src/services/haptics.service';
+import { PressableScale } from '../../src/components/common/PressableScale';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
 import { appEventEmitter } from '../../src/services/event-emitter';
@@ -464,11 +465,13 @@ export default function GroupsScreen() {
               const isOwe = group.userNetBalance < -0.01;
 
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={group.id}
                   style={styles.cinematicCard}
-                  activeOpacity={0.9}
+                  activeScale={0.975}
                   onPress={() => handleOpenGroup(group.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Group ${group.name}`}
                 >
                   {/* Photo Cover Backdrop */}
                   <Image
@@ -560,7 +563,7 @@ export default function GroupsScreen() {
                       </Text>
                     </View>
                   </View>
-                </TouchableOpacity>
+                </PressableScale>
               );
             })
           )}

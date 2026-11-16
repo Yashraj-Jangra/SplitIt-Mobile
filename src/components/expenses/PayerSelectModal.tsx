@@ -13,8 +13,12 @@ import {
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Animated,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
@@ -71,7 +75,8 @@ export function PayerSelectModal({
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const horizontalScrollRef = useRef<ScrollViewInstance>(null);
-  const tabUnderlineAnim = useRef(new Animated.Value(0)).current;
+  // Animated Underline Indicator via Reanimated worklet
+  const tabUnderlineShared = useSharedValue(0);
 
   const [payerType, setPayerType] = useState<'single' | 'multiple'>(initialPayerType);
   const [selectedSingleId, setSelectedSingleId] = useState<string>(
@@ -119,7 +124,7 @@ export function PayerSelectModal({
       setPayerAmounts(amountsMap);
 
       const targetIdx = initialPayerType === 'multiple' ? 1 : 0;
-      tabUnderlineAnim.setValue(targetIdx);
+      tabUnderlineShared.value = targetIdx;
 
       setTimeout(() => {
         horizontalScrollRef.current?.scrollTo({ x: targetIdx * width, animated: false });
@@ -195,12 +200,7 @@ export function PayerSelectModal({
     setPayerType(type);
     setErrorMessage(null);
     const idx = type === 'multiple' ? 1 : 0;
-    Animated.spring(tabUnderlineAnim, {
-      toValue: idx,
-      useNativeDriver: false,
-      friction: 8,
-      tension: 65,
-    }).start();
+    tabUnderlineShared.value = withSpring(idx, THEME.animation.spring.snappy);
     horizontalScrollRef.current?.scrollTo({ x: idx * width, animated: true });
   };
 
@@ -212,12 +212,7 @@ export function PayerSelectModal({
       haptics.tap();
       setPayerType(targetType);
       setErrorMessage(null);
-      Animated.spring(tabUnderlineAnim, {
-        toValue: pageIndex,
-        useNativeDriver: false,
-        friction: 8,
-        tension: 65,
-      }).start();
+      tabUnderlineShared.value = withSpring(pageIndex, THEME.animation.spring.snappy);
     }
   };
 
@@ -324,9 +319,10 @@ export function PayerSelectModal({
   };
 
   const tabWidth = width / 2;
-  const underlineTranslateX = tabUnderlineAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, tabWidth],
+  const tabUnderlineAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: tabUnderlineShared.value * tabWidth }],
+    };
   });
 
   return (
@@ -380,9 +376,9 @@ export function PayerSelectModal({
                 styles.tabUnderline,
                 {
                   width: tabWidth - 40,
-                  transform: [{ translateX: underlineTranslateX }],
                   marginHorizontal: 20,
                 },
+                tabUnderlineAnimatedStyle,
               ]}
             />
           </View>

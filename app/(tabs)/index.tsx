@@ -43,6 +43,7 @@ import { useAuth } from '../../src/contexts/auth.context';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
 import { haptics } from '../../src/services/haptics.service';
+import { PressableScale } from '../../src/components/common/PressableScale';
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { ObligationsModal } from '../../src/components/dashboard/ObligationsModal';
 import { sortGroups, GroupSortOption } from '../../src/utils/group-sort';
@@ -631,35 +632,42 @@ export default function HomeScreen() {
 
         {/* Tactile Action Dock */}
         <View style={styles.actionDock}>
-          <TouchableOpacity
+          <PressableScale
             style={[styles.primaryActionBtn, { backgroundColor: currentAccent.primary, shadowColor: currentAccent.primary }]}
             onPress={handleAddExpense}
-            activeOpacity={0.85}
+            activeScale={0.96}
+            hapticFeedback="confirm"
+            accessibilityRole="button"
+            accessibilityLabel="Add Expense"
           >
             <Plus size={18} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
             <Text style={styles.primaryActionText}>Add Expense</Text>
-          </TouchableOpacity>
+          </PressableScale>
 
-          <TouchableOpacity
+          <PressableScale
             style={styles.secondaryActionBtn}
             onPress={handleSettleUp}
-            activeOpacity={0.85}
+            activeScale={0.96}
+            accessibilityRole="button"
+            accessibilityLabel="Settle Up"
           >
             <Handshake size={18} color={THEME.colors.text} strokeWidth={2} />
             <Text style={styles.secondaryActionText}>Settle Up</Text>
-          </TouchableOpacity>
+          </PressableScale>
 
-          <TouchableOpacity
+          <PressableScale
             style={styles.tertiaryActionBtn}
             onPress={() => {
               haptics.tap();
               router.push('/ai/scanner');
             }}
-            activeOpacity={0.85}
+            activeScale={0.96}
+            accessibilityRole="button"
+            accessibilityLabel="Scan receipt"
           >
             <ScanLine size={18} color={THEME.colors.text} strokeWidth={2} />
             <Text style={styles.secondaryActionText}>Scan</Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {/* Active Groups Pebble Strip */}
@@ -686,11 +694,13 @@ export default function HomeScreen() {
                 const isOwe = group.userNetBalance < 0;
 
                 return (
-                  <TouchableOpacity
+                  <PressableScale
                     key={group.id}
                     style={styles.groupPebble}
-                    activeOpacity={0.8}
+                    activeScale={0.95}
                     onPress={() => handleOpenGroup(group.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Group ${group.name}`}
                   >
                     <View style={styles.pebbleIconBox}>
                       {group.coverImageUrl ? (
@@ -718,7 +728,7 @@ export default function HomeScreen() {
                         ? formatCurrency(group.userNetBalance, { showSign: true, decimals: 0 })
                         : 'Settled'}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 );
               })
             ) : (

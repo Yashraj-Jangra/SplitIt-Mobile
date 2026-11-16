@@ -1,5 +1,33 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Full Modernization of App Animation Architecture & Native Android Predictive Back** ✨ ⚡ 📱 🎨 🚀 ✅:
+  - **Android 14/15 Predictive Back Native Integration**:
+    - Modernized `app/_layout.tsx` across all 20 stack screens: replaced rigid, linear `animation: 'slide_from_right'` with native platform-adaptive `animation: 'default'`.
+    - Gated `fullScreenGestureEnabled: Platform.OS === 'ios'` so Android 14/15's native Predictive Back gesture controller (`android:enableOnBackInvokedCallback="true"` via `plugins/withPredictiveBack.js`) runs completely unimpeded without gesture interception conflicts.
+    - Enables native continuous corner-radius smoothing, elevation shadow depth, and progressive background reveal on Android 14/15.
+  - **Premium Physics Animation Tokens (`src/constants/theme.ts`)**:
+    - Tuned `THEME.animation.spring` with physics tokens for different interactions: `default`, `snappy` (tabs, navigation indicators), `press` (tactile button depression), `gentle`, and `bouncy`.
+    - Refined `THEME.animation.timing`: `instant` (120ms), `fast` (180ms), `normal` (260ms), and `slow` (400ms).
+  - **Flagship UI-Thread Spring Component (`PressableScale`)**:
+    - Created `src/components/common/PressableScale.tsx` utilizing Reanimated 4 `useSharedValue` and `withSpring` running purely as UI-thread worklets.
+    - Replaced flat `activeOpacity={0.8}` with fluid, physical spring depression (`activeScale: 0.97`) and semantic haptics integration.
+    - Integrated across flagship touch points:
+      - Cinematic Group Cards (`app/(tabs)/groups.tsx`).
+      - Home Action Dock ("Add Expense", "Settle Up", "Scan") and Active Groups Pebble Strip (`app/(tabs)/index.tsx`).
+      - Universal Activity stream rows (`ActivityExpenseRow.tsx` and `ActivitySettlementRow.tsx`).
+  - **Group Detail Tabs & FAB UI-Thread Migration (`app/groups/[id]/index.tsx`)**:
+    - Migrated JS-thread `tabIndicatorAnim`, `tabContentAnim`, `tabSlideAnim`, and `fabAnim` to Reanimated 4 worklets (`useSharedValue` + `useAnimatedStyle`).
+    - Sliding tab indicator pill now glides with `withSpring(tabIndex, THEME.animation.spring.snappy)` with dynamic tab width tracking.
+    - Directional subtle horizontal slide and content fade on tab change with zero black flicker.
+    - Add Expense FAB spring scale, rotation worklet, and pulse ring on tap.
+  - **Expense Modal Tab Indicators UI-Thread Worklet Migration**:
+    - Migrated `SplitOptionsModal.tsx` and `PayerSelectModal.tsx` from JS-thread `useNativeDriver: false` `Animated.Value` to Reanimated worklets (`tabUnderlineShared`, `tabUnderlineAnimatedStyle`, `withSpring`).
+  - **Offline Banner Spring Modernization**:
+    - Migrated `OfflineBanner.tsx` to Reanimated `useSharedValue` and `useAnimatedStyle`.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` verified with 0 errors.
+
 - **State-Aware Seamless Navigation & Notification Deduplication** 🛡️ 📱 ⚡ 🚀 ✅:
   - **Notification Click Deduplication & Dual-Dispatch Elimination**:
     - Guarded against native OS dual-firing (`getLastNotificationResponseAsync` + `addNotificationResponseReceivedListener`) via `shouldHandleNotificationResponse` with a 4000ms unique identifier deduplication window in `src/services/notification.service.ts`.

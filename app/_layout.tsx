@@ -122,9 +122,9 @@ function NavigationGate() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: THEME.colors.background },
-            animation: 'slide_from_right',
+            animation: 'default',
             gestureEnabled: true,
-            fullScreenGestureEnabled: true,
+            fullScreenGestureEnabled: Platform.OS === 'ios',
             animationMatchesGesture: true,
             freezeOnBlur: false,
           }}
@@ -135,9 +135,9 @@ function NavigationGate() {
             name="groups/[id]/index"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -145,9 +145,9 @@ function NavigationGate() {
             name="groups/[id]/settings"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -164,9 +164,9 @@ function NavigationGate() {
             name="expenses/[id]"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -183,9 +183,9 @@ function NavigationGate() {
             name="groups/[id]/search"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -211,9 +211,9 @@ function NavigationGate() {
             name="settlements/[id]"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -221,9 +221,9 @@ function NavigationGate() {
             name="analysis/index"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -250,9 +250,9 @@ function NavigationGate() {
             name="notifications/index"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -260,9 +260,9 @@ function NavigationGate() {
             name="notifications/preferences"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -270,9 +270,9 @@ function NavigationGate() {
             name="support/index"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -289,9 +289,9 @@ function NavigationGate() {
             name="support/[id]"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -299,9 +299,9 @@ function NavigationGate() {
             name="legal/privacy"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -309,9 +309,9 @@ function NavigationGate() {
             name="legal/terms"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -328,9 +328,9 @@ function NavigationGate() {
             name="settings/account"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -338,9 +338,9 @@ function NavigationGate() {
             name="settings/preferences"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -348,9 +348,9 @@ function NavigationGate() {
             name="settings/appearance"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -358,9 +358,9 @@ function NavigationGate() {
             name="settings/security"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -368,9 +368,9 @@ function NavigationGate() {
             name="settings/payment"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -378,9 +378,9 @@ function NavigationGate() {
             name="settings/my-qr"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />
@@ -388,9 +388,9 @@ function NavigationGate() {
             name="info/about"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: 'default',
               gestureEnabled: true,
-              fullScreenGestureEnabled: true,
+              fullScreenGestureEnabled: Platform.OS === 'ios',
               animationMatchesGesture: true,
             }}
           />

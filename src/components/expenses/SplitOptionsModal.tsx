@@ -13,8 +13,12 @@ import {
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Animated,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
@@ -117,8 +121,8 @@ export function SplitOptionsModal({
 
   const effectivePayerId = payerId || currentUserId;
 
-  // Animated Underline Indicator
-  const tabUnderlineAnim = useRef(new Animated.Value(0)).current;
+  // Animated Underline Indicator via Reanimated worklet
+  const tabUnderlineShared = useSharedValue(0);
 
   // Sync state on open
   useEffect(() => {
@@ -166,7 +170,7 @@ export function SplitOptionsModal({
       const initialIdx = MODES.findIndex((m) => m.type === normalizedInitialType);
       const targetIdx = initialIdx >= 0 ? initialIdx : 0;
 
-      tabUnderlineAnim.setValue(targetIdx);
+      tabUnderlineShared.value = targetIdx;
 
       setTimeout(() => {
         horizontalScrollRef.current?.scrollTo({ x: targetIdx * width, animated: false });
@@ -399,13 +403,7 @@ export function SplitOptionsModal({
 
     const idx = MODES.findIndex((m) => m.type === type);
     if (idx >= 0) {
-      Animated.spring(tabUnderlineAnim, {
-        toValue: idx,
-        useNativeDriver: false,
-        friction: 8,
-        tension: 65,
-      }).start();
-
+      tabUnderlineShared.value = withSpring(idx, THEME.animation.spring.snappy);
       horizontalScrollRef.current?.scrollTo({ x: idx * width, animated: true });
     }
   };
@@ -419,13 +417,7 @@ export function SplitOptionsModal({
       haptics.tap();
       setSplitType(targetMode);
       setErrorMessage(null);
-
-      Animated.spring(tabUnderlineAnim, {
-        toValue: pageIndex,
-        useNativeDriver: false,
-        friction: 8,
-        tension: 65,
-      }).start();
+      tabUnderlineShared.value = withSpring(pageIndex, THEME.animation.spring.snappy);
     }
   };
 
@@ -518,9 +510,10 @@ export function SplitOptionsModal({
 
   // Tab width for underline calculation
   const tabWidth = width / MODES.length;
-  const underlineTranslateX = tabUnderlineAnim.interpolate({
-    inputRange: [0, 1, 2, 3],
-    outputRange: [0, tabWidth, tabWidth * 2, tabWidth * 3],
+  const tabUnderlineAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: tabUnderlineShared.value * tabWidth }],
+    };
   });
 
   return (
@@ -575,9 +568,9 @@ export function SplitOptionsModal({
                 styles.tabUnderline,
                 {
                   width: tabWidth - 24,
-                  transform: [{ translateX: underlineTranslateX }],
                   marginHorizontal: 12,
                 },
+                tabUnderlineAnimatedStyle,
               ]}
             />
           </View>

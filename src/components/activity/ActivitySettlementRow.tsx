@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { Handshake, ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { useAppTheme } from '../../contexts/theme.context';
 import { useCurrency } from '../../contexts/currency.context';
+import { PressableScale } from '../common/PressableScale';
 
 export interface ActivitySettlementItemData {
   id: string;
@@ -48,9 +49,9 @@ export const ActivitySettlementRow = React.memo(function ActivitySettlementRow({
   const payeeText = isPayeeViewer ? 'You' : settlement.payeeName || 'Member';
 
   return (
-    <TouchableOpacity
+    <PressableScale
       style={[styles.row, !isLast && styles.rowBorder, style]}
-      activeOpacity={0.7}
+      activeScale={0.985}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Settlement from ${payerText} to ${payeeText}`}
@@ -105,7 +106,7 @@ export const ActivitySettlementRow = React.memo(function ActivitySettlementRow({
           Settled
         </Text>
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 });
 
