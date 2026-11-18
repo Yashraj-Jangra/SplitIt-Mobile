@@ -14,7 +14,7 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 | File | Type | Size | SHA256 Checksum |
 | :--- | :--- | :--- | :--- |
-| **`SplitIt-v1.3.3.apk`** | Android Release APK | `Pending build` | `Pending build` |
+| **`SplitIt-v1.3.3.apk`** | Android Release APK | `129.4 MB` (`135,729,605 bytes`) | `74d9dd279f50894a1c4ca86bf800aab49214c3dbf749aaeedc904722cf413994` |
 
 ```bash
 # Verify checksum on Windows (PowerShell)

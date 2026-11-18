@@ -7,7 +7,9 @@
     - Synchronized fallback version in `update.service.ts`, `profile.tsx`, `about.tsx`, and `preferences.tsx`.
   - **Documentation & Releases**:
     - Updated `CHANGELOG.md` with full breakdown of v1.3.3 features, fixes, and performance upgrades.
-    - Updated `RELEASE.md` with v1.3.3 release template.
+    - Updated `RELEASE.md` with v1.3.3 release documentation, exact byte size (135,729,605 bytes / 129.4 MB), and SHA256 checksum (`74d9dd279f50894a1c4ca86bf800aab49214c3dbf749aaeedc904722cf413994`).
+    - Successfully compiled Android release APK (`./android/gradlew assembleRelease`).
+    - Merged Pull Request #1 into `main` branch.
 
 - **Full Modernization of App Animation Architecture & Native Android Predictive Back** ✨ ⚡ 📱 🎨 🚀 ✅:
   - **Android 14/15 Predictive Back Native Integration**:
