@@ -17,7 +17,12 @@ import Reanimated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  interpolate,
+  Easing,
+  runOnJS,
+  cancelAnimation,
 } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { QuantumSpinner } from '../../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -68,6 +73,14 @@ import { useSafeBack } from '../../../src/hooks/useSafeBack';
 const TABS = ['expenses', 'balances', 'budget', 'activity', 'analysis'] as const;
 type TabType = typeof TABS[number];
 type ActivityFilter = 'all' | 'expenses' | 'settlements';
+
+interface TabTransitionState {
+  fromTab: TabType;
+  toTab: TabType;
+  isMovingRight: boolean;
+  fromHeight: number;
+  toHeight: number;
+}
 
 const TAB_LABELS: Record<TabType, string> = {
   expenses: 'Activity',
@@ -214,10 +227,31 @@ export default function GroupDetailScreen() {
   const scrollViewRef = useRef<any>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Smooth Hardware-Accelerated Tab & FAB Transitions via Reanimated worklets
+  // Smooth Hardware-Accelerated 2-Window Sliding Stage via Reanimated worklets
+  const [transitionState, setTransitionState] = useState<TabTransitionState | null>(null);
+  const tabHeightsRef = useRef<Partial<Record<TabType, number>>>({});
+  const slideProgress = useSharedValue(0);
+  const stageHeight = useSharedValue(600);
+  const isMovingRight = useSharedValue(true);
+  const stageWidth = Math.max(0, Dimensions.get('window').width);
+
+  const scrollYRef = useRef(0);
+  useEffect(() => {
+    const id = scrollY.addListener(({ value }) => {
+      scrollYRef.current = value;
+    });
+    return () => {
+      scrollY.removeListener(id);
+    };
+  }, [scrollY]);
+
+  const onTabContentLayout = useCallback((tab: TabType, height: number) => {
+    if (height > 0) {
+      tabHeightsRef.current[tab] = height;
+    }
+  }, []);
+
   const tabIndicatorShared = useSharedValue(0);
-  const tabContentOpacity = useSharedValue(1);
-  const tabSlideShared = useSharedValue(0);
   const fabScale = useSharedValue(1);
   const fabPressScale = useSharedValue(0);
   const tabBarWidthShared = useSharedValue(initialTabBarWidth);
@@ -236,10 +270,39 @@ export default function GroupDetailScreen() {
     };
   });
 
-  const tabContentAnimatedStyle = useAnimatedStyle(() => {
+  const outgoingWindowStyle = useAnimatedStyle(() => {
+    if (!transitionState) {
+      return { display: 'none' };
+    }
+    const targetX = isMovingRight.value ? -stageWidth : stageWidth;
+    const tx = interpolate(slideProgress.value, [0, 1], [0, targetX]);
+    const opacity = interpolate(slideProgress.value, [0, 0.75, 1], [1, 0.6, 0]);
     return {
-      opacity: tabContentOpacity.value,
-      transform: [{ translateX: tabSlideShared.value }],
+      transform: [{ translateX: tx }],
+      opacity,
+    };
+  });
+
+  const incomingWindowStyle = useAnimatedStyle(() => {
+    if (!transitionState) {
+      return { display: 'none' };
+    }
+    const startX = isMovingRight.value ? stageWidth : -stageWidth;
+    const tx = interpolate(slideProgress.value, [0, 1], [startX, 0]);
+    const opacity = interpolate(slideProgress.value, [0, 0.25, 1], [0.3, 0.85, 1]);
+    return {
+      transform: [{ translateX: tx }],
+      opacity,
+    };
+  });
+
+  const slidingStageStyle = useAnimatedStyle(() => {
+    if (!transitionState) {
+      return {};
+    }
+    return {
+      height: stageHeight.value,
+      overflow: 'hidden',
     };
   });
 
@@ -307,9 +370,8 @@ export default function GroupDetailScreen() {
     setActiveTab(destTab);
     setActivityFilter('all');
     tabIndicatorShared.value = destTabIndex >= 0 ? destTabIndex : 0;
-    tabContentOpacity.value = 1;
-    tabSlideShared.value = 0;
     fabScale.value = destTab === 'expenses' ? 1 : 0;
+    setTransitionState(null);
     setVisibleExpenseCount(PAGE_SIZE);
     setVisibleActivityCount(PAGE_SIZE);
 
@@ -359,29 +421,95 @@ export default function GroupDetailScreen() {
     loadGroup(true);
   };
 
-  const handleTabChange = (tab: TabType) => {
-    if (tab === activeTab) return;
-    haptics.tap();
-    const prevIndex = TABS.indexOf(activeTab);
-    const tabIndex = TABS.indexOf(tab);
-    const isMovingRight = tabIndex > prevIndex;
+  const finalizeTabChange = useCallback((finishedTab: TabType) => {
+    setActiveTab(finishedTab);
+    setTransitionState(null);
+    slideProgress.value = 0;
+  }, []);
 
-    // 1. Snappy 120Hz native spring sliding indicator pill via UI thread worklet
-    tabIndicatorShared.value = withSpring(tabIndex, THEME.animation.spring.snappy);
+  const handleTabChange = useCallback(
+    (newTab: TabType) => {
+      const currentTarget = transitionState ? transitionState.toTab : activeTab;
+      if (newTab === currentTarget) return;
+      haptics.tap();
 
-    // 2. Hardware-accelerated directional subtle horizontal slide & fade (zero black flash)
-    const slideOffset = isMovingRight ? 24 : -24;
-    tabSlideShared.value = slideOffset;
-    tabSlideShared.value = withSpring(0, THEME.animation.spring.snappy);
-    tabContentOpacity.value = 0.88;
-    tabContentOpacity.value = withTiming(1, { duration: THEME.animation.timing.fast });
+      const prevIndex = TABS.indexOf(currentTarget);
+      const nextIndex = TABS.indexOf(newTab);
+      const movingRight = nextIndex > prevIndex;
+      isMovingRight.value = movingRight;
 
-    // 3. Fast spring scale & fade for Add Expense FAB
-    fabScale.value = withSpring(tab === 'expenses' ? 1 : 0, THEME.animation.spring.snappy);
+      // 1. Snappy 120Hz native spring sliding indicator pill via UI thread worklet
+      tabIndicatorShared.value = withSpring(nextIndex, THEME.animation.spring.snappy);
 
-    setVisitedTabs((prev) => (prev[tab] ? prev : { ...prev, [tab]: true }));
-    setActiveTab(tab);
-  };
+      // 2. Fast spring scale & fade for Add Expense FAB
+      fabScale.value = withSpring(newTab === 'expenses' ? 1 : 0, THEME.animation.spring.snappy);
+
+      // 3. Mark target tab as visited for progressive hydration
+      setVisitedTabs((prev) => (prev[newTab] ? prev : { ...prev, [newTab]: true }));
+
+      // 4. Gently dock scroll position to tab bar if scrolled deep past it
+      if (scrollYRef.current > stickyThreshold) {
+        scrollViewRef.current?.scrollTo?.({ y: stickyThreshold, animated: true });
+      }
+
+      // 5. Measure heights and trigger true hardware-accelerated 2-window sliding animation
+      const fromH = tabHeightsRef.current[currentTarget] || stageHeight.value || 600;
+      const toH = tabHeightsRef.current[newTab] || fromH;
+
+      cancelAnimation(slideProgress);
+      cancelAnimation(stageHeight);
+
+      stageHeight.value = fromH;
+
+      setTransitionState({
+        fromTab: currentTarget,
+        toTab: newTab,
+        isMovingRight: movingRight,
+        fromHeight: fromH,
+        toHeight: toH,
+      });
+
+      slideProgress.value = 0;
+      slideProgress.value = withTiming(
+        1,
+        {
+          duration: 280,
+          easing: Easing.bezier(0.22, 1, 0.36, 1), // Apple / Material 3 fluid deceleration curve
+        },
+        (finished) => {
+          if (finished) {
+            runOnJS(finalizeTabChange)(newTab);
+          }
+        }
+      );
+
+      stageHeight.value = withTiming(toH, {
+        duration: 280,
+        easing: Easing.bezier(0.22, 1, 0.36, 1),
+      });
+    },
+    [activeTab, transitionState, stickyThreshold, finalizeTabChange]
+  );
+
+  const tabSwipeGesture = useMemo(() => {
+    return Gesture.Pan()
+      .enabled(!isScrubbingChart && !transitionState)
+      .activeOffsetX([-25, 25])
+      .failOffsetY([-14, 14])
+      .onEnd((event) => {
+        'worklet';
+        const currentIndex = TABS.indexOf(activeTab);
+        if (event.velocityX < -300 || event.translationX < -40) {
+          if (currentIndex < TABS.length - 1) {
+            runOnJS(handleTabChange)(TABS[currentIndex + 1]);
+          }
+        } else if (event.velocityX > 300 || event.translationX > 40) {
+          if (currentIndex > 0) {
+            runOnJS(handleTabChange)(TABS[currentIndex - 1]);
+          }
+        }
+      });
+  }, [activeTab, isScrubbingChart, transitionState, handleTabChange]);
 
   const onFabLayout = () => {
     fabButtonRef.current?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
@@ -441,6 +569,7 @@ export default function GroupDetailScreen() {
   const renderTabBar = () => {
     const innerWidth = Math.max(0, tabBarWidth - 6);
     const singleTabWidth = innerWidth > 0 ? innerWidth / TABS.length : 0;
+    const highlightTab = transitionState ? transitionState.toTab : activeTab;
 
     return (
       <View
@@ -470,7 +599,7 @@ export default function GroupDetailScreen() {
             <Text
               style={[
                 styles.tabText,
-                activeTab === tab && styles.tabTextActive,
+                highlightTab === tab && styles.tabTextActive,
               ]}
             >
               {TAB_LABELS[tab]}
@@ -727,102 +856,11 @@ export default function GroupDetailScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={[]}>
-      <StatusBar style="light" />
-
-      {/* Scrollable Content Stream (Rendered first so floating overlays sit on top of touch hierarchy) */}
-      <Animated.ScrollView
-        ref={scrollViewRef}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        scrollEnabled={!isScrubbingChart}
-        keyboardShouldPersistTaps="handled"
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          {
-            useNativeDriver: true,
-            listener: handleScroll,
-          }
-        )}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={currentAccent.primary}
-            progressViewOffset={HEADER_MAX_HEIGHT}
-          />
-        }
-      >
-        {/* Spacer for Collapsing Header */}
-        <View style={{ height: HEADER_MAX_HEIGHT }} />
-
-        {/* Minimalist 4-Stat Strip (Clean Typographic Row, No Rigid Box) */}
-        <View
-          style={styles.statStrip}
-          onLayout={(e) => {
-            const h = e.nativeEvent.layout.height;
-            if (h && Math.abs(h - statStripHeight) > 1) {
-              setStatStripHeight(h);
-            }
-          }}
-        >
-          <View style={styles.statCol}>
-            <Text style={styles.statLabel}>SPENT</Text>
-            <Text style={styles.statValue}>{formatCurrency(totalGroupSpend, { decimals: 0 })}</Text>
-          </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statCol}>
-            <Text style={styles.statLabel}>YOUR NET</Text>
-            <Text
-              style={[
-                styles.statValue,
-                { color: yourNetBalance >= 0 ? currentAccent.primary : THEME.colors.negative },
-              ]}
-            >
-              {formatCurrency(yourNetBalance, { showSign: true, decimals: 0 })}
-            </Text>
-          </View>
-
-          <View style={styles.statDivider} />
-
-          <TouchableOpacity
-            style={styles.statCol}
-            onPress={() => handleTabChange('budget')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.statLabel}>BUDGET</Text>
-            <Text
-              style={[
-                styles.statValue,
-                { color: currentMonthBudgetStats.isEnabled ? currentAccent.primaryLight : THEME.colors.textMuted },
-              ]}
-            >
-              {currentMonthBudgetStats.isEnabled && currentMonthBudgetStats.monthlyLimit > 0
-                ? `${Math.round(currentMonthBudgetStats.percentageUsed)}%`
-                : '+ Set'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* In-Flow Native Tab Bar (Scrolls with 100% native lockstep with stat strip & content — zero lag) */}
-        <View style={styles.tabBarInFlowContainer}>
-          {renderTabBar()}
-        </View>
-
-        {/* Smooth Animated Tab Content Stream */}
-        <Reanimated.View
-          style={[
-            styles.tabSectionWrapper,
-            tabContentAnimatedStyle,
-          ]}
-        >
-        {/* TAB 1: EXPENSES & SETTLEMENTS (ACTIVITY STREAM) */}
-        {visitedTabs.expenses && (
-          <View style={[styles.tabSection, activeTab !== 'expenses' && styles.tabHidden]}>
+  const renderTabContent = (tab: TabType) => {
+    switch (tab) {
+      case 'expenses':
+        return (
+          <>
             {/* Activity Stream Section Header (Activity Title on Left, Segmented Filter on Right) */}
             <View style={styles.activityFilterBar}>
               <View style={styles.activityTitleRow}>
@@ -977,300 +1015,435 @@ export default function GroupDetailScreen() {
                 )}
               </View>
             )}
-          </View>
-        )}
+          </>
+        );
 
-        {/* TAB 2: BALANCES & SIMPLIFIED DEBTS */}
-        {visitedTabs.balances && (
-          <View style={[styles.tabSection, activeTab !== 'balances' && styles.tabHidden]}>
-            {loading && members.length === 0 ? (
-              <BalancesTabSkeleton />
-            ) : (
-              <>
-                {/* 1. Header with Switch (matches website) */}
-                <View style={styles.balancesHeaderRow}>
-                  <View style={styles.balancesTitleRow}>
-                    <ArrowLeftRight size={17} color={currentAccent.primary} />
-                    <Text style={styles.balancesSectionTitle}>Group Balances</Text>
-                  </View>
-                  {!everythingIsSettled && members.length > 0 && (
-                    <View style={styles.switchRow}>
-                      <Text style={styles.switchLabel}>Simplify Debts</Text>
-                      <Switch
-                        value={isSimplified}
-                        onValueChange={(val) => {
-                          haptics.toggleSwitch();
-                          setIsSimplified(val);
-                        }}
-                        trackColor={{
-                          false: 'rgba(255, 255, 255, 0.12)',
-                          true: currentAccent.primary,
-                        }}
-                        thumbColor={THEME.colors.palette.white}
-                        style={styles.switchControl}
-                      />
-                    </View>
-                  )}
+      case 'balances':
+        return (
+          loading && members.length === 0 ? (
+            <BalancesTabSkeleton />
+          ) : (
+            <>
+              {/* 1. Header with Switch (matches website) */}
+              <View style={styles.balancesHeaderRow}>
+                <View style={styles.balancesTitleRow}>
+                  <ArrowLeftRight size={17} color={currentAccent.primary} />
+                  <Text style={styles.balancesSectionTitle}>Group Balances</Text>
                 </View>
-
-                {/* 2. Empty or Settled States */}
-                {members.length === 0 ? (
-                  <View style={styles.settledStateContainer}>
-                    <Handshake size={32} color={currentAccent.primary} />
-                    <Text style={styles.settledTitle}>No balances to show</Text>
-                    <Text style={styles.settledSubtitle}>Add expenses to track balances between members.</Text>
-                  </View>
-                ) : everythingIsSettled ? (
-                  <View style={styles.settledStateContainer}>
-                    <View style={styles.settledIconWrap}>
-                      <CheckCircle2 size={36} color={THEME.colors.success} />
-                    </View>
-                    <Text style={styles.settledTitle}>All debts are settled!</Text>
-                    <Text style={styles.settledSubtitle}>Everyone is balanced in this group.</Text>
-                  </View>
-                ) : isSimplified ? (
-                  /* 3. SIMPLIFIED DEBTS FORM (Website-style simplified settlement plan) */
-                  <View style={styles.simplifiedPlanList}>
-                    {simplifiedDebts.length === 0 ? (
-                      <View style={styles.settledStateContainer}>
-                        <View style={styles.settledIconWrap}>
-                          <CheckCircle2 size={36} color={THEME.colors.success} />
-                        </View>
-                        <Text style={styles.settledTitle}>All debts are settled!</Text>
-                        <Text style={styles.settledSubtitle}>Everyone is balanced in this group.</Text>
-                      </View>
-                    ) : (
-                      simplifiedDebts.map((debt, index) => {
-                        const fromMember = members.find((m) => m.id === debt.fromUserId);
-                        const toMember = members.find((m) => m.id === debt.toUserId);
-                        const isFromViewer = debt.fromUserId === currentUserId;
-                        const isToViewer = debt.toUserId === currentUserId;
-                        const fromDisplayName = getMemberDisplayName(debt.fromUserId, debt.fromName);
-                        const toDisplayName = getMemberDisplayName(debt.toUserId, debt.toName);
-                        const fromAvatar = fromMember?.avatarUrl;
-                        const toAvatar = toMember?.avatarUrl;
-
-                        return (
-                          <TouchableOpacity
-                            key={index}
-                            style={styles.simplifiedTransferCard}
-                            activeOpacity={0.7}
-                            onPress={() => {
-                              haptics.tap();
-                              router.push({
-                                pathname: '/settle/new',
-                                params: {
-                                  groupId: group?.id || targetId,
-                                  debtorId: debt.fromUserId,
-                                  debtorName: fromDisplayName,
-                                  creditorId: debt.toUserId,
-                                  creditorName: toDisplayName,
-                                  amount: debt.amount.toString(),
-                                  upiId: toMember?.upiId || 'rohit@okhdfc',
-                                },
-                              });
-                            }}
-                          >
-                            <View style={styles.transferFlowRow}>
-                              {/* Debtor (From) */}
-                              <View style={styles.transferPartyCol}>
-                                <View style={styles.balanceAvatar}>
-                                  {fromAvatar ? (
-                                    <Image source={{ uri: fromAvatar }} style={styles.avatarImg} />
-                                  ) : (
-                                    <Text style={styles.balanceAvatarInitial}>
-                                      {(fromDisplayName || 'M').charAt(0).toUpperCase()}
-                                    </Text>
-                                  )}
-                                </View>
-                                <View style={styles.transferNameBadge}>
-                                  <Text
-                                    style={styles.transferNameText}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                  >
-                                    {fromDisplayName}
-                                  </Text>
-                                  {isFromViewer && (
-                                    <View style={[styles.youBadge, { backgroundColor: currentAccent.primaryMuted }]}>
-                                      <Text style={[styles.youBadgeText, { color: currentAccent.primary }]}>YOU</Text>
-                                    </View>
-                                  )}
-                                </View>
-                              </View>
-
-                              {/* Center Arrow & Amount */}
-                              <View style={styles.transferCenterCol}>
-                                <Text style={styles.transferCenterAmount}>
-                                  {formatCurrency(debt.amount, { decimals: 2 })}
-                                </Text>
-                                <View style={styles.transferArrowPill}>
-                                  <ArrowRight size={13} color={currentAccent.primary} />
-                                </View>
-                              </View>
-
-                              {/* Creditor (To) */}
-                              <View style={[styles.transferPartyCol, styles.transferPartyColRight]}>
-                                <View style={[styles.transferNameBadge, styles.transferNameBadgeRight]}>
-                                  <Text
-                                    style={styles.transferNameText}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                  >
-                                    {toDisplayName}
-                                  </Text>
-                                  {isToViewer && (
-                                    <View style={styles.youBadge}>
-                                      <Text style={styles.youBadgeText}>YOU</Text>
-                                    </View>
-                                  )}
-                                </View>
-                                <View style={styles.balanceAvatar}>
-                                  {toAvatar ? (
-                                    <Image source={{ uri: toAvatar }} style={styles.avatarImg} />
-                                  ) : (
-                                    <Text style={styles.balanceAvatarInitial}>
-                                      {(toDisplayName || 'M').charAt(0).toUpperCase()}
-                                    </Text>
-                                  )}
-                                </View>
-                              </View>
-                            </View>
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
-                  </View>
-                ) : (
-                  /* 4. NORMAL FORM (Individual member net balances) */
-                  <View style={styles.normalBalancesList}>
-                    {sortedBalances.map((m, index) => {
-                      const isLast = index === sortedBalances.length - 1;
-                      const isViewer = m.id === currentUserId;
-                      const displayName = getMemberDisplayName(m.id, m.name);
-                      const isOwed = (m.netBalance || 0) > 0.01;
-                      const isDebtor = (m.netBalance || 0) < -0.01;
-                      const isSettled = !isOwed && !isDebtor;
-
-                      return (
-                        <View
-                          key={m.id || index}
-                          style={[styles.balanceMemberRow, !isLast && styles.balanceMemberRowBorder]}
-                        >
-                          <View style={styles.balanceMemberLeft}>
-                            <View style={styles.balanceAvatar}>
-                              {m.avatarUrl ? (
-                                <Image source={{ uri: m.avatarUrl }} style={styles.avatarImg} />
-                              ) : (
-                                <Text style={styles.balanceAvatarInitial}>
-                                  {(displayName || 'M').charAt(0).toUpperCase()}
-                                </Text>
-                              )}
-                            </View>
-
-                            <View style={styles.balanceMemberNameWrap}>
-                              <Text
-                                style={[
-                                  styles.balanceMemberName,
-                                  isViewer && styles.balanceMemberNameUser,
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {displayName}
-                              </Text>
-                              {isViewer && (
-                                <View style={styles.youBadge}>
-                                  <Text style={styles.youBadgeText}>YOU</Text>
-                                </View>
-                              )}
-                            </View>
-                          </View>
-
-                          <View style={styles.balanceRightCol}>
-                            {isOwed && (
-                              <Text style={styles.balanceOwedText}>
-                                is owed {formatCurrency(m.netBalance || 0, { decimals: 2 })}
-                              </Text>
-                            )}
-                            {isDebtor && (
-                              <Text style={styles.balanceDebtorText}>
-                                owes {formatCurrency(Math.abs(m.netBalance || 0), { decimals: 2 })}
-                              </Text>
-                            )}
-                            {isSettled && (
-                              <Text style={styles.balanceSettledText}>
-                                settled up
-                              </Text>
-                            )}
-                          </View>
-                        </View>
-                      );
-                    })}
+                {!everythingIsSettled && members.length > 0 && (
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Simplify Debts</Text>
+                    <Switch
+                      value={isSimplified}
+                      onValueChange={(val) => {
+                        haptics.toggleSwitch();
+                        setIsSimplified(val);
+                      }}
+                      trackColor={{
+                        false: 'rgba(255, 255, 255, 0.12)',
+                        true: currentAccent.primary,
+                      }}
+                      thumbColor={THEME.colors.palette.white}
+                      style={styles.switchControl}
+                    />
                   </View>
                 )}
-              </>
-            )}
-          </View>
-        )}
+              </View>
 
-        {/* TAB 3: BUDGET & PACING */}
-        {visitedTabs.budget && (
-          <View style={[styles.tabSection, activeTab !== 'budget' && styles.tabHidden]}>
-            {loading && !group ? (
-              <BudgetTabSkeleton />
-            ) : (
-              <GroupBudgetTab
-                group={group}
-                expenses={group.expenses || []}
-                onBudgetUpdated={loadGroup}
-              />
-            )}
-          </View>
-        )}
+              {/* 2. Empty or Settled States */}
+              {members.length === 0 ? (
+                <View style={styles.settledStateContainer}>
+                  <Handshake size={32} color={currentAccent.primary} />
+                  <Text style={styles.settledTitle}>No balances to show</Text>
+                  <Text style={styles.settledSubtitle}>Add expenses to track balances between members.</Text>
+                </View>
+              ) : everythingIsSettled ? (
+                <View style={styles.settledStateContainer}>
+                  <View style={styles.settledIconWrap}>
+                    <CheckCircle2 size={36} color={THEME.colors.success} />
+                  </View>
+                  <Text style={styles.settledTitle}>All debts are settled!</Text>
+                  <Text style={styles.settledSubtitle}>Everyone is balanced in this group.</Text>
+                </View>
+              ) : isSimplified ? (
+                /* 3. SIMPLIFIED DEBTS FORM (Website-style simplified settlement plan) */
+                <View style={styles.simplifiedPlanList}>
+                  {simplifiedDebts.length === 0 ? (
+                    <View style={styles.settledStateContainer}>
+                      <View style={styles.settledIconWrap}>
+                        <CheckCircle2 size={36} color={THEME.colors.success} />
+                      </View>
+                      <Text style={styles.settledTitle}>All debts are settled!</Text>
+                      <Text style={styles.settledSubtitle}>Everyone is balanced in this group.</Text>
+                    </View>
+                  ) : (
+                    simplifiedDebts.map((debt, index) => {
+                      const fromMember = members.find((m) => m.id === debt.fromUserId);
+                      const toMember = members.find((m) => m.id === debt.toUserId);
+                      const isFromViewer = debt.fromUserId === currentUserId;
+                      const isToViewer = debt.toUserId === currentUserId;
+                      const fromDisplayName = getMemberDisplayName(debt.fromUserId, debt.fromName);
+                      const toDisplayName = getMemberDisplayName(debt.toUserId, debt.toName);
+                      const fromAvatar = fromMember?.avatarUrl;
+                      const toAvatar = toMember?.avatarUrl;
 
-        {/* TAB 4: ACTIVITY AUDIT FEED */}
-        {visitedTabs.activity && (
-          <View style={[styles.tabSection, activeTab !== 'activity' && styles.tabHidden]}>
-            <GroupHistoryTab
-              groupId={targetId}
-              history={group?.history}
-              loading={loading && (!group?.history || group.history.length === 0)}
-              visibleCount={visibleActivityCount}
-              isLoadingMore={isLoadingMoreActivities}
-              onLoadMore={loadMoreActivities}
-              onRefresh={() => loadGroup(true)}
-              onViewExpense={(expenseId) => {
-                router.push({
-                  pathname: '/expenses/[id]',
-                  params: { id: expenseId, groupId: targetId },
-                });
-              }}
-              onViewSettlement={(settlementId) => {
-                router.push({
-                  pathname: '/settlements/[id]',
-                  params: { id: settlementId, groupId: targetId },
-                });
-              }}
+                      return (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.simplifiedTransferCard}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            haptics.tap();
+                            router.push({
+                              pathname: '/settle/new',
+                              params: {
+                                groupId: group.id || targetId,
+                                debtorId: debt.fromUserId,
+                                debtorName: fromDisplayName,
+                                creditorId: debt.toUserId,
+                                creditorName: toDisplayName,
+                                amount: debt.amount.toString(),
+                                upiId: toMember?.upiId || 'rohit@okhdfc',
+                              },
+                            });
+                          }}
+                        >
+                          <View style={styles.transferFlowRow}>
+                            {/* Debtor (From) */}
+                            <View style={styles.transferPartyCol}>
+                              <View style={styles.balanceAvatar}>
+                                {fromAvatar ? (
+                                  <Image source={{ uri: fromAvatar }} style={styles.avatarImg} />
+                                ) : (
+                                  <Text style={styles.balanceAvatarInitial}>
+                                    {(fromDisplayName || 'M').charAt(0).toUpperCase()}
+                                  </Text>
+                                )}
+                              </View>
+                              <View style={styles.transferNameBadge}>
+                                <Text
+                                  style={styles.transferNameText}
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                >
+                                  {fromDisplayName}
+                                </Text>
+                                {isFromViewer && (
+                                  <View style={[styles.youBadge, { backgroundColor: currentAccent.primaryMuted }]}>
+                                    <Text style={[styles.youBadgeText, { color: currentAccent.primary }]}>YOU</Text>
+                                  </View>
+                                )}
+                              </View>
+                            </View>
+
+                            {/* Center Arrow & Amount */}
+                            <View style={styles.transferCenterCol}>
+                              <Text style={styles.transferCenterAmount}>
+                                {formatCurrency(debt.amount, { decimals: 2 })}
+                              </Text>
+                              <View style={styles.transferArrowPill}>
+                                <ArrowRight size={13} color={currentAccent.primary} />
+                              </View>
+                            </View>
+
+                            {/* Creditor (To) */}
+                            <View style={[styles.transferPartyCol, styles.transferPartyColRight]}>
+                              <View style={[styles.transferNameBadge, styles.transferNameBadgeRight]}>
+                                <Text
+                                  style={styles.transferNameText}
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                >
+                                  {toDisplayName}
+                                </Text>
+                                {isToViewer && (
+                                  <View style={styles.youBadge}>
+                                    <Text style={styles.youBadgeText}>YOU</Text>
+                                  </View>
+                                )}
+                              </View>
+                              <View style={styles.balanceAvatar}>
+                                {toAvatar ? (
+                                  <Image source={{ uri: toAvatar }} style={styles.avatarImg} />
+                                ) : (
+                                  <Text style={styles.balanceAvatarInitial}>
+                                    {(toDisplayName || 'M').charAt(0).toUpperCase()}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </View>
+              ) : (
+                /* 4. NORMAL FORM (Individual member net balances) */
+                <View style={styles.normalBalancesList}>
+                  {sortedBalances.map((m, index) => {
+                    const isLast = index === sortedBalances.length - 1;
+                    const isViewer = m.id === currentUserId;
+                    const displayName = getMemberDisplayName(m.id, m.name);
+                    const isOwed = (m.netBalance || 0) > 0.01;
+                    const isDebtor = (m.netBalance || 0) < -0.01;
+                    const isSettled = !isOwed && !isDebtor;
+
+                    return (
+                      <View
+                        key={m.id || index}
+                        style={[styles.balanceMemberRow, !isLast && styles.balanceMemberRowBorder]}
+                      >
+                        <View style={styles.balanceMemberLeft}>
+                          <View style={styles.balanceAvatar}>
+                            {m.avatarUrl ? (
+                              <Image source={{ uri: m.avatarUrl }} style={styles.avatarImg} />
+                            ) : (
+                              <Text style={styles.balanceAvatarInitial}>
+                                {(displayName || 'M').charAt(0).toUpperCase()}
+                              </Text>
+                            )}
+                          </View>
+
+                          <View style={styles.balanceMemberNameWrap}>
+                            <Text
+                              style={[
+                                styles.balanceMemberName,
+                                isViewer && styles.balanceMemberNameUser,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {displayName}
+                            </Text>
+                            {isViewer && (
+                              <View style={styles.youBadge}>
+                                <Text style={styles.youBadgeText}>YOU</Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+
+                        <View style={styles.balanceRightCol}>
+                          {isOwed && (
+                            <Text style={styles.balanceOwedText}>
+                              is owed {formatCurrency(m.netBalance || 0, { decimals: 2 })}
+                            </Text>
+                          )}
+                          {isDebtor && (
+                            <Text style={styles.balanceDebtorText}>
+                              owes {formatCurrency(Math.abs(m.netBalance || 0), { decimals: 2 })}
+                            </Text>
+                          )}
+                          {isSettled && (
+                            <Text style={styles.balanceSettledText}>
+                              settled up
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </>
+          )
+        );
+
+      case 'budget':
+        return (
+          loading && !group ? (
+            <BudgetTabSkeleton />
+          ) : (
+            <GroupBudgetTab
+              group={group}
+              expenses={group.expenses || []}
+              onBudgetUpdated={loadGroup}
             />
-          </View>
-        )}
+          )
+        );
 
-        {/* TAB 5: GROUP SPENDING & MEMBER ANALYSIS */}
-        {visitedTabs.analysis && (
-          <View style={[styles.tabSection, activeTab !== 'analysis' && styles.tabHidden]}>
-            {loading && (!group?.expenses || group.expenses.length === 0) ? (
-              <AnalysisTabSkeleton />
-            ) : (
-              <GroupAnalysisTab
-                group={group}
-                expenses={group?.expenses || []}
-                members={group?.members || []}
-                onScrubbingChange={setIsScrubbingChart}
-              />
-            )}
-          </View>
+      case 'activity':
+        return (
+          <GroupHistoryTab
+            groupId={targetId}
+            history={group?.history}
+            loading={loading && (!group?.history || group.history.length === 0)}
+            visibleCount={visibleActivityCount}
+            isLoadingMore={isLoadingMoreActivities}
+            onLoadMore={loadMoreActivities}
+            onRefresh={() => loadGroup(true)}
+            onViewExpense={(expenseId) => {
+              router.push({
+                pathname: '/expenses/[id]',
+                params: { id: expenseId, groupId: targetId },
+              });
+            }}
+            onViewSettlement={(settlementId) => {
+              router.push({
+                pathname: '/settlements/[id]',
+                params: { id: settlementId, groupId: targetId },
+              });
+            }}
+          />
+        );
+
+      case 'analysis':
+        return (
+          loading && (!group?.expenses || group.expenses.length === 0) ? (
+            <AnalysisTabSkeleton />
+          ) : (
+            <GroupAnalysisTab
+              group={group}
+              expenses={group?.expenses || []}
+              members={group?.members || []}
+              onScrubbingChange={setIsScrubbingChart}
+            />
+          )
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <StatusBar style="light" />
+
+      {/* Scrollable Content Stream (Rendered first so floating overlays sit on top of touch hierarchy) */}
+      <Animated.ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        scrollEnabled={!isScrubbingChart}
+        keyboardShouldPersistTaps="handled"
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          {
+            useNativeDriver: true,
+            listener: handleScroll,
+          }
         )}
-        </Reanimated.View>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={currentAccent.primary}
+            progressViewOffset={HEADER_MAX_HEIGHT}
+          />
+        }
+      >
+        {/* Spacer for Collapsing Header */}
+        <View style={{ height: HEADER_MAX_HEIGHT }} />
+
+        {/* Minimalist 4-Stat Strip (Clean Typographic Row, No Rigid Box) */}
+        <View
+          style={styles.statStrip}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h && Math.abs(h - statStripHeight) > 1) {
+              setStatStripHeight(h);
+            }
+          }}
+        >
+          <View style={styles.statCol}>
+            <Text style={styles.statLabel}>SPENT</Text>
+            <Text style={styles.statValue}>{formatCurrency(totalGroupSpend, { decimals: 0 })}</Text>
+          </View>
+
+          <View style={styles.statDivider} />
+
+          <View style={styles.statCol}>
+            <Text style={styles.statLabel}>YOUR NET</Text>
+            <Text
+              style={[
+                styles.statValue,
+                { color: yourNetBalance >= 0 ? currentAccent.primary : THEME.colors.negative },
+              ]}
+            >
+              {formatCurrency(yourNetBalance, { showSign: true, decimals: 0 })}
+            </Text>
+          </View>
+
+          <View style={styles.statDivider} />
+
+          <TouchableOpacity
+            style={styles.statCol}
+            onPress={() => handleTabChange('budget')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.statLabel}>BUDGET</Text>
+            <Text
+              style={[
+                styles.statValue,
+                { color: currentMonthBudgetStats.isEnabled ? currentAccent.primaryLight : THEME.colors.textMuted },
+              ]}
+            >
+              {currentMonthBudgetStats.isEnabled && currentMonthBudgetStats.monthlyLimit > 0
+                ? `${Math.round(currentMonthBudgetStats.percentageUsed)}%`
+                : '+ Set'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* In-Flow Native Tab Bar (Scrolls with 100% native lockstep with stat strip & content — zero lag) */}
+        <View style={styles.tabBarInFlowContainer}>
+          {renderTabBar()}
+        </View>
+
+        {/* Smooth Hardware-Accelerated 2-Window Sliding Stage */}
+        <GestureDetector gesture={tabSwipeGesture}>
+          <Reanimated.View style={[styles.tabSectionWrapper, slidingStageStyle]}>
+            {transitionState ? (
+              <>
+                <Reanimated.View
+                  pointerEvents="none"
+                  style={[styles.slidingWindow, outgoingWindowStyle]}
+                >
+                  <View style={styles.tabSection}>
+                    {renderTabContent(transitionState.fromTab)}
+                  </View>
+                </Reanimated.View>
+
+                <Reanimated.View
+                  pointerEvents="none"
+                  style={[styles.slidingWindow, incomingWindowStyle]}
+                >
+                  <View
+                    style={styles.tabSection}
+                    onLayout={(e) => {
+                      const h = e.nativeEvent.layout.height;
+                      if (h > 0) {
+                        onTabContentLayout(transitionState.toTab, h);
+                        if (Math.abs(h - stageHeight.value) > 2) {
+                          stageHeight.value = withTiming(h, {
+                            duration: 200,
+                            easing: Easing.bezier(0.22, 1, 0.36, 1),
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    {renderTabContent(transitionState.toTab)}
+                  </View>
+                </Reanimated.View>
+              </>
+            ) : (
+              <View
+                style={styles.tabSection}
+                onLayout={(e) => {
+                  const h = e.nativeEvent.layout.height;
+                  if (h > 0) {
+                    onTabContentLayout(activeTab, h);
+                  }
+                }}
+              >
+                {renderTabContent(activeTab)}
+              </View>
+            )}
+          </Reanimated.View>
+        </GestureDetector>
       </Animated.ScrollView>
 
       {/* Cinematic Collapsing Header (Hardware accelerated native driver) */}
@@ -1794,6 +1967,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     overflow: 'hidden',
   },
+  slidingWindow: {
+    position: 'absolute',
+    top: 0,
+    left: 10,
+    right: 10,
+  },
 
   // Content Scroll
   scrollContent: {
@@ -1801,15 +1980,6 @@ const styles = StyleSheet.create({
   },
   tabSection: {
     gap: 14,
-  },
-  tabHidden: {
-    position: 'absolute',
-    top: 0,
-    left: 10,
-    right: 10,
-    opacity: 0,
-    pointerEvents: 'none',
-    zIndex: -1,
   },
   activityFilterBar: {
     flexDirection: 'row',

@@ -1,5 +1,21 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Buttery Smooth Hardware-Accelerated Sliding Window Transitions & Gesture Swiping Across Group Tabs** ✨ ⚡ 📱 🎨 🛡️ ✅:
+  - **2-Window Sliding Stage Architecture (`app/groups/[id]/index.tsx`)**:
+    - Replaced the legacy single-container fade/nudge with a true hardware-accelerated 2-window sliding stage.
+    - During transitions, both the outgoing tab window and incoming tab window are rendered in absolute coordinate frames inside `tabSectionWrapper` (`overflow: 'hidden'`).
+    - The outgoing window slides smoothly out (`0 -> -stageWidth` or `+stageWidth`) with subtle opacity fade (`1 -> 0`), while the incoming window slides simultaneously in from the edge (`stageWidth -> 0` or `-stageWidth -> 0`) with smooth fade-in (`0.3 -> 1`).
+    - Driven by Apple/Material 3 fluid deceleration curve (`Easing.bezier(0.22, 1, 0.36, 1)`) over 280ms purely on the UI thread via Reanimated worklets.
+    - Container height animates smoothly from outgoing tab height to incoming tab height via `stageHeight`, eliminating abrupt layout jumps.
+    - Resting/idle state renders only the single active tab with natural layout height (`auto`), guaranteeing zero memory overhead, no hidden view retention, and instant dynamic height expansion on content changes.
+  - **Fluid Horizontal Gesture Swiping (`Gesture.Pan()`)**:
+    - Enabled natural horizontal swipe gestures between tabs (`Gesture.Pan()`) with `.activeOffsetX([-25, 25])` and `.failOffsetY([-14, 14])`.
+    - Automatically releases vertical gestures to the parent `ScrollView`, preserving smooth 60fps vertical scrolling without drag resistance.
+    - Gated by `!isScrubbingChart` so chart scrubbing on the Analysis tab never conflicts with tab gestures.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
 - **Interactive Android Predictive Back & Real-Time Gesture Navigation** ✨ 📱 ⚡ 🛡️ ✅:
   - **Android 14+ / 15 Native Predictive Back Progress Tracking (`MainActivity.kt`)**:
     - Integrated AndroidX `OnBackPressedCallback` with real-time `BackEventCompat` progress tracking (`handleOnBackStarted`, `handleOnBackProgressed`, `handleOnBackCancelled`, `handleOnBackPressed`).
