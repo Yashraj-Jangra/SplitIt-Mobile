@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,8 @@ import {
   Palette,
   Receipt,
   ArrowUpCircle,
+  GitBranch,
+  Download,
 } from 'lucide-react-native';
 import Constants from 'expo-constants';
 import { THEME } from '../../src/constants/theme';
@@ -48,7 +51,7 @@ export default function PreferencesScreen() {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
 
-  const appVersion = Constants.expoConfig?.version || '1.3.3';
+  const appVersion = updateService.getCurrentVersion();
 
   const handleCheckForUpdates = async () => {
     if (checkingUpdate) return;
@@ -57,13 +60,8 @@ export default function PreferencesScreen() {
     try {
       const info = await updateService.checkForUpdate(true);
       setUpdateInfo(info);
-      if (info.available) {
-        haptics.saveSuccess();
-        setShowUpdateModal(true);
-      } else {
-        haptics.tap();
-        Alert.alert('Up to Date', `SplitIt v${appVersion} is the latest version available.`);
-      }
+      haptics.saveSuccess();
+      setShowUpdateModal(true);
     } catch {
       haptics.warning();
       Alert.alert(
@@ -303,9 +301,31 @@ export default function PreferencesScreen() {
             iconColor={currentAccent.primary}
             iconBg={currentAccent.primaryMuted}
             title="Check for Updates"
-            subtitle={checkingUpdate ? 'Checking GitHub Releases...' : `Installed: v${appVersion} · GitHub Releases`}
+            subtitle={checkingUpdate ? 'Checking GitHub Releases...' : `Installed: v${appVersion} · Tap to check`}
             value={checkingUpdate ? 'Checking...' : `v${appVersion}`}
             onPress={handleCheckForUpdates}
+          />
+          <SettingsRow
+            icon={GitBranch}
+            iconColor={THEME.colors.textSecondary}
+            iconBg="rgba(255, 255, 255, 0.05)"
+            title="GitHub Repository"
+            subtitle="github.com/Yashraj-Jangra/SplitIt-Mobile"
+            onPress={() => {
+              haptics.tap();
+              Linking.openURL('https://github.com/Yashraj-Jangra/SplitIt-Mobile');
+            }}
+          />
+          <SettingsRow
+            icon={Download}
+            iconColor={THEME.colors.textSecondary}
+            iconBg="rgba(255, 255, 255, 0.05)"
+            title="Android Releases"
+            subtitle="Official APK downloads & version tags"
+            onPress={() => {
+              haptics.tap();
+              Linking.openURL('https://github.com/Yashraj-Jangra/SplitIt-Mobile/releases');
+            }}
             isLast
           />
         </SettingsSection>

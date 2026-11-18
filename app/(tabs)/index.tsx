@@ -48,7 +48,7 @@ import { appEventEmitter } from '../../src/services/event-emitter';
 import { ObligationsModal } from '../../src/components/dashboard/ObligationsModal';
 import { sortGroups, GroupSortOption } from '../../src/utils/group-sort';
 import { notificationService } from '../../src/services/notification.service';
-import { updateService, type UpdateInfo } from '../../src/services/update.service';
+import { updateService, compareVersions, type UpdateInfo } from '../../src/services/update.service';
 import { UpdateModal } from '../../src/components/common/UpdateModal';
 
 interface HomeActivityEntry {
@@ -109,11 +109,16 @@ export default function HomeScreen() {
     updateService
       .checkForUpdate(false)
       .then((info) => {
-        if (info.available) {
+        if (info.available && compareVersions(info.latestVersion, info.currentVersion) > 0) {
           setUpdateInfo(info);
+        } else {
+          setUpdateInfo(null);
+          setShowUpdateModal(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setUpdateInfo(null);
+      });
   }, []);
 
   // Surface interactive sample data indicator
@@ -422,7 +427,7 @@ export default function HomeScreen() {
         )}
 
         {/* In-App Release Update Alert Banner */}
-        {updateInfo?.available && (
+        {updateInfo?.available && compareVersions(updateInfo.latestVersion, updateInfo.currentVersion) > 0 && (
           <TouchableOpacity
             style={[
               styles.updateBanner,

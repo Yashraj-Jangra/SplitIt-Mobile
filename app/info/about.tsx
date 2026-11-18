@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -24,8 +25,11 @@ import {
   RefreshCw,
   CheckCircle2,
   ArrowUpCircle,
+  GitBranch,
+  Download,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
+import { useAppTheme } from '../../src/contexts/theme.context';
 import { QuantumLogo } from '../../src/components/brand/QuantumLogo';
 import { haptics } from '../../src/services/haptics.service';
 import { updateService, type UpdateInfo } from '../../src/services/update.service';
@@ -33,13 +37,14 @@ import { UpdateModal } from '../../src/components/common/UpdateModal';
 
 export default function AboutScreen() {
   const router = useRouter();
+  const { currentAccent } = useAppTheme();
   const [checking, setChecking] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
 
-  const currentVersion = Constants.expoConfig?.version || '1.3.3';
-  const buildCode = Constants.expoConfig?.android?.versionCode || '6';
+  const currentVersion = updateService.getCurrentVersion();
+  const buildCode = updateService.getBuildNumber();
 
   const handleNav = (path: string) => {
     haptics.tap();
@@ -53,12 +58,11 @@ export default function AboutScreen() {
     try {
       const info = await updateService.checkForUpdate(true);
       setUpdateInfo(info);
+      haptics.saveSuccess();
+      setModalVisible(true);
       if (info.available) {
-        haptics.saveSuccess();
-        setModalVisible(true);
         setStatusText(`Update available: v${info.latestVersion}`);
       } else {
-        haptics.tap();
         setStatusText(`You're up to date (v${currentVersion})`);
       }
     } catch {
@@ -143,6 +147,40 @@ export default function AboutScreen() {
               )}
             </TouchableOpacity>
           </View>
+
+          <View style={styles.linkDivider} />
+
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => {
+              haptics.tap();
+              Linking.openURL('https://github.com/Yashraj-Jangra/SplitIt-Mobile');
+            }}
+            activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel="Open GitHub repository"
+          >
+            <GitBranch size={17} color={currentAccent.primary} />
+            <Text style={styles.linkText}>GitHub Repository</Text>
+            <ChevronRight size={16} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.linkDivider} />
+
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => {
+              haptics.tap();
+              Linking.openURL('https://github.com/Yashraj-Jangra/SplitIt-Mobile/releases');
+            }}
+            activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel="Open Android releases page"
+          >
+            <Download size={17} color={currentAccent.primary} />
+            <Text style={styles.linkText}>Android Releases & APKs</Text>
+            <ChevronRight size={16} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         {/* Engineering Highlights */}

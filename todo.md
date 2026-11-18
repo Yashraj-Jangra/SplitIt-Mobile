@@ -1,5 +1,29 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **State-Aware In-App Update Verification, Direct GitHub Release Links & Settings Navigation** ✨ 🛡️ 📱 🌐 ✅:
+  - **Native Version Detection & Stale Cache Elimination (`src/services/update.service.ts`)**:
+    - Integrated `expo-application` (`nativeApplicationVersion` & `nativeBuildVersion`) for true runtime package-manager version verification.
+    - Added automatic cache invalidation when installed app version differs from cached check version, preventing stale update popups after an upgrade.
+    - Enforced re-evaluation of `compareVersions(latestVersion, currentVersion)` on all cached update reads.
+    - Automatically purges update check cache and residual APKs when launching the package installer or when up-to-date.
+  - **Conditional Download & Direct Release Link in Update Tab (`src/components/common/UpdateModal.tsx`)**:
+    - Re-evaluates `compareVersions(latestVersion, currentVersion) > 0` before presenting download options.
+    - If already on latest version or newer:
+      - Automatically switches to clean "You're Up to Date" layout with green checkmark pill (`v{currentVer}`).
+      - **Completely hides the download/update button**.
+      - Renders direct "View Release on GitHub" button and "Done" dismissal button.
+    - Added prominent direct GitHub release link pill (`GitBranch` + `ExternalLink`) in the header bar and secondary action row.
+  - **Banner Auto-Dismissal & State Guard (`app/(tabs)/index.tsx`)**:
+    - Gated update alert banner and modal trigger with `compareVersions(latestVersion, currentVersion) > 0`.
+    - Automatically suppresses update banner and resets modal state if app is up-to-date.
+  - **Settings & About GitHub / Android Release Links**:
+    - **Profile / Settings (`app/(tabs)/profile.tsx`)**: Added "GitHub Repository" (`/Yashraj-Jangra/SplitIt-Mobile`) and "Android Releases" (`/Yashraj-Jangra/SplitIt-Mobile/releases`) rows under Support & Legal.
+    - **Preferences (`app/settings/preferences.tsx`)**: Added "GitHub Repository" and "Android Releases" rows under SYSTEM & UPDATES.
+    - **About SplitIt (`app/info/about.tsx`)**: Linked native version detection and added direct clickable links for GitHub Repository and Android Releases & APKs.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
 - **Buttery Smooth Hardware-Accelerated Sliding Window Transitions & Gesture Swiping Across Group Tabs** ✨ ⚡ 📱 🎨 🛡️ ✅:
   - **2-Window Sliding Stage Architecture (`app/groups/[id]/index.tsx`)**:
     - Replaced the legacy single-container fade/nudge with a true hardware-accelerated 2-window sliding stage.

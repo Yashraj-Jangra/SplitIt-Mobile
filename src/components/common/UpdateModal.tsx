@@ -30,13 +30,19 @@ import {
   ArrowRight,
   ChevronRight,
   Lock,
+  GitBranch,
 } from 'lucide-react-native';
 import { BottomSheetModal } from './BottomSheetModal';
 import { AiMarkdownView } from '../ai/AiMarkdownView';
 import { THEME } from '../../constants/theme';
 import { useAppTheme } from '../../contexts/theme.context';
 import { haptics } from '../../services/haptics.service';
-import { updateService, type UpdateInfo, type DownloadProgress } from '../../services/update.service';
+import {
+  updateService,
+  compareVersions,
+  type UpdateInfo,
+  type DownloadProgress,
+} from '../../services/update.service';
 
 export interface UpdateModalProps {
   visible: boolean;
@@ -231,6 +237,11 @@ export const UpdateModal = React.memo(function UpdateModal({
 
   if (!updateInfo) return null;
 
+  const currentVer = updateInfo.currentVersion || updateService.getCurrentVersion();
+  const latestVer = updateInfo.latestVersion || currentVer;
+  const isNewerVersion = compareVersions(latestVer, currentVer) > 0;
+  const isUpdateAvailable = Boolean(updateInfo.available && isNewerVersion);
+
   const isUpdating = step === 'DOWNLOADING' || step === 'INSTALLING';
 
   return (
@@ -243,14 +254,18 @@ export const UpdateModal = React.memo(function UpdateModal({
           ? 'Install Authorization'
           : isUpdating
           ? 'Updating SplitIt'
-          : 'Update Available'
+          : isUpdateAvailable
+          ? 'Update Available'
+          : "You're Up to Date"
       }
       subtitle={
         step === 'PERMISSION_GUIDE'
           ? 'One-time permission for direct updates'
           : isUpdating
           ? 'Download in progress'
-          : `SplitIt v${updateInfo.latestVersion}`
+          : isUpdateAvailable
+          ? `SplitIt v${latestVer}`
+          : `SplitIt v${currentVer} is current`
       }
       showCloseButton={!isUpdating}
       showHandle={!isUpdating}
@@ -400,39 +415,74 @@ export const UpdateModal = React.memo(function UpdateModal({
         {step === 'IDLE' && (
           <View style={styles.idleWrapper}>
             {/* Version Meta Bar */}
-            <View style={styles.versionBar}>
-              <View style={styles.versionPillsRow}>
-                <View style={styles.versionCurrentPill}>
-                  <Text style={styles.versionCurrentLabel}>Installed</Text>
-                  <Text style={styles.versionCurrentVal}>v{updateInfo.currentVersion}</Text>
+            {isUpdateAvailable ? (
+              <View style={styles.versionBar}>
+                <View style={styles.versionPillsRow}>
+                  <View style={styles.versionCurrentPill}>
+                    <Text style={styles.versionCurrentLabel}>Installed</Text>
+                    <Text style={styles.versionCurrentVal}>v{currentVer}</Text>
+                  </View>
+
+                  <ArrowRight size={12} color={THEME.colors.textMuted} />
+
+                  <View
+                    style={[
+                      styles.versionNewPill,
+                      {
+                        backgroundColor: currentAccent.primaryMuted,
+                        borderColor: currentAccent.borderFocus,
+                      },
+                    ]}
+                  >
+                    <ArrowUpCircle size={13} color={currentAccent.primary} />
+                    <Text style={[styles.versionNewVal, { color: currentAccent.primary }]}>
+                      v{latestVer}
+                    </Text>
+                  </View>
                 </View>
 
-                <ArrowRight size={12} color={THEME.colors.textMuted} />
-
-                <View
-                  style={[
-                    styles.versionNewPill,
-                    {
-                      backgroundColor: currentAccent.primaryMuted,
-                      borderColor: currentAccent.borderFocus,
-                    },
-                  ]}
+                <TouchableOpacity
+                  style={styles.directReleasePill}
+                  onPress={handleBrowserFallback}
+                  activeOpacity={0.7}
+                  accessibilityRole="link"
+                  accessibilityLabel="View release on GitHub"
                 >
-                  <ArrowUpCircle size={13} color={currentAccent.primary} />
-                  <Text style={[styles.versionNewVal, { color: currentAccent.primary }]}>
-                    v{updateInfo.latestVersion}
+                  <GitBranch size={12} color={currentAccent.primary} />
+                  <Text style={[styles.directReleasePillText, { color: currentAccent.primary }]}>
+                    GitHub Release
                   </Text>
+                  <ExternalLink size={10} color={currentAccent.primary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.upToDateRow}>
+                <View style={styles.upToDateBadge}>
+                  <CheckCircle2 size={15} color={THEME.colors.success} />
+                  <Text style={styles.upToDateBadgeText}>Up to Date · v{currentVer}</Text>
                 </View>
-              </View>
 
-              <View style={styles.metaBadgeRow}>
-                <HardDrive size={12} color={THEME.colors.textMuted} />
-                <Text style={styles.metaBadgeText}>
-                  {updateInfo.apkSize > 0 ? formatBytes(updateInfo.apkSize) : 'Direct APK'}
-                </Text>
-                <Text style={styles.metaDot}>•</Text>
-                <Text style={styles.metaBadgeText}>{formatDate(updateInfo.publishedAt)}</Text>
+                <TouchableOpacity
+                  style={styles.directReleasePill}
+                  onPress={handleBrowserFallback}
+                  activeOpacity={0.7}
+                  accessibilityRole="link"
+                  accessibilityLabel="View release on GitHub"
+                >
+                  <GitBranch size={12} color={THEME.colors.textSecondary} />
+                  <Text style={styles.directReleasePillText}>GitHub Release</Text>
+                  <ExternalLink size={10} color={THEME.colors.textSecondary} />
+                </TouchableOpacity>
               </View>
+            )}
+
+            <View style={styles.metaBadgeRow}>
+              <HardDrive size={12} color={THEME.colors.textMuted} />
+              <Text style={styles.metaBadgeText}>
+                {updateInfo.apkSize > 0 ? formatBytes(updateInfo.apkSize) : 'Direct APK'}
+              </Text>
+              <Text style={styles.metaDot}>•</Text>
+              <Text style={styles.metaBadgeText}>{formatDate(updateInfo.publishedAt)}</Text>
             </View>
 
             <View style={styles.hairlineDivider} />
@@ -440,7 +490,9 @@ export const UpdateModal = React.memo(function UpdateModal({
             {/* Release Changelog Section */}
             <View style={styles.notesSection}>
               <View style={styles.notesHeaderRow}>
-                <Text style={styles.notesSectionLabel}>WHAT'S NEW IN V{updateInfo.latestVersion}</Text>
+                <Text style={styles.notesSectionLabel}>
+                  {isUpdateAvailable ? `WHAT'S NEW IN V${latestVer}` : `LATEST RELEASE (V${latestVer})`}
+                </Text>
               </View>
 
               <ScrollView
@@ -461,43 +513,70 @@ export const UpdateModal = React.memo(function UpdateModal({
 
             {/* Footer Action Controls */}
             <View style={styles.actionsCol}>
-              {updateInfo.downloadUrl && Platform.OS === 'android' ? (
-                <TouchableOpacity
-                  style={[styles.primaryBtn, { backgroundColor: currentAccent.primary }]}
-                  onPress={handleStartUpdate}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Download and install update"
-                >
-                  <Download size={18} color={THEME.colors.primaryForeground} />
-                  <Text style={styles.primaryBtnText}>
-                    Update to v{updateInfo.latestVersion}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
+              {isUpdateAvailable && updateInfo.downloadUrl && Platform.OS === 'android' ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { backgroundColor: currentAccent.primary }]}
+                    onPress={handleStartUpdate}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Download and install update"
+                  >
+                    <Download size={18} color={THEME.colors.primaryForeground} />
+                    <Text style={styles.primaryBtnText}>
+                      Update to v{latestVer}
+                    </Text>
+                  </TouchableOpacity>
 
-              <View style={styles.secondaryRow}>
-                <TouchableOpacity
-                  style={styles.secondaryTextBtn}
-                  onPress={handleBrowserFallback}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="View release on GitHub"
-                >
-                  <ExternalLink size={13} color={THEME.colors.textSecondary} />
-                  <Text style={styles.secondaryTextBtnText}>View on GitHub</Text>
-                </TouchableOpacity>
+                  <View style={styles.secondaryRow}>
+                    <TouchableOpacity
+                      style={styles.secondaryTextBtn}
+                      onPress={handleBrowserFallback}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="View release on GitHub"
+                    >
+                      <ExternalLink size={13} color={THEME.colors.textSecondary} />
+                      <Text style={styles.secondaryTextBtnText}>Direct GitHub Release</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.laterButton}
-                  onPress={onClose}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Dismiss update for now"
-                >
-                  <Text style={styles.laterButtonText}>Later</Text>
-                </TouchableOpacity>
-              </View>
+                    <TouchableOpacity
+                      style={styles.laterButton}
+                      onPress={onClose}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="Dismiss update for now"
+                    >
+                      <Text style={styles.laterButtonText}>Later</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { backgroundColor: currentAccent.primary }]}
+                    onPress={handleBrowserFallback}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="View release on GitHub"
+                  >
+                    <ExternalLink size={17} color={THEME.colors.primaryForeground} />
+                    <Text style={styles.primaryBtnText}>
+                      Direct GitHub Release
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.closeFullButton}
+                    onPress={onClose}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close update dialog"
+                  >
+                    <Text style={styles.closeFullButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         )}
@@ -1041,5 +1120,57 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: THEME.colors.textMuted,
     fontWeight: '500',
+  },
+  directReleasePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+  },
+  directReleasePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  upToDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  upToDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.25)',
+  },
+  upToDateBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.success,
+  },
+  closeFullButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.surfaceSubtle,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: THEME.colors.border,
+  },
+  closeFullButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
   },
 });
