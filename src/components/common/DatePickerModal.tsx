@@ -246,7 +246,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
       onClose={onClose}
       title={title}
       subtitle={formattedSelectedPreview}
-      maxHeight="86%"
+      maxHeight="90%"
     >
       <View style={styles.container}>
         {/* Quick Presets Row */}

@@ -1,5 +1,27 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Analytics Date Range Picker Overhaul & Continuous Ribbon Calendar** 🎨 📅 ⚡ 📱 🛡️ ✅:
+  - **Docked Pinned Footer & Zero-Clip Sheet Architecture**:
+    - Eliminated button cutoff on constrained mobile viewports by separating the modal layout into a scrollable body (`ScrollView flexShrink: 1`) and a pinned docked action footer (`flexShrink: 0`).
+    - Anchored `All Time` reset and `Apply Range` buttons directly above sheet insets, guaranteeing 100% visibility regardless of device height or navigation bar sizes.
+    - Set `maxHeight="92%"` on `BottomSheetModal` with `flexShrink: 1` on `modalWrapper`.
+  - **Modern Executive From / To Date Selector Capsule**:
+    - Replaced disconnected box pair with a unified glass capsule (`rangeCapsuleContainer`).
+    - Side-by-side interactive Start and End date cards featuring glowing status indicator dots, uppercase category captions, formatted dates, and weekday sub-labels.
+    - Centered dynamic duration anchor displaying the active length badge (e.g. `[ 14 days ]`) or contextual arrow.
+    - Tactile mode switching (`haptics.toggleSwitch()`) with automatic calendar synchronization to the active date's month and year.
+  - **Continuous Ribbon Calendar Range Selection**:
+    - Redesigned date range styling with continuous pill ribbon tracks:
+      - Start endpoint (`isFrom`): filled accent bubble with right-half connecting track.
+      - End endpoint (`isTo`): filled accent bubble with left-half connecting track.
+      - In-between days (`isInRange`): unbroken horizontal ribbon track with rounded row-start (Sunday) and row-end (Saturday) caps.
+      - Single-day range: standalone circular bubble with zero track overflow.
+    - Enhanced month navigation with `PressableScale` buttons and calendar icon badge.
+    - Expanded quick presets to include "All Time", "This Month", "Last Month", "Last 30 Days", "Last 90 Days", and "This Year".
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
 - **Milestone v1.3.3 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
   - **Version Manifests Synchronized to 1.3.3 (Build 9)**:
     - `package.json`: `"version": "1.3.3"`
