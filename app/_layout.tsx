@@ -122,80 +122,40 @@ function NavigationGate() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: THEME.colors.background },
-            animation: 'default',
+            animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right',
             gestureEnabled: true,
+            gestureDirection: 'horizontal',
             fullScreenGestureEnabled: Platform.OS === 'ios',
             animationMatchesGesture: true,
             freezeOnBlur: false,
           }}
         >
-          <Stack.Screen name="(auth)" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen
-            name="groups/[id]/index"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="groups/[id]/settings"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
+          <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+          <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+          <Stack.Screen name="groups/[id]/index" />
+          <Stack.Screen name="groups/[id]/settings" />
           <Stack.Screen
             name="expenses/new"
             options={{
               presentation: 'transparentModal',
               animation: 'none',
-              headerShown: false,
               contentStyle: { backgroundColor: 'transparent' },
             }}
           />
-          <Stack.Screen
-            name="expenses/[id]"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
+          <Stack.Screen name="expenses/[id]" />
           <Stack.Screen
             name="groups/new"
             options={{
               presentation: 'modal',
               animation: 'slide_from_bottom',
-              gestureEnabled: true,
-              headerShown: false,
             }}
           />
-          <Stack.Screen
-            name="groups/[id]/search"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
+          <Stack.Screen name="groups/[id]/search" />
           <Stack.Screen
             name="settle/new"
             options={{
               presentation: 'modal',
               animation: 'slide_from_bottom',
-              gestureEnabled: true,
-              headerShown: false,
             }}
           />
           <Stack.Screen
@@ -203,38 +163,16 @@ function NavigationGate() {
             options={{
               presentation: 'modal',
               animation: 'slide_from_bottom',
-              gestureEnabled: true,
-              headerShown: false,
             }}
           />
-          <Stack.Screen
-            name="settlements/[id]"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="analysis/index"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
+          <Stack.Screen name="settlements/[id]" />
+          <Stack.Screen name="analysis/index" />
           <Stack.Screen
             name="ai/chat"
             options={{
               presentation: 'modal',
               animation: 'slide_from_bottom',
-              gestureEnabled: true,
               gestureDirection: 'vertical',
-              headerShown: false,
             }}
           />
           <Stack.Screen
@@ -242,158 +180,35 @@ function NavigationGate() {
             options={{
               presentation: 'modal',
               animation: 'slide_from_bottom',
-              gestureEnabled: true,
-              headerShown: false,
             }}
           />
-          <Stack.Screen
-            name="notifications/index"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="notifications/preferences"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="support/index"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
+          <Stack.Screen name="notifications/index" />
+          <Stack.Screen name="notifications/preferences" />
+          <Stack.Screen name="support/index" />
           <Stack.Screen
             name="support/new"
             options={{
               presentation: 'modal',
               animation: 'slide_from_bottom',
-              gestureEnabled: true,
-              headerShown: false,
             }}
           />
-          <Stack.Screen
-            name="support/[id]"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="legal/privacy"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="legal/terms"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
+          <Stack.Screen name="support/[id]" />
+          <Stack.Screen name="legal/privacy" />
+          <Stack.Screen name="legal/terms" />
           <Stack.Screen
             name="legal/delete-account"
             options={{
               presentation: 'modal',
               animation: 'slide_from_bottom',
-              gestureEnabled: true,
-              headerShown: false,
             }}
           />
-          <Stack.Screen
-            name="settings/account"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="settings/preferences"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="settings/appearance"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="settings/security"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="settings/payment"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="settings/my-qr"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
-          <Stack.Screen
-            name="info/about"
-            options={{
-              headerShown: false,
-              animation: 'default',
-              gestureEnabled: true,
-              fullScreenGestureEnabled: Platform.OS === 'ios',
-              animationMatchesGesture: true,
-            }}
-          />
+          <Stack.Screen name="settings/account" />
+          <Stack.Screen name="settings/preferences" />
+          <Stack.Screen name="settings/appearance" />
+          <Stack.Screen name="settings/security" />
+          <Stack.Screen name="settings/payment" />
+          <Stack.Screen name="settings/my-qr" />
+          <Stack.Screen name="info/about" />
         </Stack>
 
         {isLoading && (

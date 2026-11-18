@@ -1,5 +1,26 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Interactive Android Predictive Back & Real-Time Gesture Navigation** ✨ 📱 ⚡ 🛡️ ✅:
+  - **Android 14+ / 15 Native Predictive Back Progress Tracking (`MainActivity.kt`)**:
+    - Integrated AndroidX `OnBackPressedCallback` with real-time `BackEventCompat` progress tracking (`handleOnBackStarted`, `handleOnBackProgressed`, `handleOnBackCancelled`, `handleOnBackPressed`).
+    - Implemented real-time interactive window tracking: when the user swipes inward halfway (50%), the screen interactively scales down (`1.0 -> 0.90`), rounds corners (`0 -> 24dp` via `ViewOutlineProvider`), and translates horizontally (`progress * 42% width`).
+    - On release past threshold or with velocity: smoothly slides off-screen with `DecelerateInterpolator(1.5f)` and delegates cleanly to React Native's back dispatcher.
+    - On gesture cancel: smoothly springs back to identity scale and zero translation with `DecelerateInterpolator(1.8f)`.
+  - **Expo Config Plugin Native Injection (`plugins/withPredictiveBack.js`)**:
+    - Configured `withMainActivity` to automatically inject `setupPredictiveBack()`, required imports (`BackEventCompat`, `OnBackPressedCallback`, `ViewOutlineProvider`), and lifecycle hooks during Continuous Native Generation / `expo prebuild`.
+  - **Safe Back Handler Interception Clean Up (`src/hooks/useSafeBack.ts`)**:
+    - Removed blocking `hardwareBackPress` listener when `router.canGoBack()` is true so the native Android gesture controller and `MainActivity` progress tracking run completely unimpeded without JavaScript event suppression.
+    - Retained safe fallback redirection for cold-start deep links where `router.canGoBack()` is false.
+  - **Stack Configuration & Clean Codebase (`app/_layout.tsx`)**:
+    - Centralized optimal stack options at `<Stack screenOptions>`: `animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right'`, `gestureEnabled: true`, `gestureDirection: 'horizontal'`.
+    - Eliminated 185 lines of duplicate boilerplate options across 20+ `<Stack.Screen>` declarations.
+  - **Interactive Swipe Back Container (`src/components/common/InteractiveSwipeBack.tsx`)**:
+    - Created reusable UI-thread Reanimated 4 and Gesture Handler v2 swipe-back component with edge detection, real-time scaling, corner rounding, and dimming scrim.
+  - **Quality Gates Passed**:
+    - `compileDebugKotlin` verified with 0 errors via Gradle.
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
 - **Analytics Date Range Picker Overhaul & Continuous Ribbon Calendar** 🎨 📅 ⚡ 📱 🛡️ ✅:
   - **Docked Pinned Footer & Zero-Clip Sheet Architecture**:
     - Eliminated button cutoff on constrained mobile viewports by separating the modal layout into a scrollable body (`ScrollView flexShrink: 1`) and a pinned docked action footer (`flexShrink: 0`).
