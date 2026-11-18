@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, StyleSheet, GestureResponderEvent } from 'react-native';
 import Svg, { G, Circle, Text as SvgText } from 'react-native-svg';
 import { THEME } from '../../constants/theme';
 import { haptics } from '../../services/haptics.service';
@@ -20,6 +20,7 @@ export interface DonutChartProps {
   centerLabel?: string;
   selectedSliceId?: string | null;
   onSelectSlice?: (slice: DonutSlice | null) => void;
+  onScrubbingChange?: (isScrubbing: boolean) => void;
 }
 
 export const DonutChart: React.FC<DonutChartProps> = ({
@@ -30,6 +31,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
   centerLabel,
   selectedSliceId,
   onSelectSlice,
+  onScrubbingChange,
 }) => {
   const center = size / 2;
   const radius = (size - strokeWidth) / 2;
@@ -42,7 +44,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
   if (totalValue === 0 || validSlices.length === 0) {
     return (
       <View style={[styles.container, { width: size, height: size }]}>
-        <Svg width={size} height={size}>
+        <Svg width={size} height={size} pointerEvents="none">
           <Circle
             cx={center}
             cy={center}
@@ -71,6 +73,8 @@ export const DonutChart: React.FC<DonutChartProps> = ({
   let accumulatedPercent = 0;
   const renderedSlices = validSlices.map((slice) => {
     const fraction = slice.value / totalValue;
+    const startFraction = accumulatedPercent;
+    const endFraction = accumulatedPercent + fraction;
     const strokeDash = fraction * circumference;
     const strokeOffset = -accumulatedPercent * circumference;
     accumulatedPercent += fraction;
@@ -80,15 +84,74 @@ export const DonutChart: React.FC<DonutChartProps> = ({
     return {
       ...slice,
       fraction,
+      startFraction,
+      endFraction,
       strokeDash,
       strokeOffset,
       isSelected,
     };
   });
 
+  const handleTouch = useCallback(
+    (e: GestureResponderEvent, isGrant = false) => {
+      if (validSlices.length === 0) return;
+      const { locationX, locationY } = e.nativeEvent;
+      const dx = locationX - center;
+      const dy = locationY - center;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Dead center tap toggles/deselects
+      if (distance < radius - strokeWidth) {
+        if (isGrant && selectedSliceId) {
+          haptics.chartScrub();
+          onSelectSlice?.(null);
+        }
+        return;
+      }
+
+      // Calculate angle from 12 o'clock clockwise in [0, 2π)
+      let angle = Math.atan2(dy, dx) + Math.PI / 2;
+      if (angle < 0) {
+        angle += 2 * Math.PI;
+      }
+      const fraction = angle / (2 * Math.PI);
+
+      const targetSlice = renderedSlices.find(
+        (s) => fraction >= s.startFraction && fraction < s.endFraction
+      );
+
+      if (targetSlice && targetSlice.id !== selectedSliceId) {
+        haptics.chartScrub();
+        onSelectSlice?.(targetSlice);
+      } else if (isGrant && targetSlice && targetSlice.id === selectedSliceId) {
+        haptics.chartScrub();
+        onSelectSlice?.(null);
+      }
+    },
+    [validSlices, center, radius, strokeWidth, selectedSliceId, onSelectSlice, renderedSlices]
+  );
+
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
-      <Svg width={size} height={size}>
+    <View
+      style={[styles.container, { width: size, height: size }]}
+      onStartShouldSetResponder={() => true}
+      onMoveShouldSetResponder={() => true}
+      onStartShouldSetResponderCapture={() => true}
+      onMoveShouldSetResponderCapture={() => true}
+      onResponderGrant={(e) => {
+        onScrubbingChange?.(true);
+        handleTouch(e, true);
+      }}
+      onResponderMove={(e) => handleTouch(e, false)}
+      onResponderRelease={() => {
+        onScrubbingChange?.(false);
+      }}
+      onResponderTerminate={() => {
+        onScrubbingChange?.(false);
+      }}
+      onResponderTerminationRequest={() => false}
+    >
+      <Svg width={size} height={size} pointerEvents="none">
         {/* Background track circle */}
         <Circle
           cx={center}
@@ -113,12 +176,6 @@ export const DonutChart: React.FC<DonutChartProps> = ({
               strokeDashoffset={slice.strokeOffset}
               strokeLinecap="butt"
               fill="none"
-              onPress={() => {
-                haptics.chartScrub();
-                if (onSelectSlice) {
-                  onSelectSlice(slice.isSelected ? null : slice);
-                }
-              }}
             />
           ))}
         </G>

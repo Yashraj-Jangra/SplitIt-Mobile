@@ -38,6 +38,7 @@ import { useAuth } from '../../src/contexts/auth.context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../src/services/settings.service';
 import { haptics } from '../../src/services/haptics.service';
+import { PressableScale } from '../../src/components/common/PressableScale';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
 import { appEventEmitter } from '../../src/services/event-emitter';
@@ -107,6 +108,7 @@ const SORT_OPTIONS: SortOptionItem[] = [
 
 export default function GroupsScreen() {
   const router = useRouter();
+  const isNavigatingRef = useRef(false);
   const { user: authUser } = useAuth();
   const { currencySymbol } = useCurrency();
   const { currentAccent } = useAppTheme();
@@ -123,6 +125,16 @@ export default function GroupsScreen() {
     !isDemoDismissed &&
     !demoService.isDemoDismissedSync(authUser?.id) &&
     groups.some((g) => g.id.startsWith('demo_'));
+
+  const handleOpenGroup = useCallback((groupId: string) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+    haptics.tap();
+    router.push(`/groups/${groupId}`);
+  }, [router]);
 
   const handleDismissDemo = async () => {
     haptics.saveSuccess();
@@ -453,14 +465,13 @@ export default function GroupsScreen() {
               const isOwe = group.userNetBalance < -0.01;
 
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={group.id}
                   style={styles.cinematicCard}
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    haptics.tap();
-                    router.push(`/groups/${group.id}`);
-                  }}
+                  activeScale={0.975}
+                  onPress={() => handleOpenGroup(group.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Group ${group.name}`}
                 >
                   {/* Photo Cover Backdrop */}
                   <Image
@@ -552,7 +563,7 @@ export default function GroupsScreen() {
                       </Text>
                     </View>
                   </View>
-                </TouchableOpacity>
+                </PressableScale>
               );
             })
           )}

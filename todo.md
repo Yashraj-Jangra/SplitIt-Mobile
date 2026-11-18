@@ -1,5 +1,109 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Milestone v1.3.3 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
+  - **Version Manifests Synchronized to 1.3.3 (Build 9)**:
+    - `package.json`: `"version": "1.3.3"`
+    - `app.json`: `"version": "1.3.3"`, `"versionCode": 9`, `"buildNumber": "9"`
+    - Synchronized fallback version in `update.service.ts`, `profile.tsx`, `about.tsx`, and `preferences.tsx`.
+  - **Documentation & Releases**:
+    - Updated `CHANGELOG.md` with full breakdown of v1.3.3 features, fixes, and performance upgrades.
+    - Updated `RELEASE.md` with v1.3.3 release template.
+
+- **Full Modernization of App Animation Architecture & Native Android Predictive Back** ✨ ⚡ 📱 🎨 🚀 ✅:
+  - **Android 14/15 Predictive Back Native Integration**:
+    - Modernized `app/_layout.tsx` across all 20 stack screens: replaced rigid, linear `animation: 'slide_from_right'` with native platform-adaptive `animation: 'default'`.
+    - Gated `fullScreenGestureEnabled: Platform.OS === 'ios'` so Android 14/15's native Predictive Back gesture controller (`android:enableOnBackInvokedCallback="true"` via `plugins/withPredictiveBack.js`) runs completely unimpeded without gesture interception conflicts.
+    - Enables native continuous corner-radius smoothing, elevation shadow depth, and progressive background reveal on Android 14/15.
+  - **Premium Physics Animation Tokens (`src/constants/theme.ts`)**:
+    - Tuned `THEME.animation.spring` with physics tokens for different interactions: `default`, `snappy` (tabs, navigation indicators), `press` (tactile button depression), `gentle`, and `bouncy`.
+    - Refined `THEME.animation.timing`: `instant` (120ms), `fast` (180ms), `normal` (260ms), and `slow` (400ms).
+  - **Flagship UI-Thread Spring Component (`PressableScale`)**:
+    - Created `src/components/common/PressableScale.tsx` utilizing Reanimated 4 `useSharedValue` and `withSpring` running purely as UI-thread worklets.
+    - Replaced flat `activeOpacity={0.8}` with fluid, physical spring depression (`activeScale: 0.97`) and semantic haptics integration.
+    - Integrated across flagship touch points:
+      - Cinematic Group Cards (`app/(tabs)/groups.tsx`).
+      - Home Action Dock ("Add Expense", "Settle Up", "Scan") and Active Groups Pebble Strip (`app/(tabs)/index.tsx`).
+      - Universal Activity stream rows (`ActivityExpenseRow.tsx` and `ActivitySettlementRow.tsx`).
+  - **Group Detail Tabs & FAB UI-Thread Migration (`app/groups/[id]/index.tsx`)**:
+    - Migrated JS-thread `tabIndicatorAnim`, `tabContentAnim`, `tabSlideAnim`, and `fabAnim` to Reanimated 4 worklets (`useSharedValue` + `useAnimatedStyle`).
+    - Sliding tab indicator pill now glides with `withSpring(tabIndex, THEME.animation.spring.snappy)` with dynamic tab width tracking.
+    - Directional subtle horizontal slide and content fade on tab change with zero black flicker.
+    - Add Expense FAB spring scale, rotation worklet, and pulse ring on tap.
+  - **Expense Modal Tab Indicators UI-Thread Worklet Migration**:
+    - Migrated `SplitOptionsModal.tsx` and `PayerSelectModal.tsx` from JS-thread `useNativeDriver: false` `Animated.Value` to Reanimated worklets (`tabUnderlineShared`, `tabUnderlineAnimatedStyle`, `withSpring`).
+  - **Offline Banner Spring Modernization**:
+    - Migrated `OfflineBanner.tsx` to Reanimated `useSharedValue` and `useAnimatedStyle`.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` verified with 0 errors.
+
+- **State-Aware Seamless Navigation & Notification Deduplication** 🛡️ 📱 ⚡ 🚀 ✅:
+  - **Notification Click Deduplication & Dual-Dispatch Elimination**:
+    - Guarded against native OS dual-firing (`getLastNotificationResponseAsync` + `addNotificationResponseReceivedListener`) via `shouldHandleNotificationResponse` with a 4000ms unique identifier deduplication window in `src/services/notification.service.ts`.
+    - Consolidated route resolution in `resolveNotificationRoute` for all push payload variants.
+  - **Active Route Duplicate Suppression**:
+    - In `app/_layout.tsx`, added `navigateFromNotification` which verifies active `usePathname()` against the target route, suppressing duplicate `/groups/[id]` or `/expenses/[id]` pushes when already viewing that screen, and switching tabs cleanly with `router.replace` when query params change.
+  - **State-Aware Safe Back Hook (`src/hooks/useSafeBack.ts`)**:
+    - Created `useSafeBack` hook with `router.canGoBack()` detection, automatic fallback routing (`/(tabs)/groups` or parent `/groups/[id]`), and 500ms multi-tap throttling.
+    - Synchronized Android `hardwareBackPress` listener with the exact same state-aware back logic, preventing accidental app minimization or dead-end button traps.
+  - **Integrated into All Key Detail Screens**:
+    - `app/groups/[id]/index.tsx`, `app/expenses/[id].tsx`, `app/settlements/[id].tsx`, `app/groups/[id]/search.tsx`, `app/groups/[id]/settings.tsx`, `app/notifications/index.tsx`.
+    - Parent group fallback on expense/settlement deletion and back navigation.
+  - **Touch-Debounced Navigation Across Cards**:
+    - Added 600ms navigation lock on card clicks in `app/(tabs)/groups.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/activity.tsx`, and `app/notifications/index.tsx` to eliminate double-tap stack duplication.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+- **Sticky Chat & Accessory Bar Vertical Spacing Harmonization Across Closed/Open States** 🎨 ⌨️ 📱 ⚡ 🛡️ ✅:
+  - **Ghost Vertical Offset Elimination**:
+    - Fixed ghost gap in `app/ai/chat.tsx`, `app/support/[id].tsx`, `app/expenses/[id].tsx`, and `app/settlements/[id].tsx` by resetting `keyboardVerticalOffset={0}` (was erroneously set to `insets.top`).
+    - In `react-native-keyboard-controller`, `relativeKeyboardHeight` calculates `screenHeight - keyboardHeight - keyboardVerticalOffset`; passing `insets.top` had caused an extra 47-59px void to be appended to the bottom padding whenever the keyboard was opened.
+  - **Symmetrical Vertical Padding Rhythm**:
+    - Updated `KeyboardStickyBottomBar` (`src/components/common/KeyboardStickyBottomBar.tsx`):
+      - Defaulted `idlePaddingBottom = 8` and `keyboardPaddingBottom = 8` to match `paddingTop: 8`.
+      - Ensured `animatedStyle` is applied last in the `style` array so external container styles cannot inadvertently override dynamic `paddingBottom` transitions.
+    - Symmetrized `app/ai/chat.tsx`: input capsule now has exact 8px top spacing and 8px bottom spacing flush above the keyboard when open, and clean safe-area anchoring when closed.
+    - Symmetrized `app/support/[id].tsx`: updated `styles.inputBar` to `paddingTop: 8` and set `keyboardPaddingBottom={8}`, `idlePaddingBottom={8}`.
+    - Symmetrized comment docks in `app/expenses/[id].tsx` and `app/settlements/[id].tsx`.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+- **Analytics Charts Vertical Scroll-Lock & Pure Horizontal Scrubbing System** ⚡ 📱 🎨 🛡️ ✅:
+  - **Group Analytics Scroll-Lock Integration**:
+    - Wired `onScrubbingChange` through `GroupAnalysisTab` and connected it to `app/groups/[id]/index.tsx`'s parent `Animated.ScrollView` (`scrollEnabled={!isScrubbingChart}`).
+    - Eliminated vertical gesture hijacking where natural vertical finger drift would scroll the group screen and instantly lose the chart hover effect.
+  - **Spending Timeline Chart Hardening**:
+    - Added `pointerEvents="none"` to `<Svg>` canvas and X-axis date row, preventing child element target-switching from corrupting `e.nativeEvent.locationX`.
+    - Clamped horizontal coordinate tracking to plot boundaries (`paddingLeft` to `chartWidth - paddingRight`), ensuring continuous thumb tracking across the timeline.
+    - Set `onResponderTerminationRequest={() => false}` to strictly refuse termination while the user's finger is on the chart.
+    - Added auto-dismiss timeout (6s) on finger release instead of abruptly wiping hover data.
+  - **Interactive Donut Chart Scrubbing & Scroll-Lock**:
+    - Added circular angular scrub detection ($\text{atan2}(dy, dx)$ clockwise from 12 o'clock) with `onScrubbingChange` support to `DonutChart`.
+    - Allows users to drag and scrub through member spending shares with crisp `haptics.chartScrub()` detents without triggering vertical page scrolling.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+- **Notification Page Editorial Header Overhaul & Reanimated Swipe Gesture Rewrite** 🎨 ✨ 📱 ⚡ 🛡️ ✅:
+  - **Two-Tier Editorial Header Layout**:
+    - Eliminated horizontal collision on narrow viewports (≤ 390px) by decoupling navigation and title hierarchy.
+    - **Tier 1 (Navigation Bar)**: Clean `topNavRow` with Back circle button on the left, and streamlined action buttons on the right: sleek `[✓✓ Mark all read]` pill (rendered conditionally only when `unreadCount > 0`) + circular Settings button.
+    - **Tier 2 (Hero Editorial Header)**: Open `heroHeader` with bold "Notifications" title (`fontSize: 24`, `fontWeight: '800'`), context subtitle, and modern status pill (`[ • {unreadCount} new ]` with live accent pulse dot when unread, or `[ ✓ All caught up ]` when 0 unread).
+  - **Hardware-Accelerated Smooth Reanimated Swipe-to-Read Gesture**:
+    - Created `SwipeActionRight` sub-component utilizing `useAnimatedStyle` with worklet-interpolated scale (`0.45 -> 1.06`), opacity (`0 -> 1.0`), and elastic translateX (`20 -> 0`) linked to `progress.value`.
+    - Maintained continuous mounting of `ReanimatedSwipeable` using `enabled={!isRead}` — completely eliminating the jarring unmount/remount tearing on status change.
+    - Added spring-finish delayed dismissal: `onSwipeableOpen` triggers `haptics.saveSuccess()`, glides closed via `swipeableRef.current?.close()`, and waits 220ms before updating read state.
+    - Added tactile drag haptic feedback on `onSwipeableWillOpen` via `haptics.swipe()`.
+    - Calibrated swipe gesture parameters: `friction={1.1}`, `rightThreshold={36}`, `overshootRight={false}`, `dragOffsetFromRight={-8}` for fluid thumb flick action without vertical scroll interference.
+  - **Design & Theme Compliance**:
+    - Replaced hardcoded `#18191E` with `THEME.colors.surfaceSubtle`.
+    - High-contrast obsidian drawer styling with accent squircle icon badge and uppercase action caption.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` verified with 0 errors.
+
 - **Milestone v1.3.2 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
   - **Version Manifests Synchronized to 1.3.2 (Build 8)**:
     - `package.json`: `"version": "1.3.2"`

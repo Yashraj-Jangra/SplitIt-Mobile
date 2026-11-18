@@ -129,6 +129,8 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
 };
 
 let _cachedNotifications: InAppNotification[] = [];
+let _lastHandledNotificationId: string | null = null;
+let _lastHandledNotificationTime = 0;
 
 export function getChannelIdForType(type: string): string {
   if (type.includes('expense')) return 'expenses';
@@ -563,6 +565,61 @@ export const notificationService = {
   },
 
   /**
+   * Resolve an internal app route from push notification payload data
+   */
+  resolveNotificationRoute(data: any): string | null {
+    if (!data) return null;
+    const { type, groupId, expenseId, settlementId, ticketId, url, tab } = data;
+
+    if (url && typeof url === 'string') {
+      return url;
+    }
+    if (expenseId && groupId) {
+      return `/expenses/${expenseId}?groupId=${groupId}`;
+    }
+    if (settlementId && groupId) {
+      return `/settlements/${settlementId}?groupId=${groupId}`;
+    }
+    if (tab === 'budget' && groupId) {
+      return `/groups/${groupId}?tab=budget`;
+    }
+    if (type === 'budget_alert' || type === 'budget_exceeded' || type === 'budget_updated') {
+      if (groupId) return `/groups/${groupId}?tab=budget`;
+    }
+    if (type === 'monthly_summary') {
+      return '/(tabs)/analysis';
+    }
+    if (ticketId || type === 'support_reply') {
+      return ticketId ? `/support/${ticketId}` : '/support';
+    }
+    if (groupId) {
+      return `/groups/${groupId}`;
+    }
+    if (type === 'broadcast_announcement' || type === 'broadcast_critical') {
+      return '/notifications';
+    }
+    return null;
+  },
+
+  /**
+   * Deduplicate notification click response events across cold-start and runtime listeners.
+   * Prevents the OS from firing dual events for a single user tap.
+   */
+  shouldHandleNotificationResponse(response: any): boolean {
+    if (!response?.notification) return false;
+    const identifier =
+      response.notification.request?.identifier ||
+      JSON.stringify(response.notification.request?.content?.data || '');
+    const now = Date.now();
+    if (_lastHandledNotificationId === identifier && now - _lastHandledNotificationTime < 4000) {
+      return false;
+    }
+    _lastHandledNotificationId = identifier;
+    _lastHandledNotificationTime = now;
+    return true;
+  },
+
+  /**
    * Listen to push notification clicks and route deep links
    */
   setupResponseListener(navigate: (route: string) => void): { remove: () => void } {
@@ -573,55 +630,11 @@ export const notificationService = {
 
     try {
       return Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as any;
-        if (!data) return;
-
-        const { type, groupId, expenseId, settlementId, ticketId, url, tab } = data;
-
-        if (url && typeof url === 'string') {
-          navigate(url);
-          return;
-        }
-
-        if (expenseId && groupId) {
-          navigate(`/expenses/${expenseId}?groupId=${groupId}`);
-          return;
-        }
-
-        if (settlementId && groupId) {
-          navigate(`/settlements/${settlementId}?groupId=${groupId}`);
-          return;
-        }
-
-        if (tab === 'budget' && groupId) {
-          navigate(`/groups/${groupId}?tab=budget`);
-          return;
-        }
-        if (type === 'budget_alert' || type === 'budget_exceeded' || type === 'budget_updated') {
-          if (groupId) {
-            navigate(`/groups/${groupId}?tab=budget`);
-            return;
-          }
-        }
-
-        if (type === 'monthly_summary') {
-          navigate('/(tabs)/analysis');
-          return;
-        }
-
-        if (ticketId || type === 'support_reply') {
-          navigate(ticketId ? `/support/${ticketId}` : '/support');
-          return;
-        }
-
-        if (groupId) {
-          navigate(`/groups/${groupId}`);
-          return;
-        }
-
-        if (type === 'broadcast_announcement' || type === 'broadcast_critical') {
-          navigate('/notifications');
-          return;
+        if (!this.shouldHandleNotificationResponse(response)) return;
+        const data = response.notification?.request?.content?.data as any;
+        const targetRoute = this.resolveNotificationRoute(data);
+        if (targetRoute) {
+          navigate(targetRoute);
         }
       });
     } catch {
@@ -752,28 +765,11 @@ export const notificationService = {
     try {
       const response = await Notifications.getLastNotificationResponseAsync();
       if (response) {
+        if (!this.shouldHandleNotificationResponse(response)) return;
         const data = response.notification?.request?.content?.data as any;
-        if (!data) return;
-        const { type, groupId, expenseId, settlementId, ticketId, url } = data;
-        if (url && typeof url === 'string') {
-          navigate(url);
-          return;
-        }
-        if (expenseId && groupId) {
-          navigate(`/expenses/${expenseId}?groupId=${groupId}`);
-          return;
-        }
-        if (settlementId && groupId) {
-          navigate(`/settlements/${settlementId}?groupId=${groupId}`);
-          return;
-        }
-        if (ticketId || type === 'support_reply') {
-          navigate(ticketId ? `/support/${ticketId}` : '/support');
-          return;
-        }
-        if (groupId) {
-          navigate(`/groups/${groupId}`);
-          return;
+        const targetRoute = this.resolveNotificationRoute(data);
+        if (targetRoute) {
+          navigate(targetRoute);
         }
       }
     } catch {

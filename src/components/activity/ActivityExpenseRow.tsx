@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { THEME } from '../../constants/theme';
 import { CategoryIcon } from '../../utils/category-icons';
 import { ExpenseImpactCol } from '../expenses/ExpenseImpactCol';
+import { PressableScale } from '../common/PressableScale';
 
 export interface ActivityExpenseItemData {
   id: string;
@@ -40,9 +41,9 @@ export const ActivityExpenseRow = React.memo(function ActivityExpenseRow({
   const masterCat = expense.masterCategory || expense.category?.master;
 
   return (
-    <TouchableOpacity
+    <PressableScale
       style={[styles.row, !isLast && styles.rowBorder, style]}
-      activeOpacity={0.7}
+      activeScale={0.985}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Expense: ${expense.title}`}
@@ -71,7 +72,7 @@ export const ActivityExpenseRow = React.memo(function ActivityExpenseRow({
 
       {/* Right Column: Expense Impact */}
       <ExpenseImpactCol expense={expense} currentUserId={currentUserId} />
-    </TouchableOpacity>
+    </PressableScale>
   );
 });
 

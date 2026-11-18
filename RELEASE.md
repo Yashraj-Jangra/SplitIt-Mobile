@@ -4,6 +4,56 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 ---
 
+## [v1.3.3] - 2026-11-18
+
+> **Target OS**: Android 10+ (API 29+) & iOS 15+  
+> **Build Number**: `9`  
+> **Package**: `com.splitit.app`
+
+### 📦 Artifacts & Downloads
+
+| File | Type | Size | SHA256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **`SplitIt-v1.3.3.apk`** | Android Release APK | `Pending build` | `Pending build` |
+
+```bash
+# Verify checksum on Windows (PowerShell)
+Get-FileHash -Algorithm SHA256 .\SplitIt-v1.3.3.apk
+
+# Verify checksum on Linux / macOS
+sha256sum SplitIt-v1.3.3.apk
+```
+
+---
+
+### 🚀 Highlights & Changelog
+
+#### ✨ Animation Modernization & Predictive Back Gestures
+- **Native Android 14/15 Predictive Back**:
+  - Platform-adaptive stack transitions in `app/_layout.tsx` enabling native Predictive Back (`android:enableOnBackInvokedCallback="true"`).
+  - Progressive edge swipe scaling, 28dp rounded corners, elevation shadows, and underlying screen reveal.
+- **Hardware-Accelerated Spring Physics (`PressableScale`)**:
+  - Reanimated 4 UI-thread worklets (`useSharedValue` + `withSpring`) for tactile touch depression (`activeScale: 0.97`).
+  - Integrated across Group Cards, Home Action Dock, Group Pebbles, and Activity transaction rows.
+- **UI-Thread Tab & Modal Worklets**:
+  - Reanimated 4 worklets for Group Detail Tabs sliding pill, content slide/fade, and Add Expense FAB.
+  - Reanimated UI-thread springs in `SplitOptionsModal.tsx`, `PayerSelectModal.tsx`, and `OfflineBanner.tsx`.
+
+#### 🛡️ State-Aware Safe Back Navigation & Notification Deduplication
+- **Deduplication Engine**:
+  - 4000ms unique identifier deduplication window in `src/services/notification.service.ts` to prevent duplicate notification click dispatches.
+  - Active route duplicate suppression via `navigateFromNotification` in `app/_layout.tsx`.
+- **State-Aware Safe Back Hook (`useSafeBack`)**:
+  - Checked back navigation with fallback routes and Android hardware back button synchronization.
+  - 600ms card navigation lock across Home, Groups, and Activity screens.
+
+#### 🎨 Visual & Layout Polishing
+- Harmonized top/bottom padding and eliminated ghost vertical offset in `KeyboardStickyBottomBar`.
+- Vertical page scroll-locking during horizontal timeline scrub and donut chart interaction across Analytics.
+- Open editorial two-tier header and hardware-accelerated `ReanimatedSwipeable` swipe-to-read gesture on Notifications page.
+
+---
+
 ## [v1.3.2] - 2026-10-31
 
 > **Target OS**: Android 10+ (API 29+) & iOS 15+  

@@ -4,6 +4,39 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-11-18
+
+### ✨ Animation Modernization & Predictive Back Gestures
+- **Native Android 14/15 Predictive Back**:
+  - Replaced rigid, linear `'slide_from_right'` with native platform-adaptive `'default'` across all 20 stack screens in `app/_layout.tsx`.
+  - Gated `fullScreenGestureEnabled: Platform.OS === 'ios'` to let Android 14/15's native Predictive Back gesture controller (`android:enableOnBackInvokedCallback="true"`) operate unimpeded.
+  - Native gesture animations with 28dp corner rounding, elevation shadows, and live screen peek.
+- **Hardware-Accelerated Spring Physics (`PressableScale`)**:
+  - Created `PressableScale` using Reanimated 4 `useSharedValue` and `withSpring` running purely on the UI thread (`activeScale: 0.97`).
+  - Integrated across Group Cards, Home Action Dock, Group Pebbles, and Activity transaction rows.
+- **UI-Thread Tab & Modal Worklets**:
+  - Migrated Group Detail Tabs indicator pill, content transitions, and Add Expense FAB in `app/groups/[id]/index.tsx` from JS thread to Reanimated 4 worklets.
+  - Upgraded `SplitOptionsModal.tsx` and `PayerSelectModal.tsx` from JS-thread `useNativeDriver: false` animations to Reanimated UI-thread springs.
+  - Migrated `OfflineBanner.tsx` to Reanimated spring worklets.
+
+### 🛡️ State-Aware Safe Back Navigation & Notification Deduplication
+- **Deduplication Engine**:
+  - Added 4000ms identifier deduplication window in `src/services/notification.service.ts` to prevent duplicate notification click dispatches.
+  - Added route-parity guard in `app/_layout.tsx` (`navigateFromNotification`) preventing duplicate pushes when already on target screens.
+- **State-Aware Safe Back Hook (`useSafeBack`)**:
+  - Created `useSafeBack` hook with `router.canGoBack()` checks, fallback routes, Android `hardwareBackPress` sync, and 500ms multi-tap throttling.
+  - Added 600ms card navigation lock across Home, Groups, and Activity screens to eliminate double-tap stack duplication.
+
+### 🎨 Visual & Layout Polishing
+- **Symmetrical Keyboard Sticky Chat Bar**:
+  - Harmonized top and bottom padding (`paddingTop: 8`, `paddingBottom: 8`) and fixed ghost offset (`keyboardVerticalOffset={0}`) in `KeyboardStickyBottomBar`.
+- **Analytics Chart Scroll-Lock**:
+  - Added vertical page scroll-locking during horizontal timeline scrub and donut chart interaction.
+- **Notification Page Header & Reanimated Swipe**:
+  - Open editorial two-tier header and hardware-accelerated `ReanimatedSwipeable` swipe-to-read gesture.
+
+---
+
 ## [1.3.2] - 2026-10-31
 
 ### 🎨 In-App Update UI Overhaul & Open Editorial Layout

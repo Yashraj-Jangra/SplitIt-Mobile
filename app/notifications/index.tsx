@@ -9,6 +9,12 @@ import {
   Image,
 } from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, {
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
@@ -39,11 +45,14 @@ import {
 import { appEventEmitter } from '../../src/services/event-emitter';
 import { haptics } from '../../src/services/haptics.service';
 import { useAppTheme } from '../../src/contexts/theme.context';
+import { useSafeBack } from '../../src/hooks/useSafeBack';
 
 type NotificationCategoryTab = 'all' | 'expenses' | 'settlements' | 'reminders' | 'other';
 
 export default function NotificationsCenterScreen() {
   const router = useRouter();
+  const { handleBack } = useSafeBack({ fallbackRoute: '/(tabs)' });
+  const isNavigatingRef = useRef(false);
   const { currentAccent } = useAppTheme();
   const [notifications, setNotifications] = useState<InAppNotification[]>(() =>
     notificationService.getInMemoryNotifications()
@@ -118,6 +127,12 @@ export default function NotificationsCenterScreen() {
   };
 
   const handleTapNotification = async (item: InAppNotification) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+
     haptics.tap();
     const isUnread = item.isRead !== undefined ? !item.isRead : !item.read;
     if (isUnread) {
@@ -324,71 +339,48 @@ export default function NotificationsCenterScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Top App Bar with Title */}
-      <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <TouchableOpacity
-            onPress={() => {
-              haptics.tap();
-              router.back();
-            }}
-            style={styles.circleButton}
-            activeOpacity={0.7}
-            accessibilityLabel="Go back"
-          >
-            <ArrowLeft size={19} color={THEME.colors.text} />
-          </TouchableOpacity>
+      {/* Top Navigation Bar */}
+      <View style={styles.topNavRow}>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={styles.circleButton}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <ArrowLeft size={18} color={THEME.colors.text} />
+        </TouchableOpacity>
 
-          <View style={styles.topBarTitleRow}>
-            <Text style={styles.topBarTitle}>Notifications</Text>
-            {unreadCount > 0 && (
-              <View
+        <View style={styles.topNavActions}>
+          {unreadCount > 0 && (
+            <TouchableOpacity
+              onPress={handleMarkAllRead}
+              style={[
+                styles.markAllButton,
+                {
+                  backgroundColor: `${currentAccent.primary}16`,
+                  borderColor: `${currentAccent.primary}38`,
+                },
+              ]}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel="Mark all as read"
+            >
+              <CheckCheck
+                size={14}
+                color={currentAccent.primary}
+                strokeWidth={2.4}
+              />
+              <Text
                 style={[
-                  styles.unreadHeaderBadge,
-                  {
-                    borderColor: `${currentAccent.primary}40`,
-                    backgroundColor: `${currentAccent.primary}18`,
-                  },
+                  styles.markAllButtonText,
+                  { color: currentAccent.primary },
                 ]}
               >
-                <Text style={[styles.unreadHeaderBadgeText, { color: currentAccent.primary }]}>
-                  {unreadCount}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.topBarActions}>
-          <TouchableOpacity
-            onPress={handleMarkAllRead}
-            style={[
-              styles.markAllButton,
-              unreadCount > 0
-                ? {
-                    backgroundColor: `${currentAccent.primary}18`,
-                    borderColor: `${currentAccent.primary}40`,
-                  }
-                : styles.markAllButtonDisabled,
-            ]}
-            activeOpacity={0.7}
-            disabled={unreadCount === 0}
-            accessibilityRole="button"
-            accessibilityLabel="Mark all as read"
-          >
-            <CheckCheck
-              size={15}
-              color={unreadCount > 0 ? currentAccent.primary : THEME.colors.textMuted}
-            />
-            <Text
-              style={[
-                styles.markAllButtonText,
-                { color: unreadCount > 0 ? currentAccent.primary : THEME.colors.textMuted },
-              ]}
-            >
-              Mark all read
-            </Text>
-          </TouchableOpacity>
+                Mark all read
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             onPress={() => {
@@ -397,11 +389,54 @@ export default function NotificationsCenterScreen() {
             }}
             style={styles.circleButton}
             activeOpacity={0.7}
+            accessibilityRole="button"
             accessibilityLabel="Notification settings"
           >
             <Settings size={17} color={THEME.colors.textSecondary} />
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Hero Editorial Header Row */}
+      <View style={styles.heroHeader}>
+        <View style={styles.heroTitleGroup}>
+          <Text style={styles.heroTitle}>Notifications</Text>
+          <Text style={styles.heroSubtitle}>
+            Activity, splits, and payment updates
+          </Text>
+        </View>
+
+        {unreadCount > 0 ? (
+          <View
+            style={[
+              styles.unreadStatusPill,
+              {
+                backgroundColor: `${currentAccent.primary}14`,
+                borderColor: `${currentAccent.primary}30`,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.unreadLiveDot,
+                { backgroundColor: currentAccent.primary },
+              ]}
+            />
+            <Text
+              style={[
+                styles.unreadStatusText,
+                { color: currentAccent.primary },
+              ]}
+            >
+              {unreadCount} new
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.allCaughtUpPill}>
+            <CheckCheck size={12} color={THEME.colors.textMuted} strokeWidth={2.2} />
+            <Text style={styles.allCaughtUpText}>All caught up</Text>
+          </View>
+        )}
       </View>
 
       {/* System Push Notification Disabled Warning (only shown if alerts are disabled) */}
@@ -820,6 +855,68 @@ function formatTimeAgo(dateStr: string): string {
   }
 }
 
+interface SwipeActionRightProps {
+  progress: SharedValue<number>;
+  accentColor: string;
+}
+
+function SwipeActionRight({ progress, accentColor }: SwipeActionRightProps) {
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      progress.value,
+      [0, 0.25, 1],
+      [0, 0.85, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  const animatedContentStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      progress.value,
+      [0, 0.4, 0.9, 1.2],
+      [0.45, 0.75, 1, 1.06],
+      Extrapolation.CLAMP
+    );
+    const translateX = interpolate(
+      progress.value,
+      [0, 1],
+      [20, 0],
+      Extrapolation.CLAMP
+    );
+    return {
+      transform: [{ scale }, { translateX }],
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.swipeActionContainer, animatedContainerStyle]}>
+      <Animated.View
+        style={[
+          styles.swipeActionBadge,
+          { backgroundColor: accentColor },
+          animatedContentStyle,
+        ]}
+      >
+        <CheckCheck
+          size={18}
+          color={THEME.colors.primaryForeground}
+          strokeWidth={2.4}
+        />
+      </Animated.View>
+      <Animated.Text
+        style={[
+          styles.swipeActionLabel,
+          { color: accentColor },
+          animatedContentStyle,
+        ]}
+      >
+        Read
+      </Animated.Text>
+    </Animated.View>
+  );
+}
+
 interface NotificationItemRowProps {
   notification: InAppNotification;
   isLast: boolean;
@@ -851,26 +948,24 @@ function NotificationItemRow({
   const initials = actor ? getInitials(actor.firstName, actor.lastName) : '';
   const messageBody = notification.body || notification.message || '';
 
-  const handleSwipeOpen = () => {
-    haptics.saveSuccess();
-    onMarkRead();
-    setTimeout(() => {
-      swipeableRef.current?.close();
-    }, 200);
-  };
+  const handleSwipeWillOpen = useCallback(() => {
+    haptics.swipe();
+  }, []);
 
-  const renderRightAction = () => {
-    return (
-      <View style={[styles.swipeActionContainer, { backgroundColor: accentColor }]}>
-        <View style={styles.swipeActionContent}>
-          <CheckCheck size={18} color={THEME.colors.primaryForeground} />
-          <Text style={[styles.swipeActionText, { color: THEME.colors.primaryForeground }]}>
-            Mark Read
-          </Text>
-        </View>
-      </View>
-    );
-  };
+  const handleSwipeOpen = useCallback(() => {
+    haptics.saveSuccess();
+    swipeableRef.current?.close();
+    setTimeout(() => {
+      onMarkRead();
+    }, 220);
+  }, [onMarkRead]);
+
+  const renderRightActions = useCallback(
+    (progress: SharedValue<number>) => (
+      <SwipeActionRight progress={progress} accentColor={accentColor} />
+    ),
+    [accentColor]
+  );
 
   const rowContent = (
     <TouchableOpacity
@@ -882,6 +977,8 @@ function NotificationItemRow({
       ]}
       onPress={onPress}
       activeOpacity={0.88}
+      accessibilityRole="button"
+      accessibilityLabel={`${notification.title}. ${isRead ? 'Read' : 'Unread'}`}
     >
       {/* Avatar or Icon Badge */}
       {actor?.avatarUrl ? (
@@ -922,7 +1019,7 @@ function NotificationItemRow({
         </View>
       </View>
 
-      {/* Unread Indicator Dot Only (removed duplicate check tick mark) */}
+      {/* Unread Indicator Dot Only */}
       {!isRead && (
         <View style={styles.itemRightActions}>
           <View style={[styles.unreadDot, { backgroundColor: accentColor }]} />
@@ -931,18 +1028,16 @@ function NotificationItemRow({
     </TouchableOpacity>
   );
 
-  // Read items require no swipe-to-read gesture handler
-  if (isRead) {
-    return rowContent;
-  }
-
   return (
     <ReanimatedSwipeable
       ref={swipeableRef}
-      friction={2}
-      rightThreshold={45}
+      enabled={!isRead}
+      friction={1.1}
+      rightThreshold={36}
       overshootRight={false}
-      renderRightActions={renderRightAction}
+      dragOffsetFromRight={-8}
+      renderRightActions={renderRightActions}
+      onSwipeableWillOpen={handleSwipeWillOpen}
       onSwipeableOpen={handleSwipeOpen}
       containerStyle={styles.swipeableContainer}
     >
@@ -970,30 +1065,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  topBar: {
+  topNavRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  topBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  topBarTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  topBarTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: THEME.colors.text,
-    letterSpacing: -0.4,
+    paddingTop: 6,
+    paddingBottom: 4,
   },
   circleButton: {
     width: 38,
@@ -1001,11 +1079,11 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: THEME.colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
-  topBarActions: {
+  topNavActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -1014,29 +1092,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: THEME.radius.md,
+    borderRadius: THEME.radius.full,
     borderWidth: 1,
-  },
-  markAllButtonDisabled: {
-    backgroundColor: THEME.colors.surface,
-    borderColor: THEME.colors.hairline,
-    opacity: 0.5,
   },
   markAllButtonText: {
     fontSize: 12,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
-  unreadHeaderBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 14,
+  },
+  heroTitleGroup: {
+    flex: 1,
+    gap: 3,
+  },
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
+  },
+  unreadStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: THEME.radius.full,
     borderWidth: 1,
+    alignSelf: 'center',
   },
-  unreadHeaderBadgeText: {
+  unreadLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  unreadStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  allCaughtUpPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: THEME.colors.hairline,
+    alignSelf: 'center',
+  },
+  allCaughtUpText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
+    color: THEME.colors.textMuted,
   },
   tabsContainer: {
     paddingBottom: 10,
@@ -1091,20 +1214,27 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   swipeActionContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 96,
+    width: 86,
     height: '100%',
-  },
-  swipeActionContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    backgroundColor: THEME.colors.surfaceSubtle,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: THEME.colors.hairlineLight,
+    gap: 6,
   },
-  swipeActionText: {
-    fontSize: 11,
+  swipeActionBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeActionLabel: {
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   itemRow: {
     flexDirection: 'row',
@@ -1118,7 +1248,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   itemRowUnread: {
-    backgroundColor: '#18191E',
+    backgroundColor: THEME.colors.surfaceSubtle,
   },
   itemRowLast: {
     borderBottomWidth: StyleSheet.hairlineWidth,

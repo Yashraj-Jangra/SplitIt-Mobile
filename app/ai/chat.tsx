@@ -376,7 +376,7 @@ export default function AiChatModal() {
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior="padding"
-        keyboardVerticalOffset={insets.top}
+        keyboardVerticalOffset={0}
       >
         {/* ── Flagship Header (Dragger removed, clean elevated branding) ─── */}
         <View style={styles.header}>
@@ -650,8 +650,8 @@ export default function AiChatModal() {
           <KeyboardStickyBottomBar
             insideKeyboardAvoidingView
             bordered
-            idlePaddingBottom={12}
-            keyboardPaddingBottom={10}
+            idlePaddingBottom={8}
+            keyboardPaddingBottom={8}
             style={styles.inputContainer}
           >
             {isSessionLimitReached ? (

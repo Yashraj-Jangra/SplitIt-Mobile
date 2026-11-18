@@ -152,13 +152,16 @@ export const THEME = {
   },
   animation: {
     spring: {
-      default: { damping: 15, stiffness: 150 },
-      snappy: { damping: 20, stiffness: 200 },
-      gentle: { damping: 12, stiffness: 100 },
+      default: { damping: 20, stiffness: 220, mass: 0.8 },
+      snappy: { damping: 22, stiffness: 280, mass: 0.8 },
+      press: { damping: 18, stiffness: 360, mass: 0.6 },
+      gentle: { damping: 26, stiffness: 200, mass: 1 },
+      bouncy: { damping: 14, stiffness: 180, mass: 0.9 },
     },
     timing: {
-      fast: 150,
-      normal: 250,
+      instant: 120,
+      fast: 180,
+      normal: 260,
       slow: 400,
     },
   },

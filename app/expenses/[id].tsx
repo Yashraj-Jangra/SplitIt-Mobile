@@ -15,6 +15,7 @@ import {
 import { QuantumSpinner } from '../../src/components/brand/QuantumLogo';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardStickyBottomBar } from '../../src/components/common/KeyboardStickyBottomBar';
+import { useSafeBack } from '../../src/hooks/useSafeBack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -113,6 +114,11 @@ export default function ExpenseDetailScreen() {
       };
     }
     return null;
+  });
+
+  const activeGroupId = expense?.groupId || groupId || rawGroupId;
+  const { handleBack } = useSafeBack({
+    fallbackRoute: activeGroupId ? `/groups/${activeGroupId}` : '/(tabs)/groups',
   });
 
   const [loading, setLoading] = useState(!inMem && !params.title);
@@ -237,7 +243,11 @@ export default function ExpenseDetailScreen() {
             const success = await expenseService.deleteExpense(expenseId, targetGroupId, amt);
             if (success) {
               haptics.saveSuccess();
-              router.back();
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace(targetGroupId ? `/groups/${targetGroupId}` : '/(tabs)/groups');
+              }
             } else {
               haptics.error();
               Alert.alert('Error', 'Failed to delete expense. Please try again.');
@@ -577,12 +587,11 @@ export default function ExpenseDetailScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.pinnedHeader}>
           <TouchableOpacity
-            onPress={() => {
-              haptics.tap();
-              router.back();
-            }}
+            onPress={handleBack}
             style={styles.frostedIconButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <ArrowLeft size={20} color={THEME.colors.text} />
           </TouchableOpacity>
@@ -611,10 +620,7 @@ export default function ExpenseDetailScreen() {
       {/* ── 1. PINNED FIXED NAVIGATION BAR (Never scrolls away) ── */}
       <View style={styles.pinnedHeader}>
         <TouchableOpacity
-          onPress={() => {
-            haptics.tap();
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.frostedIconButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
@@ -666,7 +672,7 @@ export default function ExpenseDetailScreen() {
       <KeyboardAvoidingView
         style={styles.flexOne}
         behavior="padding"
-        keyboardVerticalOffset={insets.top}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -956,7 +962,7 @@ export default function ExpenseDetailScreen() {
         <KeyboardStickyBottomBar
           insideKeyboardAvoidingView
           bordered
-          idlePaddingBottom={10}
+          idlePaddingBottom={8}
           keyboardPaddingBottom={8}
           style={styles.bottomCommentDock}
         >

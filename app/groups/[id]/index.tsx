@@ -12,6 +12,12 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { QuantumSpinner } from '../../../src/components/brand/QuantumLogo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -57,6 +63,7 @@ import { settingsService, FALLBACK_GROUP_COVER_IMAGES } from '../../../src/servi
 import { haptics } from '../../../src/services/haptics.service';
 import { appEventEmitter } from '../../../src/services/event-emitter';
 import { ActivityExpenseRow, ActivitySettlementRow } from '../../../src/components/activity';
+import { useSafeBack } from '../../../src/hooks/useSafeBack';
 
 const TABS = ['expenses', 'balances', 'budget', 'activity', 'analysis'] as const;
 type TabType = typeof TABS[number];
@@ -114,6 +121,7 @@ function getTimelineTimestamp(rawDate?: string, dateStr?: string): number {
 
 export default function GroupDetailScreen() {
   const router = useRouter();
+  const { handleBack } = useSafeBack({ fallbackRoute: '/(tabs)/groups' });
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const targetId = Array.isArray(id) ? id[0] : (id || '1');
   const requestedTab = (tab && TABS.includes(tab as TabType)) ? (tab as TabType) : null;
@@ -201,20 +209,61 @@ export default function GroupDetailScreen() {
 
   const initialTabBarWidth = Dimensions.get('window').width - 20;
   const [tabBarWidth, setTabBarWidth] = useState(initialTabBarWidth);
+  const [isScrubbingChart, setIsScrubbingChart] = useState(false);
 
   const scrollViewRef = useRef<any>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Smooth Tab Transitions
-  const tabIndicatorAnim = useRef(new Animated.Value(0)).current;
-  const tabContentAnim = useRef(new Animated.Value(1)).current;
-  const tabSlideAnim = useRef(new Animated.Value(0)).current;
-  const fabAnim = useRef(new Animated.Value(1)).current;
-  const fabPressAnim = useRef(new Animated.Value(0)).current;
+  // Smooth Hardware-Accelerated Tab & FAB Transitions via Reanimated worklets
+  const tabIndicatorShared = useSharedValue(0);
+  const tabContentOpacity = useSharedValue(1);
+  const tabSlideShared = useSharedValue(0);
+  const fabScale = useSharedValue(1);
+  const fabPressScale = useSharedValue(0);
+  const tabBarWidthShared = useSharedValue(initialTabBarWidth);
   const fabButtonRef = useRef<any>(null);
   const fabCoordsRef = useRef({
     x: Dimensions.get('window').width - 46,
     y: Dimensions.get('window').height - 64,
+  });
+
+  const tabIndicatorAnimatedStyle = useAnimatedStyle(() => {
+    const innerWidth = Math.max(0, tabBarWidthShared.value - 6);
+    const tabW = innerWidth > 0 ? innerWidth / TABS.length : 0;
+    return {
+      width: tabW,
+      transform: [{ translateX: tabIndicatorShared.value * tabW }],
+    };
+  });
+
+  const tabContentAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: tabContentOpacity.value,
+      transform: [{ translateX: tabSlideShared.value }],
+    };
+  });
+
+  const fabContainerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: fabScale.value,
+      transform: [{ scale: fabScale.value }],
+    };
+  });
+
+  const fabPulseRingAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: 1 + fabPressScale.value * 1.2 }],
+      opacity: fabPressScale.value > 0 ? (1 - fabPressScale.value) * 0.45 : 0,
+    };
+  });
+
+  const fabIconAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { rotate: `${fabPressScale.value * 45}deg` },
+        { scale: 1 - fabPressScale.value * 0.12 },
+      ],
+    };
   });
 
   const stickyThreshold = SCROLL_DISTANCE + statStripHeight;
@@ -257,9 +306,10 @@ export default function GroupDetailScreen() {
     }));
     setActiveTab(destTab);
     setActivityFilter('all');
-    tabIndicatorAnim.setValue(destTabIndex >= 0 ? destTabIndex : 0);
-    tabContentAnim.setValue(1);
-    tabSlideAnim.setValue(0);
+    tabIndicatorShared.value = destTabIndex >= 0 ? destTabIndex : 0;
+    tabContentOpacity.value = 1;
+    tabSlideShared.value = 0;
+    fabScale.value = destTab === 'expenses' ? 1 : 0;
     setVisibleExpenseCount(PAGE_SIZE);
     setVisibleActivityCount(PAGE_SIZE);
 
@@ -316,42 +366,18 @@ export default function GroupDetailScreen() {
     const tabIndex = TABS.indexOf(tab);
     const isMovingRight = tabIndex > prevIndex;
 
-    // 1. Snappy 120Hz native spring sliding indicator pill
-    Animated.spring(tabIndicatorAnim, {
-      toValue: tabIndex,
-      useNativeDriver: true,
-      damping: 28,
-      stiffness: 380,
-      mass: 0.5,
-    }).start();
+    // 1. Snappy 120Hz native spring sliding indicator pill via UI thread worklet
+    tabIndicatorShared.value = withSpring(tabIndex, THEME.animation.spring.snappy);
 
-    // 2. Hardware-accelerated directional subtle horizontal slide (zero black flash)
-    const slideOffset = isMovingRight ? 28 : -28;
-    tabSlideAnim.setValue(slideOffset);
-    tabContentAnim.setValue(0.88);
-
-    Animated.parallel([
-      Animated.spring(tabSlideAnim, {
-        toValue: 0,
-        damping: 28,
-        stiffness: 350,
-        mass: 0.5,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tabContentAnim, {
-        toValue: 1,
-        duration: 140,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // 2. Hardware-accelerated directional subtle horizontal slide & fade (zero black flash)
+    const slideOffset = isMovingRight ? 24 : -24;
+    tabSlideShared.value = slideOffset;
+    tabSlideShared.value = withSpring(0, THEME.animation.spring.snappy);
+    tabContentOpacity.value = 0.88;
+    tabContentOpacity.value = withTiming(1, { duration: THEME.animation.timing.fast });
 
     // 3. Fast spring scale & fade for Add Expense FAB
-    Animated.spring(fabAnim, {
-      toValue: tab === 'expenses' ? 1 : 0,
-      useNativeDriver: true,
-      friction: 7,
-      tension: 80,
-    }).start();
+    fabScale.value = withSpring(tab === 'expenses' ? 1 : 0, THEME.animation.spring.snappy);
 
     setVisitedTabs((prev) => (prev[tab] ? prev : { ...prev, [tab]: true }));
     setActiveTab(tab);
@@ -374,13 +400,8 @@ export default function GroupDetailScreen() {
     if (isArchived) return;
     haptics.confirm();
 
-    // Spring trigger on FAB: slight scale pulse & 45deg rotation
-    Animated.spring(fabPressAnim, {
-      toValue: 1,
-      tension: 100,
-      friction: 6,
-      useNativeDriver: true,
-    }).start();
+    // Spring trigger on FAB: slight scale pulse & 45deg rotation via UI thread worklet
+    fabPressScale.value = withSpring(1, THEME.animation.spring.press);
 
     const targetId = Array.isArray(id) ? id[0] : (id || '');
     router.push({
@@ -398,12 +419,7 @@ export default function GroupDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       // Smoothly reset FAB press animation when returning
-      Animated.spring(fabPressAnim, {
-        toValue: 0,
-        tension: 80,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
+      fabPressScale.value = withSpring(0, THEME.animation.spring.snappy);
 
       const now = Date.now();
       if (now - lastGroupFetchRef.current < 2500) return;
@@ -418,6 +434,7 @@ export default function GroupDetailScreen() {
     const w = e.nativeEvent.layout.width;
     if (w && Math.abs(w - tabBarWidth) > 1) {
       setTabBarWidth(w);
+      tabBarWidthShared.value = w;
     }
   };
 
@@ -432,27 +449,11 @@ export default function GroupDetailScreen() {
       >
         {/* Smooth Sliding Pill Indicator (pointerEvents="none" prevents blocking taps) */}
         {singleTabWidth > 0 && (
-          <Animated.View
+          <Reanimated.View
             pointerEvents="none"
             style={[
               styles.activeTabPill,
-              {
-                width: singleTabWidth,
-                transform: [
-                  {
-                    translateX: tabIndicatorAnim.interpolate({
-                      inputRange: [0, 1, 2, 3, 4],
-                      outputRange: [
-                        0,
-                        singleTabWidth,
-                        singleTabWidth * 2,
-                        singleTabWidth * 3,
-                        singleTabWidth * 4,
-                      ],
-                    }),
-                  },
-                ],
-              },
+              tabIndicatorAnimatedStyle,
             ]}
           />
         )}
@@ -736,6 +737,7 @@ export default function GroupDetailScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
+        scrollEnabled={!isScrubbingChart}
         keyboardShouldPersistTaps="handled"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -812,15 +814,10 @@ export default function GroupDetailScreen() {
         </View>
 
         {/* Smooth Animated Tab Content Stream */}
-        <Animated.View
+        <Reanimated.View
           style={[
             styles.tabSectionWrapper,
-            {
-              opacity: tabContentAnim,
-              transform: [
-                { translateX: tabSlideAnim },
-              ],
-            },
+            tabContentAnimatedStyle,
           ]}
         >
         {/* TAB 1: EXPENSES & SETTLEMENTS (ACTIVITY STREAM) */}
@@ -1268,11 +1265,12 @@ export default function GroupDetailScreen() {
                 group={group}
                 expenses={group?.expenses || []}
                 members={group?.members || []}
+                onScrubbingChange={setIsScrubbingChart}
               />
             )}
           </View>
         )}
-        </Animated.View>
+        </Reanimated.View>
       </Animated.ScrollView>
 
       {/* Cinematic Collapsing Header (Hardware accelerated native driver) */}
@@ -1364,12 +1362,11 @@ export default function GroupDetailScreen() {
       {/* Floating Glass Top Bar (Pinned at topInset, sits above collapsingHeader) */}
       <View style={[styles.heroTopBarFixed, { top: topInset }]}>
         <TouchableOpacity
-          onPress={() => {
-            haptics.tap();
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.heroGlassBtn}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <ArrowLeft size={18} color={THEME.colors.text} />
         </TouchableOpacity>
@@ -1447,37 +1444,21 @@ export default function GroupDetailScreen() {
 
       {/* Floating Add Expense Action Button (Smooth spring fade & scale + app-launch burst) */}
       {!isArchived && (
-        <Animated.View
+        <Reanimated.View
           pointerEvents={activeTab === 'expenses' ? 'auto' : 'none'}
           style={[
             styles.fabContainer,
-            {
-              bottom: Math.max(insets.bottom, 16) + 16,
-              opacity: fabAnim,
-              transform: [{ scale: fabAnim }],
-            },
+            { bottom: Math.max(insets.bottom, 16) + 16 },
+            fabContainerAnimatedStyle,
           ]}
         >
           {/* Expanding emerald pulse aura on tap */}
-          <Animated.View
+          <Reanimated.View
             pointerEvents="none"
             style={[
               styles.fabPulseRing,
-              {
-                backgroundColor: currentAccent.primary,
-                transform: [
-                  {
-                    scale: fabPressAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 2.2],
-                    }),
-                  },
-                ],
-                opacity: fabPressAnim.interpolate({
-                  inputRange: [0, 0.2, 1],
-                  outputRange: [0, 0.45, 0],
-                }),
-              },
+              { backgroundColor: currentAccent.primary },
+              fabPulseRingAnimatedStyle,
             ]}
           />
           <TouchableOpacity
@@ -1487,28 +1468,11 @@ export default function GroupDetailScreen() {
             onPress={handleAddExpense}
             activeOpacity={0.85}
           >
-            <Animated.View
-              style={{
-                transform: [
-                  {
-                    rotate: fabPressAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0deg', '45deg'],
-                    }),
-                  },
-                  {
-                    scale: fabPressAnim.interpolate({
-                      inputRange: [0, 0.4, 1],
-                      outputRange: [1, 0.88, 1.05],
-                    }),
-                  },
-                ],
-              }}
-            >
+            <Reanimated.View style={fabIconAnimatedStyle}>
               <Plus size={22} color={THEME.colors.primaryForeground} strokeWidth={2.5} />
-            </Animated.View>
+            </Reanimated.View>
           </TouchableOpacity>
-        </Animated.View>
+        </Reanimated.View>
       )}
 
       {/* Change Cover Modal (Admin-configurable presets) */}

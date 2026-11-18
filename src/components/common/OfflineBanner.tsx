@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { WifiOff, Check } from 'lucide-react-native';
 import { useNetwork } from '../../contexts/network.context';
 import { THEME } from '../../constants/theme';
@@ -9,8 +15,8 @@ export function OfflineBanner() {
   const [visible, setVisible] = useState(false);
   const [justReconnected, setJustReconnected] = useState(false);
 
-  const translateY = useRef(new Animated.Value(-60)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useSharedValue(-60);
+  const opacity = useSharedValue(0);
   const prevOnlineRef = useRef(isOnline);
 
   useEffect(() => {
@@ -21,38 +27,22 @@ export function OfflineBanner() {
       // Transitioned to Offline
       setVisible(true);
       setJustReconnected(false);
-      Animated.parallel([
-        Animated.spring(translateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 80,
-          friction: 9,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      translateY.value = withSpring(0, THEME.animation.spring.snappy);
+      opacity.value = withTiming(1, { duration: THEME.animation.timing.fast });
     } else if (wasOffline) {
       // Transitioned from Offline back to Online
       setJustReconnected(true);
       const timer = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(translateY, {
-            toValue: -60,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
+        translateY.value = withTiming(-60, { duration: THEME.animation.timing.normal });
+        opacity.value = withTiming(0, { duration: THEME.animation.timing.fast }, (finished) => {
+          if (finished) {
+            // Note: UI thread worklet callback
+          }
+        });
+        setTimeout(() => {
           setVisible(false);
           setJustReconnected(false);
-        });
+        }, THEME.animation.timing.normal);
       }, 2500);
 
       return () => clearTimeout(timer);
@@ -61,6 +51,13 @@ export function OfflineBanner() {
     }
   }, [isOnline]);
 
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: translateY.value }],
+      opacity: opacity.value,
+    };
+  });
+
   if (!visible) return null;
 
   return (
@@ -68,10 +65,7 @@ export function OfflineBanner() {
       pointerEvents="none"
       style={[
         styles.container,
-        {
-          transform: [{ translateY }],
-          opacity,
-        },
+        animatedStyle,
       ]}
     >
       <View style={[styles.pill, justReconnected && styles.pillOnline]}>
