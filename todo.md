@@ -1,5 +1,134 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Milestone v1.3.4 (Build 10) Release Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
+  - **Version Manifests Synchronized to 1.3.4 (Build 10)**:
+    - `package.json`: `"version": "1.3.4"`
+    - `app.json`: `"version": "1.3.4"`, `"versionCode": 10`, `"buildNumber": "10"`
+    - `src/services/update.service.ts`: `CURRENT_APP_VERSION = '1.3.4'`, `CURRENT_BUILD_NUMBER = '10'`
+    - `android/app/build.gradle`: `versionCode 10`, `versionName "1.3.4"`
+  - **Changelog & Documentation**:
+    - Updated `CHANGELOG.md` with full breakdown of v1.3.4 changes (flagship receipt camera, update persistence fix & release links, sliding group tabs, predictive back).
+    - Updated `RELEASE.md` with v1.3.4 highlights and build specifications.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+- **Flagship Optical Camera Receipt Scanner & Vision Studio Redesign (`app/ai/scanner.tsx`)** ✨ 🎨 ⚡ 📱 🛡️ ✅:
+  - **Complete Elimination of Demo/Mock Artifacts**:
+    - Completely removed all demo buttons ("Try Demo Cafe Bodega Receipt", "Demo" button), mock handlers, and hardcoded test fallback routes.
+    - Elevated into a 100% production-ready, pro-grade camera viewfinder.
+  - **Optical Viewfinder & Geometric Aperture**:
+    - Implemented a 4-panel dark vignetted optical mask (`rgba(0, 0, 0, 0.60)`) with a transparent document aperture (~1:1.38 aspect ratio) centered on the screen.
+    - Precision L-shaped optical corner framing brackets with 18px radius and theme accent color.
+    - Micro-HUD edge alignment ticks (top, bottom, left, right) and center target crosshair.
+    - Toggleable 3x3 rule-of-thirds composition grid with subtle 0.8px hairline guides.
+    - Hardware-accelerated dynamic laser scanning beam (`scanLineY` Reanimated worklet) sweeping continuously over the aperture with soft drop-shadow and gradient glow trail.
+    - Interactive tap-to-focus ring with spring dampening (`focusScale` 1.35 -> 1.0) and tactile haptic tick.
+  - **Pro Camera HUD & Mechanical Shutter Deck**:
+    - Frosted circular close button (`X`), Mode badge ("SPLITIT VISION OCR" with violet glow), 3x3 grid toggle (`Grid3x3`), and camera torch toggle (`Zap` / `ZapOff`).
+    - Segmented floating zoom ladder (`1x`, `2x`) with haptic selection ticks.
+    - 82px flagship mechanical shutter button: 4.5px solid white outer ring, 4px gap, and inner accent circular trigger with `PressableScale` active depression (0.88 scale).
+    - Authentic 90ms screen-wide optical shutter flash overlay (`shutterFlashOpacity` Reanimated sequence).
+    - Left side gallery import button (`ImageIcon`) and right side camera lens flip toggle (`RotateCcw`).
+  - **AI Vision Processing HUD**:
+    - High-tech AI processing card with `QuantumSpinner`, dynamic stage tracker ("Capturing high-res frame...", "Detecting geometry & line totals...", "Categorizing with SplitIt AI..."), and animated progress bar.
+  - **Executive Vision Review & Inspection Studio Sheet**:
+    - Status pills: emerald "RECEIPT PARSED" and "99.4% Verified" shield badge.
+    - High-resolution captured receipt image thumbnail preview.
+    - Inline editable Merchant/Title input with subtle pencil indicator.
+    - Prominent financial amount spotlight with currency symbol and subtotal/tax notation.
+    - AI category badge and master category breadcrumb.
+    - Dual action buttons: "Retake" and high-contrast "Use in Expense" routing directly to `/expenses/new` with pre-filled fields and attached image URI.
+  - **Executive Permission Screen**:
+    - High-end dark theme permission screen with dual-ring glowing camera aperture graphic, 3-point feature checklist, primary "Enable Camera Access" button, and secondary "Choose from Photos" button.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+
+- **State-Aware In-App Update Verification, Direct GitHub Release Links & Settings Navigation** ✨ 🛡️ 📱 🌐 ✅:
+  - **Native Version Detection & Stale Cache Elimination (`src/services/update.service.ts`)**:
+    - Integrated `expo-application` (`nativeApplicationVersion` & `nativeBuildVersion`) for true runtime package-manager version verification.
+    - Added automatic cache invalidation when installed app version differs from cached check version, preventing stale update popups after an upgrade.
+    - Enforced re-evaluation of `compareVersions(latestVersion, currentVersion)` on all cached update reads.
+    - Automatically purges update check cache and residual APKs when launching the package installer or when up-to-date.
+  - **Conditional Download & Direct Release Link in Update Tab (`src/components/common/UpdateModal.tsx`)**:
+    - Re-evaluates `compareVersions(latestVersion, currentVersion) > 0` before presenting download options.
+    - If already on latest version or newer:
+      - Automatically switches to clean "You're Up to Date" layout with green checkmark pill (`v{currentVer}`).
+      - **Completely hides the download/update button**.
+      - Renders direct "View Release on GitHub" button and "Done" dismissal button.
+    - Added prominent direct GitHub release link pill (`GitBranch` + `ExternalLink`) in the header bar and secondary action row.
+  - **Banner Auto-Dismissal & State Guard (`app/(tabs)/index.tsx`)**:
+    - Gated update alert banner and modal trigger with `compareVersions(latestVersion, currentVersion) > 0`.
+    - Automatically suppresses update banner and resets modal state if app is up-to-date.
+  - **Settings & About GitHub / Android Release Links**:
+    - **Profile / Settings (`app/(tabs)/profile.tsx`)**: Added "GitHub Repository" (`/Yashraj-Jangra/SplitIt-Mobile`) and "Android Releases" (`/Yashraj-Jangra/SplitIt-Mobile/releases`) rows under Support & Legal.
+    - **Preferences (`app/settings/preferences.tsx`)**: Added "GitHub Repository" and "Android Releases" rows under SYSTEM & UPDATES.
+    - **About SplitIt (`app/info/about.tsx`)**: Linked native version detection and added direct clickable links for GitHub Repository and Android Releases & APKs.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+- **Buttery Smooth Hardware-Accelerated Sliding Window Transitions & Gesture Swiping Across Group Tabs** ✨ ⚡ 📱 🎨 🛡️ ✅:
+  - **2-Window Sliding Stage Architecture (`app/groups/[id]/index.tsx`)**:
+    - Replaced the legacy single-container fade/nudge with a true hardware-accelerated 2-window sliding stage.
+    - During transitions, both the outgoing tab window and incoming tab window are rendered in absolute coordinate frames inside `tabSectionWrapper` (`overflow: 'hidden'`).
+    - The outgoing window slides smoothly out (`0 -> -stageWidth` or `+stageWidth`) with subtle opacity fade (`1 -> 0`), while the incoming window slides simultaneously in from the edge (`stageWidth -> 0` or `-stageWidth -> 0`) with smooth fade-in (`0.3 -> 1`).
+    - Driven by Apple/Material 3 fluid deceleration curve (`Easing.bezier(0.22, 1, 0.36, 1)`) over 280ms purely on the UI thread via Reanimated worklets.
+    - Container height animates smoothly from outgoing tab height to incoming tab height via `stageHeight`, eliminating abrupt layout jumps.
+    - Resting/idle state renders only the single active tab with natural layout height (`auto`), guaranteeing zero memory overhead, no hidden view retention, and instant dynamic height expansion on content changes.
+  - **Fluid Horizontal Gesture Swiping (`Gesture.Pan()`)**:
+    - Enabled natural horizontal swipe gestures between tabs (`Gesture.Pan()`) with `.activeOffsetX([-25, 25])` and `.failOffsetY([-14, 14])`.
+    - Automatically releases vertical gestures to the parent `ScrollView`, preserving smooth 60fps vertical scrolling without drag resistance.
+    - Gated by `!isScrubbingChart` so chart scrubbing on the Analysis tab never conflicts with tab gestures.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+- **Interactive Android Predictive Back & Real-Time Gesture Navigation** ✨ 📱 ⚡ 🛡️ ✅:
+  - **Android 14+ / 15 Native Predictive Back Progress Tracking (`MainActivity.kt`)**:
+    - Integrated AndroidX `OnBackPressedCallback` with real-time `BackEventCompat` progress tracking (`handleOnBackStarted`, `handleOnBackProgressed`, `handleOnBackCancelled`, `handleOnBackPressed`).
+    - Implemented real-time interactive window tracking: when the user swipes inward halfway (50%), the screen interactively scales down (`1.0 -> 0.90`), rounds corners (`0 -> 24dp` via `ViewOutlineProvider`), and translates horizontally (`progress * 42% width`).
+    - On release past threshold or with velocity: smoothly slides off-screen with `DecelerateInterpolator(1.5f)` and delegates cleanly to React Native's back dispatcher.
+    - On gesture cancel: smoothly springs back to identity scale and zero translation with `DecelerateInterpolator(1.8f)`.
+  - **Expo Config Plugin Native Injection (`plugins/withPredictiveBack.js`)**:
+    - Configured `withMainActivity` to automatically inject `setupPredictiveBack()`, required imports (`BackEventCompat`, `OnBackPressedCallback`, `ViewOutlineProvider`), and lifecycle hooks during Continuous Native Generation / `expo prebuild`.
+  - **Safe Back Handler Interception Clean Up (`src/hooks/useSafeBack.ts`)**:
+    - Removed blocking `hardwareBackPress` listener when `router.canGoBack()` is true so the native Android gesture controller and `MainActivity` progress tracking run completely unimpeded without JavaScript event suppression.
+    - Retained safe fallback redirection for cold-start deep links where `router.canGoBack()` is false.
+  - **Stack Configuration & Clean Codebase (`app/_layout.tsx`)**:
+    - Centralized optimal stack options at `<Stack screenOptions>`: `animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right'`, `gestureEnabled: true`, `gestureDirection: 'horizontal'`.
+    - Eliminated 185 lines of duplicate boilerplate options across 20+ `<Stack.Screen>` declarations.
+  - **Interactive Swipe Back Container (`src/components/common/InteractiveSwipeBack.tsx`)**:
+    - Created reusable UI-thread Reanimated 4 and Gesture Handler v2 swipe-back component with edge detection, real-time scaling, corner rounding, and dimming scrim.
+  - **Quality Gates Passed**:
+    - `compileDebugKotlin` verified with 0 errors via Gradle.
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+- **Analytics Date Range Picker Overhaul & Continuous Ribbon Calendar** 🎨 📅 ⚡ 📱 🛡️ ✅:
+  - **Docked Pinned Footer & Zero-Clip Sheet Architecture**:
+    - Eliminated button cutoff on constrained mobile viewports by separating the modal layout into a scrollable body (`ScrollView flexShrink: 1`) and a pinned docked action footer (`flexShrink: 0`).
+    - Anchored `All Time` reset and `Apply Range` buttons directly above sheet insets, guaranteeing 100% visibility regardless of device height or navigation bar sizes.
+    - Set `maxHeight="92%"` on `BottomSheetModal` with `flexShrink: 1` on `modalWrapper`.
+  - **Modern Executive From / To Date Selector Capsule**:
+    - Replaced disconnected box pair with a unified glass capsule (`rangeCapsuleContainer`).
+    - Side-by-side interactive Start and End date cards featuring glowing status indicator dots, uppercase category captions, formatted dates, and weekday sub-labels.
+    - Centered dynamic duration anchor displaying the active length badge (e.g. `[ 14 days ]`) or contextual arrow.
+    - Tactile mode switching (`haptics.toggleSwitch()`) with automatic calendar synchronization to the active date's month and year.
+  - **Continuous Ribbon Calendar Range Selection**:
+    - Redesigned date range styling with continuous pill ribbon tracks:
+      - Start endpoint (`isFrom`): filled accent bubble with right-half connecting track.
+      - End endpoint (`isTo`): filled accent bubble with left-half connecting track.
+      - In-between days (`isInRange`): unbroken horizontal ribbon track with rounded row-start (Sunday) and row-end (Saturday) caps.
+      - Single-day range: standalone circular bubble with zero track overflow.
+    - Enhanced month navigation with `PressableScale` buttons and calendar icon badge.
+    - Expanded quick presets to include "All Time", "This Month", "Last Month", "Last 30 Days", "Last 90 Days", and "This Year".
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
 - **Milestone v1.3.3 Release & Production Manifest Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
   - **Version Manifests Synchronized to 1.3.3 (Build 9)**:
     - `package.json`: `"version": "1.3.3"`

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Constants from 'expo-constants';
@@ -17,6 +17,8 @@ import {
   CreditCard,
   Info,
   Palette,
+  GitBranch,
+  Download,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/auth.context';
@@ -45,7 +47,7 @@ export default function ProfileScreen() {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
 
-  const appVersion = Constants.expoConfig?.version || '1.3.3';
+  const appVersion = updateService.getCurrentVersion();
 
   const handleCheckForUpdates = useCallback(async () => {
     if (checkingUpdate) return;
@@ -54,13 +56,8 @@ export default function ProfileScreen() {
     try {
       const info = await updateService.checkForUpdate(true);
       setUpdateInfo(info);
-      if (info.available) {
-        haptics.saveSuccess();
-        setUpdateModalVisible(true);
-      } else {
-        haptics.tap();
-        Alert.alert('Up to Date', `SplitIt v${appVersion} is the latest version available.`);
-      }
+      haptics.saveSuccess();
+      setUpdateModalVisible(true);
     } catch {
       haptics.warning();
       Alert.alert(
@@ -70,7 +67,7 @@ export default function ProfileScreen() {
     } finally {
       setCheckingUpdate(false);
     }
-  }, [checkingUpdate, appVersion]);
+  }, [checkingUpdate]);
 
   useFocusEffect(
     useCallback(() => {
@@ -184,6 +181,24 @@ export default function ProfileScreen() {
         ? 'Checking GitHub Releases...'
         : `SplitIt v${appVersion} · Tap to check updates`,
       onPress: handleCheckForUpdates,
+    },
+    {
+      icon: GitBranch,
+      title: 'GitHub Repository',
+      subtitle: 'Open-source code, issues & roadmap',
+      onPress: () => {
+        haptics.tap();
+        Linking.openURL('https://github.com/Yashraj-Jangra/SplitIt-Mobile');
+      },
+    },
+    {
+      icon: Download,
+      title: 'Android Releases',
+      subtitle: 'Official release APKs & version changelogs',
+      onPress: () => {
+        haptics.tap();
+        Linking.openURL('https://github.com/Yashraj-Jangra/SplitIt-Mobile/releases');
+      },
     },
     {
       icon: Shield,

@@ -71,16 +71,21 @@ export function useSafeBack(options: UseSafeBackOptions = {}) {
   useEffect(() => {
     if (!listenHardwareBack) return;
 
+    // If history exists and no custom confirmation guard is present, let the native
+    // stack and Android Predictive Back gesture pop naturally without JS interception.
+    const hasCustomGuard = Boolean(onBeforeBack);
+    if (!hasCustomGuard && router.canGoBack()) return;
+
     const onBackPress = () => {
       handleBack();
-      return true; // Prevent default Android activity exit
+      return true; // Prevent default Android activity exit on root/deep link screen
     };
 
     const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => {
       backSub.remove();
     };
-  }, [listenHardwareBack, handleBack]);
+  }, [listenHardwareBack, handleBack, router, onBeforeBack]);
 
   return {
     handleBack,

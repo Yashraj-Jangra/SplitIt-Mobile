@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
+import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -35,6 +36,27 @@ const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 const POST_INSTALL_CLEANUP_DELAY_MS = 60 * 1000; // 60 seconds backup sweep
 
 /**
+ * Returns the true runtime application version from native package manager or expo config.
+ */
+export function getCurrentAppVersion(): string {
+  return (
+    Application.nativeApplicationVersion ||
+    Constants.expoConfig?.version ||
+    '1.3.4'
+  );
+}
+
+/**
+ * Returns the true native binary build number/versionCode from native package manager.
+ */
+export function getCurrentAppBuildNumber(): string {
+  return (
+    Application.nativeBuildVersion ||
+    String(Constants.expoConfig?.android?.versionCode ?? '10')
+  );
+}
+
+/**
  * Parses semver string into [major, minor, patch] numeric tuple.
  */
 export function parseSemVer(v: string): number[] {
@@ -60,6 +82,22 @@ export function compareVersions(v1: string, v2: string): number {
 class UpdateService {
   private currentDownload: FileSystem.DownloadResumable | null = null;
   private cleanupTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  public getCurrentVersion(): string {
+    return getCurrentAppVersion();
+  }
+
+  public getBuildNumber(): string {
+    return getCurrentAppBuildNumber();
+  }
+
+  public async clearUpdateCheckCache(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(UPDATE_CACHE_KEY);
+    } catch {
+      // Non-fatal
+    }
+  }
 
   /**
    * Helper to get safe cache directory for update APKs.
@@ -104,9 +142,10 @@ class UpdateService {
   /**
    * Checks GitHub Releases for new APK versions.
    * Caches response in AsyncStorage for 4 hours unless force === true.
+   * Always re-verifies cache against the current installed version.
    */
   public async checkForUpdate(force = false): Promise<UpdateInfo> {
-    const currentVersion = Constants.expoConfig?.version || '1.3.3';
+    const currentVersion = this.getCurrentVersion();
 
     // 1. Check cached release info if not forced
     if (!force) {
@@ -114,8 +153,18 @@ class UpdateService {
         const raw = await AsyncStorage.getItem(UPDATE_CACHE_KEY);
         if (raw) {
           const envelope: CachedUpdateEnvelope = JSON.parse(raw);
-          if (Date.now() - envelope.timestamp < CACHE_TTL_MS) {
-            return envelope.data;
+          // If the cached check was recorded on an older version (user just updated!),
+          // invalidate the cache immediately.
+          if (envelope.data.currentVersion !== currentVersion) {
+            await AsyncStorage.removeItem(UPDATE_CACHE_KEY);
+          } else if (Date.now() - envelope.timestamp < CACHE_TTL_MS) {
+            // Re-verify against the current installed version
+            const isNewer = compareVersions(envelope.data.latestVersion, currentVersion) > 0;
+            return {
+              ...envelope.data,
+              currentVersion,
+              available: isNewer,
+            };
           }
         }
       } catch {
@@ -153,10 +202,15 @@ class UpdateService {
       releaseNotes: release.body || '',
       publishedAt: release.published_at || new Date().toISOString(),
       downloadUrl: apkAsset?.browser_download_url || null,
-      browserUrl: release.html_url || 'https://github.com/Yashraj-Jangra/SplitIt-Mobile/releases',
+      browserUrl: release.html_url || `https://github.com/Yashraj-Jangra/SplitIt-Mobile/releases/tag/${rawTag || 'v' + latestVersion}`,
       apkSize: apkAsset?.size || 0,
       isPrerelease: Boolean(release.prerelease),
     };
+
+    // If app is already up to date or newer, purge any residual APK files
+    if (!isNewer) {
+      await this.purgeUpdateCache();
+    }
 
     // 3. Persist to cache
     try {
@@ -244,7 +298,8 @@ class UpdateService {
       });
 
       // User returned from installer dialog (either installed or cancelled):
-      // Purge APK immediately
+      // Purge APK and clear cached update status immediately
+      await this.clearUpdateCheckCache();
       await this.purgeUpdateCache();
     } catch (err) {
       // Tier 2: Purge immediately on failure or cancellation
