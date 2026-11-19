@@ -1,5 +1,38 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Flagship Optical Camera Receipt Scanner & Vision Studio Redesign (`app/ai/scanner.tsx`)** ✨ 🎨 ⚡ 📱 🛡️ ✅:
+  - **Complete Elimination of Demo/Mock Artifacts**:
+    - Completely removed all demo buttons ("Try Demo Cafe Bodega Receipt", "Demo" button), mock handlers, and hardcoded test fallback routes.
+    - Elevated into a 100% production-ready, pro-grade camera viewfinder.
+  - **Optical Viewfinder & Geometric Aperture**:
+    - Implemented a 4-panel dark vignetted optical mask (`rgba(0, 0, 0, 0.60)`) with a transparent document aperture (~1:1.38 aspect ratio) centered on the screen.
+    - Precision L-shaped optical corner framing brackets with 18px radius and theme accent color.
+    - Micro-HUD edge alignment ticks (top, bottom, left, right) and center target crosshair.
+    - Toggleable 3x3 rule-of-thirds composition grid with subtle 0.8px hairline guides.
+    - Hardware-accelerated dynamic laser scanning beam (`scanLineY` Reanimated worklet) sweeping continuously over the aperture with soft drop-shadow and gradient glow trail.
+    - Interactive tap-to-focus ring with spring dampening (`focusScale` 1.35 -> 1.0) and tactile haptic tick.
+  - **Pro Camera HUD & Mechanical Shutter Deck**:
+    - Frosted circular close button (`X`), Mode badge ("SPLITIT VISION OCR" with violet glow), 3x3 grid toggle (`Grid3x3`), and camera torch toggle (`Zap` / `ZapOff`).
+    - Segmented floating zoom ladder (`1x`, `2x`) with haptic selection ticks.
+    - 82px flagship mechanical shutter button: 4.5px solid white outer ring, 4px gap, and inner accent circular trigger with `PressableScale` active depression (0.88 scale).
+    - Authentic 90ms screen-wide optical shutter flash overlay (`shutterFlashOpacity` Reanimated sequence).
+    - Left side gallery import button (`ImageIcon`) and right side camera lens flip toggle (`RotateCcw`).
+  - **AI Vision Processing HUD**:
+    - High-tech AI processing card with `QuantumSpinner`, dynamic stage tracker ("Capturing high-res frame...", "Detecting geometry & line totals...", "Categorizing with SplitIt AI..."), and animated progress bar.
+  - **Executive Vision Review & Inspection Studio Sheet**:
+    - Status pills: emerald "RECEIPT PARSED" and "99.4% Verified" shield badge.
+    - High-resolution captured receipt image thumbnail preview.
+    - Inline editable Merchant/Title input with subtle pencil indicator.
+    - Prominent financial amount spotlight with currency symbol and subtotal/tax notation.
+    - AI category badge and master category breadcrumb.
+    - Dual action buttons: "Retake" and high-contrast "Use in Expense" routing directly to `/expenses/new` with pre-filled fields and attached image URI.
+  - **Executive Permission Screen**:
+    - High-end dark theme permission screen with dual-ring glowing camera aperture graphic, 3-point feature checklist, primary "Enable Camera Access" button, and secondary "Choose from Photos" button.
+  - **Quality Gates Passed**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+
+
 - **State-Aware In-App Update Verification, Direct GitHub Release Links & Settings Navigation** ✨ 🛡️ 📱 🌐 ✅:
   - **Native Version Detection & Stale Cache Elimination (`src/services/update.service.ts`)**:
     - Integrated `expo-application` (`nativeApplicationVersion` & `nativeBuildVersion`) for true runtime package-manager version verification.
