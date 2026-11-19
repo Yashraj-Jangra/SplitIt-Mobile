@@ -42,7 +42,7 @@ export function getCurrentAppVersion(): string {
   return (
     Application.nativeApplicationVersion ||
     Constants.expoConfig?.version ||
-    '1.3.3'
+    '1.3.4'
   );
 }
 
@@ -52,7 +52,7 @@ export function getCurrentAppVersion(): string {
 export function getCurrentAppBuildNumber(): string {
   return (
     Application.nativeBuildVersion ||
-    String(Constants.expoConfig?.android?.versionCode ?? '9')
+    String(Constants.expoConfig?.android?.versionCode ?? '10')
   );
 }
 

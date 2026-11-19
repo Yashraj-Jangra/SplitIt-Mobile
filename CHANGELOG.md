@@ -4,6 +4,54 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-11-20
+
+### 📷 Flagship Optical Receipt Camera & Vision Studio
+- **Optical Vignetted Document Viewfinder (`app/ai/scanner.tsx`)**:
+  - Implemented 4-panel optical dark mask (`rgba(0, 0, 0, 0.60)`) centering focus exclusively onto the physical receipt aperture (~1:1.38 ratio).
+  - High-precision L-shaped corner brackets (18px radius) tinted in active theme accent with micro-HUD edge alignment ticks.
+  - Hardware-accelerated dynamic laser scanning beam (`scanLineY` Reanimated worklet) sweeping continuously with soft drop-shadow and gradient glow trail.
+  - Interactive tap-to-focus reticle with spring dampening (`focusScale` 1.35 → 1.0) and tactile haptic ticks.
+  - Toggleable 3x3 rule-of-thirds composition grid (`Grid3x3`) and torch toggle (`Zap`/`ZapOff`).
+  - Segmented floating zoom ladder (`1x`, `2x`) with haptic selection detents.
+  - Flagship 82px mechanical shutter button with `PressableScale` active depression (0.88) and 90ms screen-wide optical flash overlay.
+  - Left-flanked gallery photo import button (`ImageIcon`) and right-flanked camera facing toggle (`RotateCcw`).
+  - Purged all legacy demo buttons ("Try Demo Cafe Bodega Receipt", "Demo" button) and mock handlers.
+- **AI Vision Processing HUD**:
+  - High-tech AI processing card with `QuantumSpinner`, dynamic multi-stage progression tracker, and animated progress bar.
+- **Executive Vision Review & Inspection Studio**:
+  - Emerald status badge and 99.4% confidence shield verification pill.
+  - High-resolution captured receipt thumbnail preview.
+  - Inline editable Merchant/Title input with pencil indicator.
+  - Financial amount spotlight showing detected total with currency symbol and tax notation.
+  - AI category pill with master category breadcrumb.
+  - Dual action buttons: "Retake" and high-contrast "Use in Expense" directly pre-filling `/expenses/new` with the image URI.
+- **Executive Permission Screen**:
+  - Obsidian canvas with dual-ring glowing camera aperture graphic, 3-point feature checklist, "Enable Camera Access" primary CTA, and "Choose from Photos" secondary action.
+
+### 🌐 In-App Update Engine & Direct Release Navigation
+- **Runtime Version Verification & Stale Cache Elimination (`src/services/update.service.ts`)**:
+  - Integrated `expo-application` (`nativeApplicationVersion` & `nativeBuildVersion`) for true package-manager version verification.
+  - Added automatic cache invalidation and re-evaluation of `compareVersions(latestVersion, currentVersion)` on all cached update reads.
+  - Automatically purges update check cache and residual APK chunks on package installer launch.
+- **Conditional Download & Up-to-Date Layout (`src/components/common/UpdateModal.tsx`)**:
+  - Re-evaluates version comparison before presenting download options.
+  - If up-to-date, automatically switches to a clean "You're Up to Date" layout with green checkmark pill, hides download CTA, and renders direct "View Release on GitHub" link.
+- **Direct GitHub Repository & Android Release Links**:
+  - Added direct links in Profile (`app/(tabs)/profile.tsx`), Preferences (`app/settings/preferences.tsx`), and About (`app/info/about.tsx`).
+
+### ⚡ Sliding Group Tab Transitions & Interactive Predictive Back
+- **2-Window Sliding Stage Architecture (`app/groups/[id]/index.tsx`)**:
+  - Both outgoing and incoming tab windows animate simultaneously on the UI thread via Reanimated worklets (`Easing.bezier(0.22, 1, 0.36, 1)` over 280ms) without layout jumps.
+  - Horizontal swipe gestures (`Gesture.Pan()`) between tabs with directional slop guards releasing vertical gestures to the parent `ScrollView`.
+- **Interactive Android Predictive Back (`MainActivity.kt`, `withPredictiveBack.js`, `InteractiveSwipeBack.tsx`)**:
+  - Real-time `BackEventCompat` progress tracking with interactive window scale (1.0 → 0.90), 24dp corner radius rounding, and smooth deceleration curves.
+  - Expo config plugin injecting native lifecycle hooks into `MainActivity.kt`.
+- **Analytics Date Filter & Ribbon Calendar (`AnalyticsDateFilterModal.tsx`)**:
+  - Continuous ribbon calendar with sleek range highlight, date chip indicators, and no-overflow bottom action buttons.
+
+---
+
 ## [1.3.3] - 2026-11-18
 
 ### ✨ Animation Modernization & Predictive Back Gestures

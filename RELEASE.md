@@ -4,6 +4,51 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 ---
 
+## [v1.3.4] - 2026-11-20
+
+> **Target OS**: Android 10+ (API 29+) & iOS 15+  
+> **Build Number**: `10`  
+> **Package**: `com.splitit.app`
+
+### 🚀 Highlights & Changelog
+
+#### 📷 Flagship Optical Receipt Camera & Vision Studio (`app/ai/scanner.tsx`)
+- **Optical Vignetted Document Viewfinder**:
+  - Dark vignette mask (`rgba(0, 0, 0, 0.60)`) centering focus exclusively on the document frame.
+  - Precision L-shaped corner brackets (18px radius) tinted in theme accent with micro-HUD edge alignment ticks.
+  - Hardware-accelerated dynamic laser scanning beam (`scanLineY` Reanimated worklet) sweeping continuously with soft drop-shadow and gradient glow trail.
+  - Interactive tap-to-focus reticle with spring dampening (`focusScale` 1.35 → 1.0) and tactile haptic ticks.
+  - Toggleable 3x3 rule-of-thirds composition grid (`Grid3x3`) and torch toggle (`Zap`/`ZapOff`).
+  - Segmented floating zoom ladder (`1x`, `2x`) with haptic selection detents.
+  - Flagship 82px mechanical shutter button with `PressableScale` active depression (0.88) and 90ms screen-wide optical flash overlay.
+  - Left-flanked gallery photo import button (`ImageIcon`) and right-flanked camera facing toggle (`RotateCcw`).
+  - Purged all legacy demo buttons ("Try Demo Cafe Bodega Receipt", "Demo" button) and mock handlers.
+- **AI Vision Processing HUD**:
+  - High-tech AI processing card with `QuantumSpinner`, dynamic multi-stage progression tracker, and animated progress bar.
+- **Executive Vision Review & Inspection Studio**:
+  - Emerald status badge and 99.4% confidence shield verification pill.
+  - High-resolution captured receipt thumbnail preview.
+  - Inline editable Merchant/Title input with pencil indicator.
+  - Financial amount spotlight showing detected total with currency symbol and tax notation.
+  - AI category pill with master category breadcrumb.
+  - Dual action buttons: "Retake" and high-contrast "Use in Expense" directly pre-filling `/expenses/new` with the image URI.
+- **Executive Permission Screen**:
+  - Obsidian canvas with dual-ring glowing camera aperture graphic, 3-point feature checklist, "Enable Camera Access" primary CTA, and "Choose from Photos" secondary action.
+
+#### 🌐 In-App Update Engine & Direct Release Navigation
+- Integrated `expo-application` for runtime package version verification.
+- Automatic cache invalidation and version comparison checks to eliminate stale update popups.
+- In-app update modal switches to "You're Up to Date" when on the latest version and suppresses download CTA.
+- Direct GitHub repository and releases links across Profile, Preferences, and About screens.
+
+#### ⚡ Sliding Group Tab Transitions & Interactive Predictive Back
+- Hardware-accelerated 2-window sliding stage architecture across group tabs in `app/groups/[id]/index.tsx`.
+- Horizontal swipe gestures (`Gesture.Pan()`) between tabs with directional slop guards releasing vertical gestures to the parent `ScrollView`.
+- Native Android 14/15 Predictive Back real-time window tracking in `MainActivity.kt` and `InteractiveSwipeBack.tsx`.
+- Continuous ribbon calendar with sleek range highlight, date chip indicators, and no-overflow bottom action buttons in `AnalyticsDateFilterModal.tsx`.
+
+---
+
 ## [v1.3.3] - 2026-11-18
 
 > **Target OS**: Android 10+ (API 29+) & iOS 15+  
