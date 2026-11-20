@@ -6,9 +6,14 @@
     - `app.json`: `"version": "1.3.4"`, `"versionCode": 10`, `"buildNumber": "10"`
     - `src/services/update.service.ts`: `CURRENT_APP_VERSION = '1.3.4'`, `CURRENT_BUILD_NUMBER = '10'`
     - `android/app/build.gradle`: `versionCode 10`, `versionName "1.3.4"`
-  - **Changelog & Documentation**:
-    - Updated `CHANGELOG.md` with full breakdown of v1.3.4 changes (flagship receipt camera, update persistence fix & release links, sliding group tabs, predictive back).
-    - Updated `RELEASE.md` with v1.3.4 highlights and build specifications.
+  - **CI Workflow & iOS Build Skip**:
+    - Disabled automatic `push` triggers in `.github/workflows/build-ios.yml` (kept only manual `workflow_dispatch`), skipping iOS compilation on commit pushes.
+    - Updated packaged artifact target in workflow to `SplitIt-v1.3.4.ipa`.
+  - **Android Release Binaries & Documentation**:
+    - Successfully compiled Android release APK via `./gradlew assembleRelease` (`135,756,549 bytes` / `129.5 MB`).
+    - Staged `SplitIt-v1.3.4.apk` with SHA256 checksum `bb6933b2b9f0a231a55b550ed170d8d56397c49eedd62d2a9e5f4573e01283c7`.
+    - Updated `CHANGELOG.md` with full breakdown of v1.3.4 changes.
+    - Updated `RELEASE.md` with release artifact table, SHA256 verification commands, and iOS skip notice.
   - **Quality Gates**:
     - `npx tsc --noEmit` verified with 0 errors.
     - `npx jest --passWithNoTests` passed with 0 errors.

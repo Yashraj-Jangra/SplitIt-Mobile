@@ -6,9 +6,25 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 ## [v1.3.4] - 2026-11-20
 
-> **Target OS**: Android 10+ (API 29+) & iOS 15+  
+> **Target OS**: Android 10+ (API 29+) (iOS build skipped for this release)  
 > **Build Number**: `10`  
 > **Package**: `com.splitit.app`
+
+### 📦 Artifacts & Downloads
+
+| File | Type | Size | SHA256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **`SplitIt-v1.3.4.apk`** | Android Release APK | `129.5 MB` (`135,756,549 bytes`) | `bb6933b2b9f0a231a55b550ed170d8d56397c49eedd62d2a9e5f4573e01283c7` |
+
+```bash
+# Verify checksum on Windows (PowerShell)
+Get-FileHash -Algorithm SHA256 .\SplitIt-v1.3.4.apk
+
+# Verify checksum on Linux / macOS
+sha256sum SplitIt-v1.3.4.apk
+```
+
+> *Note: Standalone iOS IPA compilation is skipped for v1.3.4 to prioritize the Android production release.*
 
 ### 🚀 Highlights & Changelog
 
