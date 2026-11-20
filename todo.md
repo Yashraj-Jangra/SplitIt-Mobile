@@ -12,6 +12,8 @@
   - **Android Release Binaries & Documentation**:
     - Successfully compiled Android release APK via `./gradlew assembleRelease` (`135,756,549 bytes` / `129.5 MB`).
     - Staged `SplitIt-v1.3.4.apk` with SHA256 checksum `bb6933b2b9f0a231a55b550ed170d8d56397c49eedd62d2a9e5f4573e01283c7`.
+    - Published official release on GitHub: [v1.3.4](https://github.com/Yashraj-Jangra/SplitIt-Mobile/releases/tag/v1.3.4).
+    - Uploaded release binary asset: [`SplitIt-v1.3.4.apk`](https://github.com/Yashraj-Jangra/SplitIt-Mobile/releases/download/v1.3.4/SplitIt-v1.3.4.apk).
     - Updated `CHANGELOG.md` with full breakdown of v1.3.4 changes.
     - Updated `RELEASE.md` with release artifact table, SHA256 verification commands, and iOS skip notice.
   - **Quality Gates**:
