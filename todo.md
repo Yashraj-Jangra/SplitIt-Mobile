@@ -1,5 +1,42 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Android Embedded Photo Picker Native Module & Zero Mock Data Policy Enforcement** ✨ 🛡️ 📱 🎨 ⚡ 🚀 ✅:
+  - **Local Expo Native Module (`modules/expo-embedded-photo-picker/`)**:
+    - Wrapped Android Jetpack's `EmbeddedPhotoPickerView` (`androidx.photopicker:photopicker-embedded:1.0.0-alpha03`) in an `ExpoView`.
+    - Added runtime hardware/OS check via `EmbeddedPhotoPickerSupport.kt` ensuring Android 14+ (API 34) and SDK Extension 15+ before instantiating native surface.
+    - Zero storage/media permissions in `AndroidManifest.xml` (added query for `com.android.photopicker.core.embedded.EmbeddedService.BIND`).
+    - Exposed native props: `maxSelectionLimit`, `orderedSelection`, `accentColor` (mapped from active app theme), and sheet expansion sync.
+    - Emits native events to JS: `onUriPermissionGranted`, `onUriPermissionRevoked`, and `onSelectionComplete`.
+  - **Flagship Media Picker Bottom Sheet (`src/components/media/EmbeddedPhotoPickerSheet.tsx`)**:
+    - Reanimated spring bottom sheet with gesture drag handle, collapsed-to-expanded transition, and backdrop dismiss.
+    - Pro-grade header with integrated Camera trigger (`ImagePicker.launchCameraAsync`), expand toggle, and security status badge ("EMBEDDED" vs "SCOPED").
+    - Native embedded picker rendering inside the bottom sheet on supported Android 14+ devices.
+    - Graceful fallback with scoped photo picker and camera triggers on iOS and legacy Android versions.
+  - **Zero Mock / Dummy Data Rule & Error Handling Architecture**:
+    - Established strict permanent rule in `.agents/rules/data-integrity-and-error-handling.md` and linked in `AGENTS.md`.
+    - Purged all hardcoded mock receipt fallbacks (e.g. 1850 / 'Cafe Bodega') and simulated mutations from `src/services/ai.service.ts`.
+    - Implemented typed `ReceiptScanError` hierarchy covering `NETWORK_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `VALIDATION_FAILED`, `OCR_PARSE_FAILED`, `UPLOAD_FAILED`, and `IMAGE_PROCESSING_FAILED`.
+    - Added high-contrast error card in `app/ai/scanner.tsx` with specific recovery actions (retry scan, import another, dismiss).
+  - **Verification & Quality Gates Passed**:
+    - Android native Kotlin compilation passed cleanly: `:expo-embedded-photo-picker:compileDebugKotlin` -> `BUILD SUCCESSFUL`.
+    - TypeScript typecheck passed cleanly: `npx tsc --noEmit` (0 errors).
+    - Unit tests passed cleanly: `npx jest --passWithNoTests` (0 errors).
+
+
+- **Azure AZ-900 Industrial Internship Project Report Generation** 📝 🎓 ☁️ ✨ 🚀 ✅:
+  - **Comprehensive 24-Page Project Report**:
+    - Created matching 1-to-1 structure based on academic reference report (`Project_Report.pdf`), formatted specifically for **Yashraj Jangra (UID: 24BAI70476)**.
+    - Tailored for Chandigarh University B.E. CSE (AIML), supervised by Prof. (Dr.) U. Hariharan.
+    - Embedded official Microsoft Certified: Azure Fundamentals (AZ-900) certificate (Verification: `wEXeB-48EN`) and Pearson VUE examination score report with a perfect score of **1000/1000**.
+  - **Project & Cloud Architecture Mapping**:
+    - Deeply integrated SplitIt's flagship **Optical Receipt Camera & Vision Studio OCR** and **Retrieval-Augmented Generation (RAG)** Financial Assistant with Azure Cloud services.
+    - Mapped cross-platform React Native + Next.js architecture to Azure App Service, Azure Functions, Azure PostgreSQL Flexible Server, Azure Blob Storage (SAS tokens), Azure Key Vault, Microsoft Entra ID, and Azure AI Search.
+    - Included high-resolution architecture diagrams, RAG & OCR pipelines, debt minimization graph algorithm, and AZ-900 feature mapping tables.
+  - **Generated Formats**:
+    - Microsoft Word: [`Project_Showcase/SplitIt_Project_Report_AZ900.docx`](file:///d:/Projects/SplitIt-Mobile/Project_Showcase/SplitIt_Project_Report_AZ900.docx)
+    - Formatted PDF: [`Project_Showcase/SplitIt_Project_Report_AZ900.pdf`](file:///d:/Projects/SplitIt-Mobile/Project_Showcase/SplitIt_Project_Report_AZ900.pdf) (exact 24-page budget).
+    - Synced across both `SplitIt-Mobile` and `SplitIt-Web`.
+
 - **Milestone v1.3.4 (Build 10) Release Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
   - **Version Manifests Synchronized to 1.3.4 (Build 10)**:
     - `package.json`: `"version": "1.3.4"`

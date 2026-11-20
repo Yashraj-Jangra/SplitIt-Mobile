@@ -85,6 +85,13 @@ This project enforces a comprehensive set of rules organized by category. **Read
 - Graceful offline fallbacks with cached data.
 - No unhandled promise rejections.
 
+### 🔒 [Data Integrity & Production Error Handling](file:///d:/Projects/SplitIt-Mobile/.agents/rules/data-integrity-and-error-handling.md)
+- **Zero mock or dummy data** in production code — no fake amounts (e.g. 1850), fake merchants ("Cafe Bodega"), or fabricated responses.
+- Granular edge case error matrix handling (offline, 401, 403, 422, unreadable media, permission revocation).
+- Honest nullish field representation when OCR or parsing is uncertain.
+- Actionable recovery CTAs ("Retry", "Retake", "Enter Manually") on all failure states.
+- Mandatory `finally` cleanup for all loading indicators, worklets, and spinners.
+
 ### 📦 [Dependency & SDK Hygiene](file:///d:/Projects/SplitIt-Mobile/.agents/rules/dependencies.md)
 - Always `npx expo install` — never `npm install` for runtime packages.
 - Run `npx expo-doctor` before committing dependency changes.

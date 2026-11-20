@@ -1,0 +1,7 @@
+{
+  "name": "expo-embedded-photo-picker",
+  "version": "1.0.0",
+  "description": "Android Embedded Photo Picker Expo native module",
+  "main": "index.ts",
+  "types": "index.ts"
+}

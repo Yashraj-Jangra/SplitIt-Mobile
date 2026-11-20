@@ -3,6 +3,21 @@ import { authService } from './auth.service';
 import { getAuthenticatedHeaders, API_BASE_URL } from './api-headers';
 import { settingsService } from './settings.service';
 
+export class ReceiptScanError extends Error {
+  constructor(
+    public readonly code:
+      | 'NETWORK_ERROR'
+      | 'UNAUTHORIZED'
+      | 'UPLOAD_FAILED'
+      | 'OCR_PARSE_FAILED'
+      | 'IMAGE_PROCESSING_FAILED',
+    message: string
+  ) {
+    super(message);
+    this.name = 'ReceiptScanError';
+  }
+}
+
 export interface BudgetProposalCategoryChange {
   name: string;
   old: number;
@@ -153,88 +168,122 @@ export const aiService = {
       });
       return res.ok;
     } catch {
-      return true; // Simulation success
+      return false;
     }
   },
 
   /**
-   * Pre-processes camera photo and sends to MiniMax Vision OCR.
+   * Pre-processes camera photo and sends to backend Vision OCR.
+   * Throws ReceiptScanError with exact diagnostic details on failure.
+   * Never returns fabricated or mock receipt data.
    */
   async scanReceipt(uri: string): Promise<ScannedReceiptResult> {
-    // 1. Compress image to max 1600px width/height and 0.8 quality
-    const manipulated = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1400 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
+    let manipulatedUri = uri;
     try {
-      const token = await authService.getToken();
-      const formData = new FormData();
-      formData.append('file', {
-        uri: manipulated.uri,
-        name: 'receipt.jpg',
-        type: 'image/jpeg',
-      } as any);
+      const manipulated = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1400 } }],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      manipulatedUri = manipulated.uri;
+    } catch (e: any) {
+      throw new ReceiptScanError(
+        'IMAGE_PROCESSING_FAILED',
+        'Could not prepare receipt image. Please select a clear JPG or PNG image.'
+      );
+    }
 
-      // Upload and OCR
-      const uploadHeaders = getAuthenticatedHeaders(token);
-      // Remove default Content-Type so fetch sets multipart boundary automatically
-      delete (uploadHeaders as any)['Content-Type'];
+    const token = await authService.getToken();
+    const formData = new FormData();
+    formData.append('file', {
+      uri: manipulatedUri,
+      name: 'receipt.jpg',
+      type: 'image/jpeg',
+    } as any);
 
-      const uploadRes = await fetch(`${API_BASE_URL}/api/upload/receipt`, {
+    const uploadHeaders = getAuthenticatedHeaders(token);
+    delete (uploadHeaders as any)['Content-Type'];
+
+    let uploadRes: Response;
+    try {
+      uploadRes = await fetch(`${API_BASE_URL}/api/upload/receipt`, {
         method: 'POST',
         headers: uploadHeaders,
         body: formData,
       });
-
-      if (uploadRes.ok) {
-        const { url } = await uploadRes.json();
-        const ocrRes = await fetch(`${API_BASE_URL}/api/ai/scan-receipt`, {
-          method: 'POST',
-          headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ imageUrl: url }),
-        });
-
-        if (ocrRes.ok) {
-          const result = await ocrRes.json();
-          const parsedAmount =
-            typeof result.amount === 'number' && !isNaN(result.amount)
-              ? result.amount
-              : parseFloat(result.totalAmount || result.amount || '0') || 1850;
-          const detectedTitle =
-            result.title || result.merchantName || result.description || 'Receipt Expense';
-          const detectedSub = result.category || result.subCategory || 'Dining Out';
-          const detectedMaster =
-            result.masterCategory || settingsService.getMasterCategory(detectedSub);
-
-          return {
-            amount: parsedAmount,
-            description: detectedTitle,
-            date: result.date || new Date().toISOString().split('T')[0],
-            category: {
-              master: detectedMaster,
-              sub: detectedSub,
-            },
-            merchant: result.title || result.merchantName,
-            imageUrl: url,
-          };
-        }
-      }
     } catch {
-      // Fallback parsed receipt model
+      throw new ReceiptScanError(
+        'NETWORK_ERROR',
+        'Unable to connect to SplitIt server. Please check your network connection.'
+      );
     }
 
-    // High-accuracy fallback for test preview
+    if (!uploadRes.ok) {
+      if (uploadRes.status === 401) {
+        throw new ReceiptScanError('UNAUTHORIZED', 'Session expired. Please sign in to scan receipts.');
+      }
+      const errJson = await uploadRes.json().catch(() => ({}));
+      throw new ReceiptScanError(
+        'UPLOAD_FAILED',
+        errJson.error || `Receipt upload failed (${uploadRes.status}). Please try again.`
+      );
+    }
+
+    const uploadData = await uploadRes.json().catch(() => ({}));
+    const { url } = uploadData;
+    if (!url) {
+      throw new ReceiptScanError('UPLOAD_FAILED', 'Server did not return a valid receipt image reference.');
+    }
+
+    let ocrRes: Response;
+    try {
+      ocrRes = await fetch(`${API_BASE_URL}/api/ai/scan-receipt`, {
+        method: 'POST',
+        headers: getAuthenticatedHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ imageUrl: url }),
+      });
+    } catch {
+      throw new ReceiptScanError(
+        'NETWORK_ERROR',
+        'Connection lost during receipt analysis. Please retry.'
+      );
+    }
+
+    if (!ocrRes.ok) {
+      if (ocrRes.status === 401) {
+        throw new ReceiptScanError('UNAUTHORIZED', 'Session expired. Please sign in to scan receipts.');
+      }
+      const errJson = await ocrRes.json().catch(() => ({}));
+      throw new ReceiptScanError(
+        'OCR_PARSE_FAILED',
+        errJson.error || 'SplitIt Vision was unable to parse this receipt clearly. Please verify the photo is in focus.'
+      );
+    }
+
+    const result = await ocrRes.json();
+    const parsedAmount =
+      typeof result.amount === 'number' && !isNaN(result.amount)
+        ? result.amount
+        : typeof result.amount === 'string'
+        ? parseFloat(result.amount) || 0
+        : 0;
+
+    const detectedTitle =
+      result.title?.trim() || result.merchantName?.trim() || 'Scanned Receipt';
+    const detectedSub = result.category || 'Dining Out';
+    const detectedMaster =
+      result.masterCategory || settingsService.getMasterCategory(detectedSub);
+
     return {
-      amount: 1850,
-      description: 'Cafe Bodega Brunch & Juices',
-      date: new Date().toISOString().split('T')[0],
+      amount: parsedAmount,
+      description: detectedTitle,
+      date: result.date || new Date().toISOString().split('T')[0],
       category: {
-        master: 'Food and Drink',
-        sub: 'Dining Out',
+        master: detectedMaster,
+        sub: detectedSub,
       },
-      merchant: 'Cafe Bodega',
+      merchant: detectedTitle,
+      imageUrl: url,
     };
   },
 };

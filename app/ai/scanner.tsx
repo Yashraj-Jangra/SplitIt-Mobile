@@ -46,7 +46,12 @@ import {
   AlertCircle,
 } from 'lucide-react-native';
 import { THEME } from '../../src/constants/theme';
-import { aiService, ScannedReceiptResult } from '../../src/services/ai.service';
+import {
+  aiService,
+  ScannedReceiptResult,
+  ReceiptScanError,
+} from '../../src/services/ai.service';
+import { EmbeddedPhotoPickerSheet } from '../../src/components/media';
 import { useCurrency } from '../../src/contexts/currency.context';
 import { useAppTheme } from '../../src/contexts/theme.context';
 
@@ -72,6 +77,13 @@ export default function ReceiptScannerScreen() {
   const [scanResult, setScanResult] = useState<ScannedReceiptResult | null>(null);
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
   const [merchantInput, setMerchantInput] = useState('');
+  const [amountInput, setAmountInput] = useState('');
+  const [isPhotoPickerSheetVisible, setIsPhotoPickerSheetVisible] = useState(false);
+  const [detailedError, setDetailedError] = useState<{
+    title: string;
+    message: string;
+    code?: string;
+  } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
 
@@ -151,85 +163,111 @@ export default function ReceiptScannerScreen() {
     );
   };
 
+  const handleProcessImage = async (uri: string) => {
+    if (isProcessing) return;
+    setDetailedError(null);
+    setErrorMessage(null);
+    setScanResult(null);
+    setCapturedImageUri(uri);
+    setIsProcessing(true);
+    setProcessingStage('Optimizing receipt geometry & clarity...');
+
+    const stageTimer1 = setTimeout(() => {
+      setProcessingStage('Uploading receipt to SplitIt secure cloud...');
+    }, 700);
+
+    const stageTimer2 = setTimeout(() => {
+      setProcessingStage('Extracting merchant, totals & tax items...');
+    }, 1800);
+
+    try {
+      const result = await aiService.scanReceipt(uri);
+      clearTimeout(stageTimer1);
+      clearTimeout(stageTimer2);
+
+      haptics.saveSuccess();
+      setScanResult(result);
+      setMerchantInput(result.merchant || result.description);
+      setAmountInput(result.amount > 0 ? result.amount.toFixed(2) : '');
+    } catch (err: any) {
+      clearTimeout(stageTimer1);
+      clearTimeout(stageTimer2);
+      haptics.error();
+
+      if (err instanceof ReceiptScanError) {
+        if (err.code === 'NETWORK_ERROR') {
+          setDetailedError({
+            title: 'Network Offline',
+            message: err.message,
+            code: err.code,
+          });
+        } else if (err.code === 'UNAUTHORIZED') {
+          setDetailedError({
+            title: 'Sign In Required',
+            message: err.message,
+            code: err.code,
+          });
+        } else if (err.code === 'OCR_PARSE_FAILED') {
+          setDetailedError({
+            title: 'Receipt Not Legible',
+            message: err.message,
+            code: err.code,
+          });
+        } else {
+          setDetailedError({
+            title: 'Upload Failed',
+            message: err.message,
+            code: err.code,
+          });
+        }
+      } else {
+        setDetailedError({
+          title: 'Scanning Failed',
+          message:
+            err?.message ||
+            'SplitIt Vision was unable to parse this receipt. Please retry with a clear photo in good lighting.',
+          code: 'UNKNOWN_ERROR',
+        });
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleCapture = async () => {
     if (isProcessing || scanResult) return;
+    setDetailedError(null);
     setErrorMessage(null);
     haptics.confirm();
     triggerShutterFlash();
 
     try {
       if (cameraRef.current) {
-        setIsProcessing(true);
-        setProcessingStage('Capturing high-res frame...');
-
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.9,
           skipProcessing: false,
         });
 
         if (photo?.uri) {
-          setCapturedImageUri(photo.uri);
-          setProcessingStage('Detecting geometry & line totals...');
-
-          const stageTimer = setTimeout(() => {
-            setProcessingStage('Categorizing with SplitIt AI...');
-          }, 900);
-
-          const result = await aiService.scanReceipt(photo.uri);
-          clearTimeout(stageTimer);
-
-          haptics.saveSuccess();
-          setScanResult(result);
-          setMerchantInput(result.merchant || result.description);
+          await handleProcessImage(photo.uri);
         } else {
-          throw new Error('Capture failed');
+          throw new Error('Camera capture failed');
         }
       }
-    } catch {
+    } catch (err: any) {
       haptics.error();
-      setErrorMessage('Could not scan receipt clearly. Please hold steady and try again.');
-      setTimeout(() => setErrorMessage(null), 4500);
-    } finally {
-      setIsProcessing(false);
+      setDetailedError({
+        title: 'Camera Error',
+        message: err?.message || 'Camera shutter failed to capture photo frame.',
+      });
     }
   };
 
-  const handlePickFromGallery = async () => {
+  const handlePickFromGallery = () => {
     if (isProcessing) return;
     haptics.tap();
-    setErrorMessage(null);
-
-    try {
-      const pickerResult = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.9,
-      });
-
-      if (!pickerResult.canceled && pickerResult.assets?.[0]?.uri) {
-        const selectedUri = pickerResult.assets[0].uri;
-        setCapturedImageUri(selectedUri);
-        setIsProcessing(true);
-        setProcessingStage('Optimizing document clarity...');
-
-        const stageTimer = setTimeout(() => {
-          setProcessingStage('Detecting receipt totals & taxes...');
-        }, 800);
-
-        const result = await aiService.scanReceipt(selectedUri);
-        clearTimeout(stageTimer);
-
-        haptics.saveSuccess();
-        setScanResult(result);
-        setMerchantInput(result.merchant || result.description);
-      }
-    } catch {
-      haptics.error();
-      setErrorMessage('Could not import image. Please select another receipt.');
-      setTimeout(() => setErrorMessage(null), 4500);
-    } finally {
-      setIsProcessing(false);
-    }
+    setDetailedError(null);
+    setIsPhotoPickerSheetVisible(true);
   };
 
   const handleToggleTorch = useCallback(() => {
@@ -257,6 +295,8 @@ export default function ReceiptScannerScreen() {
     setScanResult(null);
     setCapturedImageUri(null);
     setMerchantInput('');
+    setAmountInput('');
+    setDetailedError(null);
     setErrorMessage(null);
   };
 
@@ -264,11 +304,13 @@ export default function ReceiptScannerScreen() {
     if (!scanResult) return;
     haptics.confirm();
     const finalDescription = merchantInput.trim() || scanResult.merchant || scanResult.description;
+    const parsedAmt = parseFloat(amountInput);
+    const finalAmount = !isNaN(parsedAmt) && parsedAmt >= 0 ? parsedAmt : scanResult.amount || 0;
 
     router.replace({
       pathname: '/expenses/new',
       params: {
-        amount: String(scanResult.amount),
+        amount: String(finalAmount),
         description: finalDescription,
         category: scanResult.category.sub,
         ...(capturedImageUri || scanResult.imageUrl
@@ -345,6 +387,21 @@ export default function ReceiptScannerScreen() {
             <Text style={styles.secondaryPermButtonText}>Choose from Photos</Text>
           </PressableScale>
         </View>
+
+        {/* Embedded Photo Picker Bottom Sheet for Permission Screen */}
+        <EmbeddedPhotoPickerSheet
+          visible={isPhotoPickerSheetVisible}
+          onClose={() => setIsPhotoPickerSheetVisible(false)}
+          onSelectImage={(uri) => {
+            handleProcessImage(uri);
+          }}
+          onLaunchCamera={() => {
+            setIsPhotoPickerSheetVisible(false);
+            requestPermission();
+          }}
+          maxSelectionLimit={1}
+          orderedSelection={false}
+        />
       </SafeAreaView>
     );
   }
@@ -540,12 +597,12 @@ export default function ReceiptScannerScreen() {
             <View style={styles.studioHeaderRow}>
               <View style={styles.studioStatusPill}>
                 <CheckCircle2 size={13} color={THEME.colors.success} />
-                <Text style={styles.studioStatusText}>RECEIPT PARSED</Text>
+                <Text style={styles.studioStatusText}>VISION PARSED</Text>
               </View>
               <View style={styles.studioAccuracyPill}>
                 <ShieldCheck size={13} color={currentAccent.primary} />
                 <Text style={[styles.studioAccuracyText, { color: currentAccent.primary }]}>
-                  99.4% Verified
+                  Verified Ledger
                 </Text>
               </View>
             </View>
@@ -587,10 +644,25 @@ export default function ReceiptScannerScreen() {
             <View style={styles.financialCard}>
               <View style={styles.amountColumn}>
                 <Text style={styles.fieldLabel}>TOTAL AMOUNT</Text>
-                <Text style={[styles.amountDisplay, { color: currentAccent.primary }]}>
-                  {currencySymbol}{scanResult.amount.toFixed(2)}
-                </Text>
-                <Text style={styles.amountSubtext}>Includes taxes & line items</Text>
+                <View style={styles.amountInputRow}>
+                  <Text style={[styles.currencyPrefix, { color: currentAccent.primary }]}>
+                    {currencySymbol}
+                  </Text>
+                  <TextInput
+                    style={[styles.amountTextInput, { color: currentAccent.primary }]}
+                    value={amountInput}
+                    onChangeText={setAmountInput}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    placeholderTextColor={THEME.colors.textMuted}
+                  />
+                  <Pencil size={12} color={THEME.colors.textMuted} style={styles.pencilIcon} />
+                </View>
+                {parseFloat(amountInput) <= 0 || !amountInput ? (
+                  <Text style={styles.amountWarningText}>Amount not found — tap to set</Text>
+                ) : (
+                  <Text style={styles.amountSubtext}>Includes taxes & line items</Text>
+                )}
               </View>
 
               <View style={styles.categoryColumn}>
@@ -715,6 +787,77 @@ export default function ReceiptScannerScreen() {
             </View>
           </View>
         )}
+
+        {/* Real Error Diagnostic Floating Card */}
+        {detailedError && !isProcessing && (
+          <View style={styles.errorCardContainer}>
+            <View style={styles.errorCard}>
+              <View style={styles.errorCardHeader}>
+                <View style={styles.errorIconBadge}>
+                  <AlertCircle size={18} color={THEME.colors.danger} />
+                </View>
+                <View style={styles.errorTextColumn}>
+                  <Text style={styles.errorCardTitle}>{detailedError.title}</Text>
+                  <Text style={styles.errorCardDesc}>{detailedError.message}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setDetailedError(null)}
+                  style={styles.errorCloseButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss error"
+                >
+                  <X size={15} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.errorActionsRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.errorActionPill,
+                    { backgroundColor: `${currentAccent.primary}20`, borderColor: `${currentAccent.primary}45` },
+                  ]}
+                  onPress={() => {
+                    setDetailedError(null);
+                    if (capturedImageUri) {
+                      handleProcessImage(capturedImageUri);
+                    }
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry receipt scan"
+                >
+                  <RotateCcw size={13} color={currentAccent.primary} />
+                  <Text style={[styles.errorActionPillText, { color: currentAccent.primary }]}>Retry</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.errorActionPill}
+                  onPress={() => {
+                    setDetailedError(null);
+                    setIsPhotoPickerSheetVisible(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Choose photo from gallery"
+                >
+                  <ImageIcon size={13} color={THEME.colors.text} />
+                  <Text style={styles.errorActionPillText}>Choose Photo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.errorActionPill}
+                  onPress={() => {
+                    setDetailedError(null);
+                    router.replace('/expenses/new');
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Enter expense manually"
+                >
+                  <ArrowRight size={13} color={THEME.colors.textMuted} />
+                  <Text style={[styles.errorActionPillText, { color: THEME.colors.textMuted }]}>Manual</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
 
       {/* AI Vision Processing HUD Overlay */}
@@ -733,6 +876,20 @@ export default function ReceiptScannerScreen() {
           </View>
         </View>
       )}
+
+      {/* Embedded Photo Picker Bottom Sheet for Viewfinder Screen */}
+      <EmbeddedPhotoPickerSheet
+        visible={isPhotoPickerSheetVisible}
+        onClose={() => setIsPhotoPickerSheetVisible(false)}
+        onSelectImage={(uri) => {
+          handleProcessImage(uri);
+        }}
+        onLaunchCamera={() => {
+          setIsPhotoPickerSheetVisible(false);
+        }}
+        maxSelectionLimit={1}
+        orderedSelection={false}
+      />
 
       {/* Optical Shutter Flash Overlay */}
       <Animated.View pointerEvents="none" style={[styles.shutterFlashOverlay, animatedFlashStyle]} />
@@ -1474,5 +1631,96 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: THEME.colors.textSecondary,
+  },
+  errorCardContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  errorCard: {
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    borderRadius: THEME.radius.lg,
+    padding: 14,
+    gap: 12,
+  },
+  errorCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  errorIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  errorTextColumn: {
+    flex: 1,
+  },
+  errorCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.text,
+  },
+  errorCardDesc: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: THEME.colors.textSecondary,
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  errorCloseButton: {
+    padding: 4,
+  },
+  errorActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.border,
+    paddingTop: 10,
+  },
+  errorActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  errorActionPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  amountInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  currencyPrefix: {
+    fontSize: 26,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  amountTextInput: {
+    fontSize: 26,
+    fontWeight: '900',
+    padding: 0,
+    margin: 0,
+    minWidth: 90,
+    fontVariant: ['tabular-nums'],
+  },
+  amountWarningText: {
+    fontSize: 10,
+    color: THEME.colors.danger,
+    fontWeight: '600',
+    marginTop: 2,
   },
 });

@@ -7,6 +7,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "expo-embedded-photo-picker": [
+        "./modules/expo-embedded-photo-picker"
       ]
     }
   },
