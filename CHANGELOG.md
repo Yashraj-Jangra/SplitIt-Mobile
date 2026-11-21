@@ -4,6 +4,27 @@ All notable changes to the SplitIt Mobile application are documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-11-21
+
+### 🖼️ Android Embedded Photo Picker Native Module
+- **Jetpack Embedded Photo Picker View (`modules/expo-embedded-photo-picker/`)**:
+  - Wrapped `androidx.photopicker.embedded.EmbeddedPhotoPickerView` (`androidx.photopicker:photopicker-embedded:1.0.0-alpha03`) in an `ExpoView`.
+  - Added runtime platform verification in `EmbeddedPhotoPickerSupport.kt` ensuring Android 14+ (API 34) and SDK Extension 15+.
+  - **Zero Storage Permissions**: Absolutely zero storage or media permissions in `AndroidManifest.xml` (added query for `com.android.photopicker.core.embedded.EmbeddedService.BIND`).
+  - Supported props: `maxSelectionLimit`, `orderedSelection`, dynamic `accentColor` mapped from active app theme, and sheet expansion sync.
+  - Native events emitted: `onUriPermissionGranted`, `onUriPermissionRevoked`, `onSelectionComplete`.
+- **Flagship Media Picker Bottom Sheet (`src/components/media/EmbeddedPhotoPickerSheet.tsx`)**:
+  - Reanimated spring bottom sheet with drag handle and bi-directional expansion sync (`52%` to `88%`).
+  - Pro-grade header with integrated Camera trigger (`launchCameraAsync`), expand toggle, and security status badge ("EMBEDDED" vs "SCOPED").
+  - Seamless fallback to `expo-image-picker` on iOS and unsupported Android versions.
+
+### 🛡️ Production Data Integrity & Zero Mock Data Policy
+- **Zero Mock / Dummy Data Rule (`.agents/rules/data-integrity-and-error-handling.md`)**:
+  - Enforced strict zero mock data standard across all features and AI workflows.
+  - Purged all hardcoded mock receipt fallbacks (`1850`, `'Cafe Bodega'`) and simulated mutations from `src/services/ai.service.ts`.
+  - Structured typed error hierarchy `ReceiptScanError` handling offline connectivity, 401 Unauthorized, 403 Forbidden, 422 Unprocessable receipts, server timeouts, and empty responses truthfully.
+  - Added high-contrast error card in `app/ai/scanner.tsx` with explicit user recovery actions.
+
 ## [1.3.4] - 2026-11-20
 
 ### 📷 Flagship Optical Receipt Camera & Vision Studio

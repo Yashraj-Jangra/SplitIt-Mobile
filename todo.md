@@ -1,5 +1,17 @@
 # SplitIt-Mobile Tracking Tracker (`todo.md`)
 
+- **Milestone v1.4.0 (Build 11) Release Synchronization** 📌 🚀 📱 ✨ 🛡️ ✅:
+  - **Version Manifests Synchronized to 1.4.0 (Build 11)**:
+    - `package.json`: `"version": "1.4.0"`
+    - `app.json`: `"version": "1.4.0"`, `"versionCode": 11`, `"buildNumber": "11"`
+    - `src/services/update.service.ts`: `getCurrentAppVersion()` -> `'1.4.0'`, `getCurrentAppBuildNumber()` -> `'11'`
+    - `android/app/build.gradle`: `versionCode 11`, `versionName "1.4.0"`
+    - `CHANGELOG.md`: Added release highlights for `1.4.0`.
+  - **Quality Gates**:
+    - `npx tsc --noEmit` verified with 0 errors.
+    - `npx jest --passWithNoTests` passed with 0 errors.
+    - Kotlin module compilation verified (`BUILD SUCCESSFUL`).
+
 - **Android Embedded Photo Picker Native Module & Zero Mock Data Policy Enforcement** ✨ 🛡️ 📱 🎨 ⚡ 🚀 ✅:
   - **Local Expo Native Module (`modules/expo-embedded-photo-picker/`)**:
     - Wrapped Android Jetpack's `EmbeddedPhotoPickerView` (`androidx.photopicker:photopicker-embedded:1.0.0-alpha03`) in an `ExpoView`.
