@@ -7,6 +7,11 @@
     - `src/services/update.service.ts`: `getCurrentAppVersion()` -> `'1.4.0'`, `getCurrentAppBuildNumber()` -> `'11'`
     - `android/app/build.gradle`: `versionCode 11`, `versionName "1.4.0"`
     - `CHANGELOG.md`: Added release highlights for `1.4.0`.
+  - **Android Release Binaries & Documentation**:
+    - Successfully compiled Android release APK via `./gradlew assembleRelease` (`135,795,297 bytes` / `129.5 MB`).
+    - Staged `SplitIt-v1.4.0.apk` with SHA256 checksum `f824867dda04fecb13020758d18b4c81ceeba11d3c3c0f1f8f1bfeb138d66d8d`.
+    - Updated `RELEASE.md` with release artifact table, SHA256 verification commands, and iOS skip notice.
+    - Updated `.github/workflows/build-ios.yml` target artifact to `SplitIt-v1.4.0.ipa`.
   - **Quality Gates**:
     - `npx tsc --noEmit` verified with 0 errors.
     - `npx jest --passWithNoTests` passed with 0 errors.

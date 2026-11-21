@@ -4,6 +4,51 @@ Official release documentation and binaries for the SplitIt Mobile app.
 
 ---
 
+## [v1.4.0] - 2026-11-21
+
+> **Target OS**: Android 10+ (API 29+) (iOS build skipped for this release)  
+> **Build Number**: `11`  
+> **Package**: `com.splitit.app`
+
+### 📦 Artifacts & Downloads
+
+| File | Type | Size | SHA256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **`SplitIt-v1.4.0.apk`** | Android Release APK | `129.5 MB` (`135,795,297 bytes`) | `f824867dda04fecb13020758d18b4c81ceeba11d3c3c0f1f8f1bfeb138d66d8d` |
+
+```bash
+# Verify checksum on Windows (PowerShell)
+Get-FileHash -Algorithm SHA256 .\SplitIt-v1.4.0.apk
+
+# Verify checksum on Linux / macOS
+sha256sum SplitIt-v1.4.0.apk
+```
+
+> *Note: Standalone iOS IPA compilation is configured via workflow dispatch (`SplitIt-v1.4.0.ipa`) and skipped for automatic pushes to prioritize the Android production release.*
+
+### 🚀 Highlights & Changelog
+
+#### 🖼️ Android Embedded Photo Picker Native Module
+- **Jetpack Embedded Photo Picker View (`modules/expo-embedded-photo-picker/`)**:
+  - Wrapped `androidx.photopicker.embedded.EmbeddedPhotoPickerView` (`androidx.photopicker:photopicker-embedded:1.0.0-alpha03`) in an `ExpoView`.
+  - Added runtime platform verification in `EmbeddedPhotoPickerSupport.kt` ensuring Android 14+ (API 34) and SDK Extension 15+.
+  - **Zero Storage Permissions**: Absolutely zero storage or media permissions in `AndroidManifest.xml` (declares only `<queries>` intent filter for `com.android.photopicker.core.embedded.EmbeddedService.BIND`).
+  - Native props: `maxSelectionLimit`, `orderedSelection`, dynamic `accentColor` mapped from active app theme, and sheet expansion sync.
+  - Native events emitted to JS: `onUriPermissionGranted`, `onUriPermissionRevoked`, `onSelectionComplete`.
+- **Flagship Media Picker Bottom Sheet (`src/components/media/EmbeddedPhotoPickerSheet.tsx`)**:
+  - Reanimated spring bottom sheet with drag handle and bi-directional expansion sync (`52%` to `88%`).
+  - Pro-grade header with integrated Camera trigger (`launchCameraAsync`), expand toggle, and security status badge ("EMBEDDED" vs "SCOPED").
+  - Seamless fallback to `expo-image-picker` on iOS and unsupported Android versions.
+
+#### 🛡️ Production Data Integrity & Zero Mock Data Policy
+- **Zero Mock / Dummy Data Rule (`.agents/rules/data-integrity-and-error-handling.md`)**:
+  - Enforced strict zero mock data standard across all features and AI workflows.
+  - Purged all hardcoded mock receipt fallbacks (`1850`, `'Cafe Bodega'`) and simulated mutations from `src/services/ai.service.ts`.
+  - Structured typed error hierarchy `ReceiptScanError` handling offline connectivity, 401 Unauthorized, 403 Forbidden, 422 Unprocessable receipts, server timeouts, and empty responses truthfully.
+  - Added high-contrast error card in `app/ai/scanner.tsx` with explicit user recovery actions.
+
+---
+
 ## [v1.3.4] - 2026-11-20
 
 > **Target OS**: Android 10+ (API 29+) (iOS build skipped for this release)  
